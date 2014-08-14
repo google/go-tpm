@@ -459,11 +459,7 @@ func quote2(f *os.File, keyHandle Handle, hash [20]byte, pcrs *pcrSelection, add
 		return &pcrShort, nil, capBytes, sig, &ra, ret, nil
 	}
 
-	fmt.Println("Successfully got the data. Sig has len", len(sig))
-
 	size := binary.Size(capInfo.CapVersionFixed)
-	fmt.Println("fixed size is", size)
-	fmt.Println("capbytes size is", len(capBytes))
 	capInfo.VendorSpecific = make([]byte, len(capBytes)-size)
 	if err := unpack(capBytes[:size], []interface{}{&capInfo.CapVersionFixed}); err != nil {
 		return nil, nil, nil, nil, nil, 0, err
