@@ -17,6 +17,7 @@ package tpm
 import (
 	"bytes"
 	"crypto/rand"
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -61,20 +62,20 @@ func TestReadPCR(t *testing.T) {
 }
 
 func TestPCRMask(t *testing.T) {
-	var mask PCRMask
-	if err := mask.SetPCR(-1); err == nil {
+	var mask pcrMask
+	if err := mask.setPCR(-1); err == nil {
 		t.Fatal("Incorrectly allowed non-existent PCR -1 to be set")
 	}
 
-	if err := mask.SetPCR(24); err == nil {
+	if err := mask.setPCR(24); err == nil {
 		t.Fatal("Incorrectly allowed non-existent PCR 24 to be set")
 	}
 
-	if err := mask.SetPCR(0); err != nil {
+	if err := mask.setPCR(0); err != nil {
 		t.Fatal("Couldn't set PCR 0 in the mask:", err)
 	}
 
-	set, err := mask.IsPCRSet(0)
+	set, err := mask.isPCRSet(0)
 	if err != nil {
 		t.Fatal("Couldn't check to see if PCR 0 was set:", err)
 	}
@@ -83,11 +84,11 @@ func TestPCRMask(t *testing.T) {
 		t.Fatal("Incorrectly said PCR wasn't set when it should have been")
 	}
 
-	if err := mask.SetPCR(18); err != nil {
+	if err := mask.setPCR(18); err != nil {
 		t.Fatal("Couldn't set PCR 18 in the mask:", err)
 	}
 
-	set, err = mask.IsPCRSet(18)
+	set, err = mask.isPCRSet(18)
 	if err != nil {
 		t.Fatal("Couldn't check to see if PCR 18 was set:", err)
 	}
@@ -104,14 +105,14 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
 	}
 
-	var mask PCRMask
-	if err := mask.SetPCR(17); err != nil {
+	var mask pcrMask
+	if err := mask.setPCR(17); err != nil {
 		t.Fatal("Couldn't set PCR 17:", err)
 	}
 
-	pcrs, err := FetchPCRValues(f, mask)
+	pcrs, err := FetchPCRValues(f, []int{17})
 	if err != nil {
-		t.Fatal("Couldn't get PCRs 17 and 18:", err)
+		t.Fatal("Couldn't get PCRs 17:", err)
 	}
 
 	comp, err := createPCRComposite(mask, pcrs)
@@ -125,7 +126,7 @@ func TestFetchPCRValues(t *testing.T) {
 
 	// Locality is apparently always set to 0 in vTCIDirect.
 	var locality byte
-	_, err = createPCRInfo(locality, mask, pcrs)
+	_, err = createPCRInfoLong(locality, mask, pcrs)
 	if err != nil {
 		t.Fatal("Couldn't create a pcrInfoLong structure for these PCRs")
 	}
@@ -171,7 +172,7 @@ func TestOSAP(t *testing.T) {
 	}
 
 	// Try to run OSAP for the SRK.
-	osapc := osapCommand{
+	osapc := &osapCommand{
 		EntityType:  etSRK,
 		EntityValue: khSRK,
 	}
@@ -190,10 +191,10 @@ func TestOSAP(t *testing.T) {
 
 func TestResizeableSlice(t *testing.T) {
 	// Set up an encoded slice with a byte array.
-	sr := &sealResponse{
+	ra := &responseAuth{
 		NonceEven:   [20]byte{},
 		ContSession: 1,
-		PubAuth:     [20]byte{},
+		Auth:        [20]byte{},
 	}
 
 	b := make([]byte, 322)
@@ -207,7 +208,7 @@ func TestResizeableSlice(t *testing.T) {
 		Res:  0,
 	}
 
-	in := []interface{}{rh, sr, b}
+	in := []interface{}{rh, ra, b}
 	rh.Size = uint32(packedSize(in))
 	bb, err := pack(in)
 	if err != nil {
@@ -215,9 +216,9 @@ func TestResizeableSlice(t *testing.T) {
 	}
 
 	var rh2 responseHeader
-	var sr2 sealResponse
+	var ra2 responseAuth
 	var b2 []byte
-	out := []interface{}{&rh2, &sr2, &b2}
+	out := []interface{}{&rh2, &ra2, &b2}
 	if err := unpack(bb, out); err != nil {
 		t.Fatal("Couldn't unpack the resizeable values:", err)
 	}
@@ -241,12 +242,14 @@ func TestSeal(t *testing.T) {
 	data[1] = 27
 	data[2] = 52
 
-	sealed, err := Seal(f, data)
+	// The SRK auth is 20 bytes of zero for the well-known auth case.
+	var srkAuth [20]byte
+	sealed, err := Seal(f, 0 /* locality 0 */, []int{17} /* PCR 17 */, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}
 
-	data2, err := Unseal(f, sealed)
+	data2, err := Unseal(f, sealed, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't unseal the data:", err)
 	}
@@ -254,4 +257,92 @@ func TestSeal(t *testing.T) {
 	if !bytes.Equal(data2, data) {
 		t.Fatal("Unsealed data doesn't match original data")
 	}
+}
+
+func TestLoadKey2(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
+	blob, err := ioutil.ReadFile("./aikblob")
+	if err != nil {
+		t.Skip("No aikblob file; skipping test")
+	}
+
+	// We're using the well-known authenticator of 20 bytes of zeros.
+	var srkAuth [20]byte
+	handle, err := LoadKey2(f, blob, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
+	}
+
+	t.Logf("Loaded the AIK with handle %x\n", handle)
+}
+
+func TestQuote2(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
+	blob, err := ioutil.ReadFile("./aikblob")
+	if err != nil {
+		t.Skip("No aikblob file; skipping test")
+	}
+
+	// Load the AIK for the quote.
+	// We're using the well-known authenticator of 20 bytes of zeros.
+	var srkAuth [20]byte
+	handle, err := LoadKey2(f, blob, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
+	}
+
+	// Data to quote.
+	data := []byte(`The OS says this test is good`)
+	q, err := Quote2(f, handle, data, []int{17, 18}, 1 /* addVersion */, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't quote the data:", err)
+	}
+
+	t.Logf("Got a quote of length %d\n", len(q))
+}
+
+func TestGetPubKey(t *testing.T) {
+	// For testing purposes, use the aikblob if it exists. Otherwise, just skip
+	// this test. TODO(tmroeder): implement AIK creation so we can always run
+	// this test.
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
+	blob, err := ioutil.ReadFile("./aikblob")
+	if err != nil {
+		t.Skip("No aikblob file; skipping test")
+	}
+
+	// Load the AIK for the quote.
+	// We're using the well-known authenticator of 20 bytes of zeros.
+	var srkAuth [20]byte
+	handle, err := LoadKey2(f, blob, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
+	}
+
+	k, err := GetPubKey(f, handle, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't get the pub key for the AIK")
+	}
+
+	// TODO(tmroeder): load this into a Go RSA key and check the signature on a
+	// Quote2 return value.
+	t.Logf("Got a pubkey blob of size %d\n", len(k))
 }
