@@ -24,16 +24,6 @@ import (
 	"github.com/golang/glog"
 )
 
-// A pcrValue is the fixed-size value of a PCR.
-type pcrValue [20]byte
-
-// Each PCR has a fixed size of 20 bytes.
-const PCRSize int = 20
-
-// A pcrMask represents a set of PCR choices, one bit per PCR out of the 24
-// possible PCR values.
-type pcrMask [3]byte
-
 // setPCR sets a PCR value as selected in a given mask.
 func (pm *pcrMask) setPCR(i int) error {
 	if i >= 24 || i < 0 {
@@ -52,14 +42,6 @@ func (pm pcrMask) isPCRSet(i int) (bool, error) {
 
 	n := byte(1 << uint(i%8))
 	return pm[i/8]&n == n, nil
-}
-
-// A pcrSelection is the first element in the input a PCR composition, which is
-// A pcrSelection, followed by the combined length of the PCR values,
-// followed by the PCR values, all hashed under SHA-1.
-type pcrSelection struct {
-	Size uint16
-	Mask pcrMask
 }
 
 // String returns a string representation of a pcrSelection
@@ -103,49 +85,14 @@ func createPCRComposite(mask pcrMask, pcrs []byte) ([]byte, error) {
 	return h[:], nil
 }
 
-// pcrInfoLong stores detailed information about PCRs.
-type pcrInfoLong struct {
-	Tag              uint16
-	LocAtCreation    byte
-	LocAtRelease     byte
-	PCRsAtCreation   pcrSelection
-	PCRsAtRelease    pcrSelection
-	DigestAtCreation digest
-	DigestAtRelease  digest
-}
-
 // String returns a string representation of a pcrInfoLong.
 func (pcri pcrInfoLong) String() string {
 	return fmt.Sprintf("pcrInfoLong{Tag: %x, LocAtCreation: %x, LocAtRelease: %x, PCRsAtCreation: %s, PCRsAtRelease: %s, DigestAtCreation: % x, DigestAtRelease: % x}", pcri.Tag, pcri.LocAtCreation, pcri.LocAtRelease, pcri.PCRsAtCreation, pcri.PCRsAtRelease, pcri.DigestAtCreation, pcri.DigestAtRelease)
 }
 
-// pcrInfoShort stores detailed information about PCRs.
-type pcrInfoShort struct {
-	LocAtRelease    byte
-	PCRsAtRelease   pcrSelection
-	DigestAtRelease digest
-}
-
 // String returns a string representation of a pcrInfoShort.
 func (pcri pcrInfoShort) String() string {
 	return fmt.Sprintf("pcrInfoShort{LocAtRelease: %x, PCRsAtRelease: %s, DigestAtRelease: % x}", pcri.LocAtRelease, pcri.PCRsAtRelease, pcri.DigestAtRelease)
-}
-
-// A capVersionInfo contains information about the TPM itself. Note that this
-// is deserialized specially, since it has a variable-length byte array but no
-// length. It is preceeded with a length in the response to the Quote2 command.
-type capVersionInfo struct {
-	CapVersionFixed capVersionInfoFixed
-	VendorSpecific  []byte
-}
-
-// A capVersionInfoFixed stores the fixed-length part of capVersionInfo.
-type capVersionInfoFixed struct {
-	Tag       uint16
-	Version   uint32
-	SpecLevel uint16
-	ErrataRev byte
-	VendorID  byte
 }
 
 // createPCRInfoLong creates a pcrInfoLong structure from a mask and some PCR

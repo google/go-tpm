@@ -17,90 +17,11 @@ package tpm
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/golang/glog"
 )
-
-// Supported TPM commands.
-const (
-	tagPCRInfoLong     uint16 = 0x06
-	tagRQUCommand      uint16 = 0x00C1
-	tagRQUAuth1Command uint16 = 0x00C2
-	tagRQUAuth2Command uint16 = 0x00C3
-	tagRSPCommand      uint16 = 0x00C4
-	tagRSPAuth1Command uint16 = 0x00C5
-	tagRSPAuth2Command uint16 = 0x00C6
-)
-
-// Supported TPM operations.
-const (
-	ordOIAP          uint32 = 0x0000000A
-	ordOSAP          uint32 = 0x0000000B
-	ordPCRRead       uint32 = 0x00000015
-	ordSeal          uint32 = 0x00000017
-	ordUnseal        uint32 = 0x00000018
-	ordGetPubKey     uint32 = 0x00000021
-	ordQuote2        uint32 = 0x0000003E
-	ordLoadKey2      uint32 = 0x00000041
-	ordGetRandom     uint32 = 0x00000046
-	ordFlushSpecific uint32 = 0x000000BA
-)
-
-// Entity types
-const (
-	etKeyHandle uint16 = 0x0001
-	etSRK       uint16 = 0x0004
-	etKey       uint16 = 0x0005
-)
-
-// Resource types
-const (
-	rtKey   uint32 = 0x00000001
-	rtAuth  uint32 = 0x00000002
-	rtHash  uint32 = 0x00000003
-	rtTrans uint32 = 0x00000004
-)
-
-// A Handle is a 32-bit unsigned integer.
-type Handle uint32
-
-// Entity values
-const (
-	khSRK Handle = 0x40000000
-)
-
-// A commandHeader is the header for a TPM command.
-type commandHeader struct {
-	Tag  uint16
-	Size uint32
-	Cmd  uint32
-}
-
-// String returns a string version of a commandHeader
-func (ch commandHeader) String() string {
-	return fmt.Sprintf("commandHeader{Tag: %x, Size: %x, Cmd: %x}", ch.Tag, ch.Size, ch.Cmd)
-}
-
-// A responseHeader is a header for TPM responses.
-type responseHeader struct {
-	Tag  uint16
-	Size uint32
-	Res  uint32
-}
-
-// String returns a string representation of a responseHeader.
-func (rh responseHeader) String() string {
-	return fmt.Sprintf("responseHeader{Tag: %x, Size: %x, Res: %x", rh.Tag, rh.Size, rh.Res)
-}
-
-// maxTPMResponse is the largest possible response from the TPM. We need to know
-// this because we don't always know the length of the TPM response, and
-// /dev/tpm insists on giving it all back in a single value rather than
-// returning a header and a body in separate responses.
-const maxTPMResponse = 4096
 
 // submitTPMRequest sends a structure to the TPM device file and gets results
 // back, interpreting them as a new provided structure.
@@ -159,27 +80,6 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	return rh.Res, nil
 }
 
-// A nonce is a 20-byte value.
-type nonce [20]byte
-
-const nonceSize uint32 = 20
-
-// An oiapResponse is a response to an OIAP command.
-type oiapResponse struct {
-	AuthHandle Handle
-	NonceEven  nonce
-}
-
-// String returns a string representation of an oiapResponse.
-func (opr oiapResponse) String() string {
-	return fmt.Sprintf("oiapResponse{AuthHandle: %x, NonceEven: % x}", opr.AuthHandle, opr.NonceEven)
-}
-
-// Close flushes the auth handle associated with an OIAP session.
-func (opr *oiapResponse) Close(f *os.File) error {
-	return flushSpecific(f, opr.AuthHandle, rtAuth)
-}
-
 // oiap sends an OIAP command to the TPM and gets back an auth value and a
 // nonce.
 func oiap(f *os.File) (*oiapResponse, error) {
@@ -192,35 +92,6 @@ func oiap(f *os.File) (*oiapResponse, error) {
 	}
 
 	return &resp, nil
-}
-
-// An osapCommand is a command sent for OSAP authentication.
-type osapCommand struct {
-	EntityType  uint16
-	EntityValue Handle
-	OddOSAP     nonce
-}
-
-// String returns a string representation of an osapCommand.
-func (opc osapCommand) String() string {
-	return fmt.Sprintf("osapCommand{EntityType: %x, EntityValue: %x, OddOSAP: % x}", opc.EntityType, opc.EntityValue, opc.OddOSAP)
-}
-
-// An osapResponse is a TPM reply to an osapCommand.
-type osapResponse struct {
-	AuthHandle Handle
-	NonceEven  nonce
-	EvenOSAP   nonce
-}
-
-// String returns a string representation of an osapResponse.
-func (opr osapResponse) String() string {
-	return fmt.Sprintf("osapResponse{AuthHandle: %x, NonceEven: % x, EvenOSAP: % x}", opr.AuthHandle, opr.NonceEven, opr.EvenOSAP)
-}
-
-// Close flushes the AuthHandle associated with an OSAP session.
-func (opr *osapResponse) Close(f *os.File) error {
-	return flushSpecific(f, opr.AuthHandle, rtAuth)
 }
 
 // osap sends an OSAPCommand to the TPM and gets back authentication
@@ -236,66 +107,6 @@ func osap(f *os.File, osap *osapCommand) (*osapResponse, error) {
 	}
 
 	return &resp, nil
-}
-
-// A Digest is a 20-byte SHA1 value.
-type digest [20]byte
-
-const digestSize uint32 = 20
-
-// An AuthValue is a 20-byte value used for authentication.
-type authValue [20]byte
-
-const authSize uint32 = 20
-
-// A sealCommand is the command sent to the TPM to seal data.
-type sealCommand struct {
-	KeyHandle Handle
-	EncAuth   authValue
-}
-
-// String returns a string representation of a sealCommand.
-func (sc sealCommand) String() string {
-	return fmt.Sprintf("sealCommand{KeyHandle: %x, EncAuth: % x}", sc.KeyHandle, sc.EncAuth)
-}
-
-// commandAuth stores the auth information sent with a command. Commands with
-// tagRQUAuth1Command tags use one of these auth structures, and commands with
-// tagRQUAuth2Command use two.
-type commandAuth struct {
-	AuthHandle  Handle
-	NonceOdd    nonce
-	ContSession byte
-	Auth        authValue
-}
-
-// String returns a string representation of a sealCommandAuth.
-func (ca commandAuth) String() string {
-	return fmt.Sprintf("commandAuth{AuthHandle: %x, NonceOdd: % x, ContSession: %x, Auth: % x}", ca.AuthHandle, ca.NonceOdd, ca.ContSession, ca.Auth)
-}
-
-// responseAuth contains the auth information returned from a command.
-type responseAuth struct {
-	NonceEven   nonce
-	ContSession byte
-	Auth        authValue
-}
-
-// String returns a string representation of a responseAuth.
-func (ra responseAuth) String() string {
-	return fmt.Sprintf("responseAuth{NonceEven: % x, ContSession: %x, Auth: % x}", ra.NonceEven, ra.ContSession, ra.Auth)
-}
-
-// A tpmStoredData holds sealed data from the TPM.
-type tpmStoredData struct {
-	Version uint32
-	Info    []byte
-	Enc     []byte
-}
-
-// String returns a string representation of a tpmStoredData.
-func (tsd tpmStoredData) String() string {
-	return fmt.Sprintf("tpmStoreddata{Version: %x, Info: % x, Enc: % x\n", tsd.Version, tsd.Info, tsd.Enc)
 }
 
 // seal performs a seal operation on the TPM.
@@ -344,62 +155,9 @@ func flushSpecific(f *os.File, handle Handle, resourceType uint32) error {
 	return err
 }
 
-// These are the parameters of a TPM key.
-type keyParms struct {
-	AlgID     uint32
-	EncScheme uint16
-	SigScheme uint16
-	Parms     []byte // Serialized rsaKeyParms or symmetricKeyParms.
-}
-
-// An rsaKeyParms encodes the length of the RSA prime in bits, the number of
-// primes in its factored form, and the exponent used for public-key
-// encryption.
-type rsaKeyParms struct {
-	KeyLength uint32
-	NumPrimes uint32
-	Exponent  []byte
-}
-
-type symmetricKeyParms struct {
-	KeyLength uint32
-	BlockSize uint32
-	IV        []byte
-}
-
-// A key is a TPM representation of a key.
-type key struct {
-	Version        uint32
-	KeyUsage       uint16
-	KeyFlags       uint32
-	AuthDataUsage  byte
-	AlgorithmParms keyParms
-	PCRInfo        []byte
-	PubKey         []byte
-	EncData        []byte
-}
-
-// A key12 is a newer TPM representation of a key.
-type key12 struct {
-	Tag            uint16
-	Zero           uint16 // Always all 0.
-	KeyUsage       uint16
-	KeyFlags       uint32
-	AuthDataUsage  byte
-	AlgorithmParms keyParms
-	PCRInfo        []byte // This must be a serialization of a pcrInfoLong.
-	PubKey         []byte
-	EncData        []byte
-}
-
-// A pubKey represents a public key known to the TPM.
-type pubKey struct {
-	AlgorithmParms keyParms
-	Key            []byte
-}
-
 // loadKey2 loads a key into the TPM. It's a tagRQUAuth1Command, so it only
 // needs one auth parameter.
+// TODO(tmroeder): support key12, too.
 func loadKey2(f *os.File, k *key, ca *commandAuth) (Handle, *responseAuth, uint32, error) {
 	// We always load our keys with the SRK as the parent key.
 	in := []interface{}{khSRK, k, ca}
