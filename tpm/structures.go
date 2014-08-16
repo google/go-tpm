@@ -265,21 +265,21 @@ func (tsd tpmStoredData) String() string {
 
 // A quoteInfo structure is the structure signed by the TPM.
 type quoteInfo struct {
-    // The Version must be 0x01010000
-    Version uint32
+	// The Version must be 0x01010000
+	Version uint32
 
-    // Fixed is always 'QUOT'.
-    Fixed [4]byte
+	// Fixed is always 'QUOT'.
+	Fixed [4]byte
 
-    // The CompositeDigest is computed by ComputePCRComposite.
-    CompositeDigest digest
+	// The CompositeDigest is computed by ComputePCRComposite.
+	CompositeDigest digest
 
-    // The nonce is either a random nonce or the SHA1 hash of data to sign.
-    Nonce nonce
+	// The nonce is either a random nonce or the SHA1 hash of data to sign.
+	Nonce nonce
 }
 
 // A pcrComposite stores a selection of PCRs with the selected PCR values.
 type pcrComposite struct {
-    Selection pcrSelection
-    Values []byte
+	Selection pcrSelection
+	Values    []byte
 }

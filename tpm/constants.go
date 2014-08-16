@@ -30,7 +30,7 @@ const (
 	ordOIAP          uint32 = 0x0000000A
 	ordOSAP          uint32 = 0x0000000B
 	ordPCRRead       uint32 = 0x00000015
-    ordQuote         uint32 = 0x00000016
+	ordQuote         uint32 = 0x00000016
 	ordSeal          uint32 = 0x00000017
 	ordUnseal        uint32 = 0x00000018
 	ordGetPubKey     uint32 = 0x00000021
@@ -107,4 +107,3 @@ var fixedQuote = [4]byte{byte('Q'), byte('U'), byte('O'), byte('T')}
 
 // quoteVersion is the fixed version string for quoteInfo.
 const quoteVersion uint32 = 0x01010000
-

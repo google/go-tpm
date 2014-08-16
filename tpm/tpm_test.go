@@ -370,10 +370,33 @@ func TestQuote(t *testing.T) {
 
 	// Data to quote.
 	data := []byte(`The OS says this test is good`)
-	q, err := Quote(f, handle, data, []int{17, 18}, srkAuth[:])
+	pcrNums := []int{17, 18}
+	q, values, err := Quote(f, handle, data, pcrNums, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't quote the data:", err)
 	}
 
 	t.Logf("Got a quote of length %d\n", len(q))
+
+	// Verify the quote.
+	pk, err := UnmarshalRSAPublicKey(blob)
+	if err != nil {
+		t.Fatal("Couldn't extract an RSA key from the AIK blob:", err)
+	}
+
+	if err := VerifyQuote(pk, data, q, pcrNums, values); err != nil {
+		t.Fatal("The quote didn't pass verification:", err)
+	}
+}
+
+func TestUnmarshalRSAPublicKey(t *testing.T) {
+	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
+	blob, err := ioutil.ReadFile("./aikblob")
+	if err != nil {
+		t.Skip("No aikblob file; skipping test")
+	}
+
+	if _, err := UnmarshalRSAPublicKey(blob); err != nil {
+		t.Fatal("Couldn't extract an RSA key from the AIK blob:", err)
+	}
 }

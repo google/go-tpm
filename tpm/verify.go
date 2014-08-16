@@ -15,8 +15,9 @@
 package tpm
 
 import (
+	"crypto"
 	"crypto/rsa"
-    "crypto/sha1"
+	"crypto/sha1"
 	"errors"
 	"math/big"
 )
@@ -51,71 +52,59 @@ func (k *key) unmarshalRSAPublicKey() (*rsa.PublicKey, error) {
 		return nil, err
 	}
 
-	// TODO(tmroeder): sanity check the AlgorithmParms in PubKey to make sure
-	// they match?
-	var pubk pubKey
-	if err := unpack(k.PubKey, []interface{}{&pubk}); err != nil {
-		return nil, err
-	}
-
 	// Make sure that the exponent will fit into an int before using it blindly.
 	if len(rsakp.Exponent) > 4 {
 		return nil, errors.New("exponent value doesn't fit into an int")
 	}
 	pk := &rsa.PublicKey{
-		N: new(big.Int).SetBytes(pubk.Key),
-		E: int(new(big.Int).SetBytes(rsakp.Exponent).Int64()),
+		N: new(big.Int).SetBytes(k.PubKey),
+		// The exponent isn't set here, but it's fixed to 0x10001
+		E: 0x10001,
 	}
 	return pk, nil
 }
 
 // newQuoteInfo computes a quoteInfo structure for a given pair of data and PCR
 // values.
-func newQuoteInfo(data []byte, pcrNums []int, pcrVals [][]byte) (*quoteInfo, error) {
-    // Compute the composite hash for these PCRs.
-    pcrSel, err := newPCRSelection(pcrNums)
-    if err != nil {
-        return nil, err
-    }
+func newQuoteInfo(data []byte, pcrNums []int, pcrs []byte) (*quoteInfo, error) {
+	// Compute the composite hash for these PCRs.
+	pcrSel, err := newPCRSelection(pcrNums)
+	if err != nil {
+		return nil, err
+	}
 
-    pcrs := make([]byte, 0, len(pcrVals) * PCRSize)
-    for _, b := range pcrVals {
-        pcrs = append(pcrs, b...)
-    }
+	comp, err := createPCRComposite(pcrSel.Mask, pcrs)
+	if err != nil {
+		return nil, err
+	}
 
-    comp, err := createPCRComposite(pcrSel.Mask, pcrs)
-    if err != nil {
-        return nil, err
-    }
+	qi := &quoteInfo{
+		Version: quoteVersion,
+		Fixed:   fixedQuote,
+		Nonce:   sha1.Sum(data),
+	}
+	copy(qi.CompositeDigest[:], comp)
 
-    qi := &quoteInfo{
-        Version: quoteVersion,
-        Fixed: fixedQuote,
-        Nonce: sha1.Sum(data),
-    }
-    copy(qi.CompositeDigest[:], comp)
-
-    return qi, nil
+	return qi, nil
 }
 
 // VerifyQuote verifies a quote against a given set of PCRs.
-func VerifyQuote(data []byte, quote []byte, pcrs []int, pcrVals [][]byte) (bool, error) {
-    qi, err := newQuoteInfo(data, pcrs, pcrVals)
-    if err != nil {
-        return false, err
-    }
+func VerifyQuote(pk *rsa.PublicKey, data []byte, quote []byte, pcrNums []int, pcrs []byte) error {
+	qi, err := newQuoteInfo(data, pcrNums, pcrs)
+	if err != nil {
+		return err
+	}
 
-    p, err := pack([]interface{}{qi})
-    if err != nil {
-        return false, err
-    }
+	p, err := pack([]interface{}{qi})
+	if err != nil {
+		return err
+	}
 
-    _ = sha1.Sum(p)
+	s := sha1.Sum(p)
 
-    // Since this is neither PKCS1v1.5 nor OAEP, I need to compute the
-    // exponentiation directly.
-    // TODO(tmroeder): finish the verification
-    return false, errors.New("not implemented: VerifyQuote")
+	// Try to do a direct encryption to reverse the value and see if it's padded
+	// with PKCS1v1.5.
+	return rsa.VerifyPKCS1v15(pk, crypto.SHA1, s[:], quote)
 }
 
 // TODO(tmroeder): add VerifyQuote2 instead of VerifyQuote. This means I'll

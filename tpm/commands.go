@@ -231,15 +231,15 @@ func quote2(f *os.File, keyHandle Handle, hash [20]byte, pcrs *pcrSelection, add
 // quote performs a TPM 1.1 quote operation: it signs data using the
 // TPM_QUOTE_INFO structure for the current values of a selectied set of PCRs.
 func quote(f *os.File, keyHandle Handle, hash [20]byte, pcrs *pcrSelection, ca *commandAuth) (*pcrComposite, []byte, *responseAuth, uint32, error) {
-    in := []interface{}{keyHandle, hash, pcrs, ca}
-    var pcrc pcrComposite
-    var sig []byte
-    var ra responseAuth
-    out := []interface{}{&pcrc, &sig, &ra}
-    ret, err := submitTPMRequest(f, tagRQUAuth1Command, ordQuote, in ,out)
-    if err != nil {
-        return nil, nil, nil, 0, err
-    }
+	in := []interface{}{keyHandle, hash, pcrs, ca}
+	var pcrc pcrComposite
+	var sig []byte
+	var ra responseAuth
+	out := []interface{}{&pcrc, &sig, &ra}
+	ret, err := submitTPMRequest(f, tagRQUAuth1Command, ordQuote, in, out)
+	if err != nil {
+		return nil, nil, nil, 0, err
+	}
 
-    return &pcrc, sig, &ra, ret, nil
+	return &pcrc, sig, &ra, ret, nil
 }
