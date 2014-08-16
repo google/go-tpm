@@ -68,8 +68,11 @@ func createPCRComposite(mask pcrMask, pcrs []byte) ([]byte, error) {
 		return nil, errors.New("pcrs must be a multiple of " + strconv.Itoa(PCRSize))
 	}
 
-	in := []interface{}{pcrSelection{3, mask}, pcrs}
-	b, err := pack(in)
+    pcrc := pcrComposite{
+        Selection: pcrSelection{3, mask},
+        Values: pcrs,
+    }
+	b, err := pack([]interface{}{pcrc})
 	if err != nil {
 		return nil, err
 	}

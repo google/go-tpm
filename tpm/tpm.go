@@ -474,3 +474,39 @@ func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
 
 	return unsealed, nil
 }
+
+func Quote(f *os.File, handle Handle, data []byte, pcrVals []int, srkAuth []byte) ([]byte, error) {
+	// Run OSAP for the handle, reading a random OddOSAP for our initial
+	// command and getting back a secret and a response.
+	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, srkAuth)
+	if err != nil {
+		return nil, err
+	}
+	defer osapr.Close(f)
+	defer zeroBytes(sharedSecret[:])
+
+	// Hash the data to get the value to pass to quote2.
+	hash := sha1.Sum(data)
+	pcrSel, err := newPCRSelection(pcrVals)
+	if err != nil {
+		return nil, err
+	}
+	authIn := []interface{}{ordQuote, hash, pcrSel}
+	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
+	if err != nil {
+		return nil, err
+	}
+
+	pcrc, sig, ra, ret, err := quote(f, handle, hash, pcrSel, ca)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check response authentication.
+	raIn := []interface{}{ret, ordQuote, pcrc, sig}
+	if err := ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
+		return nil, err
+	}
+
+	return sig, nil
+}

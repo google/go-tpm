@@ -16,6 +16,7 @@ package tpm
 
 import (
 	"crypto/rsa"
+    "crypto/sha1"
 	"errors"
 	"math/big"
 )
@@ -67,3 +68,58 @@ func (k *key) unmarshalRSAPublicKey() (*rsa.PublicKey, error) {
 	}
 	return pk, nil
 }
+
+// newQuoteInfo computes a quoteInfo structure for a given pair of data and PCR
+// values.
+func newQuoteInfo(data []byte, pcrNums []int, pcrVals [][]byte) (*quoteInfo, error) {
+    // Compute the composite hash for these PCRs.
+    pcrSel, err := newPCRSelection(pcrNums)
+    if err != nil {
+        return nil, err
+    }
+
+    pcrs := make([]byte, 0, len(pcrVals) * PCRSize)
+    for _, b := range pcrVals {
+        pcrs = append(pcrs, b...)
+    }
+
+    comp, err := createPCRComposite(pcrSel.Mask, pcrs)
+    if err != nil {
+        return nil, err
+    }
+
+    qi := &quoteInfo{
+        Version: quoteVersion,
+        Fixed: fixedQuote,
+        Nonce: sha1.Sum(data),
+    }
+    copy(qi.CompositeDigest[:], comp)
+
+    return qi, nil
+}
+
+// VerifyQuote verifies a quote against a given set of PCRs.
+func VerifyQuote(data []byte, quote []byte, pcrs []int, pcrVals [][]byte) (bool, error) {
+    qi, err := newQuoteInfo(data, pcrs, pcrVals)
+    if err != nil {
+        return false, err
+    }
+
+    p, err := pack([]interface{}{qi})
+    if err != nil {
+        return false, err
+    }
+
+    _ = sha1.Sum(p)
+
+    // Since this is neither PKCS1v1.5 nor OAEP, I need to compute the
+    // exponentiation directly.
+    // TODO(tmroeder): finish the verification
+    return false, errors.New("not implemented: VerifyQuote")
+}
+
+// TODO(tmroeder): add VerifyQuote2 instead of VerifyQuote. This means I'll
+// probably have to look at the signature scheme and use that to choose how to
+// verify the signature, whether PKCS1v1.5 or OAEP. And this will have to be set
+// on the key before it's passed to ordQuote2
+// TODO(tmroeder): handle key12

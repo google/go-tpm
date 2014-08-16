@@ -346,3 +346,34 @@ func TestGetPubKey(t *testing.T) {
 	// Quote2 return value.
 	t.Logf("Got a pubkey blob of size %d\n", len(k))
 }
+
+func TestQuote(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
+	blob, err := ioutil.ReadFile("./aikblob")
+	if err != nil {
+		t.Skip("No aikblob file; skipping test")
+	}
+
+	// Load the AIK for the quote.
+	// We're using the well-known authenticator of 20 bytes of zeros.
+	var srkAuth [20]byte
+	handle, err := LoadKey2(f, blob, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
+	}
+
+	// Data to quote.
+	data := []byte(`The OS says this test is good`)
+	q, err := Quote(f, handle, data, []int{17, 18}, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't quote the data:", err)
+	}
+
+	t.Logf("Got a quote of length %d\n", len(q))
+}

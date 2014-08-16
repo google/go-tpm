@@ -262,3 +262,24 @@ type tpmStoredData struct {
 func (tsd tpmStoredData) String() string {
 	return fmt.Sprintf("tpmStoreddata{Version: %x, Info: % x, Enc: % x\n", tsd.Version, tsd.Info, tsd.Enc)
 }
+
+// A quoteInfo structure is the structure signed by the TPM.
+type quoteInfo struct {
+    // The Version must be 0x01010000
+    Version uint32
+
+    // Fixed is always 'QUOT'.
+    Fixed [4]byte
+
+    // The CompositeDigest is computed by ComputePCRComposite.
+    CompositeDigest digest
+
+    // The nonce is either a random nonce or the SHA1 hash of data to sign.
+    Nonce nonce
+}
+
+// A pcrComposite stores a selection of PCRs with the selected PCR values.
+type pcrComposite struct {
+    Selection pcrSelection
+    Values []byte
+}

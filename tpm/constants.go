@@ -30,6 +30,7 @@ const (
 	ordOIAP          uint32 = 0x0000000A
 	ordOSAP          uint32 = 0x0000000B
 	ordPCRRead       uint32 = 0x00000015
+    ordQuote         uint32 = 0x00000016
 	ordSeal          uint32 = 0x00000017
 	ordUnseal        uint32 = 0x00000018
 	ordGetPubKey     uint32 = 0x00000021
@@ -100,3 +101,10 @@ const (
 // /dev/tpm insists on giving it all back in a single value rather than
 // returning a header and a body in separate responses.
 const maxTPMResponse = 4096
+
+// fixedQuote is the fixed constant string used in quoteInfo.
+var fixedQuote = [4]byte{byte('Q'), byte('U'), byte('O'), byte('T')}
+
+// quoteVersion is the fixed version string for quoteInfo.
+const quoteVersion uint32 = 0x01010000
+
