@@ -475,7 +475,7 @@ func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
 	return unsealed, nil
 }
 
-func Quote(f *os.File, handle Handle, data []byte, pcrVals []int, srkAuth []byte) ([]byte, []byte, error) {
+func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, srkAuth []byte) ([]byte, []byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
 	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, srkAuth)
@@ -487,7 +487,7 @@ func Quote(f *os.File, handle Handle, data []byte, pcrVals []int, srkAuth []byte
 
 	// Hash the data to get the value to pass to quote2.
 	hash := sha1.Sum(data)
-	pcrSel, err := newPCRSelection(pcrVals)
+	pcrSel, err := newPCRSelection(pcrNums)
 	if err != nil {
 		return nil, nil, err
 	}

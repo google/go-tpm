@@ -75,6 +75,11 @@ type capVersionInfoFixed struct {
 // A Handle is a 32-bit unsigned integer.
 type Handle uint32
 
+// Close flushes the key associated with this Handle.
+func (h Handle) CloseKey(f *os.File) error {
+	return flushSpecific(f, h, rtKey)
+}
+
 // A commandHeader is the header for a TPM command.
 type commandHeader struct {
 	Tag  uint16
