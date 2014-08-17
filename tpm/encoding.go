@@ -88,7 +88,6 @@ func packWithHeader(ch commandHeader, cmd []interface{}) ([]byte, error) {
 // according to the rules of encoding/binary. It has one difference from
 // encoding/binary: it encodes byte slices with a prepended uint32 length, to
 // match how the TPM encodes variable-length arrays.
-// TODO(tmroeder): this should be in a file called encoding.go.
 func pack(elts []interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := packType(buf, elts); err != nil {

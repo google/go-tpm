@@ -342,8 +342,6 @@ func TestGetPubKey(t *testing.T) {
 		t.Fatal("Couldn't get the pub key for the AIK")
 	}
 
-	// TODO(tmroeder): load this into a Go RSA key and check the signature on a
-	// Quote2 return value.
 	t.Logf("Got a pubkey blob of size %d\n", len(k))
 }
 
