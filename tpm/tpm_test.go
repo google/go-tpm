@@ -22,28 +22,6 @@ import (
 	"testing"
 )
 
-func TestEncoding(t *testing.T) {
-	ch := commandHeader{tagRQUCommand, 0, ordOIAP}
-	var c uint32 = 137
-	in := []interface{}{c}
-
-	b, err := packWithHeader(ch, in)
-	if err != nil {
-		t.Fatal("Couldn't pack the bytes:", err)
-	}
-
-	var hdr commandHeader
-	var size uint32
-	out := []interface{}{&hdr, &size}
-	if err := unpack(b, out); err != nil {
-		t.Fatal("Couldn't unpack the packed bytes")
-	}
-
-	if size != 137 {
-		t.Fatal("Got the wrong size back")
-	}
-}
-
 func TestReadPCR(t *testing.T) {
 	// Try to read PCR 18. For this to work, you have to have access to
 	// /dev/tpm0, and there has to be a TPM driver to answer requests.
@@ -59,43 +37,6 @@ func TestReadPCR(t *testing.T) {
 	}
 
 	t.Logf("Got PCR 18 value % x\n", res)
-}
-
-func TestPCRMask(t *testing.T) {
-	var mask pcrMask
-	if err := mask.setPCR(-1); err == nil {
-		t.Fatal("Incorrectly allowed non-existent PCR -1 to be set")
-	}
-
-	if err := mask.setPCR(24); err == nil {
-		t.Fatal("Incorrectly allowed non-existent PCR 24 to be set")
-	}
-
-	if err := mask.setPCR(0); err != nil {
-		t.Fatal("Couldn't set PCR 0 in the mask:", err)
-	}
-
-	set, err := mask.isPCRSet(0)
-	if err != nil {
-		t.Fatal("Couldn't check to see if PCR 0 was set:", err)
-	}
-
-	if !set {
-		t.Fatal("Incorrectly said PCR wasn't set when it should have been")
-	}
-
-	if err := mask.setPCR(18); err != nil {
-		t.Fatal("Couldn't set PCR 18 in the mask:", err)
-	}
-
-	set, err = mask.isPCRSet(18)
-	if err != nil {
-		t.Fatal("Couldn't check to see if PCR 18 was set:", err)
-	}
-
-	if !set {
-		t.Fatal("Incorrectly said PCR wasn't set when it should have been")
-	}
 }
 
 func TestFetchPCRValues(t *testing.T) {
