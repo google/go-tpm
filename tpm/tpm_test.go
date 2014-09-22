@@ -388,3 +388,17 @@ func TestMakeIdentity(t *testing.T) {
 		t.Fatal("The quote didn't pass verification:", err)
 	}
 }
+
+func TestResetLockValue(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// This test code assumes that the owner auth is the well-known value.
+	var ownerAuth digest
+	if err := ResetLockValue(f, ownerAuth); err != nil {
+		t.Fatal("Couldn't reset the lock value:", err)
+	}
+}

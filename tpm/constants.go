@@ -27,18 +27,19 @@ const (
 
 // Supported TPM operations.
 const (
-	ordOIAP          uint32 = 0x0000000A
-	ordOSAP          uint32 = 0x0000000B
-	ordPCRRead       uint32 = 0x00000015
-	ordQuote         uint32 = 0x00000016
-	ordSeal          uint32 = 0x00000017
-	ordUnseal        uint32 = 0x00000018
-	ordGetPubKey     uint32 = 0x00000021
-	ordQuote2        uint32 = 0x0000003E
-	ordLoadKey2      uint32 = 0x00000041
-	ordGetRandom     uint32 = 0x00000046
-	ordMakeIdentity  uint32 = 0x00000079
-	ordFlushSpecific uint32 = 0x000000BA
+	ordOIAP           uint32 = 0x0000000A
+	ordOSAP           uint32 = 0x0000000B
+	ordPCRRead        uint32 = 0x00000015
+	ordQuote          uint32 = 0x00000016
+	ordSeal           uint32 = 0x00000017
+	ordUnseal         uint32 = 0x00000018
+	ordGetPubKey      uint32 = 0x00000021
+	ordQuote2         uint32 = 0x0000003E
+	ordResetLockValue uint32 = 0x00000040
+	ordLoadKey2       uint32 = 0x00000041
+	ordGetRandom      uint32 = 0x00000046
+	ordMakeIdentity   uint32 = 0x00000079
+	ordFlushSpecific  uint32 = 0x000000BA
 )
 
 // Entity types. The LSB gives the entity type, and the MSB (currently fixed to

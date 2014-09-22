@@ -260,3 +260,17 @@ func makeIdentity(f *os.File, encAuth digest, idDigest digest, k *key, ca1 *comm
 
 	return &aik, sig, &ra1, &ra2, ret, nil
 }
+
+// resetLockValue resets the dictionary-attack lock in the TPM, using owner
+// auth.
+func resetLockValue(f *os.File, ca *commandAuth) (*responseAuth, uint32, error) {
+	in := []interface{}{ca}
+	var ra responseAuth
+	out := []interface{}{&ra}
+	ret, err := submitTPMRequest(f, tagRQUAuth1Command, ordResetLockValue, in, out)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return &ra, ret, nil
+}

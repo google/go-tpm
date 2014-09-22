@@ -640,3 +640,41 @@ func MakeIdentity(f *os.File, srkAuth []byte, ownerAuth []byte, aikAuth []byte, 
 
 	return blob, nil
 }
+
+// ResetLockValue resets the dictionary-attack value in the TPM; this allows the
+// TPM to start working again after authentication errors without waiting for
+// the dictionary-attack defenses to time out. This requires owner
+// authentication.
+func ResetLockValue(f *os.File, ownerAuth digest) error {
+	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
+	// and getting back a secret and a handle.
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth[:])
+	if err != nil {
+		return err
+	}
+	defer osaprOwn.Close(f)
+	defer zeroBytes(sharedSecretOwn[:])
+
+	// The digest input for MakeIdentity authentication is
+	//
+	// digest = SHA1(ordResetLockValue)
+	//
+	authIn := []interface{}{ordResetLockValue}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return err
+	}
+
+	ra, ret, err := resetLockValue(f, ca)
+	if err != nil {
+		return err
+	}
+
+	// Check response authentication.
+	raIn := []interface{}{ret, ordResetLockValue}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return err
+	}
+
+	return nil
+}
