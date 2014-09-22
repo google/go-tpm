@@ -15,7 +15,11 @@
 package tpm
 
 import (
+	"crypto"
+	"crypto/rsa"
+	"errors"
 	"fmt"
+	"math/big"
 	"os"
 )
 
@@ -287,4 +291,38 @@ type quoteInfo struct {
 type pcrComposite struct {
 	Selection pcrSelection
 	Values    []byte
+}
+
+// convertPubKey converts a public key into TPM form. Currently, this function
+// only supports 2048-bit RSA keys.
+func convertPubKey(pk crypto.PublicKey) (*pubKey, error) {
+	pkRSA, ok := pk.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("the provided Privacy CA public key was not an RSA key")
+	}
+	if pkRSA.N.BitLen() != 2048 {
+		return nil, errors.New("The provided Privacy CA RSA public key was not a 2048-bit key")
+	}
+
+	rsakp := rsaKeyParms{
+		KeyLength: 2048,
+		NumPrimes: 2,
+		Exponent:  big.NewInt(int64(pkRSA.E)).Bytes(),
+	}
+	rsakpb, err := pack([]interface{}{rsakp})
+	if err != nil {
+		return nil, err
+	}
+	kp := keyParms{
+		AlgID:     algRSA,
+		EncScheme: esNone,
+		SigScheme: ssRSASaPKCS1v15_SHA1,
+		Parms:     rsakpb,
+	}
+	pubk := pubKey{
+		AlgorithmParms: kp,
+		Key:            pkRSA.N.Bytes(),
+	}
+
+	return &pubk, nil
 }

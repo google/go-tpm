@@ -16,6 +16,7 @@
 package tpm
 
 import (
+	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
@@ -509,4 +510,133 @@ func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, srkAuth []byte
 	}
 
 	return sig, pcrc.Values, nil
+}
+
+// MakeIdentity creates a new AIK with the given new auth value, and the given
+// parameters for the privacy CA that will be used to attest to it.
+// If both pk and label are nil, then the TPM_CHOSENID_HASH is set to all 0s as
+// a special case. MakeIdentity returns a key blob for the newly-created key.
+// The caller must be authorized to use the SRK, since the private part of the
+// AIK is sealed against the SRK.
+// TODO(tmroeder): currently, this code can only create 2048-bit RSA keys.
+func MakeIdentity(f *os.File, srkAuth []byte, ownerAuth []byte, aikAuth []byte, pk crypto.PublicKey, label []byte) ([]byte, error) {
+	// Run OSAP for the SRK, reading a random OddOSAP for our initial command
+	// and getting back a secret and a handle.
+	sharedSecretSRK, osaprSRK, err := newOSAPSession(f, etSRK, khSRK, srkAuth)
+	if err != nil {
+		return nil, err
+	}
+	defer osaprSRK.Close(f)
+	defer zeroBytes(sharedSecretSRK[:])
+
+	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
+	// and getting back a secret and a handle.
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth)
+	if err != nil {
+		return nil, err
+	}
+	defer osaprOwn.Close(f)
+	defer zeroBytes(sharedSecretOwn[:])
+
+	// EncAuth for a MakeIdentity command is computed as
+	//
+	// encAuth = XOR(aikAuth, SHA1(sharedSecretSRK || <lastEvenNonce>))
+	//
+	// In this case, the last even nonce is NonceEven from OSAP for the SRK.
+	xorData, err := pack([]interface{}{sharedSecretSRK, osaprSRK.NonceEven})
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(xorData)
+
+	encAuthData := sha1.Sum(xorData)
+	var encAuth digest
+	for i := range encAuth {
+		encAuth[i] = aikAuth[i] ^ encAuthData[i]
+	}
+
+	var caDigest digest
+	if (pk != nil) != (label != nil) {
+		return nil, errors.New("inconsistent null values between the pk and the label")
+	}
+
+	if pk != nil {
+		pubk, err := convertPubKey(pk)
+		if err != nil {
+			return nil, err
+		}
+
+		// We can't pack the pair of values directly, since the label is
+		// included directly as bytes, without any length.
+		fullpkb, err := pack([]interface{}{pubk})
+		if err != nil {
+			return nil, err
+		}
+
+		caDigestBytes := append(label, fullpkb...)
+		caDigest = sha1.Sum(caDigestBytes)
+	}
+
+	rsaAIKParms := rsaKeyParms{
+		KeyLength: 2048,
+		NumPrimes: 2,
+		//Exponent:  big.NewInt(0x10001).Bytes(), // 65537. Implicit?
+	}
+	packedParms, err := pack([]interface{}{rsaAIKParms})
+	if err != nil {
+		return nil, err
+	}
+
+	aikParms := keyParms{
+		AlgID:     algRSA,
+		EncScheme: esNone,
+		SigScheme: ssRSASaPKCS1v15_SHA1,
+		Parms:     packedParms,
+	}
+
+	aik := &key{
+		Version:        0x01010000,
+		KeyUsage:       keyIdentity,
+		KeyFlags:       0,
+		AuthDataUsage:  authAlways,
+		AlgorithmParms: aikParms,
+	}
+
+	// The digest input for MakeIdentity authentication is
+	//
+	// digest = SHA1(ordMakeIdentity || encAuth || caDigest || aik)
+	//
+	authIn := []interface{}{ordMakeIdentity, encAuth, caDigest, aik}
+	ca1, err := newCommandAuth(osaprSRK.AuthHandle, osaprSRK.NonceEven, sharedSecretSRK[:], authIn)
+	if err != nil {
+		return nil, err
+	}
+
+	ca2, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return nil, err
+	}
+
+	k, sig, ra1, ra2, ret, err := makeIdentity(f, encAuth, caDigest, aik, ca1, ca2)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check response authentication.
+	raIn := []interface{}{ret, ordMakeIdentity, k, sig}
+	if err := ra1.verify(ca1.NonceOdd, sharedSecretSRK[:], raIn); err != nil {
+		return nil, err
+	}
+
+	if err := ra2.verify(ca2.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return nil, err
+	}
+
+	// TODO(tmroeder): check the signature against the pubek.
+	blob, err := pack([]interface{}{k})
+	if err != nil {
+		return nil, err
+	}
+
+	return blob, nil
 }

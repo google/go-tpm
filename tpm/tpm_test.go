@@ -339,3 +339,27 @@ func TestUnmarshalRSAPublicKey(t *testing.T) {
 		t.Fatal("Couldn't extract an RSA key from the AIK blob:", err)
 	}
 }
+
+func TestMakeIdentity(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// This test assumes that srkAuth and ownerAuth are the well-known zero
+	// secrets. It also only tests the case of setting AIK auth to a well-known
+	// 0 secret.
+	var srkAuth digest
+	var ownerAuth digest
+	var aikAuth digest
+
+	// In the simplest case, we pass in nil for the Privacy CA key and the
+	// label.
+	blob, err := MakeIdentity(f, srkAuth[:], ownerAuth[:], aikAuth[:], nil, nil)
+	if err != nil {
+		t.Fatal("Couldn't make a new AIK in the TPM:", err)
+	}
+
+	t.Logf("Got a new AIK blob of length %d\n", len(blob))
+}

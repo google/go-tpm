@@ -37,14 +37,19 @@ const (
 	ordQuote2        uint32 = 0x0000003E
 	ordLoadKey2      uint32 = 0x00000041
 	ordGetRandom     uint32 = 0x00000046
+	ordMakeIdentity  uint32 = 0x00000079
 	ordFlushSpecific uint32 = 0x000000BA
 )
 
-// Entity types
+// Entity types. The LSB gives the entity type, and the MSB (currently fixed to
+// 0x00) gives the ADIP type. ADIP type 0x00 is XOR.
 const (
 	etKeyHandle uint16 = 0x0001
+	etOwner     uint16 = 0x0002
+	etData      uint16 = 0x0003
 	etSRK       uint16 = 0x0004
 	etKey       uint16 = 0x0005
+	etRevoke    uint16 = 0x0006
 )
 
 // Resource types
@@ -57,7 +62,9 @@ const (
 
 // Entity values.
 const (
-	khSRK Handle = 0x40000000
+	khSRK         Handle = 0x40000000
+	khOwner       Handle = 0x40000001
+	khRevokeTrust Handle = 0x40000002
 )
 
 // Algorithm ID values.
@@ -94,6 +101,23 @@ const (
 	ssRSASaPKCS1v15_SHA1
 	ssRSASaPKCS1v15_DER
 	ssRSASaPKCS1v15_INFO
+)
+
+// KeyUsage types for TPM_KEY (the key type).
+const (
+	keySigning    uint16 = 0x0010
+	keyStorage    uint16 = 0x0011
+	keyIdentity   uint16 = 0x0012
+	keyAuthChange uint16 = 0x0013
+	keyBind       uint16 = 0x0014
+	keyLegacy     uint16 = 0x0015
+	keyMigrate    uint16 = 0x0016
+)
+
+const (
+	authNever       byte = 0x00
+	authAlways      byte = 0x01
+	authPrivUseOnly byte = 0x03
 )
 
 // maxTPMResponse is the largest possible response from the TPM. We need to know

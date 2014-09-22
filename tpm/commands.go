@@ -243,3 +243,20 @@ func quote(f *os.File, keyHandle Handle, hash [20]byte, pcrs *pcrSelection, ca *
 
 	return &pcrc, sig, &ra, ret, nil
 }
+
+// makeIdentity requests that the TPM create a new AIK. It returns the handle to
+// this new key.
+func makeIdentity(f *os.File, encAuth digest, idDigest digest, k *key, ca1 *commandAuth, ca2 *commandAuth) (*key, []byte, *responseAuth, *responseAuth, uint32, error) {
+	in := []interface{}{encAuth, idDigest, k, ca1, ca2}
+	var aik key
+	var sig []byte
+	var ra1 responseAuth
+	var ra2 responseAuth
+	out := []interface{}{&aik, &sig, &ra1, &ra2}
+	ret, err := submitTPMRequest(f, tagRQUAuth2Command, ordMakeIdentity, in, out)
+	if err != nil {
+		return nil, nil, nil, nil, 0, err
+	}
+
+	return &aik, sig, &ra1, &ra2, ret, nil
+}
