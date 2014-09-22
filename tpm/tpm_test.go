@@ -362,4 +362,29 @@ func TestMakeIdentity(t *testing.T) {
 	}
 
 	t.Logf("Got a new AIK blob of length %d\n", len(blob))
+	handle, err := LoadKey2(f, blob, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't load the freshly-generated AIK into the TPM and get a handle for it:", err)
+	}
+	t.Logf("Got AIK handle %d\n", handle)
+
+	// Data to quote.
+	data := []byte(`The OS says this test and new AIK is good`)
+	pcrNums := []int{17, 18}
+	q, values, err := Quote(f, handle, data, pcrNums, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't quote the data:", err)
+	}
+
+	t.Logf("Got a quote of length %d\n", len(q))
+
+	// Verify the quote.
+	pk, err := UnmarshalRSAPublicKey(blob)
+	if err != nil {
+		t.Fatal("Couldn't extract an RSA key from the AIK blob:", err)
+	}
+
+	if err := VerifyQuote(pk, data, q, pcrNums, values); err != nil {
+		t.Fatal("The quote didn't pass verification:", err)
+	}
 }

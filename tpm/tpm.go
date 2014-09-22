@@ -540,10 +540,10 @@ func MakeIdentity(f *os.File, srkAuth []byte, ownerAuth []byte, aikAuth []byte, 
 
 	// EncAuth for a MakeIdentity command is computed as
 	//
-	// encAuth = XOR(aikAuth, SHA1(sharedSecretSRK || <lastEvenNonce>))
+	// encAuth = XOR(aikAuth, SHA1(sharedSecretOwn || <lastEvenNonce>))
 	//
-	// In this case, the last even nonce is NonceEven from OSAP for the SRK.
-	xorData, err := pack([]interface{}{sharedSecretSRK, osaprSRK.NonceEven})
+	// In this case, the last even nonce is NonceEven from OSAP for the Owner.
+	xorData, err := pack([]interface{}{sharedSecretOwn, osaprOwn.NonceEven})
 	if err != nil {
 		return nil, err
 	}
