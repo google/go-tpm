@@ -15,6 +15,7 @@
 package tpm
 
 import (
+	"os"
 	"testing"
 )
 
@@ -52,5 +53,87 @@ func TestPCRMask(t *testing.T) {
 
 	if !set {
 		t.Fatal("Incorrectly said PCR wasn't set when it should have been")
+	}
+
+	if _, err := mask.isPCRSet(-1); err == nil {
+		t.Fatal("Incorrectly permitted a check for PCR -1")
+	}
+
+	if _, err := mask.isPCRSet(400); err == nil {
+		t.Fatal("Incorrectly permitted a check for PCR 400")
+	}
+}
+
+func TestNewPCRSelection(t *testing.T) {
+	pcrs, err := newPCRSelection([]int{17, 18})
+	if err != nil {
+		t.Fatal("Couldn't set up a PCR selection with PCRs 17 and 18")
+	}
+
+	if pcrs.Size != 3 {
+		t.Fatal("Incorrectly size in a PCR selection")
+	}
+
+	set, err := pcrs.Mask.isPCRSet(17)
+	if err != nil {
+		t.Fatal("Couldn't check a PCR on a mask in a PCR selection")
+	}
+
+	if !set {
+		t.Fatal("PCR 17 wasn't set in a PCR selection after setting it")
+	}
+
+	set, err = pcrs.Mask.isPCRSet(20)
+	if err != nil {
+		t.Fatal("Couldn't check an unset PCR on a mask in a PCR selection")
+	}
+
+	if set {
+		t.Fatal("PCR 20 was incorrectly set in a PCR mask in a PCR selection")
+	}
+}
+
+func TestIncorrectCreatePCRComposite(t *testing.T) {
+	pcrs, err := newPCRSelection([]int{17, 18})
+	if err != nil {
+		t.Fatal("Couldn't set up a PCR selection with PCRs 17 and 18")
+	}
+
+	// This byte array is far too long and isn't a multiple of PCRSize, since it
+	// is of prime size.
+	pcrValues := make([]byte, 541)
+	if _, err := createPCRComposite(pcrs.Mask, pcrValues); err == nil {
+		t.Fatal("Incorrectly created a PCR composite with wrong PCR length")
+	}
+}
+
+func TestWrongCreatePCRInfoLong(t *testing.T) {
+	pcrs, err := newPCRSelection([]int{17, 18})
+	if err != nil {
+		t.Fatal("Couldn't set up a PCR selection with PCRs 17 and 18")
+	}
+
+	// This byte array is far too long and isn't a multiple of PCRSize, since it
+	// is of prime size.
+	pcrValues := make([]byte, 541)
+	if _, err := createPCRInfoLong(0, pcrs.Mask, pcrValues); err == nil {
+		t.Fatal("Incorrectly created a PCR composite with wrong PCR length")
+	}
+}
+
+func TestWrongNewPCRInfoLong(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	if _, err := newPCRInfoLong(f, 0, []int{400}); err == nil {
+		t.Fatal("Incorrectly created a pcrInfoLong for PCR 400")
+	}
+
+	// This case uses a reasonable PCR value but a nil file.
+	if _, err := newPCRInfoLong(nil, 0, []int{17}); err == nil {
+		t.Fatal("Incorrectly created a pcrInfoLong using a nil file")
 	}
 }

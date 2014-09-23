@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-
-	"github.com/golang/glog"
 )
 
 // setPCR sets a PCR value as selected in a given mask.
@@ -76,15 +74,8 @@ func createPCRComposite(mask pcrMask, pcrs []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if glog.V(2) {
-		glog.Infof("composite buffer for mask %s is % x\n", mask, b)
-	}
 
 	h := sha1.Sum(b)
-	if glog.V(2) {
-		glog.Infof("SHA1 hash of composite buffer is % x\n", h)
-	}
-
 	return h[:], nil
 }
 
@@ -118,10 +109,6 @@ func createPCRInfoLong(loc byte, mask pcrMask, pcrVals []byte) (*pcrInfoLong, er
 	copy(pcri.DigestAtRelease[:], d)
 	copy(pcri.DigestAtCreation[:], d)
 
-	if glog.V(2) {
-		glog.Info("Created pcrInfoLong with serialized form %s\n", pcri)
-	}
-
 	return pcri, nil
 }
 
@@ -135,17 +122,9 @@ func newPCRInfoLong(f *os.File, loc byte, pcrNums []int) (*pcrInfoLong, error) {
 		}
 	}
 
-	if glog.V(2) {
-		glog.Infof("mask is % x\n", mask)
-	}
-
 	pcrVals, err := FetchPCRValues(f, pcrNums)
 	if err != nil {
 		return nil, err
-	}
-
-	if glog.V(2) {
-		glog.Infof("pcrVals is % x\n", pcrVals)
 	}
 
 	return createPCRInfoLong(loc, mask, pcrVals)
