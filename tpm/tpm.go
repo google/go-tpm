@@ -19,7 +19,9 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"os"
@@ -646,7 +648,6 @@ func ownerReadInternalHelper(f *os.File, kh Handle, ownerAuth digest) (*pubKey, 
 	}
 
 	return pk, nil
-
 }
 
 // OwnerReadSRK uses owner auth to get a blob representing the SRK.
@@ -668,4 +669,143 @@ func OwnerReadPubEK(f *os.File, ownerAuth digest) ([]byte, error) {
 	}
 
 	return pack([]interface{}{pk})
+}
+
+// ReadPubEK reads the public part of the endorsement key when no owner is
+// established.
+func ReadPubEK(f *os.File) ([]byte, error) {
+	var n nonce
+	if _, err := rand.Read(n[:]); err != nil {
+		return nil, err
+	}
+
+	pk, d, _, err := readPubEK(f, n)
+	if err != nil {
+		return nil, err
+	}
+
+	// Recompute the hash of the pk and the nonce to defend against replay
+	// attacks.
+	b, err := pack([]interface{}{pk, n})
+	if err != nil {
+		return nil, err
+	}
+
+	s := sha1.Sum(b)
+	if subtle.ConstantTimeCompare(s[:], d[:]) != 1 {
+		return nil, errors.New("the ReadPubEK operation failed the replay check")
+	}
+
+	return pack([]interface{}{pk})
+}
+
+// OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
+// can change ownership.
+func OwnerClear(f *os.File, ownerAuth digest) error {
+	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
+	// and getting back a secret and a handle.
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth[:])
+	if err != nil {
+		return err
+	}
+	defer osaprOwn.Close(f)
+	defer zeroBytes(sharedSecretOwn[:])
+
+	// The digest input for OwnerClear is
+	//
+	// digest = SHA1(ordOwnerClear)
+	//
+	authIn := []interface{}{ordOwnerClear}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return err
+	}
+
+	ra, ret, err := ownerClear(f, ca)
+	if err != nil {
+		return err
+	}
+
+	// Check response authentication.
+	raIn := []interface{}{ret, ordOwnerClear}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TakeOwnership takes over a TPM and inserts a new owner auth value and
+// generates a new SRK, associating it with a new SRK auth value. This
+// operation can only be performed if there isn't already an owner for the TPM.
+// The pub EK blob can be acquired by calling ReadPubEK if there is no owner, or
+// OwnerReadPubEK if there is.
+func TakeOwnership(f *os.File, newOwnerAuth digest, newSRKAuth digest, pubEK []byte) error {
+
+	// Encrypt the owner and SRK auth with the endorsement key.
+	ek, err := UnmarshalPubRSAPublicKey(pubEK)
+	if err != nil {
+		return err
+	}
+	encOwnerAuth, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, ek, newOwnerAuth[:], oaepLabel)
+	if err != nil {
+		return err
+	}
+	encSRKAuth, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, ek, newSRKAuth[:], oaepLabel)
+	if err != nil {
+		return err
+	}
+
+	// The params for the SRK have very tight requirements:
+	// - KeyLength must be 2048
+	// - alg must be RSA
+	// - Enc must be OAEP SHA1 MGF1
+	// - Sig must be None
+	// - Key usage must be Storage
+	// - Key must not be migratable
+	srkRSAParams := rsaKeyParms{
+		KeyLength: 2048,
+		NumPrimes: 2,
+	}
+	srkpb, err := pack([]interface{}{srkRSAParams})
+	if err != nil {
+		return err
+	}
+	srkParams := keyParms{
+		AlgID:     algRSA,
+		EncScheme: esRSAEsOAEPSHA1MGF1,
+		SigScheme: ssNone,
+		Parms:     srkpb,
+	}
+	srk := &key{
+		Version:        0x01010000,
+		KeyUsage:       keyStorage,
+		KeyFlags:       0,
+		AuthDataUsage:  authAlways,
+		AlgorithmParms: srkParams,
+	}
+
+	// Get command auth using OIAP with the new owner auth.
+	oiapr, err := oiap(f)
+	if err != nil {
+		return err
+	}
+	defer oiapr.Close(f)
+
+	// The digest for TakeOwnership is
+	//
+	// SHA1(ordTakeOwnership || pidOwner || encOwnerAuth || encSRKAuth || srk)
+	authIn := []interface{}{ordTakeOwnership, pidOwner, encOwnerAuth, encSRKAuth, srk}
+	ca, err := newCommandAuth(oiapr.AuthHandle, oiapr.NonceEven, newOwnerAuth[:], authIn)
+	if err != nil {
+		return err
+	}
+
+	k, ra, ret, err := takeOwnership(f, encOwnerAuth, encSRKAuth, srk, ca)
+	if err != nil {
+		return err
+	}
+
+	raIn := []interface{}{ret, ordTakeOwnership, k}
+	return ra.verify(ca.NonceOdd, newOwnerAuth[:], raIn)
 }

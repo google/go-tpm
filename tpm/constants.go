@@ -29,6 +29,7 @@ const (
 const (
 	ordOIAP                 uint32 = 0x0000000A
 	ordOSAP                 uint32 = 0x0000000B
+	ordTakeOwnership        uint32 = 0x0000000D
 	ordPCRRead              uint32 = 0x00000015
 	ordQuote                uint32 = 0x00000016
 	ordSeal                 uint32 = 0x00000017
@@ -38,7 +39,9 @@ const (
 	ordResetLockValue       uint32 = 0x00000040
 	ordLoadKey2             uint32 = 0x00000041
 	ordGetRandom            uint32 = 0x00000046
+	ordOwnerClear           uint32 = 0x0000005B
 	ordMakeIdentity         uint32 = 0x00000079
+	ordReadPubEK            uint32 = 0x0000007C
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
 )
@@ -46,20 +49,22 @@ const (
 // Entity types. The LSB gives the entity type, and the MSB (currently fixed to
 // 0x00) gives the ADIP type. ADIP type 0x00 is XOR.
 const (
-	etKeyHandle uint16 = 0x0001
-	etOwner     uint16 = 0x0002
-	etData      uint16 = 0x0003
-	etSRK       uint16 = 0x0004
-	etKey       uint16 = 0x0005
-	etRevoke    uint16 = 0x0006
+	_ uint16 = iota
+	etKeyHandle
+	etOwner
+	etData
+	etSRK
+	etKey
+	etRevoke
 )
 
-// Resource types
+// Resource types.
 const (
-	rtKey   uint32 = 0x00000001
-	rtAuth  uint32 = 0x00000002
-	rtHash  uint32 = 0x00000003
-	rtTrans uint32 = 0x00000004
+	_ uint32 = iota
+	rtKey
+	rtAuth
+	rtHash
+	rtTrans
 )
 
 // Entity values.
@@ -68,6 +73,18 @@ const (
 	khOwner       Handle = 0x40000001
 	khRevokeTrust Handle = 0x40000002
 	khEK          Handle = 0x40000006
+)
+
+// Protocol IDs.
+const (
+	_ uint16 = iota
+	pidOIAP
+	pidOSAP
+	pidADIP
+	pidADCP
+	pidOwner
+	pidDSAP
+	pidTransport
 )
 
 // Algorithm ID values.
@@ -134,3 +151,6 @@ var fixedQuote = [4]byte{byte('Q'), byte('U'), byte('O'), byte('T')}
 
 // quoteVersion is the fixed version string for quoteInfo.
 const quoteVersion uint32 = 0x01010000
+
+// oaepLabel is the label used for OEAP encryption in esRSAEsOAEPSHA1MGF1
+var oaepLabel = []byte{byte('T'), byte('C'), byte('P'), byte('A')}

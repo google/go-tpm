@@ -272,3 +272,51 @@ func ownerReadInternalPub(f *os.File, kh Handle, ca *commandAuth) (*pubKey, *res
 
 	return &pk, &ra, ret, nil
 }
+
+// readPubEK requests the public part of the endorsement key from the TPM. Note
+// that this call can only be made when there is no owner in the TPM. Once an
+// owner is established, the endorsement key can be retrieved using
+// ownerReadInternalPub.
+func readPubEK(f *os.File, n nonce) (*pubKey, digest, uint32, error) {
+	in := []interface{}{n}
+	var pk pubKey
+	var d digest
+	out := []interface{}{&pk, &d}
+	ret, err := submitTPMRequest(f, tagRQUCommand, ordReadPubEK, in, out)
+	if err != nil {
+		return nil, d, 0, err
+	}
+
+	return &pk, d, ret, nil
+}
+
+// ownerClear uses owner auth to clear the TPM. After this operation, a caller
+// can take ownership of the TPM with TPM_TakeOwnership.
+func ownerClear(f *os.File, ca *commandAuth) (*responseAuth, uint32, error) {
+	in := []interface{}{ca}
+	var ra responseAuth
+	out := []interface{}{&ra}
+	ret, err := submitTPMRequest(f, tagRQUAuth1Command, ordOwnerClear, in, out)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return &ra, ret, nil
+}
+
+// takeOwnership takes ownership of the TPM and establishes a new SRK and
+// owner auth. This operation can only be performed if there is no owner. The
+// TPM can be put into this state using TPM_OwnerClear. The encOwnerAuth and
+// encSRKAuth values must be encrypted using the endorsement key.
+func takeOwnership(f *os.File, encOwnerAuth []byte, encSRKAuth []byte, srk *key, ca *commandAuth) (*key, *responseAuth, uint32, error) {
+	in := []interface{}{pidOwner, encOwnerAuth, encSRKAuth, srk, ca}
+	var k key
+	var ra responseAuth
+	out := []interface{}{&k, &ra}
+	ret, err := submitTPMRequest(f, tagRQUAuth1Command, ordTakeOwnership, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	return &k, &ra, ret, nil
+}

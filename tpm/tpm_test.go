@@ -450,3 +450,44 @@ func TestOwnerReadPubEK(t *testing.T) {
 		t.Fatal("Invalid endorsement key: not a 2048-bit RSA key")
 	}
 }
+
+func TestOwnerClear(t *testing.T) {
+	// Only enable this if you know what you're doing.
+	t.Skip()
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// This test code assumes that the owner auth is the well-known value.
+	var ownerAuth digest
+	if err := OwnerClear(f, ownerAuth); err != nil {
+		t.Fatal("Couldn't clear the TPM using owner auth:", err)
+	}
+}
+
+func TestTakeOwnership(t *testing.T) {
+	// This only works in limited circumstances, so it's disabled in general.
+	t.Skip()
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// This test sets the ownership and SRK auth values to the well-known values
+	// of all 0.
+	var ownerAuth digest
+	var srkAuth digest
+
+	// This test assumes that the TPM has been cleared using OwnerClear.
+	pubek, err := ReadPubEK(f)
+	if err != nil {
+		t.Fatal("Couldn't read the public endorsement key from the TPM:", err)
+	}
+
+	if err := TakeOwnership(f, ownerAuth, srkAuth, pubek); err != nil {
+		t.Fatal("Couldn't take ownership of the TPM:", err)
+	}
+}
