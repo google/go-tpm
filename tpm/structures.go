@@ -79,7 +79,7 @@ type capVersionInfoFixed struct {
 // A Handle is a 32-bit unsigned integer.
 type Handle uint32
 
-// Close flushes the key associated with this Handle.
+// CloseKey flushes the key associated with this Handle.
 func (h Handle) CloseKey(f *os.File) error {
 	return flushSpecific(f, h, rtKey)
 }
@@ -316,7 +316,7 @@ func convertPubKey(pk crypto.PublicKey) (*pubKey, error) {
 	kp := keyParms{
 		AlgID:     algRSA,
 		EncScheme: esNone,
-		SigScheme: ssRSASaPKCS1v15_SHA1,
+		SigScheme: ssRSASaPKCS1v15SHA1,
 		Parms:     rsakpb,
 	}
 	pubk := pubKey{

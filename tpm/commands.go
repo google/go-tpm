@@ -257,3 +257,18 @@ func resetLockValue(f *os.File, ca *commandAuth) (*responseAuth, uint32, error) 
 
 	return &ra, ret, nil
 }
+
+// ownerReadInternalPub uses owner auth and OSAP to read either the endorsement
+// key (using khEK) or the SRK (using khSRK).
+func ownerReadInternalPub(f *os.File, kh Handle, ca *commandAuth) (*pubKey, *responseAuth, uint32, error) {
+	in := []interface{}{kh, ca}
+	var pk pubKey
+	var ra responseAuth
+	out := []interface{}{&pk, &ra}
+	ret, err := submitTPMRequest(f, tagRQUAuth1Command, ordOwnerReadInternalPub, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	return &pk, &ra, ret, nil
+}

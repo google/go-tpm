@@ -38,7 +38,7 @@ func UnmarshalRSAPublicKey(keyBlob []byte) (*rsa.PublicKey, error) {
 	return k.unmarshalRSAPublicKey()
 }
 
-// UnmarshalRSAPublicKey unmarshals a TPM key into a crypto/rsa.PublicKey.
+// unmarshalRSAPublicKey unmarshals a TPM key into a crypto/rsa.PublicKey.
 func (k *key) unmarshalRSAPublicKey() (*rsa.PublicKey, error) {
 	// Currently, we only support algRSA
 	if k.AlgorithmParms.AlgID != algRSA {
@@ -62,6 +62,45 @@ func (k *key) unmarshalRSAPublicKey() (*rsa.PublicKey, error) {
 		E: 0x10001,
 	}
 	return pk, nil
+}
+
+// UnmarshalPubRSAPublicKey takes in a blob containing a serialized RSA
+// TPM_PUBKEY and converts it to a crypto/rsa.PublicKey.
+func UnmarshalPubRSAPublicKey(keyBlob []byte) (*rsa.PublicKey, error) {
+	// Parse the blob as a key.
+	var pk pubKey
+	if err := unpack(keyBlob, []interface{}{&pk}); err != nil {
+		return nil, err
+	}
+
+	return pk.unmarshalRSAPublicKey()
+}
+
+// unmarshalRSAPublicKey unmarshals a TPM pub key into a crypto/rsa.PublicKey.
+// This is almost identical to the identically named function for a TPM key.
+func (pk *pubKey) unmarshalRSAPublicKey() (*rsa.PublicKey, error) {
+	// Currently, we only support algRSA
+	if pk.AlgorithmParms.AlgID != algRSA {
+		return nil, errors.New("only TPM_ALG_RSA is supported")
+	}
+
+	// This means that pk.AlgorithmsParms.Parms is an rsaKeyParms, which is
+	// enough to create the exponent, and pk.Key contains the key.
+	var rsakp rsaKeyParms
+	if err := unpack(pk.AlgorithmParms.Parms, []interface{}{&rsakp}); err != nil {
+		return nil, err
+	}
+
+	// Make sure that the exponent will fit into an int before using it blindly.
+	if len(rsakp.Exponent) > 4 {
+		return nil, errors.New("exponent value doesn't fit into an int")
+	}
+	rsapk := &rsa.PublicKey{
+		N: new(big.Int).SetBytes(pk.Key),
+		// The exponent isn't set here, but it's fixed to 0x10001
+		E: 0x10001,
+	}
+	return rsapk, nil
 }
 
 // newQuoteInfo computes a quoteInfo structure for a given pair of data and PCR

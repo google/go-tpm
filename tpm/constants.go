@@ -27,19 +27,20 @@ const (
 
 // Supported TPM operations.
 const (
-	ordOIAP           uint32 = 0x0000000A
-	ordOSAP           uint32 = 0x0000000B
-	ordPCRRead        uint32 = 0x00000015
-	ordQuote          uint32 = 0x00000016
-	ordSeal           uint32 = 0x00000017
-	ordUnseal         uint32 = 0x00000018
-	ordGetPubKey      uint32 = 0x00000021
-	ordQuote2         uint32 = 0x0000003E
-	ordResetLockValue uint32 = 0x00000040
-	ordLoadKey2       uint32 = 0x00000041
-	ordGetRandom      uint32 = 0x00000046
-	ordMakeIdentity   uint32 = 0x00000079
-	ordFlushSpecific  uint32 = 0x000000BA
+	ordOIAP                 uint32 = 0x0000000A
+	ordOSAP                 uint32 = 0x0000000B
+	ordPCRRead              uint32 = 0x00000015
+	ordQuote                uint32 = 0x00000016
+	ordSeal                 uint32 = 0x00000017
+	ordUnseal               uint32 = 0x00000018
+	ordGetPubKey            uint32 = 0x00000021
+	ordQuote2               uint32 = 0x0000003E
+	ordResetLockValue       uint32 = 0x00000040
+	ordLoadKey2             uint32 = 0x00000041
+	ordGetRandom            uint32 = 0x00000046
+	ordMakeIdentity         uint32 = 0x00000079
+	ordOwnerReadInternalPub uint32 = 0x00000081
+	ordFlushSpecific        uint32 = 0x000000BA
 )
 
 // Entity types. The LSB gives the entity type, and the MSB (currently fixed to
@@ -66,6 +67,7 @@ const (
 	khSRK         Handle = 0x40000000
 	khOwner       Handle = 0x40000001
 	khRevokeTrust Handle = 0x40000002
+	khEK          Handle = 0x40000006
 )
 
 // Algorithm ID values.
@@ -99,9 +101,9 @@ const (
 const (
 	_ uint16 = iota
 	ssNone
-	ssRSASaPKCS1v15_SHA1
-	ssRSASaPKCS1v15_DER
-	ssRSASaPKCS1v15_INFO
+	ssRSASaPKCS1v15SHA1
+	ssRSASaPKCS1v15DER
+	ssRSASaPKCS1v15INFO
 )
 
 // KeyUsage types for TPM_KEY (the key type).

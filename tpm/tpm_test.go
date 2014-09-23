@@ -409,3 +409,44 @@ func TestResetLockValue(t *testing.T) {
 		t.Fatal("Couldn't reset the lock value:", err)
 	}
 }
+
+func TestOwnerReadSRK(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// This test code assumes that the owner auth is the well-known value.
+	var ownerAuth digest
+	srkb, err := OwnerReadSRK(f, ownerAuth)
+	if err != nil {
+		t.Fatal("Couldn't read the SRK using owner auth:", err)
+	}
+
+	t.Logf("Got an SRK key of length %d\n", len(srkb))
+}
+
+func TestOwnerReadPubEK(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// This test code assumes that the owner auth is the well-known value.
+	var ownerAuth digest
+	pkb, err := OwnerReadPubEK(f, ownerAuth)
+	if err != nil {
+		t.Fatal("Couldn't read the pub EK using owner auth:", err)
+	}
+
+	pk, err := UnmarshalPubRSAPublicKey(pkb)
+	if err != nil {
+		t.Fatal("Couldn't unmarshal the endorsement key:", err)
+	}
+
+	if pk.N.BitLen() != 2048 {
+		t.Fatal("Invalid endorsement key: not a 2048-bit RSA key")
+	}
+}

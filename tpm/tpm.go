@@ -406,6 +406,8 @@ func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
 	return unsealed, nil
 }
 
+// Quote produces a TPM quote for the given data under the given PCRs. It uses
+// SRK auth and a given AIK handle.
 func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, srkAuth []byte) ([]byte, []byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
@@ -520,7 +522,7 @@ func MakeIdentity(f *os.File, srkAuth []byte, ownerAuth []byte, aikAuth []byte, 
 	aikParms := keyParms{
 		AlgID:     algRSA,
 		EncScheme: esNone,
-		SigScheme: ssRSASaPKCS1v15_SHA1,
+		SigScheme: ssRSASaPKCS1v15SHA1,
 		Parms:     packedParms,
 	}
 
@@ -585,7 +587,7 @@ func ResetLockValue(f *os.File, ownerAuth digest) error {
 	defer osaprOwn.Close(f)
 	defer zeroBytes(sharedSecretOwn[:])
 
-	// The digest input for MakeIdentity authentication is
+	// The digest input for ResetLockValue auth is
 	//
 	// digest = SHA1(ordResetLockValue)
 	//
@@ -607,4 +609,63 @@ func ResetLockValue(f *os.File, ownerAuth digest) error {
 	}
 
 	return nil
+}
+
+// ownerReadInternalHelper sets up command auth and checks response auth for
+// OwnerReadInternalPub. It's not exported because OwnerReadInternalPub only
+// supports two fixed key handles: khEK and khSRK.
+func ownerReadInternalHelper(f *os.File, kh Handle, ownerAuth digest) (*pubKey, error) {
+	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
+	// and getting back a secret and a handle.
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth[:])
+	if err != nil {
+		return nil, err
+	}
+	defer osaprOwn.Close(f)
+	defer zeroBytes(sharedSecretOwn[:])
+
+	// The digest input for OwnerReadInternalPub is
+	//
+	// digest = SHA1(ordOwnerReadInternalPub || kh)
+	//
+	authIn := []interface{}{ordOwnerReadInternalPub, kh}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return nil, err
+	}
+
+	pk, ra, ret, err := ownerReadInternalPub(f, kh, ca)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check response authentication.
+	raIn := []interface{}{ret, ordOwnerReadInternalPub, pk}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return nil, err
+	}
+
+	return pk, nil
+
+}
+
+// OwnerReadSRK uses owner auth to get a blob representing the SRK.
+func OwnerReadSRK(f *os.File, ownerAuth digest) ([]byte, error) {
+	pk, err := ownerReadInternalHelper(f, khSRK, ownerAuth)
+	if err != nil {
+		return nil, err
+	}
+
+	return pack([]interface{}{pk})
+}
+
+// OwnerReadPubEK uses owner auth to get a blob representing the public part of the
+// endorsement key.
+func OwnerReadPubEK(f *os.File, ownerAuth digest) ([]byte, error) {
+	pk, err := ownerReadInternalHelper(f, khEK, ownerAuth)
+	if err != nil {
+		return nil, err
+	}
+
+	return pack([]interface{}{pk})
 }
