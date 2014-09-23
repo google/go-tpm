@@ -221,6 +221,9 @@ func TestLoadKey2(t *testing.T) {
 	}
 
 	t.Logf("Loaded the AIK with handle %x\n", handle)
+	if err := handle.CloseKey(f); err != nil {
+		t.Fatal("Couldn't flush the AIK from the TPM:", err)
+	}
 }
 
 func TestQuote2(t *testing.T) {
@@ -243,6 +246,7 @@ func TestQuote2(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
+	defer handle.CloseKey(f)
 
 	// Data to quote.
 	data := []byte(`The OS says this test is good`)
@@ -277,6 +281,7 @@ func TestGetPubKey(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
+	defer handle.CloseKey(f)
 
 	k, err := GetPubKey(f, handle, srkAuth[:])
 	if err != nil {
@@ -306,6 +311,7 @@ func TestQuote(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
+	defer handle.CloseKey(f)
 
 	// Data to quote.
 	data := []byte(`The OS says this test is good`)
@@ -367,6 +373,7 @@ func TestMakeIdentity(t *testing.T) {
 		t.Fatal("Couldn't load the freshly-generated AIK into the TPM and get a handle for it:", err)
 	}
 	t.Logf("Got AIK handle %d\n", handle)
+	defer handle.CloseKey(f)
 
 	// Data to quote.
 	data := []byte(`The OS says this test and new AIK is good`)

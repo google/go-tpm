@@ -19,8 +19,6 @@ import (
 	"errors"
 	"os"
 	"strconv"
-
-	"github.com/golang/glog"
 )
 
 // submitTPMRequest sends a structure to the TPM device file and gets results
@@ -32,9 +30,6 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 		return 0, err
 	}
 
-	if glog.V(2) {
-		glog.Infof("TPM request:\n%x\n", inb)
-	}
 	if _, err := f.Write(inb); err != nil {
 		return 0, err
 	}
@@ -52,10 +47,6 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 
 	// Resize the buffer to match the amount read from the TPM.
 	outb = outb[:outlen]
-	if glog.V(2) {
-		glog.Infof("TPM response:\n%x\n", outb)
-	}
-
 	if err := unpack(outb[:rhSize], []interface{}{&rh}); err != nil {
 		return 0, err
 	}
@@ -164,17 +155,9 @@ func loadKey2(f *os.File, k *key, ca *commandAuth) (Handle, *responseAuth, uint3
 	var keyHandle Handle
 	var ra responseAuth
 	out := []interface{}{&keyHandle, &ra}
-	if glog.V(2) {
-		glog.Info("About to submit the TPM request for loadKey2")
-	}
-
 	ret, err := submitTPMRequest(f, tagRQUAuth1Command, ordLoadKey2, in, out)
 	if err != nil {
 		return 0, nil, 0, err
-	}
-
-	if glog.V(2) {
-		glog.Info("Received a good response for loadKey2")
 	}
 
 	return keyHandle, &ra, ret, nil

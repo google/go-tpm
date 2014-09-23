@@ -23,8 +23,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"os"
-
-	"github.com/golang/glog"
 )
 
 // ReadPCR reads a PCR value from the TPM.
@@ -79,10 +77,6 @@ func LoadKey2(f *os.File, keyBlob []byte, srkAuth []byte) (Handle, error) {
 		return 0, err
 	}
 
-	if glog.V(2) {
-		glog.Infof("Unpacked the key as %+v\n", k)
-	}
-
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle. LoadKey2 needs an
 	// OSAP session for the SRK because the private part of a TPM_KEY or
@@ -98,10 +92,6 @@ func LoadKey2(f *os.File, keyBlob []byte, srkAuth []byte) (Handle, error) {
 	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
 	if err != nil {
 		return 0, err
-	}
-
-	if glog.V(2) {
-		glog.Info("About to load the key")
 	}
 
 	handle, ra, ret, err := loadKey2(f, &k, ca)
@@ -205,16 +195,10 @@ func newOSAPSession(f *os.File, entityType uint16, entityValue Handle, srkAuth [
 	if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
 		return sharedSecret, nil, err
 	}
-	if glog.V(2) {
-		glog.Infof("osapCommand is %s\n", osapc)
-	}
 
 	osapr, err := osap(f, osapc)
 	if err != nil {
 		return sharedSecret, nil, err
-	}
-	if glog.V(2) {
-		glog.Infof("osapResponse is %s\n", osapr)
 	}
 
 	// A shared secret is computed as
@@ -229,10 +213,6 @@ func newOSAPSession(f *os.File, entityType uint16, entityValue Handle, srkAuth [
 		return sharedSecret, nil, err
 	}
 
-	if glog.V(2) {
-		glog.Infof("osapData is % x\n", osapData)
-	}
-
 	hm := hmac.New(sha1.New, srkAuth)
 	hm.Write(osapData)
 	// Note that crypto/hash.Sum returns a slice rather than an array, so we
@@ -240,13 +220,6 @@ func newOSAPSession(f *os.File, entityType uint16, entityValue Handle, srkAuth [
 	// preprend a length in pack().
 	sharedSecretBytes := hm.Sum(nil)
 	copy(sharedSecret[:], sharedSecretBytes)
-
-	if glog.V(2) {
-		glog.Infof("hmac size is %d\n", hm.Size())
-		glog.Infof("sharedSecret is % x\n", sharedSecret)
-		glog.Infof("length of shared secret is %d\n", len(sharedSecret))
-	}
-
 	return sharedSecret, osapr, nil
 }
 
@@ -258,39 +231,22 @@ func newCommandAuth(authHandle Handle, nonceEven nonce, key []byte, params []int
 	if err != nil {
 		return nil, err
 	}
-	if glog.V(2) {
-		glog.Infof("digestBytes is % x\n", digestBytes)
-	}
 
 	digest := sha1.Sum(digestBytes)
-	if glog.V(2) {
-		glog.Infof("digest is % x\n", digest)
-	}
-
 	ca := &commandAuth{AuthHandle: authHandle}
 	if _, err := rand.Read(ca.NonceOdd[:]); err != nil {
 		return nil, err
-	}
-	if glog.V(2) {
-		glog.Infof("commandAuth is %s\n", ca)
 	}
 
 	authBytes, err := pack([]interface{}{digest, nonceEven, ca.NonceOdd, ca.ContSession})
 	if err != nil {
 		return nil, err
 	}
-	if glog.V(2) {
-		glog.Infof("authBytes is % x\n", authBytes)
-	}
 
 	hm2 := hmac.New(sha1.New, key)
 	hm2.Write(authBytes)
 	auth := hm2.Sum(nil)
 	copy(ca.Auth[:], auth[:])
-	if glog.V(2) {
-		glog.Infof("commandAuth now is %s\n", ca)
-	}
-
 	return ca, nil
 }
 
@@ -303,21 +259,11 @@ func (ra *responseAuth) verify(nonceOdd nonce, key []byte, params []interface{})
 	if err != nil {
 		return err
 	}
-	if glog.V(2) {
-		glog.Infof("response digestBytes is % x\n", digestBytes)
-	}
 
 	digest := sha1.Sum(digestBytes)
-	if glog.V(2) {
-		glog.Infof("response digest is % x\n", digest)
-	}
-
 	authBytes, err := pack([]interface{}{digest, ra.NonceEven, nonceOdd, ra.ContSession})
 	if err != nil {
 		return err
-	}
-	if glog.V(2) {
-		glog.Infof("response authBytes is % x\n", authBytes)
 	}
 
 	hm2 := hmac.New(sha1.New, key)
@@ -344,9 +290,6 @@ func Seal(f *os.File, locality byte, pcrs []int, data []byte, srkAuth []byte) ([
 	if err != nil {
 		return nil, err
 	}
-	if glog.V(2) {
-		glog.Infof("pcrInfo is %s\n", pcrInfo)
-	}
 
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle.
@@ -366,22 +309,12 @@ func Seal(f *os.File, locality byte, pcrs []int, data []byte, srkAuth []byte) ([
 	if err != nil {
 		return nil, err
 	}
-	if glog.V(2) {
-		glog.Infof("xorData is % x\n", xorData)
-	}
 	defer zeroBytes(xorData)
 
 	encAuthData := sha1.Sum(xorData)
-	if glog.V(2) {
-		glog.Infof("encAuthData is % x\n", encAuthData)
-	}
-
 	sc := &sealCommand{KeyHandle: khSRK}
 	for i := range sc.EncAuth {
 		sc.EncAuth[i] = srkAuth[i] ^ encAuthData[i]
-	}
-	if glog.V(2) {
-		glog.Infof("sealCommand is %s\n", sc)
 	}
 
 	// The digest input for seal authentication is
@@ -436,9 +369,6 @@ func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
 	var tsd tpmStoredData
 	if err := unpack(sealed, []interface{}{&tsd}); err != nil {
 		return nil, errors.New("couldn't convert the sealed data into a tpmStoredData struct")
-	}
-	if glog.V(2) {
-		glog.Infof("tpmStoredData is %s\n", tsd)
 	}
 
 	// The digest for auth1 and auth2 for the unseal command is computed as
