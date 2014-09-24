@@ -17,19 +17,49 @@ package tpm
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha1"
 	"io/ioutil"
 	"os"
 	"testing"
 )
 
-func TestReadPCR(t *testing.T) {
-	// Try to read PCR 18. For this to work, you have to have access to
-	// /dev/tpm0, and there has to be a TPM driver to answer requests.
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
-	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+var (
+	ownerAuthEnvVar = "TPM_OWNER_AUTH"
+	srkAuthEnvVar   = "TPM_SRK_AUTH"
+	aikAuthEnvVar   = "TPM_AIK_AUTH"
+	tpmPathEnvVar   = "TPM_PATH"
+)
+
+// getAuth looks in the environment variables to find a given auth input value.
+// If the environment variable is not present, then getAuth returns the
+// well-known auth value of 20 bytes of zeros.
+func getAuth(name string) [20]byte {
+	var auth [20]byte
+	authInput := os.Getenv(name)
+	if authInput != "" {
+		aa := sha1.Sum([]byte(authInput))
+		copy(auth[:], aa[:])
 	}
+	return auth
+}
+
+func openTPMOrDie(t *testing.T) *os.File {
+	tpmPath := os.Getenv(tpmPathEnvVar)
+	if tpmPath == "" {
+		tpmPath = "/dev/tpm0"
+	}
+
+	f, err := os.OpenFile(tpmPath, os.O_RDWR, 0600)
+	if err != nil {
+		t.Fatalf("Can't open %s for read/write: %s\n", tpmPath, err)
+	}
+
+	return f
+}
+
+func TestReadPCR(t *testing.T) {
+	f := openTPMOrDie(t)
+	defer f.Close()
 
 	res, err := ReadPCR(f, 18)
 	if err != nil {
@@ -40,11 +70,8 @@ func TestReadPCR(t *testing.T) {
 }
 
 func TestFetchPCRValues(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	var mask pcrMask
 	if err := mask.setPCR(17); err != nil {
@@ -65,7 +92,6 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Invalid PCR composite")
 	}
 
-	// Locality is apparently always set to 0 in vTCIDirect.
 	var locality byte
 	_, err = createPCRInfoLong(locality, mask, pcrs)
 	if err != nil {
@@ -74,43 +100,34 @@ func TestFetchPCRValues(t *testing.T) {
 }
 
 func TestGetRandom(t *testing.T) {
-	// Try to get 16 bytes of randomness from the TPM.
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
+	// Try to get 16 bytes of randomness from the TPM.
 	b, err := GetRandom(f, 16)
 	if err != nil {
 		t.Fatal("Couldn't get 16 bytes of randomness from the TPM:", err)
 	}
 
-	t.Logf("Got random bytes % x\n", b)
+	if len(b) != 16 {
+		t.Fatal("Couldn't get 16 bytes of randomness from the TPM")
+	}
 }
 
 func TestOIAP(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// Get auth info from OIAP.
-	resp, err := oiap(f)
+	_, err := oiap(f)
 	if err != nil {
 		t.Fatal("Couldn't run OIAP:", err)
 	}
-
-	t.Logf("From OIAP, got AuthHandle %d and NonceEven % x\n", resp.AuthHandle, resp.NonceEven)
 }
 
 func TestOSAP(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// Try to run OSAP for the SRK.
 	osapc := &osapCommand{
@@ -122,12 +139,10 @@ func TestOSAP(t *testing.T) {
 		t.Fatal("Couldn't get a random odd OSAP nonce")
 	}
 
-	resp, err := osap(f, osapc)
+	_, err := osap(f, osapc)
 	if err != nil {
 		t.Fatal("Couldn't run OSAP:", err)
 	}
-
-	t.Logf("From OSAP, go AuthHandle %d and NonceEven % x and EvenOSAP % x\n", resp.AuthHandle, resp.NonceEven, resp.EvenOSAP)
 }
 
 func TestResizeableSlice(t *testing.T) {
@@ -170,21 +185,15 @@ func TestResizeableSlice(t *testing.T) {
 }
 
 func TestSeal(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
-	// Seal the same data as vTCIDirect so we can check the output as exactly as
-	// possible.
 	data := make([]byte, 64)
-	data[0] = 1
-	data[1] = 27
-	data[2] = 52
+	data[0] = 137
+	data[1] = 138
+	data[2] = 139
 
-	// The SRK auth is 20 bytes of zero for the well-known auth case.
-	var srkAuth [20]byte
+	srkAuth := getAuth(srkAuthEnvVar)
 	sealed, err := Seal(f, 0 /* locality 0 */, []int{17} /* PCR 17 */, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
@@ -201,11 +210,8 @@ func TestSeal(t *testing.T) {
 }
 
 func TestLoadKey2(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
 	blob, err := ioutil.ReadFile("./aikblob")
@@ -214,24 +220,20 @@ func TestLoadKey2(t *testing.T) {
 	}
 
 	// We're using the well-known authenticator of 20 bytes of zeros.
-	var srkAuth [20]byte
+	srkAuth := getAuth(srkAuthEnvVar)
 	handle, err := LoadKey2(f, blob, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
 
-	t.Logf("Loaded the AIK with handle %x\n", handle)
 	if err := handle.CloseKey(f); err != nil {
 		t.Fatal("Couldn't flush the AIK from the TPM:", err)
 	}
 }
 
 func TestQuote2(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
 	blob, err := ioutil.ReadFile("./aikblob")
@@ -241,7 +243,7 @@ func TestQuote2(t *testing.T) {
 
 	// Load the AIK for the quote.
 	// We're using the well-known authenticator of 20 bytes of zeros.
-	var srkAuth [20]byte
+	srkAuth := getAuth(srkAuthEnvVar)
 	handle, err := LoadKey2(f, blob, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
@@ -250,23 +252,23 @@ func TestQuote2(t *testing.T) {
 
 	// Data to quote.
 	data := []byte(`The OS says this test is good`)
-	q, err := Quote2(f, handle, data, []int{17, 18}, 1 /* addVersion */, srkAuth[:])
+	aikAuth := getAuth(aikAuthEnvVar)
+	q, err := Quote2(f, handle, data, []int{17, 18}, 1 /* addVersion */, aikAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't quote the data:", err)
 	}
 
-	t.Logf("Got a quote of length %d\n", len(q))
+	if len(q) == 0 {
+		t.Fatal("Couldn't get a quote using an AIK")
+	}
 }
 
 func TestGetPubKey(t *testing.T) {
 	// For testing purposes, use the aikblob if it exists. Otherwise, just skip
 	// this test. TODO(tmroeder): implement AIK creation so we can always run
 	// this test.
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
 	blob, err := ioutil.ReadFile("./aikblob")
@@ -276,7 +278,7 @@ func TestGetPubKey(t *testing.T) {
 
 	// Load the AIK for the quote.
 	// We're using the well-known authenticator of 20 bytes of zeros.
-	var srkAuth [20]byte
+	srkAuth := getAuth(srkAuthEnvVar)
 	handle, err := LoadKey2(f, blob, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
@@ -288,15 +290,14 @@ func TestGetPubKey(t *testing.T) {
 		t.Fatal("Couldn't get the pub key for the AIK")
 	}
 
-	t.Logf("Got a pubkey blob of size %d\n", len(k))
+	if len(k) == 0 {
+		t.Fatal("Couldn't get a pubkey blob from an AIK")
+	}
 }
 
 func TestQuote(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
 	blob, err := ioutil.ReadFile("./aikblob")
@@ -305,8 +306,7 @@ func TestQuote(t *testing.T) {
 	}
 
 	// Load the AIK for the quote.
-	// We're using the well-known authenticator of 20 bytes of zeros.
-	var srkAuth [20]byte
+	srkAuth := getAuth(srkAuthEnvVar)
 	handle, err := LoadKey2(f, blob, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
@@ -316,12 +316,11 @@ func TestQuote(t *testing.T) {
 	// Data to quote.
 	data := []byte(`The OS says this test is good`)
 	pcrNums := []int{17, 18}
-	q, values, err := Quote(f, handle, data, pcrNums, srkAuth[:])
+	aikAuth := getAuth(aikAuthEnvVar)
+	q, values, err := Quote(f, handle, data, pcrNums, aikAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't quote the data:", err)
 	}
-
-	t.Logf("Got a quote of length %d\n", len(q))
 
 	// Verify the quote.
 	pk, err := UnmarshalRSAPublicKey(blob)
@@ -347,18 +346,12 @@ func TestUnmarshalRSAPublicKey(t *testing.T) {
 }
 
 func TestMakeIdentity(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
-	// This test assumes that srkAuth and ownerAuth are the well-known zero
-	// secrets. It also only tests the case of setting AIK auth to a well-known
-	// 0 secret.
-	var srkAuth digest
-	var ownerAuth digest
-	var aikAuth digest
+	srkAuth := getAuth(srkAuthEnvVar)
+	ownerAuth := getAuth(ownerAuthEnvVar)
+	aikAuth := getAuth(aikAuthEnvVar)
 
 	// In the simplest case, we pass in nil for the Privacy CA key and the
 	// label.
@@ -367,23 +360,19 @@ func TestMakeIdentity(t *testing.T) {
 		t.Fatal("Couldn't make a new AIK in the TPM:", err)
 	}
 
-	t.Logf("Got a new AIK blob of length %d\n", len(blob))
 	handle, err := LoadKey2(f, blob, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't load the freshly-generated AIK into the TPM and get a handle for it:", err)
 	}
-	t.Logf("Got AIK handle %d\n", handle)
 	defer handle.CloseKey(f)
 
 	// Data to quote.
 	data := []byte(`The OS says this test and new AIK is good`)
 	pcrNums := []int{17, 18}
-	q, values, err := Quote(f, handle, data, pcrNums, srkAuth[:])
+	q, values, err := Quote(f, handle, data, pcrNums, aikAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't quote the data:", err)
 	}
-
-	t.Logf("Got a quote of length %d\n", len(q))
 
 	// Verify the quote.
 	pk, err := UnmarshalRSAPublicKey(blob)
@@ -397,45 +386,38 @@ func TestMakeIdentity(t *testing.T) {
 }
 
 func TestResetLockValue(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// This test code assumes that the owner auth is the well-known value.
-	var ownerAuth digest
+	ownerAuth := getAuth(ownerAuthEnvVar)
 	if err := ResetLockValue(f, ownerAuth); err != nil {
 		t.Fatal("Couldn't reset the lock value:", err)
 	}
 }
 
 func TestOwnerReadSRK(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// This test code assumes that the owner auth is the well-known value.
-	var ownerAuth digest
+	ownerAuth := getAuth(ownerAuthEnvVar)
 	srkb, err := OwnerReadSRK(f, ownerAuth)
 	if err != nil {
 		t.Fatal("Couldn't read the SRK using owner auth:", err)
 	}
 
-	t.Logf("Got an SRK key of length %d\n", len(srkb))
+	if len(srkb) == 0 {
+		t.Fatal("Couldn't get an SRK blob from the TPM")
+	}
 }
 
 func TestOwnerReadPubEK(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// This test code assumes that the owner auth is the well-known value.
-	var ownerAuth digest
+	ownerAuth := getAuth(ownerAuthEnvVar)
 	pkb, err := OwnerReadPubEK(f, ownerAuth)
 	if err != nil {
 		t.Fatal("Couldn't read the pub EK using owner auth:", err)
@@ -454,14 +436,11 @@ func TestOwnerReadPubEK(t *testing.T) {
 func TestOwnerClear(t *testing.T) {
 	// Only enable this if you know what you're doing.
 	t.Skip()
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
 	// This test code assumes that the owner auth is the well-known value.
-	var ownerAuth digest
+	ownerAuth := getAuth(ownerAuthEnvVar)
 	if err := OwnerClear(f, ownerAuth); err != nil {
 		t.Fatal("Couldn't clear the TPM using owner auth:", err)
 	}
@@ -470,16 +449,11 @@ func TestOwnerClear(t *testing.T) {
 func TestTakeOwnership(t *testing.T) {
 	// This only works in limited circumstances, so it's disabled in general.
 	t.Skip()
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	f := openTPMOrDie(t)
 	defer f.Close()
-	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
-	}
 
-	// This test sets the ownership and SRK auth values to the well-known values
-	// of all 0.
-	var ownerAuth digest
-	var srkAuth digest
+	ownerAuth := getAuth(ownerAuthEnvVar)
+	srkAuth := getAuth(srkAuthEnvVar)
 
 	// This test assumes that the TPM has been cleared using OwnerClear.
 	pubek, err := ReadPubEK(f)

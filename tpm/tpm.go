@@ -113,10 +113,10 @@ func LoadKey2(f *os.File, keyBlob []byte, srkAuth []byte) (Handle, error) {
 // Quote2 performs a quote operation on the TPM for the given data,
 // under the key associated with the handle and for the pcr values
 // specified in the call.
-func Quote2(f *os.File, handle Handle, data []byte, pcrVals []int, addVersion byte, srkAuth []byte) ([]byte, error) {
+func Quote2(f *os.File, handle Handle, data []byte, pcrVals []int, addVersion byte, aikAuth []byte) ([]byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
-	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, srkAuth)
+	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, aikAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -409,11 +409,11 @@ func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
 }
 
 // Quote produces a TPM quote for the given data under the given PCRs. It uses
-// SRK auth and a given AIK handle.
-func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, srkAuth []byte) ([]byte, []byte, error) {
+// AIK auth and a given AIK handle.
+func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, aikAuth []byte) ([]byte, []byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
-	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, srkAuth)
+	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, aikAuth)
 	if err != nil {
 		return nil, nil, err
 	}

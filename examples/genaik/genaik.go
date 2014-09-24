@@ -25,9 +25,9 @@ import (
 )
 
 var (
-	OwnerAuthEnvVar = "TPM_OWNER_AUTH"
-	SRKAuthEnvVar   = "TPM_SRK_AUTH"
-	AIKAuthEnvVar   = "TPM_AIK_AUTH"
+	ownerAuthEnvVar = "TPM_OWNER_AUTH"
+	srkAuthEnvVar   = "TPM_SRK_AUTH"
+	aikAuthEnvVar   = "TPM_AIK_AUTH"
 )
 
 func main() {
@@ -44,21 +44,21 @@ func main() {
 
 	// Compute the auth values as needed.
 	var ownerAuth [20]byte
-	ownerInput := os.Getenv(OwnerAuthEnvVar)
+	ownerInput := os.Getenv(ownerAuthEnvVar)
 	if ownerInput != "" {
 		oa := sha1.Sum([]byte(ownerInput))
 		copy(ownerAuth[:], oa[:])
 	}
 
 	var srkAuth [20]byte
-	srkInput := os.Getenv(SRKAuthEnvVar)
+	srkInput := os.Getenv(srkAuthEnvVar)
 	if srkInput != "" {
 		sa := sha1.Sum([]byte(srkInput))
 		copy(srkAuth[:], sa[:])
 	}
 
 	var aikAuth [20]byte
-	aikInput := os.Getenv(AIKAuthEnvVar)
+	aikInput := os.Getenv(aikAuthEnvVar)
 	if aikInput != "" {
 		aa := sha1.Sum([]byte(aikInput))
 		copy(aikAuth[:], aa[:])
