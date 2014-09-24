@@ -24,12 +24,15 @@ import (
 	"github.com/google/go-tpm/tpm"
 )
 
+var (
+	OwnerAuthEnvVar = "TPM_OWNER_AUTH"
+	SRKAuthEnvVar   = "TPM_SRK_AUTH"
+	AIKAuthEnvVar   = "TPM_AIK_AUTH"
+)
+
 func main() {
 	var blobname = flag.String("blob", "aikblob", "The name of the file to create")
 	var tpmname = flag.String("tpm", "/dev/tpm0", "The path to the TPM device to use")
-	var ownerInput = flag.String("ownerauth", "", "A string to hash for owner auth (uses the well-known value if no string is supplied)")
-	var srkInput = flag.String("srkauth", "", "A string to hash for SRK auth (uses the well-known value if no string is supplied)")
-	var aikInput = flag.String("aikauth", "", "A string to hash for an auth value for the new AIK (uses the well-known value if no string is supplied)")
 	flag.Parse()
 
 	f, err := os.OpenFile(*tpmname, os.O_RDWR, 0600)
@@ -41,20 +44,23 @@ func main() {
 
 	// Compute the auth values as needed.
 	var ownerAuth [20]byte
-	if *ownerInput != "" {
-		oa := sha1.Sum([]byte(*ownerInput))
+	ownerInput := os.Getenv(OwnerAuthEnvVar)
+	if ownerInput != "" {
+		oa := sha1.Sum([]byte(ownerInput))
 		copy(ownerAuth[:], oa[:])
 	}
 
 	var srkAuth [20]byte
-	if *srkInput != "" {
-		sa := sha1.Sum([]byte(*srkInput))
+	srkInput := os.Getenv(SRKAuthEnvVar)
+	if srkInput != "" {
+		sa := sha1.Sum([]byte(srkInput))
 		copy(srkAuth[:], sa[:])
 	}
 
 	var aikAuth [20]byte
-	if *aikInput != "" {
-		aa := sha1.Sum([]byte(*aikInput))
+	aikInput := os.Getenv(AIKAuthEnvVar)
+	if aikInput != "" {
+		aa := sha1.Sum([]byte(aikInput))
 		copy(aikAuth[:], aa[:])
 	}
 

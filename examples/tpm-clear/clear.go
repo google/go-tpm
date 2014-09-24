@@ -23,9 +23,12 @@ import (
 	"github.com/google/go-tpm/tpm"
 )
 
+var (
+	OwnerAuthEnvVar = "TPM_OWNER_AUTH"
+)
+
 func main() {
 	var tpmname = flag.String("tpm", "/dev/tpm0", "The path to the TPM device to use")
-	var ownerInput = flag.String("ownerauth", "", "A string to hash for owner auth (uses the well-known value if no string is supplied)")
 	flag.Parse()
 
 	f, err := os.OpenFile(*tpmname, os.O_RDWR, 0600)
@@ -36,8 +39,9 @@ func main() {
 	}
 
 	var ownerAuth [20]byte
-	if *ownerInput != "" {
-		oa := sha1.Sum([]byte(*ownerInput))
+	ownerInput := os.Getenv(OwnerAuthEnvVar)
+	if ownerInput != "" {
+		oa := sha1.Sum([]byte(ownerInput))
 		copy(ownerAuth[:], oa[:])
 	}
 	if err := tpm.OwnerClear(f, ownerAuth); err != nil {
