@@ -125,7 +125,7 @@ func TestWrongNewPCRInfoLong(t *testing.T) {
 	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
 	defer f.Close()
 	if err != nil {
-		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+		t.Skipf("Skipping test, since we can't open /dev/tpm0 for read/write: %s\n", err)
 	}
 
 	if _, err := newPCRInfoLong(f, 0, []int{400}); err == nil {

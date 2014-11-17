@@ -43,7 +43,8 @@ func getAuth(name string) [20]byte {
 	return auth
 }
 
-func openTPMOrDie(t *testing.T) *os.File {
+// Skip the test if we can't open the TPM.
+func openTPMOrSkip(t *testing.T) *os.File {
 	tpmPath := os.Getenv(tpmPathEnvVar)
 	if tpmPath == "" {
 		tpmPath = "/dev/tpm0"
@@ -51,14 +52,14 @@ func openTPMOrDie(t *testing.T) *os.File {
 
 	f, err := os.OpenFile(tpmPath, os.O_RDWR, 0600)
 	if err != nil {
-		t.Fatalf("Can't open %s for read/write: %s\n", tpmPath, err)
+		t.Skipf("Skipping test, since we can't open %s for read/write: %s\n", tpmPath, err)
 	}
 
 	return f
 }
 
 func TestReadPCR(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	res, err := ReadPCR(f, 18)
@@ -70,7 +71,7 @@ func TestReadPCR(t *testing.T) {
 }
 
 func TestFetchPCRValues(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	var mask pcrMask
@@ -100,7 +101,7 @@ func TestFetchPCRValues(t *testing.T) {
 }
 
 func TestGetRandom(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// Try to get 16 bytes of randomness from the TPM.
@@ -115,7 +116,7 @@ func TestGetRandom(t *testing.T) {
 }
 
 func TestOIAP(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// Get auth info from OIAP.
@@ -126,7 +127,7 @@ func TestOIAP(t *testing.T) {
 }
 
 func TestOSAP(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// Try to run OSAP for the SRK.
@@ -185,7 +186,7 @@ func TestResizeableSlice(t *testing.T) {
 }
 
 func TestSeal(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	data := make([]byte, 64)
@@ -210,7 +211,7 @@ func TestSeal(t *testing.T) {
 }
 
 func TestLoadKey2(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
@@ -232,7 +233,7 @@ func TestLoadKey2(t *testing.T) {
 }
 
 func TestQuote2(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
@@ -267,7 +268,7 @@ func TestGetPubKey(t *testing.T) {
 	// For testing purposes, use the aikblob if it exists. Otherwise, just skip
 	// this test. TODO(tmroeder): implement AIK creation so we can always run
 	// this test.
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
@@ -296,7 +297,7 @@ func TestGetPubKey(t *testing.T) {
 }
 
 func TestQuote(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
@@ -346,7 +347,7 @@ func TestUnmarshalRSAPublicKey(t *testing.T) {
 }
 
 func TestMakeIdentity(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	srkAuth := getAuth(srkAuthEnvVar)
@@ -386,7 +387,7 @@ func TestMakeIdentity(t *testing.T) {
 }
 
 func TestResetLockValue(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// This test code assumes that the owner auth is the well-known value.
@@ -397,7 +398,7 @@ func TestResetLockValue(t *testing.T) {
 }
 
 func TestOwnerReadSRK(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// This test code assumes that the owner auth is the well-known value.
@@ -413,7 +414,7 @@ func TestOwnerReadSRK(t *testing.T) {
 }
 
 func TestOwnerReadPubEK(t *testing.T) {
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// This test code assumes that the owner auth is the well-known value.
@@ -436,7 +437,7 @@ func TestOwnerReadPubEK(t *testing.T) {
 func TestOwnerClear(t *testing.T) {
 	// Only enable this if you know what you're doing.
 	t.Skip()
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	// This test code assumes that the owner auth is the well-known value.
@@ -449,7 +450,7 @@ func TestOwnerClear(t *testing.T) {
 func TestTakeOwnership(t *testing.T) {
 	// This only works in limited circumstances, so it's disabled in general.
 	t.Skip()
-	f := openTPMOrDie(t)
+	f := openTPMOrSkip(t)
 	defer f.Close()
 
 	ownerAuth := getAuth(ownerAuthEnvVar)
