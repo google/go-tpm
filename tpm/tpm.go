@@ -24,17 +24,51 @@ import (
 	"crypto/subtle"
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"io"
+	"net"
 	"os"
 )
 
+// OpenTPM opens a channel to the TPM at the given path. If the file is a
+// device, then it treats it like a normal TPM device, and if the file is a
+// Unix domain socket, then it opens a connection to the socket.
+func OpenTPM(path string) (io.ReadWriteCloser, error) {
+	// If it's a regular file, then open it
+	var rwc io.ReadWriteCloser
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi.Mode()&os.ModeDevice != 0 {
+		var f *os.File
+		f, err = os.OpenFile(path, os.O_RDWR, 0600)
+		if err != nil {
+			return nil, err
+		}
+		rwc = io.ReadWriteCloser(f)
+	} else if fi.Mode()&os.ModeSocket != 0 {
+		uc, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+		if err != nil {
+			return nil, err
+		}
+		rwc = io.ReadWriteCloser(uc)
+	} else {
+		return nil, fmt.Errorf("unsupported TPM file mode %s", fi.Mode().String())
+	}
+
+	return rwc, nil
+}
+
 // ReadPCR reads a PCR value from the TPM.
-func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
+func ReadPCR(rw io.ReadWriter, pcr uint32) ([]byte, error) {
 	in := []interface{}{pcr}
 	var v pcrValue
 	out := []interface{}{&v}
 	// There's no need to check the ret value here, since the err value contains
 	// all the necessary information.
-	if _, err := submitTPMRequest(f, tagRQUCommand, ordPCRRead, in, out); err != nil {
+	if _, err := submitTPMRequest(rw, tagRQUCommand, ordPCRRead, in, out); err != nil {
 		return nil, err
 	}
 
@@ -42,10 +76,10 @@ func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
 }
 
 // FetchPCRValues gets a given sequence of PCR values.
-func FetchPCRValues(f *os.File, pcrVals []int) ([]byte, error) {
+func FetchPCRValues(rw io.ReadWriter, pcrVals []int) ([]byte, error) {
 	var pcrs []byte
 	for _, v := range pcrVals {
-		pcr, err := ReadPCR(f, uint32(v))
+		pcr, err := ReadPCR(rw, uint32(v))
 		if err != nil {
 			return nil, err
 		}
@@ -57,13 +91,13 @@ func FetchPCRValues(f *os.File, pcrVals []int) ([]byte, error) {
 }
 
 // GetRandom gets random bytes from the TPM.
-func GetRandom(f *os.File, size uint32) ([]byte, error) {
+func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 	var b []byte
 	in := []interface{}{size}
 	out := []interface{}{&b}
 	// There's no need to check the ret value here, since the err value
 	// contains all the necessary information.
-	if _, err := submitTPMRequest(f, tagRQUCommand, ordGetRandom, in, out); err != nil {
+	if _, err := submitTPMRequest(rw, tagRQUCommand, ordGetRandom, in, out); err != nil {
 		return nil, err
 	}
 
@@ -72,7 +106,7 @@ func GetRandom(f *os.File, size uint32) ([]byte, error) {
 
 // LoadKey2 loads a key blob (a serialized TPM_KEY or TPM_KEY12) into the TPM
 // and returns a handle for this key.
-func LoadKey2(f *os.File, keyBlob []byte, srkAuth []byte) (Handle, error) {
+func LoadKey2(rw io.ReadWriter, keyBlob []byte, srkAuth []byte) (Handle, error) {
 	// Deserialize the keyBlob as a key
 	var k key
 	if err := unpack(keyBlob, []interface{}{&k}); err != nil {
@@ -83,11 +117,11 @@ func LoadKey2(f *os.File, keyBlob []byte, srkAuth []byte) (Handle, error) {
 	// command and getting back a secret and a handle. LoadKey2 needs an
 	// OSAP session for the SRK because the private part of a TPM_KEY or
 	// TPM_KEY12 is sealed against the SRK.
-	sharedSecret, osapr, err := newOSAPSession(f, etSRK, khSRK, srkAuth)
+	sharedSecret, osapr, err := newOSAPSession(rw, etSRK, khSRK, srkAuth)
 	if err != nil {
 		return 0, err
 	}
-	defer osapr.Close(f)
+	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
 	authIn := []interface{}{ordLoadKey2, k}
@@ -96,7 +130,7 @@ func LoadKey2(f *os.File, keyBlob []byte, srkAuth []byte) (Handle, error) {
 		return 0, err
 	}
 
-	handle, ra, ret, err := loadKey2(f, &k, ca)
+	handle, ra, ret, err := loadKey2(rw, &k, ca)
 	if err != nil {
 		return 0, err
 	}
@@ -113,14 +147,14 @@ func LoadKey2(f *os.File, keyBlob []byte, srkAuth []byte) (Handle, error) {
 // Quote2 performs a quote operation on the TPM for the given data,
 // under the key associated with the handle and for the pcr values
 // specified in the call.
-func Quote2(f *os.File, handle Handle, data []byte, pcrVals []int, addVersion byte, aikAuth []byte) ([]byte, error) {
+func Quote2(rw io.ReadWriter, handle Handle, data []byte, pcrVals []int, addVersion byte, aikAuth []byte) ([]byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
-	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, aikAuth)
+	sharedSecret, osapr, err := newOSAPSession(rw, etKeyHandle, handle, aikAuth)
 	if err != nil {
 		return nil, err
 	}
-	defer osapr.Close(f)
+	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
 	// Hash the data to get the value to pass to quote2.
@@ -136,7 +170,7 @@ func Quote2(f *os.File, handle Handle, data []byte, pcrVals []int, addVersion by
 	}
 
 	// TODO(tmroeder): use the returned capVersionInfo.
-	pcrShort, _, capBytes, sig, ra, ret, err := quote2(f, handle, hash, pcrSel, addVersion, ca)
+	pcrShort, _, capBytes, sig, ra, ret, err := quote2(rw, handle, hash, pcrSel, addVersion, ca)
 	if err != nil {
 		return nil, err
 	}
@@ -152,14 +186,14 @@ func Quote2(f *os.File, handle Handle, data []byte, pcrVals []int, addVersion by
 
 // GetPubKey retrieves an opaque blob containing a public key corresponding to
 // a handle from the TPM.
-func GetPubKey(f *os.File, keyHandle Handle, srkAuth []byte) ([]byte, error) {
+func GetPubKey(rw io.ReadWriter, keyHandle Handle, srkAuth []byte) ([]byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
-	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, keyHandle, srkAuth)
+	sharedSecret, osapr, err := newOSAPSession(rw, etKeyHandle, keyHandle, srkAuth)
 	if err != nil {
 		return nil, err
 	}
-	defer osapr.Close(f)
+	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
 	authIn := []interface{}{ordGetPubKey}
@@ -168,7 +202,7 @@ func GetPubKey(f *os.File, keyHandle Handle, srkAuth []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	pk, ra, ret, err := getPubKey(f, keyHandle, ca)
+	pk, ra, ret, err := getPubKey(rw, keyHandle, ca)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +221,7 @@ func GetPubKey(f *os.File, keyHandle Handle, srkAuth []byte) ([]byte, error) {
 }
 
 // newOSAPSession starts a new OSAP session and derives a shared key from it.
-func newOSAPSession(f *os.File, entityType uint16, entityValue Handle, srkAuth []byte) ([20]byte, *osapResponse, error) {
+func newOSAPSession(rw io.ReadWriter, entityType uint16, entityValue Handle, srkAuth []byte) ([20]byte, *osapResponse, error) {
 	osapc := &osapCommand{
 		EntityType:  entityType,
 		EntityValue: entityValue,
@@ -198,7 +232,7 @@ func newOSAPSession(f *os.File, entityType uint16, entityValue Handle, srkAuth [
 		return sharedSecret, nil, err
 	}
 
-	osapr, err := osap(f, osapc)
+	osapr, err := osap(rw, osapc)
 	if err != nil {
 		return sharedSecret, nil, err
 	}
@@ -287,19 +321,19 @@ func zeroBytes(b []byte) {
 }
 
 // Seal encrypts data against a given locality and PCRs and returns the sealed data.
-func Seal(f *os.File, locality byte, pcrs []int, data []byte, srkAuth []byte) ([]byte, error) {
-	pcrInfo, err := newPCRInfoLong(f, locality, pcrs)
+func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []byte) ([]byte, error) {
+	pcrInfo, err := newPCRInfoLong(rw, locality, pcrs)
 	if err != nil {
 		return nil, err
 	}
 
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle.
-	sharedSecret, osapr, err := newOSAPSession(f, etSRK, khSRK, srkAuth)
+	sharedSecret, osapr, err := newOSAPSession(rw, etSRK, khSRK, srkAuth)
 	if err != nil {
 		return nil, err
 	}
-	defer osapr.Close(f)
+	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
 	// EncAuth for a seal command is computed as
@@ -330,7 +364,7 @@ func Seal(f *os.File, locality byte, pcrs []int, data []byte, srkAuth []byte) ([
 		return nil, err
 	}
 
-	sealed, ra, ret, err := seal(f, sc, pcrInfo, data, ca)
+	sealed, ra, ret, err := seal(rw, sc, pcrInfo, data, ca)
 	if err != nil {
 		return nil, err
 	}
@@ -350,22 +384,22 @@ func Seal(f *os.File, locality byte, pcrs []int, data []byte, srkAuth []byte) ([
 }
 
 // Unseal decrypts data encrypted by the TPM.
-func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
+func Unseal(rw io.ReadWriter, sealed []byte, srkAuth []byte) ([]byte, error) {
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle.
-	sharedSecret, osapr, err := newOSAPSession(f, etSRK, khSRK, srkAuth)
+	sharedSecret, osapr, err := newOSAPSession(rw, etSRK, khSRK, srkAuth)
 	if err != nil {
 		return nil, err
 	}
-	defer osapr.Close(f)
+	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
 	// The unseal command needs an OIAP session in addition to the OSAP session.
-	oiapr, err := oiap(f)
+	oiapr, err := oiap(rw)
 	if err != nil {
 		return nil, err
 	}
-	defer oiapr.Close(f)
+	defer oiapr.Close(rw)
 
 	// Convert the sealed value into a tpmStoredData.
 	var tsd tpmStoredData
@@ -390,7 +424,7 @@ func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	unsealed, ra1, ra2, ret, err := unseal(f, khSRK, &tsd, ca1, ca2)
+	unsealed, ra1, ra2, ret, err := unseal(rw, khSRK, &tsd, ca1, ca2)
 	if err != nil {
 		return nil, err
 	}
@@ -410,14 +444,14 @@ func Unseal(f *os.File, sealed []byte, srkAuth []byte) ([]byte, error) {
 
 // Quote produces a TPM quote for the given data under the given PCRs. It uses
 // AIK auth and a given AIK handle.
-func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, aikAuth []byte) ([]byte, []byte, error) {
+func Quote(rw io.ReadWriter, handle Handle, data []byte, pcrNums []int, aikAuth []byte) ([]byte, []byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
-	sharedSecret, osapr, err := newOSAPSession(f, etKeyHandle, handle, aikAuth)
+	sharedSecret, osapr, err := newOSAPSession(rw, etKeyHandle, handle, aikAuth)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer osapr.Close(f)
+	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
 	// Hash the data to get the value to pass to quote2.
@@ -432,7 +466,7 @@ func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, aikAuth []byte
 		return nil, nil, err
 	}
 
-	pcrc, sig, ra, ret, err := quote(f, handle, hash, pcrSel, ca)
+	pcrc, sig, ra, ret, err := quote(rw, handle, hash, pcrSel, ca)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -453,23 +487,23 @@ func Quote(f *os.File, handle Handle, data []byte, pcrNums []int, aikAuth []byte
 // The caller must be authorized to use the SRK, since the private part of the
 // AIK is sealed against the SRK.
 // TODO(tmroeder): currently, this code can only create 2048-bit RSA keys.
-func MakeIdentity(f *os.File, srkAuth []byte, ownerAuth []byte, aikAuth []byte, pk crypto.PublicKey, label []byte) ([]byte, error) {
+func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []byte, pk crypto.PublicKey, label []byte) ([]byte, error) {
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial command
 	// and getting back a secret and a handle.
-	sharedSecretSRK, osaprSRK, err := newOSAPSession(f, etSRK, khSRK, srkAuth)
+	sharedSecretSRK, osaprSRK, err := newOSAPSession(rw, etSRK, khSRK, srkAuth)
 	if err != nil {
 		return nil, err
 	}
-	defer osaprSRK.Close(f)
+	defer osaprSRK.Close(rw)
 	defer zeroBytes(sharedSecretSRK[:])
 
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
 	// and getting back a secret and a handle.
-	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth)
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
-	defer osaprOwn.Close(f)
+	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
 
 	// EncAuth for a MakeIdentity command is computed as
@@ -551,7 +585,7 @@ func MakeIdentity(f *os.File, srkAuth []byte, ownerAuth []byte, aikAuth []byte, 
 		return nil, err
 	}
 
-	k, sig, ra1, ra2, ret, err := makeIdentity(f, encAuth, caDigest, aik, ca1, ca2)
+	k, sig, ra1, ra2, ret, err := makeIdentity(rw, encAuth, caDigest, aik, ca1, ca2)
 	if err != nil {
 		return nil, err
 	}
@@ -579,14 +613,14 @@ func MakeIdentity(f *os.File, srkAuth []byte, ownerAuth []byte, aikAuth []byte, 
 // TPM to start working again after authentication errors without waiting for
 // the dictionary-attack defenses to time out. This requires owner
 // authentication.
-func ResetLockValue(f *os.File, ownerAuth digest) error {
+func ResetLockValue(rw io.ReadWriter, ownerAuth digest) error {
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
 	// and getting back a secret and a handle.
-	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth[:])
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownerAuth[:])
 	if err != nil {
 		return err
 	}
-	defer osaprOwn.Close(f)
+	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
 
 	// The digest input for ResetLockValue auth is
@@ -599,7 +633,7 @@ func ResetLockValue(f *os.File, ownerAuth digest) error {
 		return err
 	}
 
-	ra, ret, err := resetLockValue(f, ca)
+	ra, ret, err := resetLockValue(rw, ca)
 	if err != nil {
 		return err
 	}
@@ -616,14 +650,14 @@ func ResetLockValue(f *os.File, ownerAuth digest) error {
 // ownerReadInternalHelper sets up command auth and checks response auth for
 // OwnerReadInternalPub. It's not exported because OwnerReadInternalPub only
 // supports two fixed key handles: khEK and khSRK.
-func ownerReadInternalHelper(f *os.File, kh Handle, ownerAuth digest) (*pubKey, error) {
+func ownerReadInternalHelper(rw io.ReadWriter, kh Handle, ownerAuth digest) (*pubKey, error) {
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
 	// and getting back a secret and a handle.
-	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth[:])
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownerAuth[:])
 	if err != nil {
 		return nil, err
 	}
-	defer osaprOwn.Close(f)
+	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
 
 	// The digest input for OwnerReadInternalPub is
@@ -636,7 +670,7 @@ func ownerReadInternalHelper(f *os.File, kh Handle, ownerAuth digest) (*pubKey, 
 		return nil, err
 	}
 
-	pk, ra, ret, err := ownerReadInternalPub(f, kh, ca)
+	pk, ra, ret, err := ownerReadInternalPub(rw, kh, ca)
 	if err != nil {
 		return nil, err
 	}
@@ -651,8 +685,8 @@ func ownerReadInternalHelper(f *os.File, kh Handle, ownerAuth digest) (*pubKey, 
 }
 
 // OwnerReadSRK uses owner auth to get a blob representing the SRK.
-func OwnerReadSRK(f *os.File, ownerAuth digest) ([]byte, error) {
-	pk, err := ownerReadInternalHelper(f, khSRK, ownerAuth)
+func OwnerReadSRK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
+	pk, err := ownerReadInternalHelper(rw, khSRK, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -662,8 +696,8 @@ func OwnerReadSRK(f *os.File, ownerAuth digest) ([]byte, error) {
 
 // OwnerReadPubEK uses owner auth to get a blob representing the public part of the
 // endorsement key.
-func OwnerReadPubEK(f *os.File, ownerAuth digest) ([]byte, error) {
-	pk, err := ownerReadInternalHelper(f, khEK, ownerAuth)
+func OwnerReadPubEK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
+	pk, err := ownerReadInternalHelper(rw, khEK, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -673,13 +707,13 @@ func OwnerReadPubEK(f *os.File, ownerAuth digest) ([]byte, error) {
 
 // ReadPubEK reads the public part of the endorsement key when no owner is
 // established.
-func ReadPubEK(f *os.File) ([]byte, error) {
+func ReadPubEK(rw io.ReadWriter) ([]byte, error) {
 	var n nonce
 	if _, err := rand.Read(n[:]); err != nil {
 		return nil, err
 	}
 
-	pk, d, _, err := readPubEK(f, n)
+	pk, d, _, err := readPubEK(rw, n)
 	if err != nil {
 		return nil, err
 	}
@@ -701,14 +735,14 @@ func ReadPubEK(f *os.File) ([]byte, error) {
 
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
-func OwnerClear(f *os.File, ownerAuth digest) error {
+func OwnerClear(rw io.ReadWriter, ownerAuth digest) error {
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
 	// and getting back a secret and a handle.
-	sharedSecretOwn, osaprOwn, err := newOSAPSession(f, etOwner, khOwner, ownerAuth[:])
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownerAuth[:])
 	if err != nil {
 		return err
 	}
-	defer osaprOwn.Close(f)
+	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
 
 	// The digest input for OwnerClear is
@@ -721,7 +755,7 @@ func OwnerClear(f *os.File, ownerAuth digest) error {
 		return err
 	}
 
-	ra, ret, err := ownerClear(f, ca)
+	ra, ret, err := ownerClear(rw, ca)
 	if err != nil {
 		return err
 	}
@@ -740,7 +774,7 @@ func OwnerClear(f *os.File, ownerAuth digest) error {
 // operation can only be performed if there isn't already an owner for the TPM.
 // The pub EK blob can be acquired by calling ReadPubEK if there is no owner, or
 // OwnerReadPubEK if there is.
-func TakeOwnership(f *os.File, newOwnerAuth digest, newSRKAuth digest, pubEK []byte) error {
+func TakeOwnership(rw io.ReadWriter, newOwnerAuth digest, newSRKAuth digest, pubEK []byte) error {
 
 	// Encrypt the owner and SRK auth with the endorsement key.
 	ek, err := UnmarshalPubRSAPublicKey(pubEK)
@@ -786,11 +820,11 @@ func TakeOwnership(f *os.File, newOwnerAuth digest, newSRKAuth digest, pubEK []b
 	}
 
 	// Get command auth using OIAP with the new owner auth.
-	oiapr, err := oiap(f)
+	oiapr, err := oiap(rw)
 	if err != nil {
 		return err
 	}
-	defer oiapr.Close(f)
+	defer oiapr.Close(rw)
 
 	// The digest for TakeOwnership is
 	//
@@ -801,7 +835,7 @@ func TakeOwnership(f *os.File, newOwnerAuth digest, newSRKAuth digest, pubEK []b
 		return err
 	}
 
-	k, ra, ret, err := takeOwnership(f, encOwnerAuth, encSRKAuth, srk, ca)
+	k, ra, ret, err := takeOwnership(rw, encOwnerAuth, encSRKAuth, srk, ca)
 	if err != nil {
 		return err
 	}
