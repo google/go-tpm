@@ -27,6 +27,21 @@ import (
 	"os"
 )
 
+// GetKeys gets the list of handles for currently-loaded TPM keys.
+func GetKeys(f *os.File) ([]Handle, error) {
+	var b []byte
+	subCap, err := pack([]interface{}{rtKey})
+	if err != nil {
+		return nil, err
+	}
+	in := []interface{}{capHandle, subCap}
+	out := []interface{}{&b}
+	if _, err := submitTPMRequest(f, tagRQUCommand, ordGetCapability, in, out); err != nil {
+		return nil, err
+	}
+	return unpackKeyHandleList(b)
+}
+
 // ReadPCR reads a PCR value from the TPM.
 func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
 	in := []interface{}{pcr}
