@@ -19,8 +19,8 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
-	"os"
 )
 
 // A pcrValue is the fixed-size value of a PCR.
@@ -80,8 +80,8 @@ type capVersionInfoFixed struct {
 type Handle uint32
 
 // CloseKey flushes the key associated with this Handle.
-func (h Handle) CloseKey(f *os.File) error {
-	return flushSpecific(f, h, rtKey)
+func (h Handle) CloseKey(rw io.ReadWriter) error {
+	return flushSpecific(rw, h, rtKey)
 }
 
 // A commandHeader is the header for a TPM command.
@@ -125,8 +125,8 @@ func (opr oiapResponse) String() string {
 }
 
 // Close flushes the auth handle associated with an OIAP session.
-func (opr *oiapResponse) Close(f *os.File) error {
-	return flushSpecific(f, opr.AuthHandle, rtAuth)
+func (opr *oiapResponse) Close(rw io.ReadWriter) error {
+	return flushSpecific(rw, opr.AuthHandle, rtAuth)
 }
 
 // An osapCommand is a command sent for OSAP authentication.
@@ -154,8 +154,8 @@ func (opr osapResponse) String() string {
 }
 
 // Close flushes the AuthHandle associated with an OSAP session.
-func (opr *osapResponse) Close(f *os.File) error {
-	return flushSpecific(f, opr.AuthHandle, rtAuth)
+func (opr *osapResponse) Close(rw io.ReadWriter) error {
+	return flushSpecific(rw, opr.AuthHandle, rtAuth)
 }
 
 // A Digest is a 20-byte SHA1 value.

@@ -24,43 +24,42 @@ import (
 )
 
 var (
-	OwnerAuthEnvVar = "TPM_OWNER_AUTH"
-	SRKAuthEnvVar   = "TPM_SRK_AUTH"
+	ownerAuthEnvVar = "TPM_OWNER_AUTH"
+	srkAuthEnvVar   = "TPM_SRK_AUTH"
 )
 
 func main() {
 	var tpmname = flag.String("tpm", "/dev/tpm0", "The path to the TPM device to use")
 	flag.Parse()
 
-	f, err := os.OpenFile(*tpmname, os.O_RDWR, 0600)
-	defer f.Close()
+	rwc, err := tpm.OpenTPM(*tpmname)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't open TPM device %s: %s\n", *tpmname, err)
+		fmt.Fprintf(os.Stderr, "Couldn't open the TPM file %s: %s\n", *tpmname, err)
 		return
 	}
 
 	// Compute the auth values as needed.
 	var ownerAuth [20]byte
-	ownerInput := os.Getenv(OwnerAuthEnvVar)
+	ownerInput := os.Getenv(ownerAuthEnvVar)
 	if ownerInput != "" {
 		oa := sha1.Sum([]byte(ownerInput))
 		copy(ownerAuth[:], oa[:])
 	}
 
 	var srkAuth [20]byte
-	srkInput := os.Getenv(SRKAuthEnvVar)
+	srkInput := os.Getenv(srkAuthEnvVar)
 	if srkInput != "" {
 		sa := sha1.Sum([]byte(srkInput))
 		copy(srkAuth[:], sa[:])
 	}
 
-	pubek, err := tpm.ReadPubEK(f)
+	pubek, err := tpm.ReadPubEK(rwc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't read the endorsement key: %s\n", err)
 		return
 	}
 
-	if err := tpm.TakeOwnership(f, ownerAuth, srkAuth, pubek); err != nil {
+	if err := tpm.TakeOwnership(rwc, ownerAuth, srkAuth, pubek); err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't take ownership of the TPM: %s\n", err)
 		return
 	}

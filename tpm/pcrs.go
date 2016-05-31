@@ -18,7 +18,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 	"strconv"
 )
 
@@ -114,7 +114,7 @@ func createPCRInfoLong(loc byte, mask pcrMask, pcrVals []byte) (*pcrInfoLong, er
 
 // newPCRInfoLong creates and returns a pcrInfoLong structure for the given PCR
 // values.
-func newPCRInfoLong(f *os.File, loc byte, pcrNums []int) (*pcrInfoLong, error) {
+func newPCRInfoLong(rw io.ReadWriter, loc byte, pcrNums []int) (*pcrInfoLong, error) {
 	var mask pcrMask
 	for _, pcr := range pcrNums {
 		if err := mask.setPCR(pcr); err != nil {
@@ -122,7 +122,7 @@ func newPCRInfoLong(f *os.File, loc byte, pcrNums []int) (*pcrInfoLong, error) {
 		}
 	}
 
-	pcrVals, err := FetchPCRValues(f, pcrNums)
+	pcrVals, err := FetchPCRValues(rw, pcrNums)
 	if err != nil {
 		return nil, err
 	}

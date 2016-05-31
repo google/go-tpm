@@ -15,7 +15,6 @@
 package tpm
 
 import (
-	"os"
 	"testing"
 )
 
@@ -122,13 +121,10 @@ func TestWrongCreatePCRInfoLong(t *testing.T) {
 }
 
 func TestWrongNewPCRInfoLong(t *testing.T) {
-	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
-	defer f.Close()
-	if err != nil {
-		t.Skipf("Skipping test, since we can't open /dev/tpm0 for read/write: %s\n", err)
-	}
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
 
-	if _, err := newPCRInfoLong(f, 0, []int{400}); err == nil {
+	if _, err := newPCRInfoLong(rwc, 0, []int{400}); err == nil {
 		t.Fatal("Incorrectly created a pcrInfoLong for PCR 400")
 	}
 

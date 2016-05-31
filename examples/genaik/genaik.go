@@ -35,10 +35,9 @@ func main() {
 	var tpmname = flag.String("tpm", "/dev/tpm0", "The path to the TPM device to use")
 	flag.Parse()
 
-	f, err := os.OpenFile(*tpmname, os.O_RDWR, 0600)
-	defer f.Close()
+	rwc, err := tpm.OpenTPM(*tpmname)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't open TPM device %s: %s\n", *tpmname, err)
+		fmt.Fprintf(os.Stderr, "Couldn't open the TPM file %s: %s\n", *tpmname, err)
 		return
 	}
 
@@ -65,7 +64,7 @@ func main() {
 	}
 
 	// TODO(tmroeder): add support for Privacy CAs.
-	blob, err := tpm.MakeIdentity(f, srkAuth[:], ownerAuth[:], aikAuth[:], nil, nil)
+	blob, err := tpm.MakeIdentity(rwc, srkAuth[:], ownerAuth[:], aikAuth[:], nil, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't make an new AIK: %s\n", err)
 		return

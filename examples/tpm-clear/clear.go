@@ -23,28 +23,25 @@ import (
 	"github.com/google/go-tpm/tpm"
 )
 
-var (
-	OwnerAuthEnvVar = "TPM_OWNER_AUTH"
-)
+var ownerAuthEnvVar = "TPM_OWNER_AUTH"
 
 func main() {
 	var tpmname = flag.String("tpm", "/dev/tpm0", "The path to the TPM device to use")
 	flag.Parse()
 
-	f, err := os.OpenFile(*tpmname, os.O_RDWR, 0600)
-	defer f.Close()
+	rwc, err := tpm.OpenTPM(*tpmname)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't open TPM device %s: %s\n", *tpmname, err)
+		fmt.Fprintf(os.Stderr, "Couldn't open the TPM file %s: %s\n", *tpmname, err)
 		return
 	}
 
 	var ownerAuth [20]byte
-	ownerInput := os.Getenv(OwnerAuthEnvVar)
+	ownerInput := os.Getenv(ownerAuthEnvVar)
 	if ownerInput != "" {
 		oa := sha1.Sum([]byte(ownerInput))
 		copy(ownerAuth[:], oa[:])
 	}
-	if err := tpm.OwnerClear(f, ownerAuth); err != nil {
+	if err := tpm.OwnerClear(rwc, ownerAuth); err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't clear the TPM using owner auth: %s\n", err)
 		return
 	}
