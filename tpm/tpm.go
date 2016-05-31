@@ -62,7 +62,7 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 }
 
 // GetKeys gets the list of handles for currently-loaded TPM keys.
-func GetKeys(f *os.File) ([]Handle, error) {
+func GetKeys(rw io.ReadWriter) ([]Handle, error) {
 	var b []byte
 	subCap, err := pack([]interface{}{rtKey})
 	if err != nil {
@@ -70,7 +70,7 @@ func GetKeys(f *os.File) ([]Handle, error) {
 	}
 	in := []interface{}{capHandle, subCap}
 	out := []interface{}{&b}
-	if _, err := submitTPMRequest(f, tagRQUCommand, ordGetCapability, in, out); err != nil {
+	if _, err := submitTPMRequest(rw, tagRQUCommand, ordGetCapability, in, out); err != nil {
 		return nil, err
 	}
 	return unpackKeyHandleList(b)
