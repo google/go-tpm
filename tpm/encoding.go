@@ -150,7 +150,7 @@ func unpackKeyHandleList(b []byte) ([]Handle, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	h := make([]Handle, int(n))
+	h := make([]Handle, n)
 	for i, _ := range h {
 		if err := unpackType(buf, []interface{}{&h[i]}); err != nil {
 			return nil, err
