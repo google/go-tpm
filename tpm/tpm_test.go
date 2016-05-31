@@ -59,6 +59,18 @@ func openTPMOrSkip(t *testing.T) io.ReadWriteCloser {
 	return rwc
 }
 
+func TestGetKeys(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	handles, err := GetKeys(rwc)
+	if err != nil {
+		t.Fatal("Couldn't enumerate keys in the TPM:", err)
+	}
+
+	t.Logf("Got %d keys: % d\n", len(handles), handles)
+}
+
 func TestReadPCR(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()

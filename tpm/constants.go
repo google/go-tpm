@@ -40,10 +40,16 @@ const (
 	ordLoadKey2             uint32 = 0x00000041
 	ordGetRandom            uint32 = 0x00000046
 	ordOwnerClear           uint32 = 0x0000005B
+	ordGetCapability        uint32 = 0x00000065
 	ordMakeIdentity         uint32 = 0x00000079
 	ordReadPubEK            uint32 = 0x0000007C
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
+)
+
+// Capability types.
+const (
+	capHandle uint32 = 0x00000014
 )
 
 // Entity types. The LSB gives the entity type, and the MSB (currently fixed to

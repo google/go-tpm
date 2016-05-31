@@ -140,6 +140,25 @@ func packType(buf io.Writer, elts []interface{}) error {
 	return nil
 }
 
+func unpackKeyHandleList(b []byte) ([]Handle, error) {
+	// TODO(kwalsh): handle pack/unpack of TPM_KEY_HANDLE_LIST more gracefully
+	buf := bytes.NewBuffer(b)
+	var n uint16
+	if err := unpackType(buf, []interface{}{&n}); err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		return nil, nil
+	}
+	h := make([]Handle, n)
+	for i, _ := range h {
+		if err := unpackType(buf, []interface{}{&h[i]}); err != nil {
+			return nil, err
+		}
+	}
+	return h, nil
+}
+
 // unpack performs the inverse operation from pack.
 func unpack(b []byte, elts []interface{}) error {
 	buf := bytes.NewBuffer(b)

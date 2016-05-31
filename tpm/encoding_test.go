@@ -359,3 +359,38 @@ func TestEncodingUnpack(t *testing.T) {
 		t.Fatal("Unpacked struct with nested slice didn't match the original")
 	}
 }
+
+func TestUnpackKeyHandleList(t *testing.T) {
+
+	h, err := unpackKeyHandleList([]byte{0, 3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12})
+	if err != nil {
+		t.Fatal("unpackKeyHandlelist failed to unpack valid buffer:", err)
+	}
+	if len(h) != 3 {
+		t.Fatal("unpackKeyHandlelist returned wrong length array")
+	}
+	if h[0] != 0x01020304 || h[1] != 0x05060708 || h[2] != 0x090a0b0c {
+		t.Fatal("unpackKeyHandlelist returned wrong handles")
+	}
+
+	h, err = unpackKeyHandleList([]byte{0, 0})
+	if err != nil {
+		t.Fatal("unpackKeyHandlelist failed to unpack valid buffer:", err)
+	}
+	if len(h) != 0 {
+		t.Fatal("unpackKeyHandlelist returned wrong length array")
+	}
+
+	h, err = unpackKeyHandleList([]byte{0})
+	if err == nil {
+		t.Fatal("unpackKeyHandlelist incorrectly unpacked invalid buffer")
+	}
+	h, err = unpackKeyHandleList([]byte{0, 1})
+	if err == nil {
+		t.Fatal("unpackKeyHandlelist incorrectly unpacked invalid buffer")
+	}
+	h, err = unpackKeyHandleList([]byte{0, 1, 2, 3, 4})
+	if err == nil {
+		t.Fatal("unpackKeyHandlelist incorrectly unpacked invalid buffer")
+	}
+}
