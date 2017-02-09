@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package main implements a program to clear key handles from a TPM.
 package main
 
 import (

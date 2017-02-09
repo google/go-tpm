@@ -26,7 +26,7 @@ import (
 // A pcrValue is the fixed-size value of a PCR.
 type pcrValue [20]byte
 
-// Each PCR has a fixed size of 20 bytes.
+// PCRSize gives the fixed size (20 bytes) of a PCR.
 const PCRSize int = 20
 
 // A pcrMask represents a set of PCR choices, one bit per PCR out of the 24
