@@ -16,12 +16,12 @@
 package tpm
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
-	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -741,7 +741,9 @@ func ReadPubEK(rw io.ReadWriter) ([]byte, error) {
 	}
 
 	s := sha1.Sum(b)
-	if subtle.ConstantTimeCompare(s[:], d[:]) != 1 {
+	// There's no need for constant-time comparison of these hash values,
+	// since no secret is involved.
+	if !bytes.Equal(s[:], d[:]) {
 		return nil, errors.New("the ReadPubEK operation failed the replay check")
 	}
 
