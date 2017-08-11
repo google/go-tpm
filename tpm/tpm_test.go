@@ -81,7 +81,7 @@ func TestPcrExtend(t *testing.T) {
 
 	oldPcrValue, err := ReadPCR(rwc, 12)
 	if err != nil {
-		t.Fatal("Couldn't read PCR 18 from the TPM:", err)
+		t.Fatal("Couldn't read PCR 12 from the TPM:", err)
 	}
 
 	newPcrValue, err := PcrExtend(rwc, 12, pcrValue)
