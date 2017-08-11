@@ -30,6 +30,7 @@ const (
 	ordOIAP                 uint32 = 0x0000000A
 	ordOSAP                 uint32 = 0x0000000B
 	ordTakeOwnership        uint32 = 0x0000000D
+	ordExtend               uint32 = 0x00000014
 	ordPCRRead              uint32 = 0x00000015
 	ordQuote                uint32 = 0x00000016
 	ordSeal                 uint32 = 0x00000017

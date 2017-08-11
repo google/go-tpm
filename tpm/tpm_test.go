@@ -71,6 +71,33 @@ func TestGetKeys(t *testing.T) {
 	t.Logf("Got %d keys: % d\n", len(handles), handles)
 }
 
+func TestPcrExtend(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	var pcrValue [20]byte
+	var value = "FFFFFFFFFFFFFFFFFFFF"
+	copy(pcrValue[:], value)
+
+	oldPcrValue, err := ReadPCR(rwc, 12)
+	if err != nil {
+		t.Fatal("Couldn't read PCR 12 from the TPM:", err)
+	}
+
+	newPcrValue, err := PcrExtend(rwc, 12, pcrValue)
+	if err != nil {
+		t.Fatal("Couldn't extend PCR 12 from the TPM:", err)
+	}
+
+	finalPcr := sha1.Sum(append(oldPcrValue, pcrValue[:]...))
+
+	if bytes.Equal(finalPcr[:], newPcrValue) {
+		t.Logf("PCR are equal!\n")
+	} else {
+		t.Fatal("PCR are not equal! Test failed.\n")
+	}
+}
+
 func TestReadPCR(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
