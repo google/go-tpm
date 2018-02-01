@@ -129,3 +129,28 @@ func newPCRInfoLong(rw io.ReadWriter, loc byte, pcrNums []int) (*pcrInfoLong, er
 
 	return createPCRInfoLong(loc, mask, pcrVals)
 }
+
+func newPCRInfo(rw io.ReadWriter, pcrNums []int) (*pcrInfo, error) {
+	var mask pcrMask
+	for _, pcr := range pcrNums {
+		if err := mask.setPCR(pcr); err != nil {
+			return nil, err
+		}
+	}
+
+	pcrVals, err := FetchPCRValues(rw, pcrNums)
+	if err != nil {
+		return nil, err
+	}
+	d, err := createPCRComposite(mask, pcrVals)
+	if err != nil {
+		return nil, err
+	}
+	pcri := &pcrInfo{
+		PcrSelection: pcrSelection{3, mask},
+	}
+	copy(pcri.DigestAtRelease[:], d)
+	copy(pcri.DigestAtCreation[:], d)
+
+	return pcri, nil
+}

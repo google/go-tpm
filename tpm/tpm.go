@@ -872,3 +872,156 @@ func TakeOwnership(rw io.ReadWriter, newOwnerAuth digest, newSRKAuth digest, pub
 	raIn := []interface{}{ret, ordTakeOwnership, k}
 	return ra.verify(ca.NonceOdd, newOwnerAuth[:], raIn)
 }
+
+// CreateWrapKey creates a new RSA key for signatures inside the TPM. It is wrapped by the SRK (which is to say,
+// the SRK is the parent key). The key can be bound to the specified PCR numbers so that it can only be used for
+// signing if the PCR values of those registers match. The pcrs parameter can be nil in which case the key is
+// not bound to any PCRs. The usageAuth parameter defines the auth key for using this new key. The migrationAuth
+// parameter would be used for authorizing migration of the key (although this code currently disables migration).
+func CreateWrapKey(rw io.ReadWriter, srkAuth []byte, usageAuth digest, migrationAuth digest, pcrs []int) ([]byte, error) {
+	// Run OSAP for the SRK, reading a random OddOSAP for our initial
+	// command and getting back a secret and a handle.
+	sharedSecret, osapr, err := newOSAPSession(rw, etSRK, khSRK, srkAuth)
+	if err != nil {
+		return nil, err
+	}
+	defer osapr.Close(rw)
+	defer zeroBytes(sharedSecret[:])
+
+	xorData, err := pack([]interface{}{sharedSecret, osapr.NonceEven})
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(xorData)
+	encAuthDataKey := sha1.Sum(xorData)
+
+	var encUsageAuth digest
+	for i := range srkAuth {
+		encUsageAuth[i] = encAuthDataKey[i] ^ usageAuth[i]
+	}
+	var encMigrationAuth digest
+	for i := range srkAuth {
+		encMigrationAuth[i] = encAuthDataKey[i] ^ migrationAuth[i]
+	}
+
+	rParams := rsaKeyParms{
+		KeyLength: 2048,
+		NumPrimes: 2,
+	}
+	rParamsPacked, err := pack([]interface{}{&rParams})
+	if err != nil {
+		return nil, err
+	}
+
+	var pcrInfoBytes []byte
+	if len(pcrs) > 0 {
+		pcrInfo, err := newPCRInfo(rw, pcrs)
+		if err != nil {
+			return nil, err
+		}
+		pcrInfoBytes, err = pack([]interface{}{pcrInfo})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	keyInfo := &key{
+		Version:       0x01010000,
+		KeyUsage:      keySigning,
+		KeyFlags:      0,
+		AuthDataUsage: authAlways,
+		AlgorithmParms: keyParms{
+			AlgID:     algRSA,
+			EncScheme: esNone,
+			SigScheme: ssRSASaPKCS1v15DER,
+			Parms:     rParamsPacked,
+		},
+		PCRInfo: pcrInfoBytes,
+	}
+
+	authIn := []interface{}{ordCreateWrapKey, encUsageAuth, encMigrationAuth, keyInfo}
+	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
+	if err != nil {
+		return nil, err
+	}
+
+	k, ra, ret, err := createWrapKey(rw, encUsageAuth, encMigrationAuth, keyInfo, ca)
+	if err != nil {
+		return nil, err
+	}
+
+	raIn := []interface{}{ret, ordCreateWrapKey, k}
+	if err = ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
+		return nil, err
+	}
+
+	keyblob, err := pack([]interface{}{k})
+	if err != nil {
+		return nil, err
+	}
+	return keyblob, nil
+}
+
+// https://golang.org/src/crypto/rsa/pkcs1v15.go?s=8762:8862#L204
+var hashPrefixes = map[crypto.Hash][]byte{
+	crypto.MD5:       {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10},
+	crypto.SHA1:      {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14},
+	crypto.SHA224:    {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04, 0x05, 0x00, 0x04, 0x1c},
+	crypto.SHA256:    {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20},
+	crypto.SHA384:    {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30},
+	crypto.SHA512:    {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
+	crypto.MD5SHA1:   {}, // A special TLS case which doesn't use an ASN1 prefix.
+	crypto.RIPEMD160: {0x30, 0x20, 0x30, 0x08, 0x06, 0x06, 0x28, 0xcf, 0x06, 0x03, 0x00, 0x31, 0x04, 0x14},
+}
+
+// Sign will sign a digest using the supplied key handle. Uses PKCS1v15 signing, which means the hash OID is prefixed to the
+// hash before it is signed. Therefore the hash used needs to be passed as the hash parameter to determine the right
+// prefix.
+func Sign(rw io.ReadWriter, keyAuth []byte, keyHandle Handle, hash crypto.Hash, hashed []byte) ([]byte, error) {
+	prefix, ok := hashPrefixes[hash]
+	if !ok {
+		return nil, errors.New("Unsupported hash")
+	}
+	data := append(prefix, hashed...)
+
+	// Run OSAP for the SRK, reading a random OddOSAP for our initial
+	// command and getting back a secret and a handle.
+	sharedSecret, osapr, err := newOSAPSession(rw, etKeyHandle, keyHandle, keyAuth)
+	if err != nil {
+		return nil, err
+	}
+	defer osapr.Close(rw)
+	defer zeroBytes(sharedSecret[:])
+
+	authIn := []interface{}{ordSign, data}
+	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, ra, ret, err := sign(rw, keyHandle, data, ca)
+	if err != nil {
+		return nil, err
+	}
+
+	raIn := []interface{}{ret, ordSign, signature}
+	err = ra.verify(ca.NonceOdd, sharedSecret[:], raIn)
+	if err != nil {
+		return nil, err
+	}
+
+	return signature, nil
+}
+
+// PcrReset resets the given PCRs. Given typical locality restrictions, this can usually only be 16 or 23.
+func PcrReset(rw io.ReadWriter, pcrs []int) error {
+	pcrSelect, err := newPCRSelection(pcrs)
+	if err != nil {
+		return err
+	}
+	err = pcrReset(rw, pcrSelect)
+	if err != nil {
+		return err
+	}
+	return nil
+}
