@@ -1,0 +1,126 @@
+// Copyright (c) 2014, Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tpm2
+
+import (
+	//"bytes"
+	//"crypto/rsa"
+	crypto/rand"
+	"fmt"
+	//"math/big"
+	"testing"
+
+	"github.com/jlmucb/cloudproxy/go/tpm2"
+)
+
+
+/*
+bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString);
+bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+                 string& authString, uint16_t* size, byte* data);
+bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString,
+                  uint16_t size, byte* data);
+bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
+                      string& authString, uint16_t authPolicySize,
+                      byte* authPolicy, uint32_t attributes, uint16_t size_data);
+bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index);
+*/
+
+
+// Encrypted session test
+func TestEncryptedSessionTest(t *testing.T) {
+
+	// Open tpm
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return
+	}
+
+	// Flushall
+	err =  tpm2.Flushall(rw)
+	if err != nil {
+		t.Fatal("Flushall failed\n")
+	}
+
+	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
+	if err != nil || ekHandle == tpm2.Handle(0) {
+		t.Fatal("Can't CreateEndorsement\n")
+	}
+
+	fmt.Printf("CreatePrimary succeeded\n")
+
+	var nonceCaller [16]byte
+	var nonceTPM [16]byte
+	var secret [16]byte
+	var encrypted_secret []byte
+
+	rand.Read(nonceCaller[0:16])
+	rand.Read(nonceTPM[0:16])
+	rand.Read(secret[0:16])
+
+/*
+	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	var secret []byte
+	sym := uint16(tpm2.AlgTPM_ALG_NULL)
+	to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+			  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
+	hash_alg := uint16(tpm2.AlgTPM_ALG_SHA1)
+
+	session_handle, policy_digest, err := tpm2.StartAuthSession(rw,
+		tpm2.Handle(tpm2.OrdTPM_RH_NULL),
+		tpm2.Handle(tpm2.OrdTPM_RH_NULL), nonceCaller, secret,
+		uint8(tpm2.OrdTPM_SE_POLICY), sym, hash_alg)
+	if err != nil {
+		tpm2.FlushContext(rw, parent_handle)
+		t.Fatal("StartAuthSession fails")
+	}
+	fmt.Printf("policy digest  : %x\n", policy_digest)
+
+	err = tpm2.PolicyPassword(rw, session_handle)
+	if err != nil {
+		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
+		t.Fatal("PolicyPcr fails")
+	}
+	var tpm_digest []byte
+	err = tpm2.PolicyPcr(rw, session_handle, tpm_digest, []int{7})
+	if err != nil {
+		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
+		t.Fatal("PolicyPcr fails")
+	}
+
+	policy_digest, err = tpm2.PolicyGetDigest(rw, session_handle)
+	if err != nil {
+		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
+		t.Fatal("PolicyGetDigest after PolicyPcr fails")
+	}
+	fmt.Printf("policy digest after PolicyPcr: %x\n", policy_digest)
+*/
+
+	fmt.Printf("nonceCaller: %x\n", nonceCaller)
+	fmt.Printf("nonceTPM: %x\n", nonceTPM)
+	fmt.Printf("secret: %x\n", secret)
+	fmt.Printf("encrypted_secret: %x\n, encrypted_secret)
+
+	// Flush
+	tpm2.FlushContext(rw, ekHandle)
+	tpm2.FlushContext(rw, session_handle)
+	rw.Close()
+}
+
+
