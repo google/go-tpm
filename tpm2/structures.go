@@ -40,45 +40,43 @@ type responseHeader struct {
 	Res  uint32
 }
 
-type RsaParams struct {
-	Enc_alg uint16
-	Hash_alg uint16
+type RSAParams struct {
+	EncAlg     uint16
+	HashAlg    uint16
 	Attributes uint32
-	Auth_policy []byte
-	Symalg uint16
-	Sym_sz uint16
-	Mode uint16
-	Scheme uint16
-	Scheme_hash uint16
-	Mod_sz uint16
-	Exp uint32
-	Modulus []byte
+	AuthPolicy []byte
+	SymAlg     uint16
+	SymSize    uint16
+	Mode       uint16
+	Scheme     uint16
+	SchemeHash uint16
+	ModSize    uint16
+	Exp        uint32
+	Modulus    []byte
 }
 
 type KeyedHashParams struct {
-	Type_alg uint16
-	Hash_alg uint16
+	TypeAlg    uint16
+	HashAlg    uint16
 	Attributes uint32
-	Auth_policy []byte
-	Symalg uint16
-        Sym_sz uint16
-        Mode uint16
-        Scheme uint16
-	Unique []byte
+	AuthPolicy []byte
+	SymAlg     uint16
+	SymSize    uint16
+	Mode       uint16
+	Scheme     uint16
+	Unique     []byte
 }
 
 type AttestParams struct {
-	Magic_number uint32
-	Attest_type uint16
-	Name []byte
-	Data []byte
-	Clock uint64
-	ResetCount uint32
-	RestartCount uint32
-	Safe byte
+	MagicNumber     uint32
+	AttestType      uint16
+	Name            []byte
+	Data            []byte
+	Clock           uint64
+	ResetCount      uint32
+	RestartCount    uint32
+	Safe            byte
 	FirmwareVersion uint64
-	PcrSelect []byte
-	PcrDigest []byte
+	PCRSelect       []byte
+	PCRDigest       []byte
 }
-
-

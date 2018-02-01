@@ -18,53 +18,44 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 )
 
-// Make commandHeader
-func MakeCommandHeader(tag uint16, size uint32, command uint32) (commandHeader, error) {
-	var cmdHdr commandHeader
-	cmdHdr.Tag = tag
-	cmdHdr.Size = size + 10
-	cmdHdr.Cmd = command
-	return cmdHdr, nil
-}
+func decodeCommandResponse(in []byte) (uint16, uint32, responseCode, error) {
+	var tag uint16
+	var size uint32
+	var status uint32
 
-// Decode response
-func DecodeCommandResponse(in []byte) (uint16, uint32, TpmError, error) {
-	var tag uint16 
-        var size uint32
-        var status uint32
+	out := []interface{}{&tag, &size, &status}
+	err := unpack(in, out)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("decoding response header: %v", err)
+	}
 
-        out :=  []interface{}{&tag, &size, &status}
-        err := unpack(in, out)
-        if err != nil {
-                return 0, 0, 0, errors.New("Can't decode response")
-        }
-
-	return tag, size, TpmError(status), nil
+	return tag, size, responseCode(status), nil
 }
 
 // packedSize computes the size of a sequence of types that can be passed to
 // binary.Read or binary.Write.
-func packedSize(elts []interface{}) int {
+func packedSize(elts ...interface{}) (int, error) {
 	var size int
 	for _, e := range elts {
 		v := reflect.ValueOf(e)
 		switch v.Kind() {
 		case reflect.Ptr:
-			s := packedSize([]interface{}{reflect.Indirect(v).Interface()})
-			if s < 0 {
-				return s
+			s, err := packedSize(reflect.Indirect(v).Interface())
+			if err != nil {
+				return 0, err
 			}
 
 			size += s
 		case reflect.Struct:
 			for i := 0; i < v.NumField(); i++ {
-				s := packedSize([]interface{}{v.Field(i).Interface()})
-				if s < 0 {
-					return s
+				s, err := packedSize(v.Field(i).Interface())
+				if err != nil {
+					return 0, err
 				}
 
 				size += s
@@ -72,46 +63,47 @@ func packedSize(elts []interface{}) int {
 		case reflect.Slice:
 			b, ok := e.([]byte)
 			if !ok {
-				return -1
+				return 0, fmt.Errorf("encoding of %T is not supported, only []byte slices are", e)
 			}
 
 			size += 2 + len(b)
 		default:
 			s := binary.Size(e)
 			if s < 0 {
-				return s
+				return 0, fmt.Errorf("can't calculate size of type %T", e)
 			}
 
 			size += s
 		}
 	}
 
-	return size
+	return size, nil
 }
 
-// packWithBytes takes a command and byte slice and packs them into a single
-// nil is error
-func packWithBytes(ch commandHeader, args []byte) ([]byte) {
+// packWithBytes takes a commandHeader and serialized command data and packs
+// them into a single buffer
+func packWithBytes(ch commandHeader, args []byte) ([]byte, error) {
 	hdrSize := binary.Size(ch)
 	bodySize := len(args)
-	if bodySize < 0 {
-		return nil
-	}
 	ch.Size = uint32(hdrSize + bodySize)
-	cmdHdr, _ := pack([]interface{}{ch})
+
+	cmdHdr, err := pack([]interface{}{ch})
+	if err != nil {
+		return nil, err
+	}
 	cmd := append(cmdHdr, args...)
-	return cmd
+	return cmd, nil
 }
 
 // packWithHeader takes a header and a sequence of elements that are either of
 // fixed length or slices of fixed-length types and packs them into a single
 // byte array using binary.Write. It updates the CommandHeader to have the right
 // length.
-func packWithHeader(ch commandHeader, cmd []interface{}) ([]byte, error) {
+func packWithHeader(ch commandHeader, cmd ...interface{}) ([]byte, error) {
 	hdrSize := binary.Size(ch)
-	bodySize := packedSize(cmd)
-	if bodySize < 0 {
-		return nil, errors.New("couldn't compute packed size for message body")
+	bodySize, err := packedSize(cmd...)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't compute packed size for message body: %v", err)
 	}
 	ch.Size = uint32(hdrSize + bodySize)
 	in := []interface{}{ch}
@@ -155,7 +147,7 @@ func packType(buf io.Writer, elts []interface{}) error {
 		case reflect.Slice:
 			b, ok := e.([]byte)
 			if !ok {
-				return errors.New("can't pack slices of non-byte values")
+				return fmt.Errorf("only []byte slices are supported, got %T", e)
 			}
 
 			if err := binary.Write(buf, binary.BigEndian, uint16(len(b))); err != nil {
@@ -204,7 +196,7 @@ func unpackType(buf io.Reader, elts []interface{}) error {
 		v := reflect.ValueOf(e)
 		k := v.Kind()
 		if k != reflect.Ptr {
-			return errors.New("all values passed to unpack must be pointers")
+			return fmt.Errorf("all values passed to unpack must be pointers, got %v", k)
 		}
 
 		if v.IsNil() {
@@ -235,7 +227,7 @@ func unpackType(buf io.Reader, elts []interface{}) error {
 
 			b, ok := e.(*[]byte)
 			if !ok {
-				return errors.New("can't fill pointers to slices of non-byte values")
+				return fmt.Errorf("can't fill pointer to %T, only []byte slices", e)
 			}
 
 			resizeBytes(b, uint32(size))
