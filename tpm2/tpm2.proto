@@ -1,0 +1,191 @@
+// To compile: protoc -I=. --go_out=. tpm2.proto
+
+// Definition of protobufs for tpm2 applications
+syntax = "proto2";
+
+package tpm2;
+
+// TODO(jlm): More comments to describe fields needed.
+
+message private_key_blob_message {
+  required string key_type                    = 1;
+  optional string key_name                    = 2;
+  optional bytes blob                         = 3;
+}
+
+message rsa_public_key_message {
+  optional string key_name                    = 1;
+  required int32  bit_modulus_size            = 2;
+  required bytes  exponent                    = 3;
+  required bytes  modulus                     = 4;
+}
+
+message rsa_private_key_message {
+  required rsa_public_key_message public_key  = 1;
+  optional bytes  d                           = 2;
+  optional bytes  p                           = 3;
+  optional bytes  q                           = 4;
+  optional bytes  dp                          = 5;
+  optional bytes  dq                          = 6;
+}
+
+message asymmetric_key_message {
+  optional rsa_private_key_message key        = 1;
+}
+
+message public_key_message {
+  optional string key_type                    = 1;
+  optional rsa_public_key_message rsa_key     = 2;
+}
+
+message endorsement_key_message {
+  optional string machine_identifier          = 1;
+  optional bytes tpm2b_blob                   = 2;
+  optional bytes tpm2_name                    = 3;
+}
+
+message signing_instructions_message {
+  optional string issuer                      = 1;
+  optional int64 duration                     = 2;
+  optional string purpose                     = 3;
+  optional string date                        = 4;
+  optional string time                        = 5;
+  optional string sign_alg                    = 6;
+  optional string hash_alg                    = 7;
+  optional bool isCA                          = 8;
+  optional bool can_sign                      = 9;
+}
+
+message x509_cert_request_parameters_message {
+  required string common_name                 = 1;
+  optional string country_name                = 2;
+  optional string state_name                  = 3;
+  optional string locality_name               = 4;
+  optional string organization_name           = 5;
+  optional string suborganization_name        = 6;
+  optional public_key_message key             = 7;
+}
+
+message x509_cert_issuer_parameters_message {
+  required string common_name                 = 1;
+  optional string country_name                = 2;
+  optional string state_name                  = 3;
+  optional string locality_name               = 4;
+  optional string organization_name           = 5;
+  optional string suborganization_name        = 6;
+  optional string purpose                     = 7;
+  optional public_key_message key             = 8;
+}
+
+message cert_parameters_message {
+  optional x509_cert_request_parameters_message request = 1;
+  optional x509_cert_issuer_parameters_message signer   = 2;
+  optional string not_before                            = 3;
+  optional string not_after                             = 4;
+}
+
+message quote_key_info_message {
+  // public key parameters of "quote-key"
+  optional public_key_message public_key      = 1;
+  // Tpm2 name (hash) of the "quote-key" info
+  optional bytes  name                        = 2;
+  // objectAttributes of the "quote key"
+  optional int32  properties                  = 3;
+}
+
+// TODO(jlm): note this is just RSA parameters.  NOT USED.
+message program_key_parameters {
+  optional string program_name                = 1;
+  optional string program_key_type            = 2;
+  optional int32 program_bit_modulus_size     = 3;
+  optional bytes program_key_exponent         = 4;
+  optional bytes program_key_modulus          = 5;
+};
+
+message program_cert_request_message {
+  optional string request_id                     = 1;
+  optional bytes endorsement_cert_blob           = 2;
+  optional program_key_parameters program_key    = 3;
+  optional string quote_sign_alg                 = 4;
+  optional string quote_sign_hash_alg            = 5;
+  optional bytes quote_signature                = 6;
+  optional quote_key_info_message quote_key_info = 7;
+  optional bytes quoted_blob                     = 8;
+}
+
+message program_cert_response_message {
+  optional string request_id                  = 1;
+  optional string program_name                = 2;
+  optional string integrity_alg               = 3;
+  // outer HMAC, does not include size in buffer
+  // HMAC key is KDFa derived from seed and "INTEGRITY"
+  // This is a TPM2B_DIGEST and has a size.
+  optional bytes integrityHMAC                = 4;
+  // encIdentity, does not include size of encIdentity in buffer.
+  // encIdentity should be an encrypted correctly marshalled
+  // This is an encrypted TPM2B_DIGEST and has a size.
+  // encIdentity is always CFB Aes-128 encrypted
+  // with KDFa derived key derived from the "seed," "STORAGE" and
+  // the name of the quote key.
+  optional bytes encIdentity                  = 5;
+  // protector-key private-key encrypted seed || "IDENTITY" buffer
+  optional bytes secret                       = 6;
+  // Signed, der-encoded program cert CTR encrypted with
+  // secret in credential buffer.  TODO(jlm): should also
+  // contain an HMAC.
+  optional bytes encrypted_cert               = 7;
+  optional bytes encrypted_cert_hmac          = 8;
+}
+
+message certificate_chain_entry_message {
+  optional string subject_key_name            = 1;
+  optional string issuer_key_name             = 2;
+  optional string cert_type                   = 3;
+  optional bytes cert_blob                    = 4;
+}
+
+message certificate_chain_message {
+  repeated certificate_chain_entry_message entry  = 1;
+}
+
+message quote_certification_information {
+  optional bytes magic                        = 1;
+  optional bytes type                         = 2;
+  optional bytes qualifiedsigner              = 3;
+  optional bytes extraData                    = 4;
+  optional bytes clockinfo                    = 5;
+  optional int64 firmwareversion              = 6;
+  optional bytes pcr_selection                = 7;
+  optional bytes digest                       = 8;
+}
+
+// This is used to request a signed cert from the domain service for a tpm2 quote key.
+message AttestCertRequest {
+  optional bytes attest_blob= 1;
+  optional bytes sig_blob= 2;
+  // "rsa"
+  optional string key_type = 3;
+  // Tao name of the host.
+  optional string key_name = 4;
+  optional string hash_type = 5;
+  optional bytes tpm2_key_name = 6;
+  // MarshalPKIX... of quote key
+  optional bytes subject_public_key = 7;
+  optional bytes der_endorsement_cert = 8;
+  optional bytes cert_chain = 9;
+}
+
+// This is the response from the domain service with the encrypted attest cert.
+message AttestCertResponse {
+  required int32 error = 1;
+  // "hmacsha1"  Is this used now?
+  optional string integrity_alg = 2;
+  optional bytes integrity_hmac= 3;
+  optional bytes enc_identity = 4;
+  optional bytes encrypted_secret = 5;
+  optional bytes encrypted_cert = 6;
+  optional bytes encrypted_cert_hmac = 7;
+  repeated bytes cert_chain = 8;
+}
+
+
