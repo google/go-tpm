@@ -56,12 +56,12 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
-func constructHandle(handle Handle) ([]byte, error) {
+func encodeHandle(handle Handle) ([]byte, error) {
 	uh := uint32(handle)
 	return pack([]interface{}{&uh})
 }
 
-func constructPasswordData(password string) ([]byte, error) {
+func encodePasswordData(password string) ([]byte, error) {
 	pw, err := hex.DecodeString(password)
 	if err != nil {
 		return nil, err
@@ -70,13 +70,13 @@ func constructPasswordData(password string) ([]byte, error) {
 }
 
 // returns: len0 TPM_RS_PW 0000 01 password data as []byte
-func constructPasswordAuthArea(password string, owner Handle) ([]byte, error) {
-	ownerStr, err := constructHandle(owner)
+func encodePasswordAuthArea(password string, owner Handle) ([]byte, error) {
+	ownerStr, err := encodeHandle(owner)
 	if err != nil {
 		return nil, err
 	}
 	suffix := []byte{0, 0, 1}
-	pw, err := constructPasswordData(password)
+	pw, err := encodePasswordData(password)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func constructPasswordAuthArea(password string, owner Handle) ([]byte, error) {
 	return pack([]interface{}{&buf})
 }
 
-func constructSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
+func encodeSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
 	t1, err := pack([]interface{}{&in1})
 	if err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ func decodeRSAArea(in []byte) (*RSAParams, error) {
 	return decodeRSABuf(rsaBuf)
 }
 
-func constructKeyedHashParams(parms KeyedHashParams) ([]byte, error) {
+func encodeKeyedHashParams(parms KeyedHashParams) ([]byte, error) {
 	template := []interface{}{
 		&parms.TypeAlg,
 		&parms.HashAlg,
@@ -172,7 +172,7 @@ func constructKeyedHashParams(parms KeyedHashParams) ([]byte, error) {
 	return pack(template)
 }
 
-func constructRSAParams(parms RSAParams) ([]byte, error) {
+func encodeRSAParams(parms RSAParams) ([]byte, error) {
 	template := []interface{}{
 		&parms.EncAlg,
 		&parms.HashAlg,
@@ -219,7 +219,7 @@ func constructRSAParams(parms RSAParams) ([]byte, error) {
 	return pack(template5)
 }
 
-func constructShortPcrs(pcrNums []int) ([]byte, error) {
+func encodeShortPcrs(pcrNums []int) ([]byte, error) {
 	pcr := []byte{3, 0, 0, 0}
 	var byteNum int
 	var bytePos byte
@@ -231,11 +231,11 @@ func constructShortPcrs(pcrNums []int) ([]byte, error) {
 	return pcr, nil
 }
 
-func constructLongPCR(count uint32, pcrNums []int) ([]byte, error) {
+func encodeLongPCR(count uint32, pcrNums []int) ([]byte, error) {
 	if count == 0 {
 		return pack([]interface{}{&count})
 	}
-	b1, err := constructShortPcrs(pcrNums)
+	b1, err := encodeShortPcrs(pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func constructLongPCR(count uint32, pcrNums []int) ([]byte, error) {
 	return pack(template)
 }
 
-func constructGetRandom(size uint32) ([]byte, error) {
+func encodeGetRandom(size uint32) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdGetRandom}
 	return packWithHeader(cmdHdr, uint16(size))
 }
@@ -261,7 +261,7 @@ func decodeGetRandom(in []byte) ([]byte, error) {
 
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
-	cmd, err := constructGetRandom(size)
+	cmd, err := encodeGetRandom(size)
 	if err != nil {
 		return nil, err
 	}
@@ -278,13 +278,13 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	return rand, nil
 }
 
-func constructFlushContext(handle Handle) ([]byte, error) {
+func encodeFlushContext(handle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdFlushContext}
 	return packWithHeader(cmdHdr, uint32(handle))
 }
 
 func FlushContext(rw io.ReadWriter, handle Handle) error {
-	cmd, err := constructFlushContext(handle)
+	cmd, err := encodeFlushContext(handle)
 	if err != nil {
 		return fmt.Errorf("failed building command: %v", err)
 	}
@@ -304,8 +304,8 @@ func FlushAll(rw io.ReadWriter) error {
 	return nil
 }
 
-// constructReadPcrs constructs a ReadPcr command.
-func constructReadPcrs(numSpec int, pcrs []byte) ([]byte, error) {
+// encodeReadPcrs encodes a ReadPcr command.
+func encodeReadPcrs(numSpec int, pcrs []byte) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPCR_Read}
 	num := uint32(numSpec)
 	return packWithHeader(cmdHdr, &num, &pcrs)
@@ -330,7 +330,7 @@ func decodeReadPcrs(in []byte) (uint32, []byte, uint16, []byte, error) {
 // ReadPcr reads a PCR value from the TPM.
 // Output: updatecounter, selectout, digest
 func ReadPcrs(rw io.ReadWriter, PCRSelect []byte) (uint32, []byte, uint16, []byte, error) {
-	cmd, err := constructReadPcrs(1, PCRSelect)
+	cmd, err := encodeReadPcrs(1, PCRSelect)
 	if err != nil {
 		return 1, nil, 0, nil, err
 	}
@@ -346,8 +346,8 @@ func ReadPcrs(rw io.ReadWriter, PCRSelect []byte) (uint32, []byte, uint16, []byt
 	return counter, pcr, alg, digest, err
 }
 
-// constructReadClock constructs a ReadClock command.
-func constructReadClock() ([]byte, error) {
+// encodeReadClock encodes a ReadClock command.
+func encodeReadClock() ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdReadClock}
 	return packWithBytes(cmdHdr, nil)
 }
@@ -367,7 +367,7 @@ func decodeReadClock(in []byte) (uint64, uint64, error) {
 // ReadClock
 // Output: current time, current clock
 func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
-	cmd, err := constructReadClock()
+	cmd, err := encodeReadClock()
 	if err != nil {
 		return 0, 0, fmt.Errorf("building ReadClock command: %v", err)
 	}
@@ -382,8 +382,8 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	return curTime, curClock, nil
 }
 
-// constructGetCapabilities constructs a GetCapabilities command.
-func constructGetCapabilities(cap uint32, count uint32, property uint32) ([]byte, error) {
+// encodeGetCapabilities encodes a GetCapabilities command.
+func encodeGetCapabilities(cap uint32, count uint32, property uint32) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdGetCapability}
 	return packWithHeader(cmdHdr, &cap, &property, &count)
 }
@@ -419,7 +419,7 @@ func decodeGetCapabilities(in []byte) (uint32, []uint32, error) {
 // GetCapabilities
 // Output: output buf
 func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32) ([]uint32, error) {
-	cmd, err := constructGetCapabilities(cap, count, property)
+	cmd, err := encodeGetCapabilities(cap, count, property)
 	if err != nil {
 		return nil, err
 	}
@@ -434,8 +434,8 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	return handles, nil
 }
 
-// constructPcrEvent
-func constructPcrEvent(pcrNum int, eventData []byte) ([]byte, error) {
+// encodePcrEvent
+func encodePcrEvent(pcrNum int, eventData []byte) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdPcrEvent}
 	var empty []byte
 	pc := uint32(pcrNum)
@@ -443,7 +443,7 @@ func constructPcrEvent(pcrNum int, eventData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b2, err := constructPasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	b2, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +455,7 @@ func constructPcrEvent(pcrNum int, eventData []byte) ([]byte, error) {
 }
 
 func PcrEvent(rw io.ReadWriter, pcrNum int, eventData []byte) error {
-	cmd, err := constructPcrEvent(pcrNum, eventData)
+	cmd, err := encodePcrEvent(pcrNum, eventData)
 	if err != nil {
 		return err
 	}
@@ -463,11 +463,11 @@ func PcrEvent(rw io.ReadWriter, pcrNum int, eventData []byte) error {
 	return err
 }
 
-// constructCreatePrimary constructs a CreatePrimary command.
-func constructCreatePrimary(owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
+// encodeCreatePrimary encodes a CreatePrimary command.
+func encodeCreatePrimary(owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdCreatePrimary}
 	var empty []byte
-	b1, err := constructHandle(Handle(owner))
+	b1, err := encodeHandle(Handle(owner))
 	if err != nil {
 		return nil, err
 	}
@@ -475,19 +475,19 @@ func constructCreatePrimary(owner uint32, pcrNums []int, parentPassword, ownerPa
 	if err != nil {
 		return nil, err
 	}
-	b3, err := constructPasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
-	t1, err := constructPasswordData(ownerPassword)
+	t1, err := encodePasswordData(ownerPassword)
 	if err != nil {
 		return nil, err
 	}
-	b4, err := constructSensitiveArea(t1[2:], empty)
+	b4, err := encodeSensitiveArea(t1[2:], empty)
 	if err != nil {
 		return nil, err
 	}
-	b5, err := constructRSAParams(parms)
+	b5, err := encodeRSAParams(parms)
 	if err != nil {
 		return nil, err
 	}
@@ -497,9 +497,9 @@ func constructCreatePrimary(owner uint32, pcrNums []int, parentPassword, ownerPa
 	}
 	var b7 []byte
 	if len(pcrNums) > 0 {
-		b7, err = constructLongPCR(1, pcrNums)
+		b7, err = encodeLongPCR(1, pcrNums)
 	} else {
-		b7, err = constructLongPCR(0, pcrNums)
+		b7, err = encodeLongPCR(0, pcrNums)
 	}
 	if err != nil {
 		return nil, err
@@ -585,7 +585,7 @@ func decodeCreatePrimary(in []byte) (Handle, []byte, error) {
 // CreatePrimary
 // Output: handle, public key blob
 func CreatePrimary(rw io.ReadWriter, owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) (Handle, []byte, error) {
-	cmd, err := constructCreatePrimary(uint32(owner), pcrNums, parentPassword, ownerPassword, parms)
+	cmd, err := encodeCreatePrimary(uint32(owner), pcrNums, parentPassword, ownerPassword, parms)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -601,8 +601,8 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcrNums []int, parentPassword
 	return Handle(handle), publicBlob, nil
 }
 
-// constructReadPublic constructs a ReadPublic command.
-func constructReadPublic(handle Handle) ([]byte, error) {
+// encodeReadPublic encodes a ReadPublic command.
+func encodeReadPublic(handle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdReadPublic}
 	return packWithHeader(cmdHdr, uint32(handle))
 }
@@ -625,7 +625,7 @@ func decodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
 // ReadPublic
 // Output: key blob, name, qualified name
 func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error) {
-	cmd, err := constructReadPublic(handle)
+	cmd, err := encodeReadPublic(handle)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -641,11 +641,11 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	return publicBlob, name, qualifiedName, nil
 }
 
-// constructCreateKey constructs a CreateKey command.
-func constructCreateKey(owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
+// encodeCreateKey encodes a CreateKey command.
+func encodeCreateKey(owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdCreate}
 	var empty []byte
-	b1, err := constructHandle(Handle(owner))
+	b1, err := encodeHandle(Handle(owner))
 	if err != nil {
 		return nil, err
 	}
@@ -653,19 +653,19 @@ func constructCreateKey(owner uint32, pcrNums []int, parentPassword, ownerPasswo
 	if err != nil {
 		return nil, err
 	}
-	b3, err := constructPasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
-	t1, err := constructPasswordData(ownerPassword)
+	t1, err := encodePasswordData(ownerPassword)
 	if err != nil {
 		return nil, err
 	}
-	b4, err := constructSensitiveArea(t1[2:], empty)
+	b4, err := encodeSensitiveArea(t1[2:], empty)
 	if err != nil {
 		return nil, err
 	}
-	b5, err := constructRSAParams(parms)
+	b5, err := encodeRSAParams(parms)
 	if err != nil {
 		return nil, err
 	}
@@ -673,7 +673,7 @@ func constructCreateKey(owner uint32, pcrNums []int, parentPassword, ownerPasswo
 	if err != nil {
 		return nil, err
 	}
-	b7, err := constructLongPCR(uint32(1), pcrNums)
+	b7, err := encodeLongPCR(uint32(1), pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -702,7 +702,7 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 
 // Output: public blob, private blob, digest
 func CreateKey(rw io.ReadWriter, owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, []byte, error) {
-	cmd, err := constructCreateKey(uint32(owner), pcrNums, parentPassword, ownerPassword, parms)
+	cmd, err := encodeCreateKey(uint32(owner), pcrNums, parentPassword, ownerPassword, parms)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -717,18 +717,18 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcrNums []int, parentPassword, ow
 	return privateBlob, publicBlob, nil
 }
 
-// constructLoad constructs a Load command.
-func constructLoad(parentHandle Handle, parentAuth, ownerAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
+// encodeLoad encodes a Load command.
+func encodeLoad(parentHandle Handle, parentAuth, ownerAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdLoad}
-	b1, err := constructHandle(parentHandle)
+	b1, err := encodeHandle(parentHandle)
 	if err != nil {
 		return nil, err
 	}
-	b3, err := constructPasswordData(parentAuth)
+	b3, err := encodePasswordData(parentAuth)
 	if err != nil {
 		return nil, err
 	}
-	b4, err := constructPasswordAuthArea(ownerAuth, Handle(OrdTPM_RS_PW))
+	b4, err := encodePasswordAuthArea(ownerAuth, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -760,7 +760,7 @@ func decodeLoad(in []byte) (Handle, []byte, error) {
 // Load
 // Output: handle
 func Load(rw io.ReadWriter, parentHandle Handle, parentAuth, ownerAuth string, publicBlob, privateBlob []byte) (Handle, []byte, error) {
-	cmd, err := constructLoad(parentHandle, parentAuth, ownerAuth, publicBlob, privateBlob)
+	cmd, err := encodeLoad(parentHandle, parentAuth, ownerAuth, publicBlob, privateBlob)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -775,8 +775,8 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth, ownerAuth string, p
 	return handle, name, nil
 }
 
-// construct PolicyPcr command.
-func constructPolicyPcr(handle Handle, expectedDigest []byte, pcrNums []int) ([]byte, error) {
+// encode PolicyPcr command.
+func encodePolicyPcr(handle Handle, expectedDigest []byte, pcrNums []int) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPolicyPCR}
 	uHandle := uint32(handle)
 	template := []interface{}{&uHandle, &expectedDigest}
@@ -784,15 +784,15 @@ func constructPolicyPcr(handle Handle, expectedDigest []byte, pcrNums []int) ([]
 	if err != nil {
 		return nil, err
 	}
-	b2, err := constructLongPCR(1, pcrNums)
+	b2, err := encodeLongPCR(1, pcrNums)
 	if err != nil {
 		return nil, err
 	}
 	return packWithBytes(cmdHdr, append(b1, b2...))
 }
 
-// constructPolicyPassword constructs a PolicyPassword command.
-func constructPolicyPassword(handle Handle) ([]byte, error) {
+// encodePolicyPassword encodes a PolicyPassword command.
+func encodePolicyPassword(handle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPolicyPassword}
 	uHandle := uint32(handle)
 	template := []interface{}{&uHandle}
@@ -804,7 +804,7 @@ func constructPolicyPassword(handle Handle) ([]byte, error) {
 }
 
 func PolicyPassword(rw io.ReadWriter, handle Handle) error {
-	cmd, err := constructPolicyPassword(handle)
+	cmd, err := encodePolicyPassword(handle)
 	if err != nil {
 		return err
 	}
@@ -813,7 +813,7 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) error {
 }
 
 func PolicyPcr(rw io.ReadWriter, handle Handle, expectedDigest []byte, pcrNums []int) error {
-	cmd, err := constructPolicyPcr(handle, expectedDigest, pcrNums)
+	cmd, err := encodePolicyPcr(handle, expectedDigest, pcrNums)
 	if err != nil {
 		return err
 	}
@@ -821,8 +821,8 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expectedDigest []byte, pcrNums [
 	return err
 }
 
-// constructPolicyGetDigest constructs a PolicyGetDigest command.
-func constructPolicyGetDigest(handle Handle) ([]byte, error) {
+// encodePolicyGetDigest encodes a PolicyGetDigest command.
+func encodePolicyGetDigest(handle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPolicyGetDigest}
 	uHandle := uint32(handle)
 	template := []interface{}{&uHandle}
@@ -848,7 +848,7 @@ func decodePolicyGetDigest(in []byte) ([]byte, error) {
 // PolicyGetDigest
 // Output: digest
 func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
-	cmd, err := constructPolicyGetDigest(handle)
+	cmd, err := encodePolicyGetDigest(handle)
 	if err != nil {
 		return nil, err
 	}
@@ -864,14 +864,14 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	return digest, nil
 }
 
-// constructStartAuthSession constructs a StartAuthSession command.
-func constructStartAuthSession(tpmKey Handle, bindKey Handle, nonceCaller, secret []byte, se byte, sym, hashAlg uint16) ([]byte, error) {
+// encodeStartAuthSession encodes a StartAuthSession command.
+func encodeStartAuthSession(tpmKey Handle, bindKey Handle, nonceCaller, secret []byte, se byte, sym, hashAlg uint16) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdStartAuthSession}
-	b1, err := constructHandle(tpmKey)
+	b1, err := encodeHandle(tpmKey)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := constructHandle(bindKey)
+	b2, err := encodeHandle(bindKey)
 	if err != nil {
 		return nil, err
 	}
@@ -905,7 +905,7 @@ func decodeStartAuthSession(in []byte) (Handle, []byte, error) {
 }
 
 func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, secret []byte, se byte, sym, hashAlg uint16) (Handle, []byte, error) {
-	cmd, err := constructStartAuthSession(tpmKey, bindKey, nonceCaller, secret, se, sym, hashAlg)
+	cmd, err := encodeStartAuthSession(tpmKey, bindKey, nonceCaller, secret, se, sym, hashAlg)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -920,11 +920,11 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, sec
 	return handle, nonce, nil
 }
 
-// constructCreateSealed constructs a CreateSealed command.
-func constructCreateSealed(parent Handle, policyDigest []byte, parentPassword, ownerPassword string, toSeal []byte, pcrNums []int, parms KeyedHashParams) ([]byte, error) {
+// encodeCreateSealed encodes a CreateSealed command.
+func encodeCreateSealed(parent Handle, policyDigest []byte, parentPassword, ownerPassword string, toSeal []byte, pcrNums []int, parms KeyedHashParams) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdCreate}
 	var empty []byte
-	b1, err := constructHandle(parent)
+	b1, err := encodeHandle(parent)
 	if err != nil {
 		return nil, err
 	}
@@ -932,20 +932,20 @@ func constructCreateSealed(parent Handle, policyDigest []byte, parentPassword, o
 	if err != nil {
 		return nil, err
 	}
-	b3, err := constructPasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
-	t1, err := constructPasswordData(ownerPassword)
+	t1, err := encodePasswordData(ownerPassword)
 	if err != nil {
 		return nil, err
 	}
-	b4, err := constructSensitiveArea(t1[2:], toSeal)
+	b4, err := encodeSensitiveArea(t1[2:], toSeal)
 	if err != nil {
 		return nil, err
 	}
 	parms.AuthPolicy = policyDigest
-	b5, err := constructKeyedHashParams(parms)
+	b5, err := encodeKeyedHashParams(parms)
 	if err != nil {
 		return nil, err
 	}
@@ -957,7 +957,7 @@ func constructCreateSealed(parent Handle, policyDigest []byte, parentPassword, o
 	if err != nil {
 		return nil, err
 	}
-	b8, err := constructLongPCR(uint32(1), pcrNums)
+	b8, err := encodeLongPCR(uint32(1), pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -987,7 +987,7 @@ func decodeCreateSealed(in []byte) ([]byte, []byte, error) {
 // CreateSealed
 // 	Output: public blob, private blob
 func CreateSealed(rw io.ReadWriter, parent Handle, policyDigest []byte, parentPassword string, ownerPassword string, toSeal []byte, pcrNums []int, parms KeyedHashParams) ([]byte, []byte, error) {
-	cmd, err := constructCreateSealed(parent, policyDigest, parentPassword, ownerPassword, toSeal, pcrNums, parms)
+	cmd, err := encodeCreateSealed(parent, policyDigest, parentPassword, ownerPassword, toSeal, pcrNums, parms)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1002,8 +1002,8 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policyDigest []byte, parentPa
 	return handle, nonce, nil
 }
 
-// constructUnseal constructs a Unseal command.
-func constructUnseal(itemHandle Handle, password string, sessionHandle Handle) ([]byte, error) {
+// encodeUnseal encodes a Unseal command.
+func encodeUnseal(itemHandle Handle, password string, sessionHandle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdUnseal}
 	var empty []byte
 	handle1 := uint32(itemHandle)
@@ -1013,7 +1013,7 @@ func constructUnseal(itemHandle Handle, password string, sessionHandle Handle) (
 		return nil, err
 	}
 	sessionAttributes := uint8(1)
-	b2, err := constructPasswordAuthArea(password, sessionHandle)
+	b2, err := encodePasswordAuthArea(password, sessionHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -1036,7 +1036,7 @@ func decodeUnseal(in []byte) ([]byte, []byte, error) {
 }
 
 func Unseal(rw io.ReadWriter, itemHandle Handle, password string, sessionHandle Handle, digest []byte) ([]byte, []byte, error) {
-	cmd, err := constructUnseal(itemHandle, password, sessionHandle)
+	cmd, err := encodeUnseal(itemHandle, password, sessionHandle)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1051,11 +1051,11 @@ func Unseal(rw io.ReadWriter, itemHandle Handle, password string, sessionHandle 
 	return unsealed, nonce, nil
 }
 
-// constructQuote constructs a Quote command.
-func constructQuote(signingHandle Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg uint16) ([]byte, error) {
+// encodeQuote encodes a Quote command.
+func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg uint16) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdQuote}
 	var empty []byte
-	b1, err := constructHandle(signingHandle)
+	b1, err := encodeHandle(signingHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -1063,7 +1063,7 @@ func constructQuote(signingHandle Handle, parentPassword, ownerPassword string, 
 	if err != nil {
 		return nil, err
 	}
-	b3, err := constructPasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1071,7 +1071,7 @@ func constructQuote(signingHandle Handle, parentPassword, ownerPassword string, 
 	if err != nil {
 		return nil, err
 	}
-	b5, err := constructLongPCR(uint32(1), pcrNums)
+	b5, err := encodeLongPCR(uint32(1), pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -1109,7 +1109,7 @@ func decodeQuote(in []byte) ([]byte, uint16, uint16, []byte, error) {
 // Quote
 // 	Output: attest, sig
 func Quote(rw io.ReadWriter, signingHandle Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg uint16) ([]byte, []byte, error) {
-	cmd, err := constructQuote(signingHandle, parentPassword, ownerPassword, toQuote, pcrNums, sigAlg)
+	cmd, err := encodeQuote(signingHandle, parentPassword, ownerPassword, toQuote, pcrNums, sigAlg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1124,15 +1124,15 @@ func Quote(rw io.ReadWriter, signingHandle Handle, parentPassword, ownerPassword
 	return attest, sig, nil
 }
 
-// constructActivateCredential constructs a ActivateCredential command.
-func constructActivateCredential(activeHandle Handle, keyHandle Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
+// encodeActivateCredential encodes a ActivateCredential command.
+func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
 	var empty []byte
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdActivateCredential}
-	b1, err := constructHandle(activeHandle)
+	b1, err := encodeHandle(activeHandle)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := constructHandle(keyHandle)
+	b2, err := encodeHandle(keyHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -1140,11 +1140,11 @@ func constructActivateCredential(activeHandle Handle, keyHandle Handle, activePa
 	if err != nil {
 		return nil, err
 	}
-	b4a, err := constructPasswordAuthArea(activePassword, Handle(OrdTPM_RS_PW))
+	b4a, err := encodePasswordAuthArea(activePassword, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
-	b4b, err := constructPasswordAuthArea(protectorPassword, Handle(OrdTPM_RS_PW))
+	b4b, err := encodePasswordAuthArea(protectorPassword, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1187,7 +1187,7 @@ func decodeActivateCredential(in []byte) ([]byte, error) {
 // ActivateCredential
 // 	Output: certinfo
 func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
-	cmd, err := constructActivateCredential(activeHandle, keyHandle, activePassword, protectorPassword, credBlob, secret)
+	cmd, err := encodeActivateCredential(activeHandle, keyHandle, activePassword, protectorPassword, credBlob, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -1202,15 +1202,15 @@ func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle Handle, active
 	return cred, nil
 }
 
-// constructEvictControl constructs a EvictControl command.
-func constructEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byte, error) {
+// encodeEvictControl encodes a EvictControl command.
+func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byte, error) {
 	var empty []byte
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdEvictControl}
-	b1, err := constructHandle(owner)
+	b1, err := encodeHandle(owner)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := constructHandle(tmpHandle)
+	b2, err := encodeHandle(tmpHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -1218,11 +1218,11 @@ func constructEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]
 	if err != nil {
 		return nil, err
 	}
-	b4, err := constructPasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	b4, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
-	b5, err := constructHandle(persistantHandle)
+	b5, err := encodeHandle(persistantHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -1234,7 +1234,7 @@ func constructEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]
 }
 
 func EvictControl(rw io.ReadWriter, owner Handle, tmpHandle Handle, persistantHandle Handle) error {
-	cmd, err := constructEvictControl(owner, tmpHandle, persistantHandle)
+	cmd, err := encodeEvictControl(owner, tmpHandle, persistantHandle)
 	if err != nil {
 		return err
 	}
@@ -1242,10 +1242,10 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmpHandle Handle, persistantHa
 	return err
 }
 
-// constructSaveContext constructs a SaveContext command.
-func constructSaveContext(handle Handle) ([]byte, error) {
+// encodeSaveContext encodes a SaveContext command.
+func encodeSaveContext(handle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdContextSave}
-	b1, err := constructHandle(handle)
+	b1, err := encodeHandle(handle)
 	if err != nil {
 		return nil, err
 	}
@@ -1253,15 +1253,15 @@ func constructSaveContext(handle Handle) ([]byte, error) {
 }
 
 func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
-	cmd, err := constructSaveContext(handle)
+	cmd, err := encodeSaveContext(handle)
 	if err != nil {
 		return nil, err
 	}
 	return runCommand(rw, cmd)
 }
 
-// constructLoadContext constructs a LoadContext command.
-func constructLoadContext(saveArea []byte) ([]byte, error) {
+// encodeLoadContext encodes a LoadContext command.
+func encodeLoadContext(saveArea []byte) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdContextLoad}
 	return packWithBytes(cmdHdr, saveArea[0:len(saveArea)])
 }
@@ -1278,7 +1278,7 @@ func decodeLoadContext(in []byte) (Handle, error) {
 }
 
 func LoadContext(rw io.ReadWriter, saveArea []byte) (Handle, error) {
-	cmd, err := constructLoadContext(saveArea)
+	cmd, err := encodeLoadContext(saveArea)
 	if err != nil {
 		return 0, err
 	}
@@ -1293,10 +1293,10 @@ func LoadContext(rw io.ReadWriter, saveArea []byte) (Handle, error) {
 	return handle, nil
 }
 
-// constructMakeCredential constructs a MakeCredential command.
-func constructMakeCredential(protectorHandle Handle, credential, activeName []byte) ([]byte, error) {
+// encodeMakeCredential encodes a MakeCredential command.
+func encodeMakeCredential(protectorHandle Handle, credential, activeName []byte) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdMakeCredential}
-	b1, err := constructHandle(protectorHandle)
+	b1, err := encodeHandle(protectorHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -1322,7 +1322,7 @@ func decodeMakeCredential(in []byte) ([]byte, []byte, error) {
 }
 
 func MakeCredential(rw io.ReadWriter, protectorHandle Handle, credential, activeName []byte) ([]byte, []byte, error) {
-	cmd, err := constructMakeCredential(protectorHandle, credential, activeName)
+	cmd, err := encodeMakeCredential(protectorHandle, credential, activeName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1337,9 +1337,9 @@ func MakeCredential(rw io.ReadWriter, protectorHandle Handle, credential, active
 	return credBlob, encryptedSecret, nil
 }
 
-func constructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
+func encodeUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdUndefineSpace}
-	auth, err := constructPasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	auth, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1353,7 +1353,7 @@ func constructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
 }
 
 func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) error {
-	cmd, err := constructUndefineSpace(owner, handle)
+	cmd, err := encodeUndefineSpace(owner, handle)
 	if err != nil {
 		return err
 	}
@@ -1361,12 +1361,12 @@ func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) error {
 	return err
 }
 
-func constructDefineSpace(owner, handle Handle, authString string, attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
-	pw, err := constructPasswordData(authString)
+func encodeDefineSpace(owner, handle Handle, authString string, attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
+	pw, err := encodePasswordData(authString)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := constructPasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	auth, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1389,7 +1389,7 @@ func constructDefineSpace(owner, handle Handle, authString string, attributes ui
 }
 
 func DefineSpace(rw io.ReadWriter, owner, handle Handle, authString string, policy []byte, attributes uint32, dataSize uint16) error {
-	cmd, err := constructDefineSpace(owner, handle, authString, attributes, policy, dataSize)
+	cmd, err := encodeDefineSpace(owner, handle, authString, attributes, policy, dataSize)
 	if err != nil {
 		return err
 	}
@@ -1397,8 +1397,8 @@ func DefineSpace(rw io.ReadWriter, owner, handle Handle, authString string, poli
 	return err
 }
 
-func constructIncrementNv(handle Handle, authString string) ([]byte, error) {
-	auth, err := constructPasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+func encodeIncrementNv(handle Handle, authString string) ([]byte, error) {
+	auth, err := encodePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1414,7 +1414,7 @@ func constructIncrementNv(handle Handle, authString string) ([]byte, error) {
 }
 
 func IncrementNv(rw io.ReadWriter, handle Handle, authString string) error {
-	cmd, err := constructIncrementNv(handle, authString)
+	cmd, err := encodeIncrementNv(handle, authString)
 	if err != nil {
 		return err
 	}
@@ -1436,8 +1436,8 @@ func decodeReadNv(in []byte) (uint64, error) {
 	return c, nil
 }
 
-func constructReadNv(handle Handle, authString string, offset, dataSize uint16) ([]byte, error) {
-	auth, err := constructPasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+func encodeReadNv(handle Handle, authString string, offset, dataSize uint16) ([]byte, error) {
+	auth, err := encodePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1458,7 +1458,7 @@ func constructReadNv(handle Handle, authString string, offset, dataSize uint16) 
 }
 
 func ReadNv(rw io.ReadWriter, handle Handle, authString string, offset, dataSize uint16) (uint64, error) {
-	cmd, err := constructReadNv(handle, authString, offset, dataSize)
+	cmd, err := encodeReadNv(handle, authString, offset, dataSize)
 	if err != nil {
 		return 0, err
 	}

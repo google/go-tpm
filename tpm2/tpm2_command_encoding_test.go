@@ -20,12 +20,12 @@ import (
 	"testing"
 )
 
-func TestConstructGetRandom(t *testing.T) {
+func TestEncodeGetRandom(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80010000000c0000017b0010")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructGetRandom(16)
+	cmdBytes, err := encodeGetRandom(16)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,13 +53,13 @@ func TestDecodeGetRandom(t *testing.T) {
 	}
 }
 
-func TestConstructReadPcrs(t *testing.T) {
+func TestEncodeReadPcrs(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("8001000000140000017e00000001000403800000")
 	if err != nil {
 		t.Fatal(err)
 	}
 	pcrs := []byte{0x03, 0x80, 0x00, 0x00}
-	cmdBytes, err := constructReadPcrs(1, pcrs)
+	cmdBytes, err := encodeReadPcrs(1, pcrs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,12 +83,12 @@ func TestDecodeReadPcrs(t *testing.T) {
 	}
 }
 
-func TestConstructReadClock(t *testing.T) {
+func TestEncodeReadClock(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80010000000a00000181")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructReadClock()
+	cmdBytes, err := encodeReadClock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,12 +113,12 @@ func TestDecodeReadClock(t *testing.T) {
 	}
 }
 
-func TestConstructGetCapabilities(t *testing.T) {
+func TestEncodeGetCapabilities(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("8001000000160000017a000000018000000000000014")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructGetCapabilities(OrdTPM_CAP_HANDLES, 20, 0x80000000)
+	cmdBytes, err := encodeGetCapabilities(OrdTPM_CAP_HANDLES, 20, 0x80000000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,12 +147,12 @@ func TestDecodeGetCapabilities(t *testing.T) {
 	}
 }
 
-func TestConstructFlushContext(t *testing.T) {
+func TestEncodeFlushContext(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80010000000e0000016580000001")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructFlushContext(Handle(0x80000001))
+	cmdBytes, err := encodeFlushContext(Handle(0x80000001))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestConstructFlushContext(t *testing.T) {
 	}
 }
 
-func TestConstructLoad(t *testing.T) {
+func TestEncodeLoad(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("8002000000b300000157800000000000000d40000009000001000401020" +
 		"304005a0014450ecdce5f1ce202e4f8db15e2bde9a1241f85f30010faf6" +
 		"2244fedc13fe0abb526e64b10b2de030b6f02be278e23365ef663febe7e" +
@@ -173,9 +173,9 @@ func TestConstructLoad(t *testing.T) {
 	}
 	privateBlob := testCmdBytes[33:123]
 	publicBlob := testCmdBytes[125:]
-	cmdBytes, err := constructLoad(Handle(0x80000000), "", "01020304", publicBlob, privateBlob)
+	cmdBytes, err := encodeLoad(Handle(0x80000000), "", "01020304", publicBlob, privateBlob)
 	if err != nil {
-		t.Fatalf("constructLoad failed %s", err)
+		t.Fatalf("encodeLoad failed %s", err)
 	}
 	if !bytes.Equal(cmdBytes, testCmdBytes) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
@@ -201,7 +201,7 @@ func TestDecodeLoad(t *testing.T) {
 	}
 }
 
-func TestConstructCreatePrimary(t *testing.T) {
+func TestEncodeCreatePrimary(t *testing.T) {
 	var empty []byte
 	testCmdBytes, err := hex.DecodeString("80020000004d00000131400000010000000940000009000001000000080004010203040000001a0001000400030072000000060080004300100400000100010000000000000001000403800000")
 	if err != nil {
@@ -221,7 +221,7 @@ func TestConstructCreatePrimary(t *testing.T) {
 		uint32(0x00010001),
 		empty,
 	}
-	cmdBytes, err := constructCreatePrimary(uint32(OrdTPM_RH_OWNER), []int{7}, "", "01020304", parms)
+	cmdBytes, err := encodeCreatePrimary(uint32(OrdTPM_RH_OWNER), []int{7}, "", "01020304", parms)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,13 +258,13 @@ func TestDecodeCreatePrimary(t *testing.T) {
 	}
 }
 
-func TestConstructPolicyPcr(t *testing.T) {
+func TestEncodePolicyPcr(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80010000001a0000017f03000000000000000001000403800000")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var empty []byte
-	cmdBytes, err := constructPolicyPcr(Handle(0x03000000), empty, []int{7})
+	cmdBytes, err := encodePolicyPcr(Handle(0x03000000), empty, []int{7})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,12 +273,12 @@ func TestConstructPolicyPcr(t *testing.T) {
 	}
 }
 
-func TestConstructPolicyPassword(t *testing.T) {
+func TestEncodePolicyPassword(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80010000000e0000018c03000000")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructPolicyPassword(Handle(0x03000000))
+	cmdBytes, err := encodePolicyPassword(Handle(0x03000000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,12 +287,12 @@ func TestConstructPolicyPassword(t *testing.T) {
 	}
 }
 
-func TestConstructPolicyGetDigest(t *testing.T) {
+func TestEncodePolicyGetDigest(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80010000000e0000018903000000")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructPolicyGetDigest(Handle(0x03000000))
+	cmdBytes, err := encodePolicyGetDigest(Handle(0x03000000))
 	if !bytes.Equal(cmdBytes, testCmdBytes) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
@@ -313,7 +313,7 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 	}
 }
 
-func TestConstructStartAuthSession(t *testing.T) {
+func TestEncodeStartAuthSession(t *testing.T) {
 	// TODO(awly): fix this test
 	t.Skip()
 
@@ -324,7 +324,7 @@ func TestConstructStartAuthSession(t *testing.T) {
 	var nonceCaller []byte
 	var secret []byte
 	sym := uint16(AlgTPM_ALG_NULL)
-	cmdBytes, err := constructStartAuthSession(Handle(0x40000007), Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
+	cmdBytes, err := encodeStartAuthSession(Handle(0x40000007), Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +349,7 @@ func TestDecodeStartAuthSession(t *testing.T) {
 	}
 }
 
-func TestConstructCreateSealed(t *testing.T) {
+func TestEncodeCreateSealed(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80020000006900000153800000000000000d40000009000001000401020304001800040102030400100102030405060708090a0b0c0d0e0f100022000800040000001200140debb4cc9d2158cf7051a19ca24b31e35d53b64d00100000000000000001000403800000")
 	if err != nil {
 		t.Fatal(err)
@@ -361,7 +361,7 @@ func TestConstructCreateSealed(t *testing.T) {
 		uint16(AlgTPM_ALG_SHA1), uint32(0x00000012), empty,
 		uint16(AlgTPM_ALG_AES), uint16(128), uint16(AlgTPM_ALG_CFB),
 		uint16(AlgTPM_ALG_NULL), empty}
-	cmdBytes, err := constructCreateSealed(Handle(0x80000000), digest, "01020304", "01020304", toSeal, []int{7}, parms)
+	cmdBytes, err := encodeCreateSealed(Handle(0x80000000), digest, "01020304", "01020304", toSeal, []int{7}, parms)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +400,7 @@ func TestDecodeCreateSealed(t *testing.T) {
 	}
 }
 
-func TestConstructCreateKey(t *testing.T) {
+func TestEncodeCreateKey(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80020000004f00000153800000000000000d40000009000001000401020304000800040102030400000018000100040004007200000010001400040400000100010000000000000001000403800000")
 	if err != nil {
 		t.Fatal(err)
@@ -420,7 +420,7 @@ func TestConstructCreateKey(t *testing.T) {
 		uint32(0x00010001),
 		empty,
 	}
-	cmdBytes, err := constructCreateKey(uint32(OrdTPM_RH_OWNER), []int{7}, "", "01020304", parms)
+	cmdBytes, err := encodeCreateKey(uint32(OrdTPM_RH_OWNER), []int{7}, "", "01020304", parms)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -461,12 +461,12 @@ func TestDecodeCreateKey(t *testing.T) {
 	}
 }
 
-func TestConstructUnseal(t *testing.T) {
+func TestEncodeUnseal(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80020000001f0000015e800000010000000d03000000000001000401020304")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructUnseal(Handle(0x80000001), "01020304", Handle(0x03000000))
+	cmdBytes, err := encodeUnseal(Handle(0x80000001), "01020304", Handle(0x03000000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -491,13 +491,13 @@ func TestDecodeUnseal(t *testing.T) {
 	}
 }
 
-func TestConstructQuote(t *testing.T) {
+func TestEncodeQuote(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80020000003d00000158800000010000000d4000000900000100040102030400100102030405060708090a0b0c0d0e0f10001000000001000403800000")
 	if err != nil {
 		t.Fatal(err)
 	}
 	toQuote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmdBytes, err := constructQuote(Handle(0x80000001), "01020304", "", toQuote, []int{7}, 0x0010)
+	cmdBytes, err := encodeQuote(Handle(0x80000001), "01020304", "", toQuote, []int{7}, 0x0010)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -530,7 +530,7 @@ func TestDecodeQuote(t *testing.T) {
 	}
 }
 
-func TestConstructActivateCredential(t *testing.T) {
+func TestEncodeActivateCredential(t *testing.T) {
 	// TODO(awly): fix this test
 	t.Skip()
 
@@ -550,7 +550,7 @@ func TestConstructActivateCredential(t *testing.T) {
 	}
 	var credBlob []byte
 	var secret []byte
-	cmdBytes, err := constructActivateCredential(Handle(0x80000002), Handle(0x80000000), "", "", credBlob, secret)
+	cmdBytes, err := encodeActivateCredential(Handle(0x80000002), Handle(0x80000000), "", "", credBlob, secret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -559,12 +559,12 @@ func TestConstructActivateCredential(t *testing.T) {
 	}
 }
 
-func TestConstructReadPublic(t *testing.T) {
+func TestEncodeReadPublic(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80010000000e0000017380000000")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructReadPublic(Handle(0x80000000))
+	cmdBytes, err := encodeReadPublic(Handle(0x80000000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -602,12 +602,12 @@ func TestDecodeReadPublic(t *testing.T) {
 	}
 }
 
-func TestConstructEvictControl(t *testing.T) {
+func TestEncodeEvictControl(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("8002000000230000012040000001810003e800000009400000090000010000810003e8")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := constructEvictControl(Handle(0x40000001), Handle(0x810003e8), Handle(0x810003e8))
+	cmdBytes, err := encodeEvictControl(Handle(0x40000001), Handle(0x810003e8), Handle(0x810003e8))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -616,9 +616,9 @@ func TestConstructEvictControl(t *testing.T) {
 	}
 }
 
-func TestConstructShortPcrs(t *testing.T) {
+func TestEncodeShortPcrs(t *testing.T) {
 	pcrNums := []int{7, 8}
-	pcr, err := constructShortPcrs(pcrNums)
+	pcr, err := encodeShortPcrs(pcrNums)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,8 +628,8 @@ func TestConstructShortPcrs(t *testing.T) {
 	}
 }
 
-func TestConstructHandle(t *testing.T) {
-	hand, err := constructHandle(Handle(OrdTPM_RH_OWNER))
+func TestEncodeHandle(t *testing.T) {
+	hand, err := encodeHandle(Handle(OrdTPM_RH_OWNER))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -639,8 +639,8 @@ func TestConstructHandle(t *testing.T) {
 	}
 }
 
-func TestConstructPasswordData(t *testing.T) {
-	pw, err := constructPasswordData("01020304")
+func TestEncodePasswordData(t *testing.T) {
+	pw, err := encodePasswordData("01020304")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,7 +648,7 @@ func TestConstructPasswordData(t *testing.T) {
 	if !bytes.Equal(want, pw) {
 		t.Fatalf("got: %v, want: %v", pw, want)
 	}
-	pw, err = constructPasswordData("0102030405")
+	pw, err = encodePasswordData("0102030405")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -658,8 +658,8 @@ func TestConstructPasswordData(t *testing.T) {
 	}
 }
 
-func TestConstructPasswordAuthArea(t *testing.T) {
-	pwAuth, err := constructPasswordAuthArea("01020304", Handle(OrdTPM_RS_PW))
+func TestEncodePasswordAuthArea(t *testing.T) {
+	pwAuth, err := encodePasswordAuthArea("01020304", Handle(OrdTPM_RS_PW))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,7 +668,7 @@ func TestConstructPasswordAuthArea(t *testing.T) {
 		t.Fatalf("got: %v, want: %v", pwAuth, want)
 	}
 
-	pwAuth, err = constructPasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	pwAuth, err = encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -678,10 +678,10 @@ func TestConstructPasswordAuthArea(t *testing.T) {
 	}
 }
 
-func TestConstructSensitiveArea(t *testing.T) {
+func TestEncodeSensitiveArea(t *testing.T) {
 	a1 := []byte{1, 2, 3, 4}
 	var a2 []byte
-	s, err := constructSensitiveArea(a1, a2)
+	s, err := encodeSensitiveArea(a1, a2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -691,7 +691,7 @@ func TestConstructSensitiveArea(t *testing.T) {
 	}
 }
 
-func TestConstructRSAParams(t *testing.T) {
+func TestEncodeRSAParams(t *testing.T) {
 	var empty []byte
 	parms := RSAParams{
 		uint16(AlgTPM_ALG_RSA),
@@ -708,14 +708,14 @@ func TestConstructRSAParams(t *testing.T) {
 		empty,
 	}
 
-	_, err := constructRSAParams(parms)
+	_, err := encodeRSAParams(parms)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestConstructLongPcr(t *testing.T) {
-	s, err := constructLongPCR(uint32(1), []int{7})
+func TestEncodeLongPcr(t *testing.T) {
+	s, err := encodeLongPCR(uint32(1), []int{7})
 	if err != nil {
 		t.Fatal(err)
 	}
