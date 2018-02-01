@@ -243,13 +243,11 @@ func constructLongPCR(count uint32, pcrNums []int) ([]byte, error) {
 	return pack(template)
 }
 
-// constructGetRandom constructs a GetRandom command.
 func constructGetRandom(size uint32) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdGetRandom}
 	return packWithHeader(cmdHdr, uint16(size))
 }
 
-// decodeGetRandom decodes a GetRandom response.
 func decodeGetRandom(in []byte) ([]byte, error) {
 	var randBytes []byte
 
@@ -280,7 +278,6 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	return rand, nil
 }
 
-// constructFlushContext constructs a FlushContext command.
 func constructFlushContext(handle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdFlushContext}
 	return packWithHeader(cmdHdr, uint32(handle))
@@ -293,6 +290,18 @@ func FlushContext(rw io.ReadWriter, handle Handle) error {
 	}
 	_, err = runCommand(rw, cmd)
 	return err
+}
+
+// FlushAll queries the TPM for all open handles and flushes them.
+func FlushAll(rw io.ReadWriter) error {
+	handles, err := GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
+	if err != nil {
+		return err
+	}
+	for _, e := range handles {
+		FlushContext(rw, Handle(e))
+	}
+	return nil
 }
 
 // constructReadPcrs constructs a ReadPcr command.
@@ -452,17 +461,6 @@ func PcrEvent(rw io.ReadWriter, pcrNum int, eventData []byte) error {
 	}
 	_, err = runCommand(rw, cmd)
 	return err
-}
-
-func FlushAll(rw io.ReadWriter) error {
-	handles, err := GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
-	if err != nil {
-		return err
-	}
-	for _, e := range handles {
-		FlushContext(rw, Handle(e))
-	}
-	return nil
 }
 
 // constructCreatePrimary constructs a CreatePrimary command.
@@ -1323,8 +1321,6 @@ func decodeMakeCredential(in []byte) ([]byte, []byte, error) {
 	return credBlob, encryptedSecret, nil
 }
 
-// MakeCredential
-// 	Output: blob, secret
 func MakeCredential(rw io.ReadWriter, protectorHandle Handle, credential, activeName []byte) ([]byte, []byte, error) {
 	cmd, err := constructMakeCredential(protectorHandle, credential, activeName)
 	if err != nil {
@@ -1471,30 +1467,6 @@ func ReadNv(rw io.ReadWriter, handle Handle, authString string, offset, dataSize
 		return 0, err
 	}
 	return decodeReadNv(resp)
-}
-
-func GetCounter(rw io.ReadWriter, nvHandle Handle, authString string) (int64, error) {
-	c, err := ReadNv(rw, nvHandle, authString, 0, 8)
-	if err != nil {
-		return 0, err
-	}
-	return int64(c), nil
-}
-
-func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) error {
-	owner := Handle(OrdTPM_RH_OWNER)
-	dataSize := uint16(8)
-	var tpmPolicy []byte // empty
-	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
-	err := UndefineSpace(rw, owner, nvHandle)
-	if err != nil {
-		return fmt.Errorf("UndefineSpace: %v", err)
-	}
-	err = DefineSpace(rw, owner, nvHandle, authString, tpmPolicy, attributes, dataSize)
-	if err != nil {
-		return fmt.Errorf("DefineSpace: %v", err)
-	}
-	return IncrementNv(rw, nvHandle, authString)
 }
 
 func Hash(rw io.ReadWriter, alg uint16, buf []byte) ([]byte, error) {
