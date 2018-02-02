@@ -115,6 +115,7 @@ const (
 
 // Supported TPM operations.
 const (
+	// TODO(awly): match names to TPM spec
 	cmdEvictControl       uint32 = 0x00000120
 	cmdClockSet           uint32 = 0x00000128
 	cmdPCR_Allocate       uint32 = 0x0000012B
@@ -144,6 +145,7 @@ const (
 	cmdPcrEvent           uint32 = 0x0000013C
 	cmdDefineSpace        uint32 = 0x0000012A
 	cmdUndefineSpace      uint32 = 0x00000122
+	cmdReadPublicNv       uint32 = 0x00000169
 	cmdReadNv             uint32 = 0x0000014E
 	cmdWriteNv            uint32 = 0x00000137
 	cmdIncrementNvCounter uint32 = 0x00000134

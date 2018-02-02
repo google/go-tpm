@@ -80,3 +80,11 @@ type AttestParams struct {
 	PCRSelect       []byte
 	PCRDigest       []byte
 }
+
+type NVPublic struct {
+	NVIndex    Handle
+	NameAlg    uint16
+	Attributes uint32
+	AuthPolicy []byte
+	DataSize   uint16
+}

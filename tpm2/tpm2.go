@@ -1422,51 +1422,74 @@ func IncrementNv(rw io.ReadWriter, handle Handle, authString string) error {
 	return err
 }
 
-func decodeReadNv(in []byte) (uint64, error) {
-	var respSize uint32
-	var byteCounter []byte
-	err := unpack(in, []interface{}{&respSize, &byteCounter})
-	if err != nil {
-		return 0, err
-	}
-	var c uint64
-	for i := 0; i < len(byteCounter); i++ {
-		c = c*256 + uint64(byteCounter[i])
-	}
-	return c, nil
+func encodeNVReadPublic(handle Handle) ([]byte, error) {
+	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdReadPublicNv}
+	return packWithHeader(cmdHdr, handle)
 }
 
-func encodeReadNv(handle Handle, authString string, offset, dataSize uint16) ([]byte, error) {
+func decodeNVReadPublic(in []byte) (NVPublic, error) {
+	var pub NVPublic
+	var buf []byte
+	if err := unpack(in, []interface{}{&buf}); err != nil {
+		return pub, err
+	}
+	err := unpack(buf, []interface{}{&pub})
+	return pub, err
+}
+
+func decodeNVRead(in []byte) ([]byte, error) {
+	var sessionAttributes uint32
+	var data []byte
+	if err := unpack(in, []interface{}{&sessionAttributes, &data}); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func encodeNVRead(handle Handle, authString string, offset, dataSize uint16) ([]byte, error) {
+	out, err := pack([]interface{}{uint32(handle), int32(handle), []byte(nil)})
+	if err != nil {
+		return nil, err
+	}
 	auth, err := encodePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
-	var empty []byte
-	numBytes := []interface{}{uint32(handle), int32(handle), empty}
-	out, err := pack(numBytes)
-	if err != nil {
-		return nil, err
-	}
 	out = append(out, auth...)
-	numBytes2 := []interface{}{dataSize, offset}
-	out2, err := pack(numBytes2)
+	params, err := pack([]interface{}{dataSize, offset})
 	if err != nil {
 		return nil, err
 	}
+	out = append(out, params...)
 	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdReadNv}
-	return packWithBytes(cmdHdr, append(out, out2...))
+	return packWithBytes(cmdHdr, out)
 }
 
-func ReadNv(rw io.ReadWriter, handle Handle, authString string, offset, dataSize uint16) (uint64, error) {
-	cmd, err := encodeReadNv(handle, authString, offset, dataSize)
+func NVRead(rw io.ReadWriter, index Handle) ([]byte, error) {
+	// Read public area to determine data size.
+	cmd, err := encodeNVReadPublic(index)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("building NV_ReadPublic command: %v", err)
 	}
 	resp, err := runCommand(rw, cmd)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("running NV_ReadPublic command: %v", err)
 	}
-	return decodeReadNv(resp)
+	pub, err := decodeNVReadPublic(resp)
+	if err != nil {
+		return nil, fmt.Errorf("decoding NV_ReadPublic response: %v", err)
+	}
+
+	// Read pub.DataSize of actual data.
+	cmd, err = encodeNVRead(index, "", 0, pub.DataSize)
+	if err != nil {
+		return nil, fmt.Errorf("building NV_Read command: %v", err)
+	}
+	resp, err = runCommand(rw, cmd)
+	if err != nil {
+		return nil, fmt.Errorf("running NV_Read command: %v", err)
+	}
+	return decodeNVRead(resp)
 }
 
 func Hash(rw io.ReadWriter, alg uint16, buf []byte) ([]byte, error) {
