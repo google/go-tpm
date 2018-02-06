@@ -14,10 +14,6 @@
 
 package tpm2
 
-import (
-	"fmt"
-)
-
 // A Handle is a 32-bit unsigned integer.
 type Handle uint32
 
@@ -26,11 +22,6 @@ type commandHeader struct {
 	Tag  uint16
 	Size uint32
 	Cmd  uint32
-}
-
-// String returns a string version of a commandHeader
-func (ch commandHeader) String() string {
-	return fmt.Sprintf("commandHeader{Tag: %x, Size: %x, Cmd: %x}", ch.Tag, ch.Size, ch.Cmd)
 }
 
 // A responseHeader is a header for TPM responses.
@@ -65,20 +56,6 @@ type KeyedHashParams struct {
 	Mode       uint16
 	Scheme     uint16
 	Unique     []byte
-}
-
-type AttestParams struct {
-	MagicNumber     uint32
-	AttestType      uint16
-	Name            []byte
-	Data            []byte
-	Clock           uint64
-	ResetCount      uint32
-	RestartCount    uint32
-	Safe            byte
-	FirmwareVersion uint64
-	PCRSelect       []byte
-	PCRDigest       []byte
 }
 
 type NVPublic struct {

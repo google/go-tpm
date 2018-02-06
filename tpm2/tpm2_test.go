@@ -45,7 +45,7 @@ func TestGetRandom(t *testing.T) {
 	}
 }
 
-func TestReadPcrs(t *testing.T) {
+func TestReadPCRs(t *testing.T) {
 	if !*runIntegration {
 		t.SkipNow()
 	}
@@ -57,9 +57,9 @@ func TestReadPcrs(t *testing.T) {
 	FlushAll(rw)
 
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
-	_, _, _, _, err = ReadPcrs(rw, pcr)
+	_, _, _, _, err = ReadPCRs(rw, pcr)
 	if err != nil {
-		t.Fatalf("ReadPcrs failed: %s", err)
+		t.Fatalf("ReadPCRs failed: %s", err)
 	}
 }
 
@@ -92,7 +92,7 @@ func TestGetCapabilities(t *testing.T) {
 	defer rw.Close()
 	FlushAll(rw)
 
-	_, err = GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
+	_, err = GetCapabilities(rw, TPM_CAP_HANDLES, 1, 0x80000000)
 	if err != nil {
 		t.Fatalf("GetCapabilities failed: %s", err)
 	}
@@ -115,33 +115,33 @@ func TestCombinedKeyTest(t *testing.T) {
 
 	var empty []byte
 	primaryparms := RSAParams{
-		uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_RSA),
+		uint16(TPM_ALG_SHA1),
 		uint32(0x00030072),
 		empty,
-		uint16(AlgTPM_ALG_AES),
+		uint16(TPM_ALG_AES),
 		uint16(128),
-		uint16(AlgTPM_ALG_CFB),
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_CFB),
+		uint16(TPM_ALG_NULL),
 		uint16(0),
 		uint16(1024),
 		uint32(0x00010001),
 		empty,
 	}
-	parentHandle, publicBlob, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+	parentHandle, publicBlob, err := CreatePrimary(rw, uint32(TPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 
 	keyparms := RSAParams{
-		uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_RSA),
+		uint16(TPM_ALG_SHA1),
 		uint32(0x00030072),
 		empty,
-		uint16(AlgTPM_ALG_AES),
+		uint16(TPM_ALG_AES),
 		uint16(128),
-		uint16(AlgTPM_ALG_CFB),
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_CFB),
+		uint16(TPM_ALG_NULL),
 		uint16(0),
 		uint16(1024),
 		uint32(0x00010001),
@@ -187,31 +187,31 @@ func TestCombinedSealTest(t *testing.T) {
 
 	var empty []byte
 	primaryparms := RSAParams{
-		uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_RSA),
+		uint16(TPM_ALG_SHA1),
 		uint32(0x00030072),
 		empty,
-		uint16(AlgTPM_ALG_AES),
+		uint16(TPM_ALG_AES),
 		uint16(128),
-		uint16(AlgTPM_ALG_CFB),
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_CFB),
+		uint16(TPM_ALG_NULL),
 		uint16(0),
 		uint16(1024),
 		uint32(0x00010001),
 		empty,
 	}
-	parentHandle, publicBlob, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+	parentHandle, publicBlob, err := CreatePrimary(rw, uint32(TPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 
 	nonceCaller := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	var secret []byte
-	sym := uint16(AlgTPM_ALG_NULL)
+	sym := uint16(TPM_ALG_NULL)
 	toSeal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
-	hashAlg := uint16(AlgTPM_ALG_SHA1)
+	hashAlg := uint16(TPM_ALG_SHA1)
 
-	sessionHandle, policyDigest, err := StartAuthSession(rw, Handle(OrdTPM_RH_NULL), Handle(OrdTPM_RH_NULL), nonceCaller, secret, uint8(OrdTPM_SE_POLICY), sym, hashAlg)
+	sessionHandle, policyDigest, err := StartAuthSession(rw, Handle(TPM_RH_NULL), Handle(TPM_RH_NULL), nonceCaller, secret, uint8(TPM_SE_POLICY), sym, hashAlg)
 	if err != nil {
 		FlushContext(rw, parentHandle)
 		t.Fatalf("StartAuthSession failed: %s", err)
@@ -221,32 +221,32 @@ func TestCombinedSealTest(t *testing.T) {
 	if err != nil {
 		FlushContext(rw, parentHandle)
 		FlushContext(rw, sessionHandle)
-		t.Fatalf("PolicyPcr failed: %s", err)
+		t.Fatalf("PolicyPCR failed: %s", err)
 	}
 	var tpmDigest []byte
-	err = PolicyPcr(rw, sessionHandle, tpmDigest, []int{7})
+	err = PolicyPCR(rw, sessionHandle, tpmDigest, []int{7})
 	if err != nil {
 		FlushContext(rw, parentHandle)
 		FlushContext(rw, sessionHandle)
-		t.Fatalf("PolicyPcr failed: %s", err)
+		t.Fatalf("PolicyPCR failed: %s", err)
 	}
 
 	policyDigest, err = PolicyGetDigest(rw, sessionHandle)
 	if err != nil {
 		FlushContext(rw, parentHandle)
 		FlushContext(rw, sessionHandle)
-		t.Fatalf("PolicyGetDigest after PolicyPcr failed: %s", err)
+		t.Fatalf("PolicyGetDigest after PolicyPCR failed: %s", err)
 	}
 
 	keyedhashparms := KeyedHashParams{
-		uint16(AlgTPM_ALG_KEYEDHASH),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_KEYEDHASH),
+		uint16(TPM_ALG_SHA1),
 		uint32(0x00000012),
 		empty,
-		uint16(AlgTPM_ALG_AES),
+		uint16(TPM_ALG_AES),
 		uint16(128),
-		uint16(AlgTPM_ALG_CFB),
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_CFB),
+		uint16(TPM_ALG_NULL),
 		empty,
 	}
 	privateBlob, publicBlob, err := CreateSealed(rw, parentHandle, policyDigest, "01020304", "01020304", toSeal, []int{7}, keyedhashparms)
@@ -297,33 +297,33 @@ func TestCombinedEndorsementTest(t *testing.T) {
 
 	var empty []byte
 	primaryparms := RSAParams{
-		uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_RSA),
+		uint16(TPM_ALG_SHA1),
 		uint32(0x00030072),
 		empty,
-		uint16(AlgTPM_ALG_AES),
+		uint16(TPM_ALG_AES),
 		uint16(128),
-		uint16(AlgTPM_ALG_CFB),
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_CFB),
+		uint16(TPM_ALG_NULL),
 		uint16(0),
 		uint16(2048),
 		uint32(0x00010001),
 		empty,
 	}
-	parentHandle, publicBlob, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
+	parentHandle, publicBlob, err := CreatePrimary(rw, uint32(TPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 
 	keyparms := RSAParams{
-		uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_RSA),
+		uint16(TPM_ALG_SHA1),
 		uint32(0x00030072),
 		empty,
-		uint16(AlgTPM_ALG_AES),
+		uint16(TPM_ALG_AES),
 		uint16(128),
-		uint16(AlgTPM_ALG_CFB),
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_CFB),
+		uint16(TPM_ALG_NULL),
 		uint16(0),
 		uint16(2048),
 		uint32(0x00010001),
@@ -389,20 +389,20 @@ func TestCombinedContextTest(t *testing.T) {
 
 	var empty []byte
 	primaryparms := RSAParams{
-		uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_RSA),
+		uint16(TPM_ALG_SHA1),
 		FlagStorageDefault,
 		empty,
-		uint16(AlgTPM_ALG_AES),
+		uint16(TPM_ALG_AES),
 		uint16(128),
-		uint16(AlgTPM_ALG_CFB),
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_CFB),
+		uint16(TPM_ALG_NULL),
 		uint16(0),
 		keySize,
 		uint32(0x00010001),
 		empty,
 	}
-	rootHandle, _, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
+	rootHandle, _, err := CreatePrimary(rw, uint32(TPM_RH_OWNER), pcrs, "", "", primaryparms)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %v", err)
 	}
@@ -410,15 +410,15 @@ func TestCombinedContextTest(t *testing.T) {
 
 	// CreateKey (Quote Key)
 	keyparms := RSAParams{
-		uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_RSA),
+		uint16(TPM_ALG_SHA1),
 		FlagSignerDefault,
 		empty,
-		uint16(AlgTPM_ALG_NULL),
+		uint16(TPM_ALG_NULL),
 		uint16(0),
-		uint16(AlgTPM_ALG_ECB),
-		uint16(AlgTPM_ALG_RSASSA),
-		uint16(AlgTPM_ALG_SHA1),
+		uint16(TPM_ALG_ECB),
+		uint16(TPM_ALG_RSASSA),
+		uint16(TPM_ALG_SHA1),
 		keySize,
 		uint32(0x00010001),
 		empty,

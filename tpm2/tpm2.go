@@ -16,6 +16,7 @@
 package tpm2
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -114,7 +115,7 @@ func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
 		return nil, err
 	}
 	current += 2
-	if parms.SymAlg != uint16(AlgTPM_ALG_NULL) {
+	if parms.SymAlg != uint16(TPM_ALG_NULL) {
 		template = []interface{}{&parms.SymSize, &parms.Mode}
 		err = unpack(rsaBuf[current:], template)
 		if err != nil {
@@ -132,7 +133,7 @@ func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
 		return nil, err
 	}
 	current += 2
-	if parms.Scheme == uint16(AlgTPM_ALG_RSASSA) {
+	if parms.Scheme == uint16(TPM_ALG_RSASSA) {
 		template = []interface{}{&parms.SchemeHash}
 		err = unpack(rsaBuf[current:], template)
 		if err != nil {
@@ -184,7 +185,7 @@ func encodeRSAParams(parms RSAParams) ([]byte, error) {
 		return nil, err
 	}
 
-	if parms.SymAlg != uint16(AlgTPM_ALG_NULL) {
+	if parms.SymAlg != uint16(TPM_ALG_NULL) {
 		template = []interface{}{
 			&parms.SymAlg,
 			&parms.SymSize,
@@ -198,7 +199,7 @@ func encodeRSAParams(parms RSAParams) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if parms.Scheme == uint16(AlgTPM_ALG_RSASSA) {
+	if parms.Scheme == uint16(TPM_ALG_RSASSA) {
 		template3 := []interface{}{&parms.SchemeHash}
 		t3, err := pack(template3)
 		if err != nil {
@@ -219,7 +220,7 @@ func encodeRSAParams(parms RSAParams) ([]byte, error) {
 	return pack(template5)
 }
 
-func encodeShortPcrs(pcrNums []int) ([]byte, error) {
+func encodeShortPCRs(pcrNums []int) ([]byte, error) {
 	pcr := []byte{3, 0, 0, 0}
 	var byteNum int
 	var bytePos byte
@@ -235,7 +236,7 @@ func encodeLongPCR(count uint32, pcrNums []int) ([]byte, error) {
 	if count == 0 {
 		return pack([]interface{}{&count})
 	}
-	b1, err := encodeShortPcrs(pcrNums)
+	b1, err := encodeShortPCRs(pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +245,7 @@ func encodeLongPCR(count uint32, pcrNums []int) ([]byte, error) {
 }
 
 func encodeGetRandom(size uint32) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdGetRandom}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdGetRandom}
 	return packWithHeader(cmdHdr, uint16(size))
 }
 
@@ -279,7 +280,7 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 }
 
 func encodeFlushContext(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdFlushContext}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdFlushContext}
 	return packWithHeader(cmdHdr, uint32(handle))
 }
 
@@ -294,7 +295,7 @@ func FlushContext(rw io.ReadWriter, handle Handle) error {
 
 // FlushAll queries the TPM for all open handles and flushes them.
 func FlushAll(rw io.ReadWriter) error {
-	handles, err := GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
+	handles, err := GetCapabilities(rw, TPM_CAP_HANDLES, 1, 0x80000000)
 	if err != nil {
 		return err
 	}
@@ -304,15 +305,15 @@ func FlushAll(rw io.ReadWriter) error {
 	return nil
 }
 
-// encodeReadPcrs encodes a ReadPcr command.
-func encodeReadPcrs(numSpec int, pcrs []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPCR_Read}
+// encodeReadPCRs encodes a ReadPCR command.
+func encodeReadPCRs(numSpec int, pcrs []byte) ([]byte, error) {
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPCR_Read}
 	num := uint32(numSpec)
 	return packWithHeader(cmdHdr, &num, &pcrs)
 }
 
-// decodeReadPcrs decodes a ReadPcr response.
-func decodeReadPcrs(in []byte) (uint32, []byte, uint16, []byte, error) {
+// decodeReadPCRs decodes a ReadPCR response.
+func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
 	var pcr []byte
 	var digest []byte
 	var updateCounter uint32
@@ -327,10 +328,10 @@ func decodeReadPcrs(in []byte) (uint32, []byte, uint16, []byte, error) {
 	return updateCounter, pcr, uint16(t), digest, nil
 }
 
-// ReadPcr reads a PCR value from the TPM.
+// ReadPCR reads a PCR value from the TPM.
 // Output: updatecounter, selectout, digest
-func ReadPcrs(rw io.ReadWriter, PCRSelect []byte) (uint32, []byte, uint16, []byte, error) {
-	cmd, err := encodeReadPcrs(1, PCRSelect)
+func ReadPCRs(rw io.ReadWriter, PCRSelect []byte) (uint32, []byte, uint16, []byte, error) {
+	cmd, err := encodeReadPCRs(1, PCRSelect)
 	if err != nil {
 		return 1, nil, 0, nil, err
 	}
@@ -339,7 +340,7 @@ func ReadPcrs(rw io.ReadWriter, PCRSelect []byte) (uint32, []byte, uint16, []byt
 		return 0, nil, 0, nil, err
 	}
 
-	counter, pcr, alg, digest, err := decodeReadPcrs(resp)
+	counter, pcr, alg, digest, err := decodeReadPCRs(resp)
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
@@ -348,7 +349,7 @@ func ReadPcrs(rw io.ReadWriter, PCRSelect []byte) (uint32, []byte, uint16, []byt
 
 // encodeReadClock encodes a ReadClock command.
 func encodeReadClock() ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdReadClock}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdReadClock}
 	return packWithBytes(cmdHdr, nil)
 }
 
@@ -384,7 +385,7 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 
 // encodeGetCapabilities encodes a GetCapabilities command.
 func encodeGetCapabilities(cap uint32, count uint32, property uint32) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdGetCapability}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdGetCapability}
 	return packWithHeader(cmdHdr, &cap, &property, &count)
 }
 
@@ -398,9 +399,9 @@ func decodeGetCapabilities(in []byte) (uint32, []uint32, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	// only OrdTPM_CAP_HANDLES handled
-	if capReported != OrdTPM_CAP_HANDLES {
-		return 0, nil, fmt.Errorf("Only OrdTPM_CAP_HANDLES supported, got %v", capReported)
+	// only TPM_CAP_HANDLES handled
+	if capReported != TPM_CAP_HANDLES {
+		return 0, nil, fmt.Errorf("Only TPM_CAP_HANDLES supported, got %v", capReported)
 	}
 	var handles []uint32
 	var handle uint32
@@ -434,16 +435,16 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	return handles, nil
 }
 
-// encodePcrEvent
-func encodePcrEvent(pcrNum int, eventData []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdPcrEvent}
+// encodePCREvent
+func encodePCREvent(pcrNum int, eventData []byte) ([]byte, error) {
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdPCREvent}
 	var empty []byte
 	pc := uint32(pcrNum)
 	b1, err := pack([]interface{}{&pc, &empty})
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	b2, err := encodePasswordAuthArea("", Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -454,8 +455,8 @@ func encodePcrEvent(pcrNum int, eventData []byte) ([]byte, error) {
 	return packWithBytes(cmdHdr, append(append(b1, b2...), b3...))
 }
 
-func PcrEvent(rw io.ReadWriter, pcrNum int, eventData []byte) error {
-	cmd, err := encodePcrEvent(pcrNum, eventData)
+func PCREvent(rw io.ReadWriter, pcrNum int, eventData []byte) error {
+	cmd, err := encodePCREvent(pcrNum, eventData)
 	if err != nil {
 		return err
 	}
@@ -465,7 +466,7 @@ func PcrEvent(rw io.ReadWriter, pcrNum int, eventData []byte) error {
 
 // encodeCreatePrimary encodes a CreatePrimary command.
 func encodeCreatePrimary(owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdCreatePrimary}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreatePrimary}
 	var empty []byte
 	b1, err := encodeHandle(Handle(owner))
 	if err != nil {
@@ -475,7 +476,7 @@ func encodeCreatePrimary(owner uint32, pcrNums []int, parentPassword, ownerPassw
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +570,7 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcrNums []int, parentPassword
 
 // encodeReadPublic encodes a ReadPublic command.
 func encodeReadPublic(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdReadPublic}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdReadPublic}
 	return packWithHeader(cmdHdr, uint32(handle))
 }
 
@@ -609,7 +610,7 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 
 // encodeCreateKey encodes a CreateKey command.
 func encodeCreateKey(owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdCreate}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreate}
 	var empty []byte
 	b1, err := encodeHandle(Handle(owner))
 	if err != nil {
@@ -619,7 +620,7 @@ func encodeCreateKey(owner uint32, pcrNums []int, parentPassword, ownerPassword 
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -685,7 +686,7 @@ func CreateKey(rw io.ReadWriter, owner Handle, pcrNums []int, parentPassword, ow
 
 // encodeLoad encodes a Load command.
 func encodeLoad(parentHandle Handle, parentAuth, ownerAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdLoad}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdLoad}
 	b1, err := encodeHandle(parentHandle)
 	if err != nil {
 		return nil, err
@@ -694,7 +695,7 @@ func encodeLoad(parentHandle Handle, parentAuth, ownerAuth string, publicBlob, p
 	if err != nil {
 		return nil, err
 	}
-	b4, err := encodePasswordAuthArea(ownerAuth, Handle(OrdTPM_RS_PW))
+	b4, err := encodePasswordAuthArea(ownerAuth, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -741,9 +742,9 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth, ownerAuth string, p
 	return handle, name, nil
 }
 
-// encode PolicyPcr command.
-func encodePolicyPcr(handle Handle, expectedDigest []byte, pcrNums []int) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPolicyPCR}
+// encode PolicyPCR command.
+func encodePolicyPCR(handle Handle, expectedDigest []byte, pcrNums []int) ([]byte, error) {
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPolicyPCR}
 	uHandle := uint32(handle)
 	template := []interface{}{&uHandle, &expectedDigest}
 	b1, err := pack(template)
@@ -759,7 +760,7 @@ func encodePolicyPcr(handle Handle, expectedDigest []byte, pcrNums []int) ([]byt
 
 // encodePolicyPassword encodes a PolicyPassword command.
 func encodePolicyPassword(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPolicyPassword}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPolicyPassword}
 	uHandle := uint32(handle)
 	template := []interface{}{&uHandle}
 	b1, err := pack(template)
@@ -778,8 +779,8 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) error {
 	return err
 }
 
-func PolicyPcr(rw io.ReadWriter, handle Handle, expectedDigest []byte, pcrNums []int) error {
-	cmd, err := encodePolicyPcr(handle, expectedDigest, pcrNums)
+func PolicyPCR(rw io.ReadWriter, handle Handle, expectedDigest []byte, pcrNums []int) error {
+	cmd, err := encodePolicyPCR(handle, expectedDigest, pcrNums)
 	if err != nil {
 		return err
 	}
@@ -789,7 +790,7 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expectedDigest []byte, pcrNums [
 
 // encodePolicyGetDigest encodes a PolicyGetDigest command.
 func encodePolicyGetDigest(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdPolicyGetDigest}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPolicyGetDigest}
 	uHandle := uint32(handle)
 	template := []interface{}{&uHandle}
 	b1, err := pack(template)
@@ -832,7 +833,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 
 // encodeStartAuthSession encodes a StartAuthSession command.
 func encodeStartAuthSession(tpmKey Handle, bindKey Handle, nonceCaller, secret []byte, se byte, sym, hashAlg uint16) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdStartAuthSession}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdStartAuthSession}
 	b1, err := encodeHandle(tpmKey)
 	if err != nil {
 		return nil, err
@@ -888,7 +889,7 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, sec
 
 // encodeCreateSealed encodes a CreateSealed command.
 func encodeCreateSealed(parent Handle, policyDigest []byte, parentPassword, ownerPassword string, toSeal []byte, pcrNums []int, parms KeyedHashParams) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdCreate}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreate}
 	var empty []byte
 	b1, err := encodeHandle(parent)
 	if err != nil {
@@ -898,7 +899,7 @@ func encodeCreateSealed(parent Handle, policyDigest []byte, parentPassword, owne
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -970,7 +971,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policyDigest []byte, parentPa
 
 // encodeUnseal encodes a Unseal command.
 func encodeUnseal(itemHandle Handle, password string, sessionHandle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdUnseal}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdUnseal}
 	var empty []byte
 	handle1 := uint32(itemHandle)
 	template := []interface{}{&handle1, &empty}
@@ -1019,7 +1020,7 @@ func Unseal(rw io.ReadWriter, itemHandle Handle, password string, sessionHandle 
 
 // encodeQuote encodes a Quote command.
 func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg uint16) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdQuote}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdQuote}
 	var empty []byte
 	b1, err := encodeHandle(signingHandle)
 	if err != nil {
@@ -1029,7 +1030,7 @@ func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQ
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, Handle(OrdTPM_RS_PW))
+	b3, err := encodePasswordAuthArea(parentPassword, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1093,7 +1094,7 @@ func Quote(rw io.ReadWriter, signingHandle Handle, parentPassword, ownerPassword
 // encodeActivateCredential encodes a ActivateCredential command.
 func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
 	var empty []byte
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdActivateCredential}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdActivateCredential}
 	b1, err := encodeHandle(activeHandle)
 	if err != nil {
 		return nil, err
@@ -1106,11 +1107,11 @@ func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassw
 	if err != nil {
 		return nil, err
 	}
-	b4a, err := encodePasswordAuthArea(activePassword, Handle(OrdTPM_RS_PW))
+	b4a, err := encodePasswordAuthArea(activePassword, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
-	b4b, err := encodePasswordAuthArea(protectorPassword, Handle(OrdTPM_RS_PW))
+	b4b, err := encodePasswordAuthArea(protectorPassword, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1171,7 +1172,7 @@ func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle Handle, active
 // encodeEvictControl encodes a EvictControl command.
 func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byte, error) {
 	var empty []byte
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdEvictControl}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdEvictControl}
 	b1, err := encodeHandle(owner)
 	if err != nil {
 		return nil, err
@@ -1184,7 +1185,7 @@ func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	b4, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	b4, err := encodePasswordAuthArea("", Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1210,7 +1211,7 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmpHandle Handle, persistantHa
 
 // encodeSaveContext encodes a SaveContext command.
 func encodeSaveContext(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdContextSave}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdContextSave}
 	b1, err := encodeHandle(handle)
 	if err != nil {
 		return nil, err
@@ -1228,7 +1229,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 
 // encodeLoadContext encodes a LoadContext command.
 func encodeLoadContext(saveArea []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdContextLoad}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdContextLoad}
 	return packWithBytes(cmdHdr, saveArea[0:len(saveArea)])
 }
 
@@ -1261,7 +1262,7 @@ func LoadContext(rw io.ReadWriter, saveArea []byte) (Handle, error) {
 
 // encodeMakeCredential encodes a MakeCredential command.
 func encodeMakeCredential(protectorHandle Handle, credential, activeName []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdMakeCredential}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdMakeCredential}
 	b1, err := encodeHandle(protectorHandle)
 	if err != nil {
 		return nil, err
@@ -1304,8 +1305,8 @@ func MakeCredential(rw io.ReadWriter, protectorHandle Handle, credential, active
 }
 
 func encodeUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdUndefineSpace}
-	auth, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdUndefineSpace}
+	auth, err := encodePasswordAuthArea("", Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1332,7 +1333,7 @@ func encodeDefineSpace(owner, handle Handle, authString string, attributes uint3
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	auth, err := encodePasswordAuthArea("", Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1342,7 +1343,7 @@ func encodeDefineSpace(owner, handle Handle, authString string, attributes uint3
 	if err != nil {
 		return nil, err
 	}
-	hashAlg := uint16(AlgTPM_ALG_SHA1)
+	hashAlg := uint16(TPM_ALG_SHA1)
 	sizeNvArea := uint16(2*int(unsafe.Sizeof(owner)) + 3*int(unsafe.Sizeof(dataSize)) + len(policy))
 	out1 = append(append(out1, auth...), pw...)
 	numBytes2 := []interface{}{sizeNvArea, uint32(handle), hashAlg, attributes, policy, dataSize}
@@ -1350,7 +1351,7 @@ func encodeDefineSpace(owner, handle Handle, authString string, attributes uint3
 	if err != nil {
 		return nil, err
 	}
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdDefineSpace}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdDefineSpace}
 	return packWithBytes(cmdHdr, append(out1, out2...))
 }
 
@@ -1364,7 +1365,7 @@ func DefineSpace(rw io.ReadWriter, owner, handle Handle, authString string, poli
 }
 
 func encodeIncrementNv(handle Handle, authString string) ([]byte, error) {
-	auth, err := encodePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+	auth, err := encodePasswordAuthArea(authString, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1375,7 +1376,7 @@ func encodeIncrementNv(handle Handle, authString string) ([]byte, error) {
 		return nil, err
 	}
 	out = append(out, auth...)
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdIncrementNvCounter}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdIncrementNvCounter}
 	return packWithBytes(cmdHdr, out)
 }
 
@@ -1389,7 +1390,7 @@ func IncrementNv(rw io.ReadWriter, handle Handle, authString string) error {
 }
 
 func encodeNVReadPublic(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdReadPublicNv}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdReadPublicNv}
 	return packWithHeader(cmdHdr, handle)
 }
 
@@ -1417,7 +1418,7 @@ func encodeNVRead(handle Handle, authString string, offset, dataSize uint16) ([]
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+	auth, err := encodePasswordAuthArea(authString, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
@@ -1427,7 +1428,7 @@ func encodeNVRead(handle Handle, authString string, offset, dataSize uint16) ([]
 		return nil, err
 	}
 	out = append(out, params...)
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdReadNv}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdReadNv}
 	return packWithBytes(cmdHdr, out)
 }
 
@@ -1459,11 +1460,11 @@ func NVRead(rw io.ReadWriter, index Handle) ([]byte, error) {
 }
 
 func Hash(rw io.ReadWriter, alg uint16, buf []byte) ([]byte, error) {
-	out, err := pack([]interface{}{buf, alg, OrdTPM_RH_NULL})
+	out, err := pack([]interface{}{buf, alg, TPM_RH_NULL})
 	if err != nil {
 		return nil, err
 	}
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdHash}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdHash}
 	cmd, err := packWithBytes(cmdHdr, out)
 	if err != nil {
 		return nil, err
@@ -1486,7 +1487,7 @@ func Startup(rw io.ReadWriter, typ uint16) error {
 	if err != nil {
 		return err
 	}
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdStartup}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdStartup}
 	cmd, err := packWithBytes(cmdHdr, out)
 	if err != nil {
 		return err
@@ -1501,7 +1502,7 @@ func Shutdown(rw io.ReadWriter, typ uint16) error {
 	if err != nil {
 		return err
 	}
-	cmdHdr := commandHeader{Tag: tagNO_SESSIONS, Cmd: cmdShutdown}
+	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdShutdown}
 	cmd, err := packWithBytes(cmdHdr, out)
 	if err != nil {
 		return err
@@ -1516,22 +1517,22 @@ func encodeSign(key Handle, password string, digest []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(password, Handle(OrdTPM_RS_PW))
+	auth, err := encodePasswordAuthArea(password, Handle(TPM_RS_PW))
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, auth...)
-	params, err := pack([]interface{}{digest, AlgTPM_ALG_NULL})
+	params, err := pack([]interface{}{digest, TPM_ALG_NULL})
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, params...)
-	ticket, err := pack([]interface{}{TPM_ST_HASHCHECK, OrdTPM_RH_NULL, []byte(nil)})
+	ticket, err := pack([]interface{}{TPM_ST_HASHCHECK, TPM_RH_NULL, []byte(nil)})
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, ticket...)
-	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdReadNv}
+	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdReadNv}
 	return packWithBytes(cmdHdr, out)
 }
 
@@ -1546,7 +1547,7 @@ func decodeSign(buf []byte) (uint16, []byte, error) {
 }
 
 func Sign(rw io.ReadWriter, key Handle, data []byte) (uint16, []byte, error) {
-	digest, err := Hash(rw, AlgTPM_ALG_SHA256, data)
+	digest, err := Hash(rw, TPM_ALG_SHA256, data)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -1572,11 +1573,12 @@ func runCommand(rw io.ReadWriter, cmd []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if read < responseHeaderSize {
+	headerSize := binary.Size(responseHeader{})
+	if read < headerSize {
 		return nil, errors.New("response buffer too small")
 	}
 
-	header, resp := resp[:responseHeaderSize], resp[responseHeaderSize:read]
+	header, resp := resp[:headerSize], resp[headerSize:read]
 
 	_, _, status, err := decodeCommandResponse(header)
 	if err != nil {
