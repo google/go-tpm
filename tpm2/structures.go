@@ -88,3 +88,21 @@ type NVPublic struct {
 	AuthPolicy []byte
 	DataSize   uint16
 }
+
+type TPMTPublic struct {
+	Type       uint16
+	NameAlg    uint16
+	Attributes uint32
+	Digest     []byte
+	Parameters struct {
+		Symmetric struct {
+			Alg     uint16
+			KeyBits uint16
+			Mode    uint16
+		}
+		Scheme   uint16
+		KeyBits  uint16
+		Exponent uint32
+	}
+	Unique []byte
+}

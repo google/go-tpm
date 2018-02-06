@@ -541,45 +541,11 @@ func decodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-
-	// Creation data
-	current = 2 + len(rsaParamsBuf)
-	var creationData []byte
-	template = []interface{}{&creationData}
-	err = unpack(tpm2Public[current:], template)
-	if err != nil {
+	var pub TPMTPublic
+	if err := unpack(rsaParamsBuf, []interface{}{&pub}); err != nil {
 		return 0, nil, err
 	}
-	current += len(creationData) + 2
-
-	// Digest
-	var digest []byte
-	template = []interface{}{&digest}
-	err = unpack(tpm2Public[current:], template)
-	if err != nil {
-		return 0, nil, err
-	}
-	current += len(digest) + 2
-
-	// TPMT_TK_CREATION
-	current += 6
-	var crap []byte
-	template = []interface{}{&crap}
-	err = unpack(tpm2Public[current:], template)
-	if err != nil {
-		return 0, nil, err
-	}
-	current += len(crap) + 2
-
-	// Name
-	var name []byte
-	template = []interface{}{&name}
-	err = unpack(tpm2Public[current:], template)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	return Handle(handle), tpm2Public, nil
+	return Handle(handle), pub.Unique, nil
 }
 
 // CreatePrimary
@@ -701,7 +667,7 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 }
 
 // Output: public blob, private blob, digest
-func CreateKey(rw io.ReadWriter, owner uint32, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, []byte, error) {
+func CreateKey(rw io.ReadWriter, owner Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, []byte, error) {
 	cmd, err := encodeCreateKey(uint32(owner), pcrNums, parentPassword, ownerPassword, parms)
 	if err != nil {
 		return nil, nil, err
@@ -1543,6 +1509,56 @@ func Shutdown(rw io.ReadWriter, typ uint16) error {
 
 	_, err = runCommand(rw, cmd)
 	return err
+}
+
+func encodeSign(key Handle, password string, digest []byte) ([]byte, error) {
+	out, err := pack([]interface{}{key, []byte(nil)})
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodePasswordAuthArea(password, Handle(OrdTPM_RS_PW))
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, auth...)
+	params, err := pack([]interface{}{digest, AlgTPM_ALG_NULL})
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, params...)
+	ticket, err := pack([]interface{}{TPM_ST_HASHCHECK, OrdTPM_RH_NULL, []byte(nil)})
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, ticket...)
+	cmdHdr := commandHeader{Tag: tagSESSIONS, Cmd: cmdReadNv}
+	return packWithBytes(cmdHdr, out)
+}
+
+func decodeSign(buf []byte) (uint16, []byte, error) {
+	var signAlg uint16
+	var hashAlg uint16
+	var signature []byte
+	if err := unpack(buf, []interface{}{&signAlg, &hashAlg, &signature}); err != nil {
+		return 0, nil, err
+	}
+	return signAlg, signature, nil
+}
+
+func Sign(rw io.ReadWriter, key Handle, data []byte) (uint16, []byte, error) {
+	digest, err := Hash(rw, AlgTPM_ALG_SHA256, data)
+	if err != nil {
+		return 0, nil, err
+	}
+	cmd, err := encodeSign(key, "", digest)
+	if err != nil {
+		return 0, nil, err
+	}
+	resp, err := runCommand(rw, cmd)
+	if err != nil {
+		return 0, nil, err
+	}
+	return decodeSign(resp)
 }
 
 func runCommand(rw io.ReadWriter, cmd []byte) ([]byte, error) {

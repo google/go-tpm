@@ -154,6 +154,11 @@ const (
 	cmdShutdown           uint32 = 0x00000145
 )
 
+// Structure Tags
+const (
+	TPM_ST_HASHCHECK uint16 = 0x8024
+)
+
 const (
 	maxTPMResponse     = 4096
 	responseHeaderSize = 10
