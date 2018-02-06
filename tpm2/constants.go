@@ -21,28 +21,28 @@ type Algorithm uint16
 
 // Supported Algorithms.
 const (
-	TPM_ALG_RSA       Algorithm = 0x0001
-	TPM_ALG_SHA1      Algorithm = 0x0004
-	TPM_ALG_AES       Algorithm = 0x0006
-	TPM_ALG_SHA256    Algorithm = 0x000B
-	TPM_ALG_SHA384    Algorithm = 0x000C
-	TPM_ALG_SHA512    Algorithm = 0x000D
-	TPM_ALG_NULL      Algorithm = 0x0010
-	TPM_ALG_RSASSA    Algorithm = 0x0014
-	TPM_ALG_RSAES     Algorithm = 0x0015
-	TPM_ALG_RSAPSS    Algorithm = 0x0016
-	TPM_ALG_OAEP      Algorithm = 0x0017
-	TPM_ALG_ECDSA     Algorithm = 0x0018
-	TPM_ALG_ECDH      Algorithm = 0x0019
-	TPM_ALG_ECDAA     Algorithm = 0x001A
-	TPM_ALG_ECC       Algorithm = 0x0023
-	TPM_ALG_CTR       Algorithm = 0x0040
-	TPM_ALG_OFB       Algorithm = 0x0041
-	TPM_ALG_CBC       Algorithm = 0x0042
-	TPM_ALG_CFB       Algorithm = 0x0043
-	TPM_ALG_ECB       Algorithm = 0x0044
-	TPM_ALG_LAST      Algorithm = 0x0044
-	TPM_ALG_KEYEDHASH Algorithm = 0x0008
+	AlgRSA       Algorithm = 0x0001
+	AlgSHA1      Algorithm = 0x0004
+	AlgAES       Algorithm = 0x0006
+	AlgSHA256    Algorithm = 0x000B
+	AlgSHA384    Algorithm = 0x000C
+	AlgSHA512    Algorithm = 0x000D
+	AlgNULL      Algorithm = 0x0010
+	AlgRSASSA    Algorithm = 0x0014
+	AlgRSAES     Algorithm = 0x0015
+	AlgRSAPSS    Algorithm = 0x0016
+	AlgOAEP      Algorithm = 0x0017
+	AlgECDSA     Algorithm = 0x0018
+	AlgECDH      Algorithm = 0x0019
+	AlgECDAA     Algorithm = 0x001A
+	AlgECC       Algorithm = 0x0023
+	AlgCTR       Algorithm = 0x0040
+	AlgOFB       Algorithm = 0x0041
+	AlgCBC       Algorithm = 0x0042
+	AlgCFB       Algorithm = 0x0043
+	AlgECB       Algorithm = 0x0044
+	AlgLAST      Algorithm = 0x0044
+	AlgKEYEDHASH Algorithm = 0x0008
 )
 
 // SessionType defines the type of session created in StartAuthSession.
@@ -50,9 +50,9 @@ type SessionType uint8
 
 // Supported session types.
 const (
-	TPM_SE_HMAC   SessionType = 0x00
-	TPM_SE_POLICY SessionType = 0x01
-	TPM_SE_TRIAL  SessionType = 0x03
+	SessionHMAC   SessionType = 0x00
+	SessionPolicy SessionType = 0x01
+	SessionTrial  SessionType = 0x03
 )
 
 // KeyProp is a bitmask used in Attributes field of key templates. Individual
@@ -82,18 +82,18 @@ type Handle uint32
 
 // Reserved Handles.
 const (
-	TPM_RH_OWNER       Handle = 0x40000001
-	TPM_RH_REVOKE      Handle = 0x40000002
-	TPM_RH_TRANSPORT   Handle = 0x40000003
-	TPM_RH_OPERATOR    Handle = 0x40000004
-	TPM_RH_ADMIN       Handle = 0x40000005
-	TPM_RH_EK          Handle = 0x40000006
-	TPM_RH_NULL        Handle = 0x40000007
-	TPM_RH_UNASSIGNED  Handle = 0x40000008
-	TPM_RH_LOCKOUT     Handle = 0x4000000A
-	TPM_RH_ENDORSEMENT Handle = 0x4000000B
-	TPM_RH_PLATFORM    Handle = 0x4000000C
-	TPM_RS_PW          Handle = 0x40000009
+	HandleOwner           Handle = 0x40000001
+	HandleRevoke          Handle = 0x40000002
+	HandleTransport       Handle = 0x40000003
+	HandleOperator        Handle = 0x40000004
+	HandleAdmin           Handle = 0x40000005
+	HandleEK              Handle = 0x40000006
+	HandleNull            Handle = 0x40000007
+	HandleUnassigned      Handle = 0x40000008
+	HandleLockout         Handle = 0x4000000A
+	HandleEndorsement     Handle = 0x4000000B
+	HandlePlatform        Handle = 0x4000000C
+	PasswordSessionHandle Handle = 0x40000009
 )
 
 // Capability identifies some TPM property or state type.
@@ -101,16 +101,16 @@ type Capability uint32
 
 // TPM Capabilies.
 const (
-	TPM_CAP_ALGS           Capability = 0x00000000
-	TPM_CAP_HANDLES        Capability = 0x00000001
-	TPM_CAP_COMMANDS       Capability = 0x00000002
-	TPM_CAP_PP_COMMANDS    Capability = 0x00000003
-	TPM_CAP_AUDIT_COMMANDS Capability = 0x00000004
-	TPM_CAP_PCRS           Capability = 0x00000005
-	TPM_CAP_TPM_PROPERTIES Capability = 0x00000006
-	TPM_CAP_PCR_PROPERTIES Capability = 0x00000007
-	TPM_CAP_ECC_CURVES     Capability = 0x00000008
-	TPM_CAP_AUTH_POLICIES  Capability = 0x00000009
+	CapabilityAlgs          Capability = 0x00000000
+	CapabilityHandles       Capability = 0x00000001
+	CapabilityCommands      Capability = 0x00000002
+	CapabilityPPCommands    Capability = 0x00000003
+	CapabilityAuditCommands Capability = 0x00000004
+	CapabilityPCRs          Capability = 0x00000005
+	CapabilityTPMProperties Capability = 0x00000006
+	CapabilityPCRProperties Capability = 0x00000007
+	CapabilityECCCurves     Capability = 0x00000008
+	CapabilityAuthPolicies  Capability = 0x00000009
 )
 
 type structureTag uint16
@@ -128,8 +128,8 @@ type StartupType uint16
 
 // Startup types
 const (
-	TPM_SU_CLEAR StartupType = 0x0000
-	TPM_SU_STATE StartupType = 0x0001
+	StartupClear StartupType = 0x0000
+	StartupState StartupType = 0x0001
 )
 
 type command uint32
