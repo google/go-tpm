@@ -19,48 +19,48 @@ type Handle uint32
 
 // A commandHeader is the header for a TPM command.
 type commandHeader struct {
-	Tag  uint16
+	Tag  cmdTag
 	Size uint32
-	Cmd  uint32
+	Cmd  command
 }
 
 // A responseHeader is a header for TPM responses.
 type responseHeader struct {
-	Tag  uint16
+	Tag  cmdTag
 	Size uint32
-	Res  uint32
+	Res  command
 }
 
 type RSAParams struct {
-	EncAlg     uint16
-	HashAlg    uint16
-	Attributes uint32
+	EncAlg     Algorithm
+	HashAlg    Algorithm
+	Attributes keyProp
 	AuthPolicy []byte
-	SymAlg     uint16
+	SymAlg     Algorithm
 	SymSize    uint16
-	Mode       uint16
-	Scheme     uint16
-	SchemeHash uint16
+	Mode       Algorithm
+	Scheme     Algorithm
+	SchemeHash Algorithm
 	ModSize    uint16
 	Exp        uint32
 	Modulus    []byte
 }
 
 type KeyedHashParams struct {
-	TypeAlg    uint16
-	HashAlg    uint16
+	TypeAlg    Algorithm
+	HashAlg    Algorithm
 	Attributes uint32
 	AuthPolicy []byte
-	SymAlg     uint16
+	SymAlg     Algorithm
 	SymSize    uint16
-	Mode       uint16
-	Scheme     uint16
+	Mode       Algorithm
+	Scheme     Algorithm
 	Unique     []byte
 }
 
 type NVPublic struct {
 	NVIndex    Handle
-	NameAlg    uint16
+	NameAlg    Algorithm
 	Attributes uint32
 	AuthPolicy []byte
 	DataSize   uint16
@@ -68,18 +68,22 @@ type NVPublic struct {
 
 type TPMTPublic struct {
 	Type       uint16
-	NameAlg    uint16
+	NameAlg    Algorithm
 	Attributes uint32
 	Digest     []byte
-	Parameters struct {
-		Symmetric struct {
-			Alg     uint16
-			KeyBits uint16
-			Mode    uint16
-		}
-		Scheme   uint16
-		KeyBits  uint16
-		Exponent uint32
-	}
-	Unique []byte
+	Parameters TPMS_RSAParams
+	Unique     []byte
+}
+
+type TPMS_RSAParams struct {
+	Symmetric TPMT_RSAScheme
+	Scheme    Algorithm
+	KeyBits   uint16
+	Exponent  uint32
+}
+
+type TPMT_RSAScheme struct {
+	Alg     Algorithm
+	KeyBits uint16
+	Mode    Algorithm
 }

@@ -208,20 +208,20 @@ func TestEncodeCreatePrimary(t *testing.T) {
 		t.Fatal(err)
 	}
 	parms := RSAParams{
-		uint16(TPM_ALG_RSA),
-		uint16(TPM_ALG_SHA1),
-		uint32(0x00030072),
+		TPM_ALG_RSA,
+		TPM_ALG_SHA1,
+		0x00030072,
 		empty,
-		uint16(TPM_ALG_AES),
-		uint16(128),
-		uint16(TPM_ALG_CFB),
-		uint16(TPM_ALG_NULL),
-		uint16(0),
-		uint16(1024),
+		TPM_ALG_AES,
+		128,
+		TPM_ALG_CFB,
+		TPM_ALG_NULL,
+		0,
+		1024,
 		uint32(0x00010001),
 		empty,
 	}
-	cmdBytes, err := encodeCreatePrimary(uint32(TPM_RH_OWNER), []int{7}, "", "01020304", parms)
+	cmdBytes, err := encodeCreatePrimary(TPM_RH_OWNER, []int{7}, "", "01020304", parms)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,7 +323,7 @@ func TestEncodeStartAuthSession(t *testing.T) {
 	}
 	var nonceCaller []byte
 	var secret []byte
-	sym := uint16(TPM_ALG_NULL)
+	sym := TPM_ALG_NULL
 	cmdBytes, err := encodeStartAuthSession(Handle(0x40000007), Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
 	if err != nil {
 		t.Fatal(err)
@@ -357,10 +357,17 @@ func TestEncodeCreateSealed(t *testing.T) {
 	var empty []byte
 	toSeal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
 	digest := []byte{0x0d, 0xeb, 0xb4, 0xcc, 0x9d, 0x21, 0x58, 0xcf, 0x70, 0x51, 0xa1, 0x9c, 0xa2, 0x4b, 0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
-	parms := KeyedHashParams{uint16(TPM_ALG_KEYEDHASH),
-		uint16(TPM_ALG_SHA1), uint32(0x00000012), empty,
-		uint16(TPM_ALG_AES), uint16(128), uint16(TPM_ALG_CFB),
-		uint16(TPM_ALG_NULL), empty}
+	parms := KeyedHashParams{
+		TPM_ALG_KEYEDHASH,
+		TPM_ALG_SHA1,
+		uint32(0x00000012),
+		empty,
+		TPM_ALG_AES,
+		128,
+		TPM_ALG_CFB,
+		TPM_ALG_NULL,
+		empty,
+	}
 	cmdBytes, err := encodeCreateSealed(Handle(0x80000000), digest, "01020304", "01020304", toSeal, []int{7}, parms)
 	if err != nil {
 		t.Fatal(err)
@@ -407,20 +414,20 @@ func TestEncodeCreateKey(t *testing.T) {
 	}
 	var empty []byte
 	parms := RSAParams{
-		uint16(TPM_ALG_RSA),
-		uint16(TPM_ALG_SHA1),
-		uint32(0x00030072),
+		TPM_ALG_RSA,
+		TPM_ALG_SHA1,
+		0x00030072,
 		empty,
-		uint16(TPM_ALG_AES),
-		uint16(128),
-		uint16(TPM_ALG_CFB),
-		uint16(TPM_ALG_NULL),
-		uint16(0),
-		uint16(1024),
+		TPM_ALG_AES,
+		128,
+		TPM_ALG_CFB,
+		TPM_ALG_NULL,
+		0,
+		1024,
 		uint32(0x00010001),
 		empty,
 	}
-	cmdBytes, err := encodeCreateKey(uint32(TPM_RH_OWNER), []int{7}, "", "01020304", parms)
+	cmdBytes, err := encodeCreateKey(TPM_RH_OWNER, []int{7}, "", "01020304", parms)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +636,7 @@ func TestEncodeShortPCRs(t *testing.T) {
 }
 
 func TestEncodeHandle(t *testing.T) {
-	hand, err := encodeHandle(Handle(TPM_RH_OWNER))
+	hand, err := encodeHandle(TPM_RH_OWNER)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -659,7 +666,7 @@ func TestEncodePasswordData(t *testing.T) {
 }
 
 func TestEncodePasswordAuthArea(t *testing.T) {
-	pwAuth, err := encodePasswordAuthArea("01020304", Handle(TPM_RS_PW))
+	pwAuth, err := encodePasswordAuthArea("01020304", TPM_RS_PW)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,7 +675,7 @@ func TestEncodePasswordAuthArea(t *testing.T) {
 		t.Fatalf("got: %v, want: %v", pwAuth, want)
 	}
 
-	pwAuth, err = encodePasswordAuthArea("", Handle(TPM_RS_PW))
+	pwAuth, err = encodePasswordAuthArea("", TPM_RS_PW)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -694,16 +701,16 @@ func TestEncodeSensitiveArea(t *testing.T) {
 func TestEncodeRSAParams(t *testing.T) {
 	var empty []byte
 	parms := RSAParams{
-		uint16(TPM_ALG_RSA),
-		uint16(TPM_ALG_SHA1),
-		uint32(0x00030072),
+		TPM_ALG_RSA,
+		TPM_ALG_SHA1,
+		0x00030072,
 		empty,
-		uint16(TPM_ALG_AES),
-		uint16(128),
-		uint16(TPM_ALG_CFB),
-		uint16(TPM_ALG_NULL),
-		uint16(0),
-		uint16(1024),
+		TPM_ALG_AES,
+		128,
+		TPM_ALG_CFB,
+		TPM_ALG_NULL,
+		0,
+		1024,
 		uint32(0x00010001),
 		empty,
 	}
@@ -715,7 +722,7 @@ func TestEncodeRSAParams(t *testing.T) {
 }
 
 func TestEncodeLongPCR(t *testing.T) {
-	s, err := encodeLongPCR(uint32(1), []int{7})
+	s, err := encodeLongPCR(1, []int{7})
 	if err != nil {
 		t.Fatal(err)
 	}
