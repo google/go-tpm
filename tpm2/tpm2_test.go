@@ -147,7 +147,7 @@ func TestCombinedKeyTest(t *testing.T) {
 		uint32(0x00010001),
 		empty,
 	}
-	privateBlob, publicBlob, err := CreateKey(rw, uint32(parentHandle), []int{7}, "01020304", "01020304", keyparms)
+	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, []int{7}, "01020304", "01020304", keyparms)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -329,7 +329,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		uint32(0x00010001),
 		empty,
 	}
-	privateBlob, publicBlob, err := CreateKey(rw, uint32(parentHandle), []int{7}, "", "01020304", keyparms)
+	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, []int{7}, "", "01020304", keyparms)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -423,7 +423,7 @@ func TestCombinedContextTest(t *testing.T) {
 		uint32(0x00010001),
 		empty,
 	}
-	quotePrivate, quotePublic, err := CreateKey(rw, uint32(rootHandle), pcrs, "", quotePassword, keyparms)
+	quotePrivate, quotePublic, err := CreateKey(rw, rootHandle, pcrs, "", quotePassword, keyparms)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
