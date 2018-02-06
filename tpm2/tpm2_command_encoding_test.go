@@ -113,12 +113,12 @@ func TestDecodeReadClock(t *testing.T) {
 	}
 }
 
-func TestEncodeGetCapabilities(t *testing.T) {
+func TestEncodeGetCapability(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("8001000000160000017a000000018000000000000014")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeGetCapabilities(TPM_CAP_HANDLES, 20, 0x80000000)
+	cmdBytes, err := encodeGetCapability(TPM_CAP_HANDLES, 20, 0x80000000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestEncodeGetCapabilities(t *testing.T) {
 	}
 }
 
-func TestDecodeGetCapabilities(t *testing.T) {
+func TestDecodeGetCapability(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("80010000001300000000000000000100000000")
 	if err != nil {
 		t.Fatal(err)
@@ -138,7 +138,7 @@ func TestDecodeGetCapabilities(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	capReported, handles, err := decodeGetCapabilities(testRespBytes[10:len(testRespBytes)])
+	capReported, handles, err := decodeGetCapability(testRespBytes[10:len(testRespBytes)])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,63 +342,6 @@ func TestDecodeStartAuthSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _, err = decodeStartAuthSession(testRespBytes[10:])
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestEncodeCreateSealed(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80020000006900000153800000000000000d40000009000001000401020304001800040102030400100102030405060708090a0b0c0d0e0f100022000800040000001200140debb4cc9d2158cf7051a19ca24b31e35d53b64d00100000000000000001000403800000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	toSeal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
-	digest := []byte{0x0d, 0xeb, 0xb4, 0xcc, 0x9d, 0x21, 0x58, 0xcf, 0x70, 0x51, 0xa1, 0x9c, 0xa2, 0x4b, 0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
-	parms := KeyedHashParams{
-		TPM_ALG_KEYEDHASH,
-		TPM_ALG_SHA1,
-		uint32(0x00000012),
-		[]byte(nil),
-		TPM_ALG_AES,
-		128,
-		TPM_ALG_CFB,
-		TPM_ALG_NULL,
-		[]byte(nil),
-	}
-	cmdBytes, err := encodeCreateSealed(Handle(0x80000000), digest, "01020304", "01020304", toSeal, []int{7}, parms)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
-	}
-}
-
-const strCreateSealedResp = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +
-	"e4f8db15e2bde9a1241f85f30010faf62244fedc13fe0abb526e64b10b2de030b6f0" +
-	"2be278e23365ef663febe7eb4ddae935ca627ce4c40af9f5244dafbc7f47ceb84de8" +
-	"7e72a75c7f1032d3e7faddde0036000800040000001200140debb4cc9d2158cf7051" +
-	"a19ca24b31e35d53b64d001000140b0758c7e4ce32c9d249151e91b72e35a6372fed" +
-	"0055000000010004038000000014bbf70aea75095f280ea3b835afda4a195279ab2c" +
-	"010004001600043adbc7b1296c49aac7c154371fd99aeb6e58a9f500160004cfcb68" +
-	"f91fb12789154c722d4dbb528420ca211a0000001409987adb82d9864dbbdf515545" +
-	"798e3fe3e55a418021400000010020b3b60fa880ac9256d10ee3abdc6b500dec1ba8" +
-	"85082b20c305eb1ff072bc13480000010000"
-
-func TestDecodeCreateSealed(t *testing.T) {
-	testRespBytes, err := hex.DecodeString(strCreateSealedResp)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != rcSuccess {
-		t.Fatal("error status")
-	}
-	_, _, err = decodeCreateSealed(testRespBytes[10:len(testRespBytes)])
 	if err != nil {
 		t.Fatal(err)
 	}

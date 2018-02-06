@@ -14,27 +14,25 @@
 
 package tpm2
 
-// A Handle is a 32-bit unsigned integer.
-type Handle uint32
-
 // A commandHeader is the header for a TPM command.
 type commandHeader struct {
-	Tag  cmdTag
+	Tag  structureTag
 	Size uint32
 	Cmd  command
 }
 
 // A responseHeader is a header for TPM responses.
 type responseHeader struct {
-	Tag  cmdTag
+	Tag  structureTag
 	Size uint32
 	Res  command
 }
 
+// RSAParams us a template for an RSA key.
 type RSAParams struct {
 	EncAlg     Algorithm
 	HashAlg    Algorithm
-	Attributes keyProp
+	Attributes KeyProp
 	AuthPolicy []byte
 	SymAlg     Algorithm
 	SymSize    uint16
@@ -46,6 +44,7 @@ type RSAParams struct {
 	Modulus    []byte
 }
 
+// KeyedHashParams contains parameters of a keyed hash object.
 type KeyedHashParams struct {
 	TypeAlg    Algorithm
 	HashAlg    Algorithm
@@ -58,6 +57,7 @@ type KeyedHashParams struct {
 	Unique     []byte
 }
 
+// NVPublic contains the public area of an NV index.
 type NVPublic struct {
 	NVIndex    Handle
 	NameAlg    Algorithm
@@ -66,23 +66,23 @@ type NVPublic struct {
 	DataSize   uint16
 }
 
-type TPMTPublic struct {
+type tpmtPublic struct {
 	Type       uint16
 	NameAlg    Algorithm
 	Attributes uint32
 	Digest     []byte
-	Parameters TPMS_RSAParams
+	Parameters tpmsRSAParams
 	Unique     []byte
 }
 
-type TPMS_RSAParams struct {
-	Symmetric TPMT_RSAScheme
+type tpmsRSAParams struct {
+	Symmetric tpmtRSAScheme
 	Scheme    Algorithm
 	KeyBits   uint16
 	Exponent  uint32
 }
 
-type TPMT_RSAScheme struct {
+type tpmtRSAScheme struct {
 	Alg     Algorithm
 	KeyBits uint16
 	Mode    Algorithm

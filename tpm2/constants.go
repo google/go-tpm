@@ -16,6 +16,7 @@ package tpm2
 
 const maxTPMResponse = 4096
 
+// Algorithm represents a TPM_ALG_ID value.
 type Algorithm uint16
 
 // Supported Algorithms.
@@ -44,24 +45,30 @@ const (
 	TPM_ALG_KEYEDHASH Algorithm = 0x0008
 )
 
-type policy uint8
+// SessionType defines the type of session created in StartAuthSession.
+type SessionType uint8
 
+// Supported session types.
 const (
-	TPM_SE_POLICY policy = 0x01
+	TPM_SE_HMAC   SessionType = 0x00
+	TPM_SE_POLICY SessionType = 0x01
+	TPM_SE_TRIAL  SessionType = 0x03
 )
 
-type keyProp uint32
+// KeyProp is a bitmask used in Attributes field of key templates. Individual
+// flags should be OR-ed to form a full mask.
+type KeyProp uint32
 
-// Key properties
+// Key properties.
 const (
-	FlagFixedTPM            keyProp = 0x00000002
-	FlagFixedParent         keyProp = 0x00000010
-	FlagSensitiveDataOrigin keyProp = 0x00000020
-	FlagUserWithAuth        keyProp = 0x00000040
-	FlagAdminWithPolicy     keyProp = 0x00000080
-	FlagRestricted          keyProp = 0x00010000
-	FlagDecrypt             keyProp = 0x00020000
-	FlagSign                keyProp = 0x00040000
+	FlagFixedTPM            KeyProp = 0x00000002
+	FlagFixedParent         KeyProp = 0x00000010
+	FlagSensitiveDataOrigin KeyProp = 0x00000020
+	FlagUserWithAuth        KeyProp = 0x00000040
+	FlagAdminWithPolicy     KeyProp = 0x00000080
+	FlagRestricted          KeyProp = 0x00010000
+	FlagDecrypt             KeyProp = 0x00020000
+	FlagSign                KeyProp = 0x00040000
 
 	FlagSealDefault   = FlagFixedTPM | FlagFixedParent
 	FlagSignerDefault = FlagSign | FlagRestricted | FlagFixedTPM |
@@ -70,7 +77,10 @@ const (
 		FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
 )
 
-// Reserved Handles and Properties
+// A Handle is an identifier for TPM objects.
+type Handle uint32
+
+// Reserved Handles.
 const (
 	TPM_RH_OWNER       Handle = 0x40000001
 	TPM_RH_REVOKE      Handle = 0x40000002
@@ -86,34 +96,40 @@ const (
 	TPM_RS_PW          Handle = 0x40000009
 )
 
+// Capability identifies some TPM property or state type.
 type Capability uint32
 
+// TPM Capabilies.
 const (
-	TPM_CAP_TPM_PROPERTIES Capability = 0x00000006
+	TPM_CAP_ALGS           Capability = 0x00000000
 	TPM_CAP_HANDLES        Capability = 0x00000001
-)
-
-type cmdTag uint16
-
-// Command tags
-const (
-	tagNoSessions cmdTag = 0x8001
-	tagSessions   cmdTag = 0x8002
-)
-
-type startupType uint16
-
-// Startup types
-const (
-	TPM_SU_CLEAR startupType = 0x0000
-	TPM_SU_STATE startupType = 0x0001
+	TPM_CAP_COMMANDS       Capability = 0x00000002
+	TPM_CAP_PP_COMMANDS    Capability = 0x00000003
+	TPM_CAP_AUDIT_COMMANDS Capability = 0x00000004
+	TPM_CAP_PCRS           Capability = 0x00000005
+	TPM_CAP_TPM_PROPERTIES Capability = 0x00000006
+	TPM_CAP_PCR_PROPERTIES Capability = 0x00000007
+	TPM_CAP_ECC_CURVES     Capability = 0x00000008
+	TPM_CAP_AUTH_POLICIES  Capability = 0x00000009
 )
 
 type structureTag uint16
 
-// Structure Tags
 const (
-	TPM_ST_HASHCHECK structureTag = 0x8024
+	tagNull       structureTag = 0x8000
+	tagNoSessions structureTag = 0x8001
+	tagSessions   structureTag = 0x8002
+	tagHashcheck  structureTag = 0x8024
+)
+
+// StartupType instructs the TPM on how to handle its state during Shutdown or
+// Startup.
+type StartupType uint16
+
+// Startup types
+const (
+	TPM_SU_CLEAR StartupType = 0x0000
+	TPM_SU_STATE StartupType = 0x0001
 )
 
 type command uint32
@@ -140,10 +156,10 @@ const (
 	cmdStartAuthSession   command = 0x00000176
 	cmdGetCapability      command = 0x0000017A
 	cmdGetRandom          command = 0x0000017B
-	cmdPCR_Read           command = 0x0000017E
+	cmdPCRRead            command = 0x0000017E
 	cmdPolicyPCR          command = 0x0000017F
 	cmdReadClock          command = 0x00000181
-	cmdPCR_Extend         command = 0x00000182
+	cmdPCRExtend          command = 0x00000182
 	cmdPolicyGetDigest    command = 0x00000189
 	cmdPolicyPassword     command = 0x0000018C
 	cmdPCREvent           command = 0x0000013C
