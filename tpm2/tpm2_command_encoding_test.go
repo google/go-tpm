@@ -202,7 +202,6 @@ func TestDecodeLoad(t *testing.T) {
 }
 
 func TestEncodeCreatePrimary(t *testing.T) {
-	var empty []byte
 	testCmdBytes, err := hex.DecodeString("80020000004d00000131400000010000000940000009000001000000080004010203040000001a0001000400030072000000060080004300100400000100010000000000000001000403800000")
 	if err != nil {
 		t.Fatal(err)
@@ -211,7 +210,7 @@ func TestEncodeCreatePrimary(t *testing.T) {
 		TPM_ALG_RSA,
 		TPM_ALG_SHA1,
 		0x00030072,
-		empty,
+		[]byte(nil),
 		TPM_ALG_AES,
 		128,
 		TPM_ALG_CFB,
@@ -219,7 +218,7 @@ func TestEncodeCreatePrimary(t *testing.T) {
 		0,
 		1024,
 		uint32(0x00010001),
-		empty,
+		[]byte(nil),
 	}
 	cmdBytes, err := encodeCreatePrimary(TPM_RH_OWNER, []int{7}, "", "01020304", parms)
 	if err != nil {
@@ -263,8 +262,7 @@ func TestEncodePolicyPCR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var empty []byte
-	cmdBytes, err := encodePolicyPCR(Handle(0x03000000), empty, []int{7})
+	cmdBytes, err := encodePolicyPCR(Handle(0x03000000), []byte(nil), []int{7})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,19 +352,18 @@ func TestEncodeCreateSealed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var empty []byte
 	toSeal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
 	digest := []byte{0x0d, 0xeb, 0xb4, 0xcc, 0x9d, 0x21, 0x58, 0xcf, 0x70, 0x51, 0xa1, 0x9c, 0xa2, 0x4b, 0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
 	parms := KeyedHashParams{
 		TPM_ALG_KEYEDHASH,
 		TPM_ALG_SHA1,
 		uint32(0x00000012),
-		empty,
+		[]byte(nil),
 		TPM_ALG_AES,
 		128,
 		TPM_ALG_CFB,
 		TPM_ALG_NULL,
-		empty,
+		[]byte(nil),
 	}
 	cmdBytes, err := encodeCreateSealed(Handle(0x80000000), digest, "01020304", "01020304", toSeal, []int{7}, parms)
 	if err != nil {
@@ -412,12 +409,11 @@ func TestEncodeCreateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var empty []byte
 	parms := RSAParams{
 		TPM_ALG_RSA,
 		TPM_ALG_SHA1,
 		0x00030072,
-		empty,
+		[]byte(nil),
 		TPM_ALG_AES,
 		128,
 		TPM_ALG_CFB,
@@ -425,7 +421,7 @@ func TestEncodeCreateKey(t *testing.T) {
 		0,
 		1024,
 		uint32(0x00010001),
-		empty,
+		[]byte(nil),
 	}
 	cmdBytes, err := encodeCreateKey(TPM_RH_OWNER, []int{7}, "", "01020304", parms)
 	if err != nil {
@@ -699,12 +695,11 @@ func TestEncodeSensitiveArea(t *testing.T) {
 }
 
 func TestEncodeRSAParams(t *testing.T) {
-	var empty []byte
 	parms := RSAParams{
 		TPM_ALG_RSA,
 		TPM_ALG_SHA1,
 		0x00030072,
-		empty,
+		[]byte(nil),
 		TPM_ALG_AES,
 		128,
 		TPM_ALG_CFB,
@@ -712,7 +707,7 @@ func TestEncodeRSAParams(t *testing.T) {
 		0,
 		1024,
 		uint32(0x00010001),
-		empty,
+		[]byte(nil),
 	}
 
 	_, err := encodeRSAParams(parms)

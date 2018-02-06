@@ -436,8 +436,7 @@ func GetCapabilities(rw io.ReadWriter, cap Capability, count uint32, property ui
 // encodePCREvent
 func encodePCREvent(pcrNum uint32, eventData []byte) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdPCREvent}
-	var empty []byte
-	b1, err := pack([]interface{}{pcrNum, empty})
+	b1, err := pack([]interface{}{pcrNum, []byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -464,12 +463,11 @@ func PCREvent(rw io.ReadWriter, pcrNum uint32, eventData []byte) error {
 // encodeCreatePrimary encodes a CreatePrimary command.
 func encodeCreatePrimary(owner Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreatePrimary}
-	var empty []byte
 	b1, err := encodeHandle(Handle(owner))
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{empty})
+	b2, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +479,7 @@ func encodeCreatePrimary(owner Handle, pcrNums []int, parentPassword, ownerPassw
 	if err != nil {
 		return nil, err
 	}
-	b4, err := encodeSensitiveArea(t1[2:], empty)
+	b4, err := encodeSensitiveArea(t1[2:], []byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -489,7 +487,7 @@ func encodeCreatePrimary(owner Handle, pcrNums []int, parentPassword, ownerPassw
 	if err != nil {
 		return nil, err
 	}
-	b6, err := pack([]interface{}{empty})
+	b6, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -608,12 +606,11 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 // encodeCreateKey encodes a CreateKey command.
 func encodeCreateKey(owner Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreate}
-	var empty []byte
 	b1, err := encodeHandle(Handle(owner))
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{empty})
+	b2, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -625,7 +622,7 @@ func encodeCreateKey(owner Handle, pcrNums []int, parentPassword, ownerPassword 
 	if err != nil {
 		return nil, err
 	}
-	b4, err := encodeSensitiveArea(t1[2:], empty)
+	b4, err := encodeSensitiveArea(t1[2:], []byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -633,7 +630,7 @@ func encodeCreateKey(owner Handle, pcrNums []int, parentPassword, ownerPassword 
 	if err != nil {
 		return nil, err
 	}
-	b6, err := pack([]interface{}{empty})
+	b6, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -884,12 +881,11 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, sec
 // encodeCreateSealed encodes a CreateSealed command.
 func encodeCreateSealed(parent Handle, policyDigest []byte, parentPassword, ownerPassword string, toSeal []byte, pcrNums []int, parms KeyedHashParams) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreate}
-	var empty []byte
 	b1, err := encodeHandle(parent)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{empty})
+	b2, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -914,7 +910,7 @@ func encodeCreateSealed(parent Handle, policyDigest []byte, parentPassword, owne
 	if err != nil {
 		return nil, err
 	}
-	b7, err := pack([]interface{}{empty})
+	b7, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -966,8 +962,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policyDigest []byte, parentPa
 // encodeUnseal encodes a Unseal command.
 func encodeUnseal(itemHandle Handle, password string, sessionHandle Handle) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdUnseal}
-	var empty []byte
-	template := []interface{}{itemHandle, empty}
+	template := []interface{}{itemHandle, []byte(nil)}
 	b1, err := pack(template)
 	if err != nil {
 		return nil, err
@@ -977,7 +972,7 @@ func encodeUnseal(itemHandle Handle, password string, sessionHandle Handle) ([]b
 	if err != nil {
 		return nil, err
 	}
-	template = []interface{}{empty, sessionAttributes}
+	template = []interface{}{[]byte(nil), sessionAttributes}
 	return packWithBytes(cmdHdr, append(b1, b2...))
 }
 
@@ -1014,12 +1009,11 @@ func Unseal(rw io.ReadWriter, itemHandle Handle, password string, sessionHandle 
 // encodeQuote encodes a Quote command.
 func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg Algorithm) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdQuote}
-	var empty []byte
 	b1, err := encodeHandle(signingHandle)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{empty})
+	b2, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -1086,7 +1080,6 @@ func Quote(rw io.ReadWriter, signingHandle Handle, parentPassword, ownerPassword
 
 // encodeActivateCredential encodes a ActivateCredential command.
 func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
-	var empty []byte
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdActivateCredential}
 	b1, err := encodeHandle(activeHandle)
 	if err != nil {
@@ -1096,7 +1089,7 @@ func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassw
 	if err != nil {
 		return nil, err
 	}
-	b3, err := pack([]interface{}{empty})
+	b3, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -1164,7 +1157,6 @@ func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle Handle, active
 
 // encodeEvictControl encodes a EvictControl command.
 func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byte, error) {
-	var empty []byte
 	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdEvictControl}
 	b1, err := encodeHandle(owner)
 	if err != nil {
@@ -1174,7 +1166,7 @@ func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	b3, err := pack([]interface{}{empty})
+	b3, err := pack([]interface{}{[]byte(nil)})
 	if err != nil {
 		return nil, err
 	}
@@ -1330,8 +1322,7 @@ func encodeDefineSpace(owner, handle Handle, authString string, attributes uint3
 	if err != nil {
 		return nil, err
 	}
-	var empty []byte
-	numBytes := []interface{}{owner, empty}
+	numBytes := []interface{}{owner, []byte(nil)}
 	out1, err := pack(numBytes)
 	if err != nil {
 		return nil, err
@@ -1362,8 +1353,7 @@ func encodeIncrementNv(handle Handle, authString string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var empty []byte
-	numBytes := []interface{}{handle, handle, empty}
+	numBytes := []interface{}{handle, handle, []byte(nil)}
 	out, err := pack(numBytes)
 	if err != nil {
 		return nil, err
