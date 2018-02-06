@@ -799,7 +799,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	return digest, nil
 }
 
-func encodeStartAuthSession(tpmKey, bindKey Handle, nonceCaller, secret []byte, se byte, sym, hashAlg Algorithm) ([]byte, error) {
+func encodeStartAuthSession(tpmKey, bindKey Handle, nonceCaller, secret []byte, se SessionType, sym, hashAlg Algorithm) ([]byte, error) {
 	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdStartAuthSession}
 	b1, err := encodeHandle(tpmKey)
 	if err != nil {
@@ -813,14 +813,13 @@ func encodeStartAuthSession(tpmKey, bindKey Handle, nonceCaller, secret []byte, 
 	if err != nil {
 		return nil, err
 	}
-	b4 := []byte{se}
 	b5, err := pack([]interface{}{sym, hashAlg})
 	if err != nil {
 		return nil, err
 	}
 	args := append(b1, b2...)
 	args = append(args, b3...)
-	args = append(args, b4...)
+	args = append(args, byte(se))
 	args = append(args, b5...)
 	return packWithBytes(cmdHdr, args)
 }
@@ -838,7 +837,7 @@ func decodeStartAuthSession(in []byte) (Handle, []byte, error) {
 
 // StartAuthSession initializes a session object.
 // Returns session handle and the initial nonce from the TPM.
-func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, secret []byte, se byte, sym, hashAlg Algorithm) (Handle, []byte, error) {
+func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, secret []byte, se SessionType, sym, hashAlg Algorithm) (Handle, []byte, error) {
 	cmd, err := encodeStartAuthSession(tpmKey, bindKey, nonceCaller, secret, se, sym, hashAlg)
 	if err != nil {
 		return 0, nil, err
