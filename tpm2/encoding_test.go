@@ -311,26 +311,6 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 	}
 }
 
-func TestEncodeStartAuthSession(t *testing.T) {
-	// TODO(awly): fix this test
-	t.Skip()
-
-	testCmdBytes, err := hex.DecodeString("80010000002b00000176400000074000000700100000000000000000000000000000000000000100100004")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var nonceCaller []byte
-	var secret []byte
-	sym := AlgNULL
-	cmdBytes, err := encodeStartAuthSession(Handle(0x40000007), Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
-	}
-}
-
 func TestDecodeStartAuthSession(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("800100000020000000000300000000106cf0c90c419ce1a96d5205eb870ec527")
 	if err != nil {
@@ -473,35 +453,6 @@ func TestDecodeQuote(t *testing.T) {
 	_, _, _, _, err = decodeQuote(testRespBytes[10:len(testRespBytes)])
 	if err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestEncodeActivateCredential(t *testing.T) {
-	// TODO(awly): fix this test
-	t.Skip()
-
-	testCmdBytes, err := hex.DecodeString("80020000016800000147800000028000000000000016400000090000" +
-		"0100040102030440000009000001000000380020a2b634475ae0cfccff45d273f1" +
-		"73cb4c74089167c94ed4666fa41a0039b71ad6956316cbb65c1ac71225c204d9f7" +
-		"52fa62a84c70b51701007d9fec0ddff9c8e27904913f498aa20416e66e4a91eeb2" +
-		"63d1a7badd7bd0043b4f2e165018d21e892359856cd93b45a983606e3482b02979" +
-		"6659266f01277c944500bda57a5442d670173093307377783fd94aaf481bbdde19" +
-		"14720fc7f41637ff66593c50ce72626bc6e5edfa6e532c446faa3af1279f68d84e" +
-		"daa7386d97229be8edf74fc33e74e2f0f4b7a1ec985b42463fbf387ecc268b3a3a" +
-		"45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb" +
-		"377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e5" +
-		"04203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var credBlob []byte
-	var secret []byte
-	cmdBytes, err := encodeActivateCredential(Handle(0x80000002), Handle(0x80000000), "", "", credBlob, secret)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
 

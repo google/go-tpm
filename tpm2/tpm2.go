@@ -69,7 +69,6 @@ func encodePasswordData(password string) ([]byte, error) {
 	return pack([]interface{}{pw})
 }
 
-// returns: len0 PasswordSessionHandle 0000 01 password data as []byte
 func encodePasswordAuthArea(password string, owner Handle) ([]byte, error) {
 	ownerStr, err := encodeHandle(owner)
 	if err != nil {
