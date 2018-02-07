@@ -35,7 +35,9 @@ const (
 	ordQuote                uint32 = 0x00000016
 	ordSeal                 uint32 = 0x00000017
 	ordUnseal               uint32 = 0x00000018
+	ordCreateWrapKey        uint32 = 0x0000001F
 	ordGetPubKey            uint32 = 0x00000021
+	ordSign                 uint32 = 0x0000003C
 	ordQuote2               uint32 = 0x0000003E
 	ordResetLockValue       uint32 = 0x00000040
 	ordLoadKey2             uint32 = 0x00000041
@@ -46,6 +48,7 @@ const (
 	ordReadPubEK            uint32 = 0x0000007C
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
+	ordPcrReset             uint32 = 0x000000C8
 )
 
 // Capability types.

@@ -324,3 +324,38 @@ func takeOwnership(rw io.ReadWriter, encOwnerAuth []byte, encSRKAuth []byte, srk
 
 	return &k, &ra, ret, nil
 }
+
+// Creates a wrapped key under the SRK.
+func createWrapKey(rw io.ReadWriter, encUsageAuth digest, encMigrationAuth digest, keyInfo *key, ca *commandAuth) (*key, *responseAuth, uint32, error) {
+	in := []interface{}{khSRK, encUsageAuth, encMigrationAuth, keyInfo, ca}
+	var k key
+	var ra responseAuth
+	out := []interface{}{&k, &ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordCreateWrapKey, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	return &k, &ra, ret, nil
+}
+
+func sign(rw io.ReadWriter, keyHandle Handle, data []byte, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
+	in := []interface{}{keyHandle, data, ca}
+	var signature []byte
+	var ra responseAuth
+	out := []interface{}{&signature, &ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordSign, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	return signature, &ra, ret, nil
+}
+
+func pcrReset(rw io.ReadWriter, pcrs *pcrSelection) error {
+	_, err := submitTPMRequest(rw, tagRQUCommand, ordPcrReset, []interface{}{pcrs}, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
