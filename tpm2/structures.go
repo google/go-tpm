@@ -14,20 +14,6 @@
 
 package tpm2
 
-// A commandHeader is the header for a TPM command.
-type commandHeader struct {
-	Tag  structureTag
-	Size uint32
-	Cmd  command
-}
-
-// A responseHeader is a header for TPM responses.
-type responseHeader struct {
-	Tag  structureTag
-	Size uint32
-	Res  command
-}
-
 // RSAParams us a template for an RSA key.
 type RSAParams struct {
 	EncAlg     Algorithm

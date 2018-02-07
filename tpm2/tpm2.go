@@ -16,14 +16,14 @@
 package tpm2
 
 import (
-	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"unsafe"
+
+	"github.com/awly/go-tpm/tpmutil"
 )
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
@@ -57,20 +57,16 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
-func encodeHandle(handle Handle) ([]byte, error) {
-	return pack([]interface{}{handle})
-}
-
 func encodePasswordData(password string) ([]byte, error) {
 	pw, err := hex.DecodeString(password)
 	if err != nil {
 		return nil, err
 	}
-	return pack([]interface{}{pw})
+	return tpmutil.Pack(pw)
 }
 
 func encodePasswordAuthArea(password string, owner Handle) ([]byte, error) {
-	ownerStr, err := encodeHandle(owner)
+	ownerStr, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
 	}
@@ -81,41 +77,38 @@ func encodePasswordAuthArea(password string, owner Handle) ([]byte, error) {
 	}
 	buf := append(ownerStr, suffix...)
 	buf = append(buf, pw...)
-	return pack([]interface{}{buf})
+	return tpmutil.Pack(buf)
 }
 
 func encodeSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
-	t1, err := pack([]interface{}{in1})
+	t1, err := tpmutil.Pack(in1)
 	if err != nil {
 		return nil, err
 	}
-	t2, err := pack([]interface{}{in2})
+	t2, err := tpmutil.Pack(in2)
 	if err != nil {
 		return nil, err
 	}
 
 	t := append(t1, t2...)
-	return pack([]interface{}{t})
+	return tpmutil.Pack(t)
 }
 
 func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
 	parms := new(RSAParams)
 	current := 0
-	template := []interface{}{&parms.EncAlg, &parms.HashAlg, &parms.Attributes, &parms.AuthPolicy}
-	err := unpack(rsaBuf[current:], template)
+	err := tpmutil.Unpack(rsaBuf[current:], &parms.EncAlg, &parms.HashAlg, &parms.Attributes, &parms.AuthPolicy)
 	if err != nil {
 		return nil, err
 	}
 	current += 10 + len(parms.AuthPolicy)
-	template = []interface{}{&parms.SymAlg}
-	err = unpack(rsaBuf[current:], template)
+	err = tpmutil.Unpack(rsaBuf[current:], &parms.SymAlg)
 	if err != nil {
 		return nil, err
 	}
 	current += 2
 	if parms.SymAlg != AlgNULL {
-		template = []interface{}{&parms.SymSize, &parms.Mode}
-		err = unpack(rsaBuf[current:], template)
+		err = tpmutil.Unpack(rsaBuf[current:], &parms.SymSize, &parms.Mode)
 		if err != nil {
 			return nil, err
 		}
@@ -125,23 +118,20 @@ func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
 		parms.Mode = 0
 		parms.Scheme = 0
 	}
-	template = []interface{}{&parms.Scheme}
-	err = unpack(rsaBuf[current:], template)
+	err = tpmutil.Unpack(rsaBuf[current:], &parms.Scheme)
 	if err != nil {
 		return nil, err
 	}
 	current += 2
 	if parms.Scheme == AlgRSASSA {
-		template = []interface{}{&parms.SchemeHash}
-		err = unpack(rsaBuf[current:], template)
+		err = tpmutil.Unpack(rsaBuf[current:], &parms.SchemeHash)
 		if err != nil {
 			return nil, err
 		}
 		current += 2
 	}
 
-	template = []interface{}{&parms.ModSize, &parms.Exp, &parms.Modulus}
-	err = unpack(rsaBuf[current:], template)
+	err = tpmutil.Unpack(rsaBuf[current:], &parms.ModSize, &parms.Exp, &parms.Modulus)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +141,7 @@ func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
 func decodeRSAArea(in []byte) (*RSAParams, error) {
 	var rsaBuf []byte
 
-	template := []interface{}{&rsaBuf}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &rsaBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -160,62 +149,58 @@ func decodeRSAArea(in []byte) (*RSAParams, error) {
 }
 
 func encodeKeyedHashParams(parms KeyedHashParams) ([]byte, error) {
-	template := []interface{}{
-		&parms.TypeAlg,
-		&parms.HashAlg,
-		&parms.Attributes,
-		&parms.AuthPolicy,
-		&parms.Scheme,
-		&parms.Unique,
-	}
-	return pack(template)
+	return tpmutil.Pack(
+		parms.TypeAlg,
+		parms.HashAlg,
+		parms.Attributes,
+		parms.AuthPolicy,
+		parms.Scheme,
+		parms.Unique,
+	)
 }
 
 func encodeRSAParams(parms RSAParams) ([]byte, error) {
-	template := []interface{}{
-		&parms.EncAlg,
-		&parms.HashAlg,
-		&parms.Attributes,
-		&parms.AuthPolicy,
-	}
-	t1, err := pack(template)
+	t1, err := tpmutil.Pack(
+		parms.EncAlg,
+		parms.HashAlg,
+		parms.Attributes,
+		parms.AuthPolicy,
+	)
 	if err != nil {
 		return nil, err
 	}
 
+	var template []interface{}
 	if parms.SymAlg != AlgNULL {
 		template = []interface{}{
-			&parms.SymAlg,
-			&parms.SymSize,
-			&parms.Mode,
-			&parms.Scheme,
+			parms.SymAlg,
+			parms.SymSize,
+			parms.Mode,
+			parms.Scheme,
 		}
 	} else {
-		template = []interface{}{&parms.SymAlg, &parms.Scheme}
+		template = []interface{}{parms.SymAlg, parms.Scheme}
 	}
-	t2, err := pack(template)
+	t2, err := tpmutil.Pack(template...)
 	if err != nil {
 		return nil, err
 	}
 	if parms.Scheme == AlgRSASSA {
-		template3 := []interface{}{&parms.SchemeHash}
-		t3, err := pack(template3)
+		t3, err := tpmutil.Pack(parms.SchemeHash)
 		if err != nil {
 			return nil, err
 		}
 		t2 = append(t2, t3...)
 	}
 
-	template4 := []interface{}{&parms.ModSize, &parms.Exp, parms.Modulus}
-	t4, err := pack(template4)
+	t4, err := tpmutil.Pack(parms.ModSize, parms.Exp, parms.Modulus)
 	if err != nil {
 		return nil, err
 	}
 
 	t5 := append(t1, t2...)
 	t5 = append(t5, t4...)
-	template5 := []interface{}{&t5}
-	return pack(template5)
+	return tpmutil.Pack(t5)
 }
 
 func encodeShortPCRs(pcrNums []int) ([]byte, error) {
@@ -232,26 +217,19 @@ func encodeShortPCRs(pcrNums []int) ([]byte, error) {
 
 func encodeLongPCR(count uint32, pcrNums []int) ([]byte, error) {
 	if count == 0 {
-		return pack([]interface{}{count})
+		return tpmutil.Pack(count)
 	}
 	b1, err := encodeShortPCRs(pcrNums)
 	if err != nil {
 		return nil, err
 	}
-	template := []interface{}{count, b1}
-	return pack(template)
-}
-
-func encodeGetRandom(size uint16) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdGetRandom}
-	return packWithHeader(cmdHdr, size)
+	return tpmutil.Pack(count, b1)
 }
 
 func decodeGetRandom(in []byte) ([]byte, error) {
 	var randBytes []byte
 
-	out := []interface{}{&randBytes}
-	err := unpack(in, out)
+	err := tpmutil.Unpack(in, &randBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -260,12 +238,7 @@ func decodeGetRandom(in []byte) ([]byte, error) {
 
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriteCloser, size uint16) ([]byte, error) {
-	cmd, err := encodeGetRandom(size)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdGetRandom, size)
 	if err != nil {
 		return nil, err
 	}
@@ -277,26 +250,12 @@ func GetRandom(rw io.ReadWriteCloser, size uint16) ([]byte, error) {
 	return rand, nil
 }
 
-func encodeFlushContext(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdFlushContext}
-	return packWithHeader(cmdHdr, handle)
-}
-
 // FlushContext removes an object or session under handle to be removed from
 // the TPM. This must be called for any loaded handle to avoid out-of-memory
 // errors in TPM.
 func FlushContext(rw io.ReadWriter, handle Handle) error {
-	cmd, err := encodeFlushContext(handle)
-	if err != nil {
-		return fmt.Errorf("failed building command: %v", err)
-	}
-	_, err = runCommand(rw, cmd)
+	_, err := runCommand(rw, tagNoSessions, cmdFlushContext, handle)
 	return err
-}
-
-func encodeReadPCRs(numSpec uint32, pcrs []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPCRRead}
-	return packWithHeader(cmdHdr, numSpec, pcrs)
 }
 
 func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
@@ -306,8 +265,7 @@ func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
 	var t uint32
 	var s uint32
 
-	out := []interface{}{&t, &updateCounter, &pcr, &s, &digest}
-	err := unpack(in, out)
+	err := tpmutil.Unpack(in, &t, &updateCounter, &pcr, &s, &digest)
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
@@ -316,11 +274,7 @@ func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
 
 // ReadPCRs reads a PCR value from the TPM.
 func ReadPCRs(rw io.ReadWriter, pcrSelect []byte) (uint32, []byte, uint16, []byte, error) {
-	cmd, err := encodeReadPCRs(1, pcrSelect)
-	if err != nil {
-		return 1, nil, 0, nil, err
-	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdPCRRead, 1, pcrSelect)
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
@@ -332,16 +286,10 @@ func ReadPCRs(rw io.ReadWriter, pcrSelect []byte) (uint32, []byte, uint16, []byt
 	return counter, pcr, alg, digest, err
 }
 
-func encodeReadClock() ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdReadClock}
-	return packWithBytes(cmdHdr, nil)
-}
-
 func decodeReadClock(in []byte) (uint64, uint64, error) {
 	var curTime, curClock uint64
 
-	template := []interface{}{&curTime, &curClock}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &curTime, &curClock)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -356,11 +304,7 @@ func decodeReadClock(in []byte) (uint64, uint64, error) {
 // Second return value is time in milliseconds since TPM reset (since Storage
 // Primary Seed is changed).
 func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
-	cmd, err := encodeReadClock()
-	if err != nil {
-		return 0, 0, fmt.Errorf("building ReadClock command: %v", err)
-	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdReadClock)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -371,17 +315,11 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	return curTime, curClock, nil
 }
 
-func encodeGetCapability(cap Capability, count uint32, property uint32) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdGetCapability}
-	return packWithHeader(cmdHdr, cap, property, count)
-}
-
 func decodeGetCapability(in []byte) (Capability, []Handle, error) {
 	var numHandles uint32
 	var capReported Capability
 
-	out := []interface{}{&capReported, &numHandles}
-	err := unpack(in[1:9], out)
+	err := tpmutil.Unpack(in[1:9], &capReported, &numHandles)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -391,9 +329,8 @@ func decodeGetCapability(in []byte) (Capability, []Handle, error) {
 	}
 	var handles []Handle
 	var handle Handle
-	handleOut := []interface{}{&handle}
 	for i := 0; i < int(numHandles); i++ {
-		err := unpack(in[8+4*i:12+4*i], handleOut)
+		err := tpmutil.Unpack(in[8+4*i:12+4*i], &handle)
 		if err != nil {
 			return 0, nil, err
 		}
@@ -407,11 +344,7 @@ func decodeGetCapability(in []byte) (Capability, []Handle, error) {
 //
 // Currently only CapabilityHandles is supported (list active handles).
 func GetCapability(rw io.ReadWriter, cap Capability, count uint32, property uint32) ([]Handle, error) {
-	cmd, err := encodeGetCapability(cap, count, property)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdGetCapability, cap, property, count)
 	if err != nil {
 		return nil, err
 	}
@@ -423,8 +356,7 @@ func GetCapability(rw io.ReadWriter, cap Capability, count uint32, property uint
 }
 
 func encodePCREvent(pcrNum uint32, eventData []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdPCREvent}
-	b1, err := pack([]interface{}{pcrNum, []byte(nil)})
+	b1, err := tpmutil.Pack(pcrNum, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -432,11 +364,11 @@ func encodePCREvent(pcrNum uint32, eventData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b3, err := pack([]interface{}{eventData})
+	b3, err := tpmutil.Pack(eventData)
 	if err != nil {
 		return nil, err
 	}
-	return packWithBytes(cmdHdr, append(append(b1, b2...), b3...))
+	return append(append(b1, b2...), b3...), nil
 }
 
 // PCREvent writes an update to the specified PCR.
@@ -445,17 +377,16 @@ func PCREvent(rw io.ReadWriter, pcrNum uint32, eventData []byte) error {
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, cmd)
+	_, err = runCommand(rw, tagSessions, cmdPCREvent, tpmutil.RawBytes(cmd))
 	return err
 }
 
 func encodeCreatePrimary(owner Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreatePrimary}
-	b1, err := encodeHandle(Handle(owner))
+	b1, err := tpmutil.Pack(Handle(owner))
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{[]byte(nil)})
+	b2, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +406,7 @@ func encodeCreatePrimary(owner Handle, pcrNums []int, parentPassword, ownerPassw
 	if err != nil {
 		return nil, err
 	}
-	b6, err := pack([]interface{}{[]byte(nil)})
+	b6, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +425,7 @@ func encodeCreatePrimary(owner Handle, pcrNums []int, parentPassword, ownerPassw
 	args = append(args, b5...)
 	args = append(args, b6...)
 	args = append(args, b7...)
-	return packWithBytes(cmdHdr, args)
+	return args, nil
 }
 
 func decodeCreatePrimary(in []byte) (Handle, []byte, error) {
@@ -502,8 +433,7 @@ func decodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	var auth []byte
 
 	// handle and auth data
-	template := []interface{}{&handle, &auth}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &handle, &auth)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -512,20 +442,18 @@ func decodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	current = 6 + 2*len(auth)
 	// size, size-public
 	var tpm2Public []byte
-	template = []interface{}{&tpm2Public}
-	err = unpack(in[current:], template)
+	err = tpmutil.Unpack(in[current:], &tpm2Public)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	var rsaParamsBuf []byte
-	template = []interface{}{&rsaParamsBuf}
-	err = unpack(tpm2Public, template)
+	err = tpmutil.Unpack(tpm2Public, &rsaParamsBuf)
 	if err != nil {
 		return 0, nil, err
 	}
 	var pub tpmtPublic
-	if err := unpack(rsaParamsBuf, []interface{}{&pub}); err != nil {
+	if err := tpmutil.Unpack(rsaParamsBuf, &pub); err != nil {
 		return 0, nil, err
 	}
 	return Handle(handle), pub.Unique, nil
@@ -538,7 +466,7 @@ func CreatePrimary(rw io.ReadWriter, owner Handle, pcrNums []int, parentPassword
 	if err != nil {
 		return 0, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagSessions, cmdCreatePrimary, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return 0, nil, err
 	}
@@ -550,18 +478,12 @@ func CreatePrimary(rw io.ReadWriter, owner Handle, pcrNums []int, parentPassword
 	return Handle(handle), publicBlob, nil
 }
 
-func encodeReadPublic(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdReadPublic}
-	return packWithHeader(cmdHdr, handle)
-}
-
 func decodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
 	var publicBlob []byte
 	var name []byte
 	var qualifiedName []byte
 
-	out := []interface{}{&publicBlob, &name, &qualifiedName}
-	err := unpack(in, out)
+	err := tpmutil.Unpack(in, &publicBlob, &name, &qualifiedName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -571,11 +493,7 @@ func decodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
 // ReadPublic reads the public part of the object under handle.
 // Returns the public data, name and qualified name.
 func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error) {
-	cmd, err := encodeReadPublic(handle)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdReadPublic, handle)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -588,12 +506,11 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 }
 
 func encodeCreateKey(owner Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdCreate}
-	b1, err := encodeHandle(Handle(owner))
+	b1, err := tpmutil.Pack(Handle(owner))
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{[]byte(nil)})
+	b2, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +530,7 @@ func encodeCreateKey(owner Handle, pcrNums []int, parentPassword, ownerPassword 
 	if err != nil {
 		return nil, err
 	}
-	b6, err := pack([]interface{}{[]byte(nil)})
+	b6, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -627,15 +544,14 @@ func encodeCreateKey(owner Handle, pcrNums []int, parentPassword, ownerPassword 
 	args = append(args, b5...)
 	args = append(args, b6...)
 	args = append(args, b7...)
-	return packWithBytes(cmdHdr, args)
+	return args, nil
 }
 
 func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 	var tpm2bPrivate []byte
 	var tpm2bPublic []byte
 
-	out := []interface{}{&tpm2bPrivate, &tpm2bPublic}
-	err := unpack(in[4:], out)
+	err := tpmutil.Unpack(in[4:], &tpm2bPrivate, &tpm2bPublic)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -649,7 +565,7 @@ func CreateKey(rw io.ReadWriter, owner Handle, pcrNums []int, parentPassword, ow
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagSessions, cmdCreate, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -661,8 +577,7 @@ func CreateKey(rw io.ReadWriter, owner Handle, pcrNums []int, parentPassword, ow
 }
 
 func encodeLoad(parentHandle Handle, parentAuth, ownerAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdLoad}
-	b1, err := encodeHandle(parentHandle)
+	b1, err := tpmutil.Pack(parentHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -674,14 +589,14 @@ func encodeLoad(parentHandle Handle, parentAuth, ownerAuth string, publicBlob, p
 	if err != nil {
 		return nil, err
 	}
-	b5, err := pack([]interface{}{privateBlob, publicBlob})
+	b5, err := tpmutil.Pack(privateBlob, publicBlob)
 	if err != nil {
 		return nil, err
 	}
 	args := append(b1, b3...)
 	args = append(args, b4...)
 	args = append(args, b5...)
-	return packWithBytes(cmdHdr, args)
+	return args, nil
 }
 
 func decodeLoad(in []byte) (Handle, []byte, error) {
@@ -689,8 +604,7 @@ func decodeLoad(in []byte) (Handle, []byte, error) {
 	var auth []byte
 	var name []byte
 
-	out := []interface{}{&handle, &auth, &name}
-	err := unpack(in, out)
+	err := tpmutil.Unpack(in, &handle, &auth, &name)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -704,7 +618,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth, ownerAuth string, p
 	if err != nil {
 		return 0, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagSessions, cmdLoad, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return 0, nil, err
 	}
@@ -715,10 +629,14 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth, ownerAuth string, p
 	return handle, name, nil
 }
 
+// PolicyPassword sets password authorization requirement on the object.
+func PolicyPassword(rw io.ReadWriter, handle Handle) error {
+	_, err := runCommand(rw, tagNoSessions, cmdPolicyPassword, handle)
+	return err
+}
+
 func encodePolicyPCR(handle Handle, expectedDigest []byte, pcrNums []int) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPolicyPCR}
-	template := []interface{}{handle, expectedDigest}
-	b1, err := pack(template)
+	b1, err := tpmutil.Pack(handle, expectedDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -726,27 +644,7 @@ func encodePolicyPCR(handle Handle, expectedDigest []byte, pcrNums []int) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	return packWithBytes(cmdHdr, append(b1, b2...))
-}
-
-func encodePolicyPassword(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPolicyPassword}
-	template := []interface{}{handle}
-	b1, err := pack(template)
-	if err != nil {
-		return nil, err
-	}
-	return packWithBytes(cmdHdr, b1)
-}
-
-// PolicyPassword sets password authorization requirement on the object.
-func PolicyPassword(rw io.ReadWriter, handle Handle) error {
-	cmd, err := encodePolicyPassword(handle)
-	if err != nil {
-		return err
-	}
-	_, err = runCommand(rw, cmd)
-	return err
+	return append(b1, b2...), nil
 }
 
 // PolicyPCR sets PCR state binding for authorization on the object.
@@ -755,25 +653,14 @@ func PolicyPCR(rw io.ReadWriter, handle Handle, expectedDigest []byte, pcrNums [
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, cmd)
+	_, err = runCommand(rw, tagNoSessions, cmdPolicyPCR, tpmutil.RawBytes(cmd))
 	return err
-}
-
-func encodePolicyGetDigest(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdPolicyGetDigest}
-	template := []interface{}{handle}
-	b1, err := pack(template)
-	if err != nil {
-		return nil, err
-	}
-	return packWithBytes(cmdHdr, b1)
 }
 
 func decodePolicyGetDigest(in []byte) ([]byte, error) {
 	var digest []byte
 
-	out := []interface{}{&digest}
-	err := unpack(in, out)
+	err := tpmutil.Unpack(in, &digest)
 	if err != nil {
 		return nil, err
 	}
@@ -782,11 +669,7 @@ func decodePolicyGetDigest(in []byte) ([]byte, error) {
 
 // PolicyGetDigest returns the current policyDigest of the session.
 func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
-	cmd, err := encodePolicyGetDigest(handle)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdPolicyGetDigest, handle)
 	if err != nil {
 		return nil, err
 	}
@@ -799,20 +682,19 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 }
 
 func encodeStartAuthSession(tpmKey, bindKey Handle, nonceCaller, secret []byte, se SessionType, sym, hashAlg Algorithm) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdStartAuthSession}
-	b1, err := encodeHandle(tpmKey)
+	b1, err := tpmutil.Pack(tpmKey)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodeHandle(bindKey)
+	b2, err := tpmutil.Pack(bindKey)
 	if err != nil {
 		return nil, err
 	}
-	b3, err := pack([]interface{}{nonceCaller, secret})
+	b3, err := tpmutil.Pack(nonceCaller, secret)
 	if err != nil {
 		return nil, err
 	}
-	b5, err := pack([]interface{}{sym, hashAlg})
+	b5, err := tpmutil.Pack(sym, hashAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -820,14 +702,13 @@ func encodeStartAuthSession(tpmKey, bindKey Handle, nonceCaller, secret []byte, 
 	args = append(args, b3...)
 	args = append(args, byte(se))
 	args = append(args, b5...)
-	return packWithBytes(cmdHdr, args)
+	return args, nil
 }
 
 func decodeStartAuthSession(in []byte) (Handle, []byte, error) {
 	var handle Handle
 	var nonce []byte
-	template := []interface{}{&handle, &nonce}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &handle, &nonce)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -841,7 +722,7 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, sec
 	if err != nil {
 		return 0, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdStartAuthSession, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return 0, nil, err
 	}
@@ -853,27 +734,22 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey Handle, nonceCaller, sec
 }
 
 func encodeUnseal(itemHandle Handle, password string, sessionHandle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdUnseal}
-	template := []interface{}{itemHandle, []byte(nil)}
-	b1, err := pack(template)
+	b1, err := tpmutil.Pack(itemHandle, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
-	sessionAttributes := uint8(1)
 	b2, err := encodePasswordAuthArea(password, sessionHandle)
 	if err != nil {
 		return nil, err
 	}
-	template = []interface{}{[]byte(nil), sessionAttributes}
-	return packWithBytes(cmdHdr, append(b1, b2...))
+	return append(b1, b2...), nil
 }
 
 func decodeUnseal(in []byte) ([]byte, []byte, error) {
 	var unsealed []byte
 	var digest []byte
 
-	template := []interface{}{&unsealed, &digest}
-	err := unpack(in[4:], template)
+	err := tpmutil.Unpack(in[4:], &unsealed, &digest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -887,7 +763,7 @@ func Unseal(rw io.ReadWriter, itemHandle Handle, password string, sessionHandle 
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagSessions, cmdUnseal, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -899,12 +775,11 @@ func Unseal(rw io.ReadWriter, itemHandle Handle, password string, sessionHandle 
 }
 
 func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg Algorithm) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdQuote}
-	b1, err := encodeHandle(signingHandle)
+	b1, err := tpmutil.Pack(signingHandle)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{[]byte(nil)})
+	b2, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -912,7 +787,7 @@ func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQ
 	if err != nil {
 		return nil, err
 	}
-	b4, err := pack([]interface{}{toQuote, sigAlg})
+	b4, err := tpmutil.Pack(toQuote, sigAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -924,7 +799,7 @@ func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQ
 	args = append(args, b3...)
 	args = append(args, b4...)
 	args = append(args, b5...)
-	return packWithBytes(cmdHdr, args)
+	return args, nil
 }
 
 func decodeQuote(in []byte) ([]byte, uint16, uint16, []byte, error) {
@@ -935,14 +810,12 @@ func decodeQuote(in []byte) ([]byte, uint16, uint16, []byte, error) {
 	var s1 uint16
 	var s2 uint16
 
-	template := []interface{}{&empty, &buf}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &empty, &buf)
 	if err != nil {
 		return nil, 0, 0, nil, err
 	}
 
-	template = []interface{}{&attest, &s1, &s2, &signature}
-	err = unpack(buf, template)
+	err = tpmutil.Unpack(buf, &attest, &s1, &s2, &signature)
 	if err != nil {
 		return nil, 0, 0, nil, err
 	}
@@ -956,7 +829,7 @@ func Quote(rw io.ReadWriter, signingHandle Handle, parentPassword, ownerPassword
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagSessions, cmdQuote, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -968,16 +841,15 @@ func Quote(rw io.ReadWriter, signingHandle Handle, parentPassword, ownerPassword
 }
 
 func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdActivateCredential}
-	b1, err := encodeHandle(activeHandle)
+	b1, err := tpmutil.Pack(activeHandle)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodeHandle(keyHandle)
+	b2, err := tpmutil.Pack(keyHandle)
 	if err != nil {
 		return nil, err
 	}
-	b3, err := pack([]interface{}{[]byte(nil)})
+	b3, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -990,11 +862,11 @@ func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassw
 		return nil, err
 	}
 	b4t := append(b4a[2:], b4b[2:]...)
-	b4, err := pack([]interface{}{b4t})
+	b4, err := tpmutil.Pack(b4t)
 	if err != nil {
 		return nil, err
 	}
-	b5, err := pack([]interface{}{credBlob, secret})
+	b5, err := tpmutil.Pack(credBlob, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -1002,7 +874,7 @@ func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassw
 	args = append(args, b3...)
 	args = append(args, b4...)
 	args = append(args, b5...)
-	return packWithBytes(cmdHdr, args)
+	return args, nil
 }
 
 func decodeActivateCredential(in []byte) ([]byte, error) {
@@ -1010,13 +882,11 @@ func decodeActivateCredential(in []byte) ([]byte, error) {
 	var buf []byte
 	var certInfo []byte
 
-	template := []interface{}{&empty, &buf}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &empty, &buf)
 	if err != nil {
 		return nil, err
 	}
-	template = []interface{}{&certInfo}
-	err = unpack(buf, template)
+	err = tpmutil.Unpack(buf, &certInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -1030,7 +900,7 @@ func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle Handle, active
 	if err != nil {
 		return nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagSessions, cmdActivateCredential, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, err
 	}
@@ -1042,24 +912,22 @@ func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle Handle, active
 }
 
 func encodeMakeCredential(protectorHandle Handle, credential, activeName []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdMakeCredential}
-	b1, err := encodeHandle(protectorHandle)
+	b1, err := tpmutil.Pack(protectorHandle)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := pack([]interface{}{credential, activeName})
+	b2, err := tpmutil.Pack(credential, activeName)
 	if err != nil {
 		return nil, err
 	}
-	return packWithBytes(cmdHdr, append(b1, b2...))
+	return append(b1, b2...), nil
 }
 
 func decodeMakeCredential(in []byte) ([]byte, []byte, error) {
 	var credBlob []byte
 	var encryptedSecret []byte
 
-	template := []interface{}{&credBlob, &encryptedSecret}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &credBlob, &encryptedSecret)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1073,7 +941,7 @@ func MakeCredential(rw io.ReadWriter, protectorHandle Handle, credential, active
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdMakeCredential, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1085,16 +953,15 @@ func MakeCredential(rw io.ReadWriter, protectorHandle Handle, credential, active
 }
 
 func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdEvictControl}
-	b1, err := encodeHandle(owner)
+	b1, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodeHandle(tmpHandle)
+	b2, err := tpmutil.Pack(tmpHandle)
 	if err != nil {
 		return nil, err
 	}
-	b3, err := pack([]interface{}{[]byte(nil)})
+	b3, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -1102,7 +969,7 @@ func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	b5, err := encodeHandle(persistantHandle)
+	b5, err := tpmutil.Pack(persistantHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -1110,7 +977,7 @@ func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byt
 	args = append(args, b3...)
 	args = append(args, b4...)
 	args = append(args, b5...)
-	return packWithBytes(cmdHdr, args)
+	return args, nil
 }
 
 // EvictControl toggles persistence of an object within the TPM.
@@ -1119,38 +986,19 @@ func EvictControl(rw io.ReadWriter, owner, tmpHandle, persistantHandle Handle) e
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, cmd)
+	_, err = runCommand(rw, tagSessions, cmdEvictControl, tpmutil.RawBytes(cmd))
 	return err
-}
-
-func encodeSaveContext(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdContextSave}
-	b1, err := encodeHandle(handle)
-	if err != nil {
-		return nil, err
-	}
-	return packWithBytes(cmdHdr, b1)
 }
 
 // ContextSave returns an encrypted version of the session, object or sequence
 // context for storage outside of the TPM.
 func ContextSave(rw io.ReadWriter, handle Handle) ([]byte, error) {
-	cmd, err := encodeSaveContext(handle)
-	if err != nil {
-		return nil, err
-	}
-	return runCommand(rw, cmd)
-}
-
-func encodeLoadContext(saveArea []byte) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdContextLoad}
-	return packWithBytes(cmdHdr, saveArea[0:len(saveArea)])
+	return runCommand(rw, tagNoSessions, cmdContextSave, handle)
 }
 
 func decodeLoadContext(in []byte) (Handle, error) {
 	var handle Handle
-	template := []interface{}{&handle}
-	err := unpack(in, template)
+	err := tpmutil.Unpack(in, &handle)
 	if err != nil {
 		return 0, err
 	}
@@ -1159,11 +1007,7 @@ func decodeLoadContext(in []byte) (Handle, error) {
 
 // ContextLoad reloads context data created by ContextSave.
 func ContextLoad(rw io.ReadWriter, saveArea []byte) (Handle, error) {
-	cmd, err := encodeLoadContext(saveArea)
-	if err != nil {
-		return 0, err
-	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdContextLoad, tpmutil.RawBytes(saveArea))
 	if err != nil {
 		return 0, err
 	}
@@ -1179,14 +1023,12 @@ func encodeIncrementNv(handle Handle, authString string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	numBytes := []interface{}{handle, handle, []byte(nil)}
-	out, err := pack(numBytes)
+	out, err := tpmutil.Pack(handle, handle, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, auth...)
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdIncrementNvCounter}
-	return packWithBytes(cmdHdr, out)
+	return out, nil
 }
 
 // NVIncrement increments a counter NV index.
@@ -1195,23 +1037,21 @@ func NVIncrement(rw io.ReadWriter, handle Handle, authString string) error {
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, cmd)
+	_, err = runCommand(rw, tagSessions, cmdIncrementNvCounter, tpmutil.RawBytes(cmd))
 	return err
 }
 
 func encodeUndefineSpace(owner, handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdUndefineSpace}
 	auth, err := encodePasswordAuthArea("", PasswordSessionHandle)
 	if err != nil {
 		return nil, err
 	}
-	numBytes := []interface{}{owner, handle, uint16(0)}
-	out, err := pack(numBytes)
+	out, err := tpmutil.Pack(owner, handle, uint16(0))
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, auth...)
-	return packWithBytes(cmdHdr, out)
+	return out, nil
 }
 
 // NVUndefineSpace removes an index from TPM's NV storage.
@@ -1220,7 +1060,7 @@ func NVUndefineSpace(rw io.ReadWriter, owner, handle Handle) error {
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, cmd)
+	_, err = runCommand(rw, tagSessions, cmdUndefineSpace, tpmutil.RawBytes(cmd))
 	return err
 }
 
@@ -1233,21 +1073,18 @@ func encodeDefineSpace(owner, handle Handle, authString string, attributes uint3
 	if err != nil {
 		return nil, err
 	}
-	numBytes := []interface{}{owner, []byte(nil)}
-	out1, err := pack(numBytes)
+	out1, err := tpmutil.Pack(owner, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
 	hashAlg := AlgSHA1
 	sizeNvArea := uint16(2*int(unsafe.Sizeof(owner)) + 3*int(unsafe.Sizeof(dataSize)) + len(policy))
 	out1 = append(append(out1, auth...), pw...)
-	numBytes2 := []interface{}{sizeNvArea, handle, hashAlg, attributes, policy, dataSize}
-	out2, err := pack(numBytes2)
+	out2, err := tpmutil.Pack(sizeNvArea, handle, hashAlg, attributes, policy, dataSize)
 	if err != nil {
 		return nil, err
 	}
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdDefineSpace}
-	return packWithBytes(cmdHdr, append(out1, out2...))
+	return append(out1, out2...), nil
 }
 
 // NVDefineSpace creates an index in TPM's NV storage.
@@ -1256,36 +1093,31 @@ func NVDefineSpace(rw io.ReadWriter, owner, handle Handle, authString string, po
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, cmd)
+	_, err = runCommand(rw, tagSessions, cmdDefineSpace, tpmutil.RawBytes(cmd))
 	return err
-}
-
-func encodeNVReadPublic(handle Handle) ([]byte, error) {
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdReadPublicNv}
-	return packWithHeader(cmdHdr, handle)
 }
 
 func decodeNVReadPublic(in []byte) (NVPublic, error) {
 	var pub NVPublic
 	var buf []byte
-	if err := unpack(in, []interface{}{&buf}); err != nil {
+	if err := tpmutil.Unpack(in, &buf); err != nil {
 		return pub, err
 	}
-	err := unpack(buf, []interface{}{&pub})
+	err := tpmutil.Unpack(buf, &pub)
 	return pub, err
 }
 
 func decodeNVRead(in []byte) ([]byte, error) {
 	var sessionAttributes uint32
 	var data []byte
-	if err := unpack(in, []interface{}{&sessionAttributes, &data}); err != nil {
+	if err := tpmutil.Unpack(in, &sessionAttributes, &data); err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
 func encodeNVRead(handle Handle, authString string, offset, dataSize uint16) ([]byte, error) {
-	out, err := pack([]interface{}{handle, handle, []byte(nil)})
+	out, err := tpmutil.Pack(handle, handle, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -1294,23 +1126,18 @@ func encodeNVRead(handle Handle, authString string, offset, dataSize uint16) ([]
 		return nil, err
 	}
 	out = append(out, auth...)
-	params, err := pack([]interface{}{dataSize, offset})
+	params, err := tpmutil.Pack(dataSize, offset)
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, params...)
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdReadNv}
-	return packWithBytes(cmdHdr, out)
+	return out, nil
 }
 
 // NVRead reads full data blob from NV index.
 func NVRead(rw io.ReadWriter, index Handle) ([]byte, error) {
 	// Read public area to determine data size.
-	cmd, err := encodeNVReadPublic(index)
-	if err != nil {
-		return nil, fmt.Errorf("building NV_ReadPublic command: %v", err)
-	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdReadPublicNv, index)
 	if err != nil {
 		return nil, fmt.Errorf("running NV_ReadPublic command: %v", err)
 	}
@@ -1320,11 +1147,11 @@ func NVRead(rw io.ReadWriter, index Handle) ([]byte, error) {
 	}
 
 	// Read pub.DataSize of actual data.
-	cmd, err = encodeNVRead(index, "", 0, pub.DataSize)
+	cmd, err := encodeNVRead(index, "", 0, pub.DataSize)
 	if err != nil {
 		return nil, fmt.Errorf("building NV_Read command: %v", err)
 	}
-	resp, err = runCommand(rw, cmd)
+	resp, err = runCommand(rw, tagSessions, cmdReadNv, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, fmt.Errorf("running NV_Read command: %v", err)
 	}
@@ -1333,23 +1160,13 @@ func NVRead(rw io.ReadWriter, index Handle) ([]byte, error) {
 
 // Hash computes a hash of data in buf using the TPM.
 func Hash(rw io.ReadWriter, alg Algorithm, buf []byte) ([]byte, error) {
-	out, err := pack([]interface{}{buf, alg, HandleNull})
-	if err != nil {
-		return nil, err
-	}
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdHash}
-	cmd, err := packWithBytes(cmdHdr, out)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagNoSessions, cmdHash, buf, alg, HandleNull)
 	if err != nil {
 		return nil, err
 	}
 
 	var digest []byte
-	if err = unpack(resp, []interface{}{&digest}); err != nil {
+	if err = tpmutil.Unpack(resp, &digest); err != nil {
 		return nil, fmt.Errorf("decoding Hash response: %v", err)
 	}
 	return digest, nil
@@ -1357,38 +1174,18 @@ func Hash(rw io.ReadWriter, alg Algorithm, buf []byte) ([]byte, error) {
 
 // Startup initializes a TPM (usually done by the OS).
 func Startup(rw io.ReadWriter, typ StartupType) error {
-	out, err := pack([]interface{}{typ})
-	if err != nil {
-		return err
-	}
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdStartup}
-	cmd, err := packWithBytes(cmdHdr, out)
-	if err != nil {
-		return err
-	}
-
-	_, err = runCommand(rw, cmd)
+	_, err := runCommand(rw, tagNoSessions, cmdStartup, typ)
 	return err
 }
 
 // Shutdown shuts down a TPM (usually done by the OS).
 func Shutdown(rw io.ReadWriter, typ StartupType) error {
-	out, err := pack([]interface{}{typ})
-	if err != nil {
-		return err
-	}
-	cmdHdr := commandHeader{Tag: tagNoSessions, Cmd: cmdShutdown}
-	cmd, err := packWithBytes(cmdHdr, out)
-	if err != nil {
-		return err
-	}
-
-	_, err = runCommand(rw, cmd)
+	_, err := runCommand(rw, tagNoSessions, cmdShutdown, typ)
 	return err
 }
 
 func encodeSign(key Handle, password string, digest []byte) ([]byte, error) {
-	out, err := pack([]interface{}{key, []byte(nil)})
+	out, err := tpmutil.Pack(key, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -1397,25 +1194,24 @@ func encodeSign(key Handle, password string, digest []byte) ([]byte, error) {
 		return nil, err
 	}
 	out = append(out, auth...)
-	params, err := pack([]interface{}{digest, AlgNULL})
+	params, err := tpmutil.Pack(digest, AlgNULL)
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, params...)
-	ticket, err := pack([]interface{}{tagHashcheck, HandleNull, []byte(nil)})
+	ticket, err := tpmutil.Pack(tagHashcheck, HandleNull, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, ticket...)
-	cmdHdr := commandHeader{Tag: tagSessions, Cmd: cmdReadNv}
-	return packWithBytes(cmdHdr, out)
+	return out, nil
 }
 
 func decodeSign(buf []byte) (Algorithm, []byte, error) {
 	var signAlg Algorithm
 	var hashAlg Algorithm
 	var signature []byte
-	if err := unpack(buf, []interface{}{&signAlg, &hashAlg, &signature}); err != nil {
+	if err := tpmutil.Unpack(buf, &signAlg, &hashAlg, &signature); err != nil {
 		return 0, nil, err
 	}
 	return signAlg, signature, nil
@@ -1432,38 +1228,20 @@ func Sign(rw io.ReadWriter, key Handle, data []byte) (Algorithm, []byte, error) 
 	if err != nil {
 		return 0, nil, err
 	}
-	resp, err := runCommand(rw, cmd)
+	resp, err := runCommand(rw, tagSessions, cmdReadNv, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return 0, nil, err
 	}
 	return decodeSign(resp)
 }
 
-func runCommand(rw io.ReadWriter, cmd []byte) ([]byte, error) {
-	_, err := rw.Write(cmd)
+func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...interface{}) ([]byte, error) {
+	resp, code, err := tpmutil.RunCommand(rw, tag, cmd, in...)
 	if err != nil {
 		return nil, err
 	}
-
-	resp := make([]byte, maxTPMResponse)
-	read, err := rw.Read(resp)
-	if err != nil {
-		return nil, err
+	if code != tpmutil.RCSuccess {
+		return nil, fmt.Errorf("response status 0x%x", code)
 	}
-	headerSize := binary.Size(responseHeader{})
-	if read < headerSize {
-		return nil, errors.New("response buffer too small")
-	}
-
-	header, resp := resp[:headerSize], resp[headerSize:read]
-
-	_, _, status, err := decodeCommandResponse(header)
-	if err != nil {
-		return nil, err
-	}
-	if status != rcSuccess {
-		return nil, fmt.Errorf("response status 0x%x", status)
-	}
-
 	return resp, nil
 }

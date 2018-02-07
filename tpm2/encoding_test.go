@@ -20,51 +20,14 @@ import (
 	"testing"
 )
 
-func TestEncodeGetRandom(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80010000000c0000017b0010")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmdBytes, err := encodeGetRandom(16)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
-	}
-}
-
 func TestDecodeGetRandom(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("80010000001c00000000001024357dadbf82ec9f245d1fcdcda33ed7")
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
+	_, err = decodeGetRandom(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
-	}
-	if status != rcSuccess {
-		t.Fatal("error status")
-	}
-	_, err = decodeGetRandom(testRespBytes[10:len(testRespBytes)])
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestEncodeReadPCRs(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("8001000000140000017e00000001000403800000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	pcrs := []byte{0x03, 0x80, 0x00, 0x00}
-	cmdBytes, err := encodeReadPCRs(1, pcrs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
 
@@ -73,27 +36,9 @@ func TestDecodeReadPCRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = decodeCommandResponse(testRespBytes[0:10])
+	_, _, _, _, err = decodeReadPCRs(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
-	}
-	_, _, _, _, err = decodeReadPCRs(testRespBytes[10:len(testRespBytes)])
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestEncodeReadClock(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80010000000a00000181")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmdBytes, err := encodeReadClock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
 
@@ -103,27 +48,9 @@ func TestDecodeReadClock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil || status != rcSuccess {
-		t.Fatal(err)
-	}
-	_, _, err = decodeReadClock(testRespBytes[10:len(testRespBytes)])
+	_, _, err = decodeReadClock(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestEncodeGetCapability(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("8001000000160000017a000000018000000000000014")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmdBytes, err := encodeGetCapability(CapabilityHandles, 20, 0x80000000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
 
@@ -133,31 +60,12 @@ func TestDecodeGetCapability(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, _, err = decodeCommandResponse(testRespBytes[0:10])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	capReported, handles, err := decodeGetCapability(testRespBytes[10:len(testRespBytes)])
+	capReported, handles, err := decodeGetCapability(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
 	if capReported != CapabilityHandles || len(handles) != 0 {
 		t.Fatalf("got: (%v, %v), want: (%v, %v)", capReported, handles, CapabilityHandles, 0)
-	}
-}
-
-func TestEncodeFlushContext(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80010000000e0000016580000001")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmdBytes, err := encodeFlushContext(Handle(0x80000001))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
 
@@ -177,7 +85,7 @@ func TestEncodeLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encodeLoad failed %s", err)
 	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
+	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
@@ -188,14 +96,7 @@ func TestDecodeLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != rcSuccess {
-		t.Fatal("error status")
-	}
-	_, _, err = decodeLoad(testRespBytes[10:len(testRespBytes)])
+	_, _, err = decodeLoad(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +125,7 @@ func TestEncodeCreatePrimary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
+	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
@@ -244,13 +145,6 @@ func TestDecodeCreatePrimary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != rcSuccess {
-		t.Fatal("error status")
-	}
 	_, _, err = decodeCreatePrimary(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
@@ -266,32 +160,7 @@ func TestEncodePolicyPCR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
-	}
-}
-
-func TestEncodePolicyPassword(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80010000000e0000018c03000000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmdBytes, err := encodePolicyPassword(Handle(0x03000000))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
-	}
-}
-
-func TestEncodePolicyGetDigest(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80010000000e0000018903000000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmdBytes, err := encodePolicyGetDigest(Handle(0x03000000))
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
+	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
@@ -301,11 +170,7 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil || status != 0 {
-		t.Fatal(err)
-	}
-	_, err = decodePolicyGetDigest(testRespBytes[10:len(testRespBytes)])
+	_, err = decodePolicyGetDigest(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,10 +182,6 @@ func TestDecodeStartAuthSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil || status != 0 {
-		t.Fatal(err)
-	}
 	_, _, err = decodeStartAuthSession(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
@@ -374,13 +235,6 @@ func TestDecodeCreateKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != rcSuccess {
-		t.Fatal("error status")
-	}
 	_, _, err = decodeCreateKey(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
@@ -396,7 +250,7 @@ func TestEncodeUnseal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
+	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
@@ -407,11 +261,7 @@ func TestDecodeUnseal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil || status != 0 {
-		t.Fatal(err)
-	}
-	_, _, err = decodeUnseal(testRespBytes[10:len(testRespBytes)])
+	_, _, err = decodeUnseal(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +277,7 @@ func TestEncodeQuote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
+	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
@@ -446,27 +296,9 @@ func TestDecodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil || status != 0 {
-		t.Fatal(err)
-	}
-	_, _, _, _, err = decodeQuote(testRespBytes[10:len(testRespBytes)])
+	_, _, _, _, err = decodeQuote(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestEncodeReadPublic(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80010000000e0000017380000000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmdBytes, err := encodeReadPublic(Handle(0x80000000))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
 
@@ -486,14 +318,7 @@ func TestDecodeReadPublic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, status, err := decodeCommandResponse(testRespBytes[0:10])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != rcSuccess {
-		t.Fatal("error status")
-	}
-	_, _, _, err = decodeReadPublic(testRespBytes[10:len(testRespBytes)])
+	_, _, _, err = decodeReadPublic(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -508,7 +333,7 @@ func TestEncodeEvictControl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(cmdBytes, testCmdBytes) {
+	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
 		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
@@ -522,17 +347,6 @@ func TestEncodeShortPCRs(t *testing.T) {
 	want := []byte{0x03, 0x80, 0x01, 0x00}
 	if !bytes.Equal(want, pcr) {
 		t.Fatalf("got: %v, want: %v", pcr, want)
-	}
-}
-
-func TestEncodeHandle(t *testing.T) {
-	hand, err := encodeHandle(HandleOwner)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []byte{0x40, 0, 0, 1}
-	if !bytes.Equal(want, hand) {
-		t.Fatalf("got: %v, want: %v", hand, want)
 	}
 }
 

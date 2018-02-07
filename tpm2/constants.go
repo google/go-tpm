@@ -14,6 +14,12 @@
 
 package tpm2
 
+import "github.com/awly/go-tpm/tpmutil"
+
+func init() {
+	tpmutil.LengthPrefixSize = 2
+}
+
 const maxTPMResponse = 4096
 
 // Algorithm represents a TPM_ALG_ID value.
@@ -113,13 +119,11 @@ const (
 	CapabilityAuthPolicies  Capability = 0x00000009
 )
 
-type structureTag uint16
-
 const (
-	tagNull       structureTag = 0x8000
-	tagNoSessions structureTag = 0x8001
-	tagSessions   structureTag = 0x8002
-	tagHashcheck  structureTag = 0x8024
+	tagNull       tpmutil.Tag = 0x8000
+	tagNoSessions tpmutil.Tag = 0x8001
+	tagSessions   tpmutil.Tag = 0x8002
+	tagHashcheck  tpmutil.Tag = 0x8024
 )
 
 // StartupType instructs the TPM on how to handle its state during Shutdown or
@@ -132,46 +136,44 @@ const (
 	StartupState StartupType = 0x0001
 )
 
-type command uint32
-
 // Supported TPM operations.
 const (
-	cmdEvictControl       command = 0x00000120
-	cmdClockSet           command = 0x00000128
-	cmdPCRAllocate        command = 0x0000012B
-	cmdCreatePrimary      command = 0x00000131
-	cmdCreate             command = 0x00000153
-	cmdStirRandom         command = 0x00000146
-	cmdActivateCredential command = 0x00000147
-	cmdCertify            command = 0x00000148
-	cmdLoad               command = 0x00000157
-	cmdQuote              command = 0x00000158
-	cmdUnseal             command = 0x0000015E
-	cmdContextLoad        command = 0x00000161
-	cmdContextSave        command = 0x00000162
-	cmdFlushContext       command = 0x00000165
-	cmdLoadExternal       command = 0x00000167
-	cmdMakeCredential     command = 0x00000168
-	cmdReadPublic         command = 0x00000173
-	cmdStartAuthSession   command = 0x00000176
-	cmdGetCapability      command = 0x0000017A
-	cmdGetRandom          command = 0x0000017B
-	cmdPCRRead            command = 0x0000017E
-	cmdPolicyPCR          command = 0x0000017F
-	cmdReadClock          command = 0x00000181
-	cmdPCRExtend          command = 0x00000182
-	cmdPolicyGetDigest    command = 0x00000189
-	cmdPolicyPassword     command = 0x0000018C
-	cmdPCREvent           command = 0x0000013C
-	cmdDefineSpace        command = 0x0000012A
-	cmdUndefineSpace      command = 0x00000122
-	cmdReadPublicNv       command = 0x00000169
-	cmdReadNv             command = 0x0000014E
-	cmdWriteNv            command = 0x00000137
-	cmdIncrementNvCounter command = 0x00000134
-	cmdHash               command = 0x0000017D
-	cmdStartup            command = 0x00000144
-	cmdShutdown           command = 0x00000145
+	cmdEvictControl       tpmutil.Command = 0x00000120
+	cmdClockSet           tpmutil.Command = 0x00000128
+	cmdPCRAllocate        tpmutil.Command = 0x0000012B
+	cmdCreatePrimary      tpmutil.Command = 0x00000131
+	cmdCreate             tpmutil.Command = 0x00000153
+	cmdStirRandom         tpmutil.Command = 0x00000146
+	cmdActivateCredential tpmutil.Command = 0x00000147
+	cmdCertify            tpmutil.Command = 0x00000148
+	cmdLoad               tpmutil.Command = 0x00000157
+	cmdQuote              tpmutil.Command = 0x00000158
+	cmdUnseal             tpmutil.Command = 0x0000015E
+	cmdContextLoad        tpmutil.Command = 0x00000161
+	cmdContextSave        tpmutil.Command = 0x00000162
+	cmdFlushContext       tpmutil.Command = 0x00000165
+	cmdLoadExternal       tpmutil.Command = 0x00000167
+	cmdMakeCredential     tpmutil.Command = 0x00000168
+	cmdReadPublic         tpmutil.Command = 0x00000173
+	cmdStartAuthSession   tpmutil.Command = 0x00000176
+	cmdGetCapability      tpmutil.Command = 0x0000017A
+	cmdGetRandom          tpmutil.Command = 0x0000017B
+	cmdPCRRead            tpmutil.Command = 0x0000017E
+	cmdPolicyPCR          tpmutil.Command = 0x0000017F
+	cmdReadClock          tpmutil.Command = 0x00000181
+	cmdPCRExtend          tpmutil.Command = 0x00000182
+	cmdPolicyGetDigest    tpmutil.Command = 0x00000189
+	cmdPolicyPassword     tpmutil.Command = 0x0000018C
+	cmdPCREvent           tpmutil.Command = 0x0000013C
+	cmdDefineSpace        tpmutil.Command = 0x0000012A
+	cmdUndefineSpace      tpmutil.Command = 0x00000122
+	cmdReadPublicNv       tpmutil.Command = 0x00000169
+	cmdReadNv             tpmutil.Command = 0x0000014E
+	cmdWriteNv            tpmutil.Command = 0x00000137
+	cmdIncrementNvCounter tpmutil.Command = 0x00000134
+	cmdHash               tpmutil.Command = 0x0000017D
+	cmdStartup            tpmutil.Command = 0x00000144
+	cmdShutdown           tpmutil.Command = 0x00000145
 )
 
 type responseCode uint32
