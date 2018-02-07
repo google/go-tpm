@@ -873,11 +873,14 @@ func TakeOwnership(rw io.ReadWriter, newOwnerAuth digest, newSRKAuth digest, pub
 	return ra.verify(ca.NonceOdd, newOwnerAuth[:], raIn)
 }
 
-// CreateWrapKey creates a new RSA key for signatures inside the TPM. It is wrapped by the SRK (which is to say,
-// the SRK is the parent key). The key can be bound to the specified PCR numbers so that it can only be used for
-// signing if the PCR values of those registers match. The pcrs parameter can be nil in which case the key is
-// not bound to any PCRs. The usageAuth parameter defines the auth key for using this new key. The migrationAuth
-// parameter would be used for authorizing migration of the key (although this code currently disables migration).
+// CreateWrapKey creates a new RSA key for signatures inside the TPM. It is
+// wrapped by the SRK (which is to say, the SRK is the parent key). The key can
+// be bound to the specified PCR numbers so that it can only be used for
+// signing if the PCR values of those registers match. The pcrs parameter can
+// be nil in which case the key is not bound to any PCRs. The usageAuth
+// parameter defines the auth key for using this new key. The migrationAuth
+// parameter would be used for authorizing migration of the key (although this
+// code currently disables migration).
 func CreateWrapKey(rw io.ReadWriter, srkAuth []byte, usageAuth digest, migrationAuth digest, pcrs []int) ([]byte, error) {
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle.

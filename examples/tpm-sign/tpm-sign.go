@@ -27,15 +27,16 @@ func main() {
 	if len(os.Args) < 2 {
 		showUsage()
 	} else {
-		if os.Args[1] == "sign" {
+		switch os.Args[1] {
+		case "sign":
 			signAction()
-		} else if os.Args[1] == "verify" {
+		case "verify":
 			verifyAction()
-		} else if os.Args[1] == "generate" {
+		case "generate":
 			generateAction()
-		} else if os.Args[1] == "extendPcr" {
+		case "extendPcr":
 			extendPcrAction()
-		} else {
+		default:
 			showUsage()
 		}
 	}
