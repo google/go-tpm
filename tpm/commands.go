@@ -301,7 +301,7 @@ func createWrapKey(rw io.ReadWriter, encUsageAuth digest, encMigrationAuth diges
 	return &k, &ra, ret, nil
 }
 
-func sign(rw io.ReadWriter, keyHandle Handle, data []byte, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
+func sign(rw io.ReadWriter, keyHandle tpmutil.Handle, data []byte, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
 	in := []interface{}{keyHandle, data, ca}
 	var signature []byte
 	var ra responseAuth

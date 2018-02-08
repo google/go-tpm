@@ -77,7 +77,7 @@ func signAction() {
 		fmt.Fprintf(os.Stderr, "Could not load keyblob: %s\n", err)
 		return
 	}
-	defer keyHandle.CloseKey(rwc)
+	defer tpm.CloseKey(rwc, keyHandle)
 
 	var data []byte
 	if *dataPath == "" {

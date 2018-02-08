@@ -897,7 +897,7 @@ func CreateWrapKey(rw io.ReadWriter, srkAuth []byte, usageAuth digest, migration
 	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
-	xorData, err := pack([]interface{}{sharedSecret, osapr.NonceEven})
+	xorData, err := tpmutil.Pack(sharedSecret, osapr.NonceEven)
 	if err != nil {
 		return nil, err
 	}
@@ -917,7 +917,7 @@ func CreateWrapKey(rw io.ReadWriter, srkAuth []byte, usageAuth digest, migration
 		KeyLength: 2048,
 		NumPrimes: 2,
 	}
-	rParamsPacked, err := pack([]interface{}{&rParams})
+	rParamsPacked, err := tpmutil.Pack(&rParams)
 	if err != nil {
 		return nil, err
 	}
@@ -928,7 +928,7 @@ func CreateWrapKey(rw io.ReadWriter, srkAuth []byte, usageAuth digest, migration
 		if err != nil {
 			return nil, err
 		}
-		pcrInfoBytes, err = pack([]interface{}{pcrInfo})
+		pcrInfoBytes, err = tpmutil.Pack(pcrInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -964,7 +964,7 @@ func CreateWrapKey(rw io.ReadWriter, srkAuth []byte, usageAuth digest, migration
 		return nil, err
 	}
 
-	keyblob, err := pack([]interface{}{k})
+	keyblob, err := tpmutil.Pack(k)
 	if err != nil {
 		return nil, err
 	}
@@ -986,7 +986,7 @@ var hashPrefixes = map[crypto.Hash][]byte{
 // Sign will sign a digest using the supplied key handle. Uses PKCS1v15 signing, which means the hash OID is prefixed to the
 // hash before it is signed. Therefore the hash used needs to be passed as the hash parameter to determine the right
 // prefix.
-func Sign(rw io.ReadWriter, keyAuth []byte, keyHandle Handle, hash crypto.Hash, hashed []byte) ([]byte, error) {
+func Sign(rw io.ReadWriter, keyAuth []byte, keyHandle tpmutil.Handle, hash crypto.Hash, hashed []byte) ([]byte, error) {
 	prefix, ok := hashPrefixes[hash]
 	if !ok {
 		return nil, errors.New("Unsupported hash")
