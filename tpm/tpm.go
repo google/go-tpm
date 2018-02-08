@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tpmutil.Package tpm supports direct communication with a tpm device under Linux.
+// Package tpm supports direct communication with a tpm device under Linux.
 package tpm
 
 import (
@@ -567,7 +567,7 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 			return nil, err
 		}
 
-		// We can't tpmutil.Pack the pair of values directly, since the label is
+		// We can't pack the pair of values directly, since the label is
 		// included directly as bytes, without any length.
 		fullpkb, err := tpmutil.Pack(pubk)
 		if err != nil {

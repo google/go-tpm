@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	LengthPrefixSize = 4
+	UseTPM12LengthPrefixSize()
 }
 
 type invalidPacked struct {

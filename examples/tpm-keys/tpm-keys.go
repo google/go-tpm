@@ -44,7 +44,7 @@ func main() {
 	for i, h := range handles {
 		fmt.Printf("  (%d) Key handle %d\n", i+1, h)
 		if *closekey {
-			if err = h.CloseKey(rwc); err != nil {
+			if err = tpm.CloseKey(rwc, h); err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't close TPM key handle %d\n", h)
 			} else {
 				fmt.Printf("    Closed handle %d\n", h)

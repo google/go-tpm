@@ -23,11 +23,28 @@ import (
 	"reflect"
 )
 
-// LengthPrefixSize is the size in bytes of length prefix for byte slices.
+// lengthPrefixSize is the size in bytes of length prefix for byte slices.
 //
 // In TPM 1.2 this is 4 bytes.
 // In TPM 2.0 this is 2 bytes.
-var LengthPrefixSize int
+var lengthPrefixSize int
+
+const (
+	tpm12PrefixSize = 4
+	tpm20PrefixSize = 2
+)
+
+// UseTPM12LengthPrefixSize makes Pack/Unpack use TPM 1.2 encoding for byte
+// arrays.
+func UseTPM12LengthPrefixSize() {
+	lengthPrefixSize = tpm12PrefixSize
+}
+
+// UseTPM20LengthPrefixSize makes Pack/Unpack use TPM 2.0 encoding for byte
+// arrays.
+func UseTPM20LengthPrefixSize() {
+	lengthPrefixSize = tpm20PrefixSize
+}
 
 // packedSize computes the size of a sequence of types that can be passed to
 // binary.Read or binary.Write.
@@ -55,7 +72,7 @@ func packedSize(elts ...interface{}) (int, error) {
 		case reflect.Slice:
 			switch s := e.(type) {
 			case []byte:
-				size += LengthPrefixSize + len(s)
+				size += lengthPrefixSize + len(s)
 			case RawBytes:
 				size += len(s)
 			default:
@@ -98,8 +115,8 @@ func packWithHeader(ch commandHeader, cmd ...interface{}) ([]byte, error) {
 // prepended uint16 length, to match how the TPM encodes variable-length
 // arrays. If you wish to add a byte slice without length prefix, use RawBytes.
 func Pack(elts ...interface{}) ([]byte, error) {
-	if LengthPrefixSize == 0 {
-		return nil, errors.New("LengthPrefixSize must be initialized")
+	if lengthPrefixSize == 0 {
+		return nil, errors.New("lengthPrefixSize must be initialized")
 	}
 
 	buf := new(bytes.Buffer)
@@ -132,17 +149,17 @@ func packType(buf io.Writer, elts ...interface{}) error {
 		case reflect.Slice:
 			switch s := e.(type) {
 			case []byte:
-				switch LengthPrefixSize {
-				case 2:
+				switch lengthPrefixSize {
+				case tpm20PrefixSize:
 					if err := binary.Write(buf, binary.BigEndian, uint16(len(s))); err != nil {
 						return err
 					}
-				case 4:
+				case tpm12PrefixSize:
 					if err := binary.Write(buf, binary.BigEndian, uint32(len(s))); err != nil {
 						return err
 					}
 				default:
-					return fmt.Errorf("LengthPrefixSize is %d, must be either 2 or 4", LengthPrefixSize)
+					return fmt.Errorf("lengthPrefixSize is %d, must be either 2 or 4", lengthPrefixSize)
 				}
 				if err := binary.Write(buf, binary.BigEndian, s); err != nil {
 					return err
@@ -210,21 +227,21 @@ func unpackType(buf io.Reader, elts ...interface{}) error {
 				}
 				size = int(tmpSize)
 			// TPM 2.0
-			case LengthPrefixSize == 2:
+			case lengthPrefixSize == tpm20PrefixSize:
 				var tmpSize uint16
 				if err := binary.Read(buf, binary.BigEndian, &tmpSize); err != nil {
 					return err
 				}
 				size = int(tmpSize)
 			// TPM 1.2
-			case LengthPrefixSize == 4:
+			case lengthPrefixSize == tpm12PrefixSize:
 				var tmpSize uint32
 				if err := binary.Read(buf, binary.BigEndian, &tmpSize); err != nil {
 					return err
 				}
 				size = int(tmpSize)
 			default:
-				return fmt.Errorf("LengthPrefixSize is %d, must be either 2 or 4", LengthPrefixSize)
+				return fmt.Errorf("lengthPrefixSize is %d, must be either 2 or 4", lengthPrefixSize)
 			}
 
 			// A zero size is used by the TPM to signal that certain elements
