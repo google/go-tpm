@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Google Inc. All rights reserved.
+// Copyright (c) 2018, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,30 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tpm
+package tpmutil
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"io/ioutil"
+	"reflect"
 	"testing"
 )
+
+func init() {
+	LengthPrefixSize = 4
+}
 
 type invalidPacked struct {
 	A []int
 	B uint32
 }
 
-func testEncodingInvalidSlices(t *testing.T, f func(io.Writer, []interface{}) error) {
+func testEncodingInvalidSlices(t *testing.T, f func(io.Writer, interface{}) error) {
 	d := ioutil.Discard
 
 	// The packedSize function doesn't handle slices to anything other than bytes.
 	var invalid []int
-	if err := f(d, []interface{}{invalid}); err == nil {
+	if err := f(d, invalid); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a slice of integers")
 	}
-	if err := f(d, []interface{}{&invalid}); err == nil {
+	if err := f(d, &invalid); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a pointer to a slice of integers")
 	}
 
@@ -43,31 +47,29 @@ func testEncodingInvalidSlices(t *testing.T, f func(io.Writer, []interface{}) er
 		A: make([]int, 10),
 		B: 137,
 	}
-	if err := f(d, []interface{}{invalid2}); err == nil {
+	if err := f(d, invalid2); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a struct that contains an integer slice")
 	}
-	if err := f(d, []interface{}{&invalid2}); err == nil {
+	if err := f(d, &invalid2); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a pointer to a struct that contains an integer slice")
 	}
 
-	if err := f(d, []interface{}{d}); err == nil {
+	if err := f(d, d); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a non-packable value")
 	}
 }
 
 func TestEncodingPackedSizeInvalid(t *testing.T) {
-	f := func(w io.Writer, i []interface{}) error {
-		if s := packedSize(i); s >= 0 {
-			return nil
-		}
-		return errors.New("packedSize couldn't compute the size")
+	f := func(w io.Writer, i interface{}) error {
+		_, err := packedSize(i)
+		return err
 	}
 
 	testEncodingInvalidSlices(t, f)
 }
 
 func TestEncodingPackTypeInvalid(t *testing.T) {
-	f := func(w io.Writer, i []interface{}) error {
+	f := func(w io.Writer, i interface{}) error {
 		return packType(w, i)
 	}
 
@@ -90,71 +92,57 @@ type nestedSlice struct {
 }
 
 func TestEncodingPackedSize(t *testing.T) {
-	if packedSize([]interface{}{uint32(3)}) != 4 {
-		t.Fatal("packedSize returned the wrong size for a uint32")
+	buf := make([]byte, 10)
+	tests := []struct {
+		in   interface{}
+		want int
+	}{
+		{uint32(3), 4},
+		{buf, 14},
+		{&buf, 14},
+		{simplePacked{137, 138}, 8},
+		{nestedPacked{simplePacked{137, 138}, 139}, 12},
+		{nestedSlice{137, buf}, 18},
+		{[]byte(nil), 4},
 	}
-
-	b := make([]byte, 10)
-	if packedSize([]interface{}{b}) != 14 {
-		t.Fatal("packedSize returned the wrong size for a byte slice")
-	}
-	if packedSize([]interface{}{&b}) != 14 {
-		t.Fatal("packedSize returned the wrong size for a pointer to a byte slice")
-	}
-
-	sp := simplePacked{137, 138}
-	if packedSize([]interface{}{sp}) != 8 {
-		t.Fatal("packedSize returned the wrong size for a simple struct")
-	}
-
-	np := nestedPacked{sp, 139}
-	if packedSize([]interface{}{np}) != 12 {
-		t.Fatal("packedSize returned the wrong size for a nested struct")
-	}
-
-	ns := nestedSlice{137, b}
-	if packedSize([]interface{}{ns}) != 18 {
-		t.Fatal("packedSize returned the wrong size for a struct that contains a slice")
-	}
-
-	// Pack an empty array; it should become uint32(0).
-	var empty []byte
-	if packedSize([]interface{}{empty}) != 4 {
-		t.Fatal("packType failed for an empty byte slice")
+	for _, tt := range tests {
+		if s, err := packedSize(tt.in); err != nil || s != tt.want {
+			t.Errorf("packedSize(%#v): %d, want %d", tt.in, s, tt.want)
+		}
 	}
 }
 
 func TestEncodingPackType(t *testing.T) {
-	if err := packType(ioutil.Discard, []interface{}{uint32(3)}); err != nil {
+	if err := packType(ioutil.Discard, uint32(3)); err != nil {
 		t.Fatal("packType failed for a uint32")
 	}
 
 	b := make([]byte, 10)
-	if err := packType(ioutil.Discard, []interface{}{b}); err != nil {
+	if err := packType(ioutil.Discard, b); err != nil {
 		t.Fatal("packType failed for a byte slice")
 	}
-	if err := packType(ioutil.Discard, []interface{}{&b}); err != nil {
+	if err := packType(ioutil.Discard, &b); err != nil {
 		t.Fatal("packType failed for a pointer to a byte slice")
 	}
 
 	sp := simplePacked{137, 138}
-	if err := packType(ioutil.Discard, []interface{}{sp}); err != nil {
+	if err := packType(ioutil.Discard, sp); err != nil {
 		t.Fatal("packType failed for a simple struct")
 	}
 
 	np := nestedPacked{sp, 139}
-	if err := packType(ioutil.Discard, []interface{}{np}); err != nil {
+	if err := packType(ioutil.Discard, np); err != nil {
 		t.Fatal("packType failed for a nested struct")
 	}
 
 	ns := nestedSlice{137, b}
-	if err := packType(ioutil.Discard, []interface{}{ns}); err != nil {
+	if err := packType(ioutil.Discard, ns); err != nil {
 		t.Fatal("packType failed for a struct that contains a slice")
 	}
 
 	// Pack an empty array.
 	var empty []byte
-	if err := packType(ioutil.Discard, []interface{}{empty}); err != nil {
+	if err := packType(ioutil.Discard, empty); err != nil {
 		t.Fatal("packType failed for an empty byte slice")
 	}
 
@@ -162,13 +150,13 @@ func TestEncodingPackType(t *testing.T) {
 	// The value l has enough space for a uint32 length, but not any bytes.
 	l := &limitedDiscard{4}
 	bb := []byte{1}
-	if err := packType(l, []interface{}{bb}); err == nil {
+	if err := packType(l, bb); err == nil {
 		t.Fatal("packType incorrectly packed into an array that didn't have enough space")
 	}
 
 	// The value l2 doesn't even have enough space to pack a uint32.
 	l2 := &limitedDiscard{3}
-	if err := packType(l2, []interface{}{empty}); err == nil {
+	if err := packType(l2, empty); err == nil {
 		t.Fatal("packType incorrectly packed an empty array size into an array that didn't have enough space")
 	}
 }
@@ -193,8 +181,8 @@ func (l *limitedDiscard) Write(p []byte) (n int, err error) {
 
 func TestEncodingCommandHeaderInvalidBody(t *testing.T) {
 	var invalid []int
-	ch := commandHeader{tagRQUCommand, 0, ordOIAP}
-	_, err := packWithHeader(ch, []interface{}{invalid})
+	ch := commandHeader{1, 0, 2}
+	_, err := packWithHeader(ch, invalid)
 	if err == nil {
 		t.Fatal("packWithHeader incorrectly packed a body that with an invalid int slice member")
 	}
@@ -202,22 +190,22 @@ func TestEncodingCommandHeaderInvalidBody(t *testing.T) {
 
 func TestEncodingInvalidPack(t *testing.T) {
 	var invalid []int
-	ch := commandHeader{tagRQUCommand, 0, ordOIAP}
-	_, err := packWithHeader(ch, []interface{}{invalid})
+	ch := commandHeader{1, 0, 2}
+	_, err := packWithHeader(ch, invalid)
 	if err == nil {
 		t.Fatal("packWithHeader incorrectly packed a body that with an invalid int slice member")
 	}
 
-	_, err = pack([]interface{}{invalid})
+	_, err = Pack(invalid)
 	if err == nil {
 		t.Fatal("pack incorrectly packed a slice of int")
 	}
 }
 
 func TestEncodingCommandHeaderEncoding(t *testing.T) {
-	ch := commandHeader{tagRQUCommand, 0, ordOIAP}
+	ch := commandHeader{1, 0, 2}
 	var c uint32 = 137
-	in := []interface{}{c}
+	in := c
 
 	b, err := packWithHeader(ch, in)
 	if err != nil {
@@ -226,31 +214,12 @@ func TestEncodingCommandHeaderEncoding(t *testing.T) {
 
 	var hdr commandHeader
 	var size uint32
-	out := []interface{}{&hdr, &size}
-	if err := unpack(b, out); err != nil {
+	if err := Unpack(b, &hdr, &size); err != nil {
 		t.Fatal("Couldn't unpack the packed bytes")
 	}
 
 	if size != 137 {
 		t.Fatal("Got the wrong size back")
-	}
-}
-
-func TestEncodingResizeBytes(t *testing.T) {
-	b := make([]byte, 10)
-	resizeBytes(&b, 20)
-	if len(b) != 20 {
-		t.Fatal("resizeBytes didn't resize the byte array to the correct longer length")
-	}
-
-	resizeBytes(&b, 2)
-	if len(b) != 2 {
-		t.Fatal("resizeBytes didn't resize the byte array to the correct shorter length")
-	}
-
-	resizeBytes(&b, 2)
-	if len(b) != 2 {
-		t.Fatal("resizeBytes didn't keep the size of the byte array the same when resizing to the same size")
 	}
 }
 
@@ -260,19 +229,19 @@ func TestEncodingInvalidUnpack(t *testing.T) {
 	// The value ui is a serialization of uint32(0).
 	ui := []byte{0, 0, 0, 0}
 	uiBuf := bytes.NewBuffer(ui)
-	if err := unpackType(uiBuf, []interface{}{i}); err == nil {
+	if err := unpackType(uiBuf, i); err == nil {
 		t.Fatal("unpackType incorrectly deserialized into a nil pointer")
 	}
 
 	var ii uint32
-	if err := unpackType(uiBuf, []interface{}{ii}); err == nil {
+	if err := unpackType(uiBuf, ii); err == nil {
 		t.Fatal("unpackType incorrectly deserialized into a non pointer")
 	}
 
 	var b []byte
 	var empty []byte
 	emptyBuf := bytes.NewBuffer(empty)
-	if err := unpackType(emptyBuf, []interface{}{&b}); err == nil {
+	if err := unpackType(emptyBuf, &b); err == nil {
 		t.Fatal("unpackType incorrectly deserialized an empty byte array into a byte slice")
 	}
 
@@ -280,14 +249,14 @@ func TestEncodingInvalidUnpack(t *testing.T) {
 	// The slice ui represents uint32(1), which is the length of an empty byte array.
 	ui2 := []byte{0, 0, 0, 1}
 	uiBuf2 := bytes.NewBuffer(ui2)
-	if err := unpackType(uiBuf2, []interface{}{&b}); err == nil {
+	if err := unpackType(uiBuf2, &b); err == nil {
 		t.Fatal("unpackType incorrectly deserialized a byte array that didn't have enough bytes available")
 	}
 
 	var iii []int
 	ui3 := []byte{0, 0, 0, 1}
 	uiBuf3 := bytes.NewBuffer(ui3)
-	if err := unpackType(uiBuf3, []interface{}{&iii}); err == nil {
+	if err := unpackType(uiBuf3, &iii); err == nil {
 		t.Fatal("unpackType incorrectly deserialized into a slice of ints (only byte slices are supported)")
 	}
 
@@ -299,14 +268,14 @@ func TestEncodingUnpack(t *testing.T) {
 	// The slice ui represents uint32(0), which is the length of an empty byte array.
 	ui := []byte{0, 0, 0, 0}
 	uiBuf := bytes.NewBuffer(ui)
-	if err := unpackType(uiBuf, []interface{}{&b}); err != nil {
+	if err := unpackType(uiBuf, &b); err != nil {
 		t.Fatal("unpackType failed to unpack the empty byte array")
 	}
 
 	// A byte slice of length 1 with a single entry: b[0] == 137
 	ui2 := []byte{0, 0, 0, 1, 137}
 	uiBuf2 := bytes.NewBuffer(ui2)
-	if err := unpackType(uiBuf2, []interface{}{&b}); err != nil {
+	if err := unpackType(uiBuf2, &b); err != nil {
 		t.Fatal("unpackType failed to unpack a byte array with a single value in it")
 	}
 
@@ -315,12 +284,12 @@ func TestEncodingUnpack(t *testing.T) {
 	}
 
 	sp := simplePacked{137, 138}
-	bsp, err := pack([]interface{}{sp})
+	bsp, err := Pack(sp)
 	if err != nil {
 		t.Fatal("Couldn't pack a simple struct:", err)
 	}
 	var sp2 simplePacked
-	if err := unpack(bsp, []interface{}{&sp2}); err != nil {
+	if err := Unpack(bsp, &sp2); err != nil {
 		t.Fatal("Couldn't unpack a simple struct:", err)
 	}
 
@@ -329,17 +298,17 @@ func TestEncodingUnpack(t *testing.T) {
 	}
 
 	// Try unpacking a version that's missing a byte at the end.
-	if err := unpack(bsp[:len(bsp)-1], []interface{}{&sp2}); err == nil {
+	if err := Unpack(bsp[:len(bsp)-1], &sp2); err == nil {
 		t.Fatal("unpack incorrectly unpacked from a byte array that didn't have enough values")
 	}
 
 	np := nestedPacked{sp, 139}
-	bnp, err := pack([]interface{}{np})
+	bnp, err := Pack(np)
 	if err != nil {
 		t.Fatal("Couldn't pack a nested struct")
 	}
 	var np2 nestedPacked
-	if err := unpack(bnp, []interface{}{&np2}); err != nil {
+	if err := Unpack(bnp, &np2); err != nil {
 		t.Fatal("Couldn't unpack a nested struct:", err)
 	}
 	if np.SP.A != np2.SP.A || np.SP.B != np2.SP.B || np.C != np2.C {
@@ -347,50 +316,23 @@ func TestEncodingUnpack(t *testing.T) {
 	}
 
 	ns := nestedSlice{137, b}
-	bns, err := pack([]interface{}{ns})
+	bns, err := Pack(ns)
 	if err != nil {
 		t.Fatal("Couldn't pack a struct with a nested byte slice:", err)
 	}
 	var ns2 nestedSlice
-	if err := unpack(bns, []interface{}{&ns2}); err != nil {
+	if err := Unpack(bns, &ns2); err != nil {
 		t.Fatal("Couldn't unpacked a struct with a nested slice:", err)
 	}
 	if ns.A != ns2.A || !bytes.Equal(ns.S, ns2.S) {
 		t.Fatal("Unpacked struct with nested slice didn't match the original")
 	}
-}
 
-func TestUnpackKeyHandleList(t *testing.T) {
-
-	h, err := unpackKeyHandleList([]byte{0, 3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12})
-	if err != nil {
-		t.Fatal("unpackKeyHandlelist failed to unpack valid buffer:", err)
+	var hs []Handle
+	if err := Unpack([]byte{0, 3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, &hs); err != nil {
+		t.Fatal("Couldn't unpack a list of Handles:", err)
 	}
-	if len(h) != 3 {
-		t.Fatal("unpackKeyHandlelist returned wrong length array")
-	}
-	if h[0] != 0x01020304 || h[1] != 0x05060708 || h[2] != 0x090a0b0c {
-		t.Fatal("unpackKeyHandlelist returned wrong handles")
-	}
-
-	h, err = unpackKeyHandleList([]byte{0, 0})
-	if err != nil {
-		t.Fatal("unpackKeyHandlelist failed to unpack valid buffer:", err)
-	}
-	if len(h) != 0 {
-		t.Fatal("unpackKeyHandlelist returned wrong length array")
-	}
-
-	h, err = unpackKeyHandleList([]byte{0})
-	if err == nil {
-		t.Fatal("unpackKeyHandlelist incorrectly unpacked invalid buffer")
-	}
-	h, err = unpackKeyHandleList([]byte{0, 1})
-	if err == nil {
-		t.Fatal("unpackKeyHandlelist incorrectly unpacked invalid buffer")
-	}
-	h, err = unpackKeyHandleList([]byte{0, 1, 2, 3, 4})
-	if err == nil {
-		t.Fatal("unpackKeyHandlelist incorrectly unpacked invalid buffer")
+	if want := []Handle{0x01020304, 0x05060708, 0x090a0b0c}; !reflect.DeepEqual(want, hs) {
+		t.Fatalf("Unpacking []Handle: got %v, want %v", hs, want)
 	}
 }

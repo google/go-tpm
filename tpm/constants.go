@@ -14,6 +14,12 @@
 
 package tpm
 
+import "github.com/awly/go-tpm/tpmutil"
+
+func init() {
+	tpmutil.LengthPrefixSize = 4
+}
+
 // Supported TPM commands.
 const (
 	tagPCRInfoLong     uint16 = 0x06
@@ -79,10 +85,10 @@ const (
 
 // Entity values.
 const (
-	khSRK         Handle = 0x40000000
-	khOwner       Handle = 0x40000001
-	khRevokeTrust Handle = 0x40000002
-	khEK          Handle = 0x40000006
+	khSRK         tpmutil.Handle = 0x40000000
+	khOwner       tpmutil.Handle = 0x40000001
+	khRevokeTrust tpmutil.Handle = 0x40000002
+	khEK          tpmutil.Handle = 0x40000006
 )
 
 // Protocol IDs.

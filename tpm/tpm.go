@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package tpm supports direct communication with a tpm device under Linux.
+// tpmutil.Package tpm supports direct communication with a tpm device under Linux.
 package tpm
 
 import (
@@ -28,6 +28,8 @@ import (
 	"io"
 	"net"
 	"os"
+
+	"github.com/awly/go-tpm/tpmutil"
 )
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
@@ -62,9 +64,9 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 }
 
 // GetKeys gets the list of handles for currently-loaded TPM keys.
-func GetKeys(rw io.ReadWriter) ([]Handle, error) {
+func GetKeys(rw io.ReadWriter) ([]tpmutil.Handle, error) {
 	var b []byte
-	subCap, err := pack([]interface{}{rtKey})
+	subCap, err := tpmutil.Pack(rtKey)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +75,11 @@ func GetKeys(rw io.ReadWriter) ([]Handle, error) {
 	if _, err := submitTPMRequest(rw, tagRQUCommand, ordGetCapability, in, out); err != nil {
 		return nil, err
 	}
-	return unpackKeyHandleList(b)
+	var handles []tpmutil.Handle
+	if err := tpmutil.Unpack(b, &handles); err != nil {
+		return nil, err
+	}
+	return handles, err
 }
 
 // PcrExtend extends a value into the right PCR by index.
@@ -133,10 +139,10 @@ func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 
 // LoadKey2 loads a key blob (a serialized TPM_KEY or TPM_KEY12) into the TPM
 // and returns a handle for this key.
-func LoadKey2(rw io.ReadWriter, keyBlob []byte, srkAuth []byte) (Handle, error) {
+func LoadKey2(rw io.ReadWriter, keyBlob []byte, srkAuth []byte) (tpmutil.Handle, error) {
 	// Deserialize the keyBlob as a key
 	var k key
-	if err := unpack(keyBlob, []interface{}{&k}); err != nil {
+	if err := tpmutil.Unpack(keyBlob, &k); err != nil {
 		return 0, err
 	}
 
@@ -174,7 +180,7 @@ func LoadKey2(rw io.ReadWriter, keyBlob []byte, srkAuth []byte) (Handle, error) 
 // Quote2 performs a quote operation on the TPM for the given data,
 // under the key associated with the handle and for the pcr values
 // specified in the call.
-func Quote2(rw io.ReadWriter, handle Handle, data []byte, pcrVals []int, addVersion byte, aikAuth []byte) ([]byte, error) {
+func Quote2(rw io.ReadWriter, handle tpmutil.Handle, data []byte, pcrVals []int, addVersion byte, aikAuth []byte) ([]byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
 	sharedSecret, osapr, err := newOSAPSession(rw, etKeyHandle, handle, aikAuth)
@@ -213,7 +219,7 @@ func Quote2(rw io.ReadWriter, handle Handle, data []byte, pcrVals []int, addVers
 
 // GetPubKey retrieves an opaque blob containing a public key corresponding to
 // a handle from the TPM.
-func GetPubKey(rw io.ReadWriter, keyHandle Handle, srkAuth []byte) ([]byte, error) {
+func GetPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, srkAuth []byte) ([]byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
 	sharedSecret, osapr, err := newOSAPSession(rw, etKeyHandle, keyHandle, srkAuth)
@@ -240,7 +246,7 @@ func GetPubKey(rw io.ReadWriter, keyHandle Handle, srkAuth []byte) ([]byte, erro
 		return nil, err
 	}
 
-	b, err := pack([]interface{}{*pk})
+	b, err := tpmutil.Pack(*pk)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +254,7 @@ func GetPubKey(rw io.ReadWriter, keyHandle Handle, srkAuth []byte) ([]byte, erro
 }
 
 // newOSAPSession starts a new OSAP session and derives a shared key from it.
-func newOSAPSession(rw io.ReadWriter, entityType uint16, entityValue Handle, srkAuth []byte) ([20]byte, *osapResponse, error) {
+func newOSAPSession(rw io.ReadWriter, entityType uint16, entityValue tpmutil.Handle, srkAuth []byte) ([20]byte, *osapResponse, error) {
 	osapc := &osapCommand{
 		EntityType:  entityType,
 		EntityValue: entityValue,
@@ -271,7 +277,7 @@ func newOSAPSession(rw io.ReadWriter, entityType uint16, entityValue Handle, srk
 	// where srkAuth is the hash of the SRK authentication (which hash is all 0s
 	// for the well-known SRK auth value) and even and odd OSAP are the
 	// values from the OSAP protocol.
-	osapData, err := pack([]interface{}{osapr.EvenOSAP, osapc.OddOSAP})
+	osapData, err := tpmutil.Pack(osapr.EvenOSAP, osapc.OddOSAP)
 	if err != nil {
 		return sharedSecret, nil, err
 	}
@@ -280,7 +286,7 @@ func newOSAPSession(rw io.ReadWriter, entityType uint16, entityValue Handle, srk
 	hm.Write(osapData)
 	// Note that crypto/hash.Sum returns a slice rather than an array, so we
 	// have to copy this into an array to make sure that serialization doesn't
-	// preprend a length in pack().
+	// preprend a length in tpmutil.Pack().
 	sharedSecretBytes := hm.Sum(nil)
 	copy(sharedSecret[:], sharedSecretBytes)
 	return sharedSecret, osapr, nil
@@ -288,9 +294,9 @@ func newOSAPSession(rw io.ReadWriter, entityType uint16, entityValue Handle, srk
 
 // newCommandAuth creates a new commandAuth structure over the given
 // parameters, using the given secret for HMAC computation.
-func newCommandAuth(authHandle Handle, nonceEven nonce, key []byte, params []interface{}) (*commandAuth, error) {
+func newCommandAuth(authHandle tpmutil.Handle, nonceEven nonce, key []byte, params []interface{}) (*commandAuth, error) {
 	// Auth = HMAC-SHA1(key, SHA1(params) || NonceEven || NonceOdd || ContSession)
-	digestBytes, err := pack(params)
+	digestBytes, err := tpmutil.Pack(params...)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +307,7 @@ func newCommandAuth(authHandle Handle, nonceEven nonce, key []byte, params []int
 		return nil, err
 	}
 
-	authBytes, err := pack([]interface{}{digest, nonceEven, ca.NonceOdd, ca.ContSession})
+	authBytes, err := tpmutil.Pack(digest, nonceEven, ca.NonceOdd, ca.ContSession)
 	if err != nil {
 		return nil, err
 	}
@@ -318,13 +324,13 @@ func newCommandAuth(authHandle Handle, nonceEven nonce, key []byte, params []int
 // with the authentication parameters of ra along with the given odd nonce.
 func (ra *responseAuth) verify(nonceOdd nonce, key []byte, params []interface{}) error {
 	// Auth = HMAC-SHA1(key, SHA1(params) || ra.NonceEven || NonceOdd || ra.ContSession)
-	digestBytes, err := pack(params)
+	digestBytes, err := tpmutil.Pack(params)
 	if err != nil {
 		return err
 	}
 
 	digest := sha1.Sum(digestBytes)
-	authBytes, err := pack([]interface{}{digest, ra.NonceEven, nonceOdd, ra.ContSession})
+	authBytes, err := tpmutil.Pack(digest, ra.NonceEven, nonceOdd, ra.ContSession)
 	if err != nil {
 		return err
 	}
@@ -368,7 +374,7 @@ func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []by
 	// encAuth = XOR(srkAuth, SHA1(sharedSecret || <lastEvenNonce>))
 	//
 	// In this case, the last even nonce is NonceEven from OSAP.
-	xorData, err := pack([]interface{}{sharedSecret, osapr.NonceEven})
+	xorData, err := tpmutil.Pack(sharedSecret, osapr.NonceEven)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +408,7 @@ func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []by
 		return nil, err
 	}
 
-	sealedBytes, err := pack([]interface{}{*sealed})
+	sealedBytes, err := tpmutil.Pack(*sealed)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +436,7 @@ func Unseal(rw io.ReadWriter, sealed []byte, srkAuth []byte) ([]byte, error) {
 
 	// Convert the sealed value into a tpmStoredData.
 	var tsd tpmStoredData
-	if err := unpack(sealed, []interface{}{&tsd}); err != nil {
+	if err := tpmutil.Unpack(sealed, &tsd); err != nil {
 		return nil, errors.New("couldn't convert the sealed data into a tpmStoredData struct")
 	}
 
@@ -471,7 +477,7 @@ func Unseal(rw io.ReadWriter, sealed []byte, srkAuth []byte) ([]byte, error) {
 
 // Quote produces a TPM quote for the given data under the given PCRs. It uses
 // AIK auth and a given AIK handle.
-func Quote(rw io.ReadWriter, handle Handle, data []byte, pcrNums []int, aikAuth []byte) ([]byte, []byte, error) {
+func Quote(rw io.ReadWriter, handle tpmutil.Handle, data []byte, pcrNums []int, aikAuth []byte) ([]byte, []byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
 	sharedSecret, osapr, err := newOSAPSession(rw, etKeyHandle, handle, aikAuth)
@@ -538,7 +544,7 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 	// encAuth = XOR(aikAuth, SHA1(sharedSecretOwn || <lastEvenNonce>))
 	//
 	// In this case, the last even nonce is NonceEven from OSAP for the Owner.
-	xorData, err := pack([]interface{}{sharedSecretOwn, osaprOwn.NonceEven})
+	xorData, err := tpmutil.Pack(sharedSecretOwn, osaprOwn.NonceEven)
 	if err != nil {
 		return nil, err
 	}
@@ -561,9 +567,9 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 			return nil, err
 		}
 
-		// We can't pack the pair of values directly, since the label is
+		// We can't tpmutil.Pack the pair of values directly, since the label is
 		// included directly as bytes, without any length.
-		fullpkb, err := pack([]interface{}{pubk})
+		fullpkb, err := tpmutil.Pack(pubk)
 		if err != nil {
 			return nil, err
 		}
@@ -577,7 +583,7 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 		NumPrimes: 2,
 		//Exponent:  big.NewInt(0x10001).Bytes(), // 65537. Implicit?
 	}
-	packedParms, err := pack([]interface{}{rsaAIKParms})
+	packedParms, err := tpmutil.Pack(rsaAIKParms)
 	if err != nil {
 		return nil, err
 	}
@@ -628,7 +634,7 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 	}
 
 	// TODO(tmroeder): check the signature against the pubek.
-	blob, err := pack([]interface{}{k})
+	blob, err := tpmutil.Pack(k)
 	if err != nil {
 		return nil, err
 	}
@@ -677,7 +683,7 @@ func ResetLockValue(rw io.ReadWriter, ownerAuth digest) error {
 // ownerReadInternalHelper sets up command auth and checks response auth for
 // OwnerReadInternalPub. It's not exported because OwnerReadInternalPub only
 // supports two fixed key handles: khEK and khSRK.
-func ownerReadInternalHelper(rw io.ReadWriter, kh Handle, ownerAuth digest) (*pubKey, error) {
+func ownerReadInternalHelper(rw io.ReadWriter, kh tpmutil.Handle, ownerAuth digest) (*pubKey, error) {
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
 	// and getting back a secret and a handle.
 	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownerAuth[:])
@@ -718,7 +724,7 @@ func OwnerReadSRK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
 		return nil, err
 	}
 
-	return pack([]interface{}{pk})
+	return tpmutil.Pack(pk)
 }
 
 // OwnerReadPubEK uses owner auth to get a blob representing the public part of the
@@ -729,7 +735,7 @@ func OwnerReadPubEK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
 		return nil, err
 	}
 
-	return pack([]interface{}{pk})
+	return tpmutil.Pack(pk)
 }
 
 // ReadPubEK reads the public part of the endorsement key when no owner is
@@ -747,7 +753,7 @@ func ReadPubEK(rw io.ReadWriter) ([]byte, error) {
 
 	// Recompute the hash of the pk and the nonce to defend against replay
 	// attacks.
-	b, err := pack([]interface{}{pk, n})
+	b, err := tpmutil.Pack(pk, n)
 	if err != nil {
 		return nil, err
 	}
@@ -759,7 +765,7 @@ func ReadPubEK(rw io.ReadWriter) ([]byte, error) {
 		return nil, errors.New("the ReadPubEK operation failed the replay check")
 	}
 
-	return pack([]interface{}{pk})
+	return tpmutil.Pack(pk)
 }
 
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
@@ -830,7 +836,7 @@ func TakeOwnership(rw io.ReadWriter, newOwnerAuth digest, newSRKAuth digest, pub
 		KeyLength: 2048,
 		NumPrimes: 2,
 	}
-	srkpb, err := pack([]interface{}{srkRSAParams})
+	srkpb, err := tpmutil.Pack(srkRSAParams)
 	if err != nil {
 		return err
 	}
