@@ -15,7 +15,7 @@
 package tpmutil
 
 // RawBytes is for Pack and RunCommand arguments that are already encoded.
-// Compared to []byte, RawBytes will not be pre-pended with slice length during
+// Compared to []byte, RawBytes will not be prepended with slice length during
 // encoding.
 type RawBytes []byte
 
