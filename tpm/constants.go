@@ -14,7 +14,7 @@
 
 package tpm
 
-import "github.com/awly/go-tpm/tpmutil"
+import "github.com/google/go-tpm/tpmutil"
 
 func init() {
 	tpmutil.LengthPrefixSize = 4

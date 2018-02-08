@@ -21,7 +21,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/awly/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // setPCR sets a PCR value as selected in a given mask.

@@ -22,7 +22,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/awly/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // A pcrValue is the fixed-size value of a PCR.

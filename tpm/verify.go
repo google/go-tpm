@@ -21,7 +21,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/awly/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // This file provides functions to extract a crypto/rsa public key from a key

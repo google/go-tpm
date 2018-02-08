@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/awly/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 var (

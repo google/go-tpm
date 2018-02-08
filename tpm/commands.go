@@ -19,7 +19,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/awly/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // submitTPMRequest sends a structure to the TPM device file and gets results
