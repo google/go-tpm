@@ -189,10 +189,10 @@ func Unpack(b []byte, elts ...interface{}) error {
 }
 
 // unpackType recursively unpacks types from a reader just as encoding/binary
-// does under binary.BigEndian, but with one difference: it unpacks a byte slice
-// by first reading a uint16, then reading that many bytes. It assumes that
-// incoming values are pointers to values so that, e.g., underlying slices can
-// be resized as needed.
+// does under binary.BigEndian, but with one difference: it unpacks a byte
+// slice by first reading an integer with lengthPrefixSize bytes, then reading
+// that many bytes. It assumes that incoming values are pointers to values so
+// that, e.g., underlying slices can be resized as needed.
 func unpackType(buf io.Reader, elts ...interface{}) error {
 	for _, e := range elts {
 		v := reflect.ValueOf(e)
