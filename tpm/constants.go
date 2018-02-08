@@ -14,6 +14,13 @@
 
 package tpm
 
+import "github.com/google/go-tpm/tpmutil"
+
+func init() {
+	// TPM 1.2 spec uses uint32 for length prefix of byte arrays.
+	tpmutil.UseTPM12LengthPrefixSize()
+}
+
 // Supported TPM commands.
 const (
 	tagPCRInfoLong     uint16 = 0x06
@@ -79,10 +86,10 @@ const (
 
 // Entity values.
 const (
-	khSRK         Handle = 0x40000000
-	khOwner       Handle = 0x40000001
-	khRevokeTrust Handle = 0x40000002
-	khEK          Handle = 0x40000006
+	khSRK         tpmutil.Handle = 0x40000000
+	khOwner       tpmutil.Handle = 0x40000001
+	khRevokeTrust tpmutil.Handle = 0x40000002
+	khEK          tpmutil.Handle = 0x40000006
 )
 
 // Protocol IDs.

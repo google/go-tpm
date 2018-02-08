@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/google/go-tpm/tpmutil"
 )
 
 var (
@@ -199,24 +201,14 @@ func TestResizeableSlice(t *testing.T) {
 		t.Fatal("Couldn't read random bytes into the byte array")
 	}
 
-	rh := &responseHeader{
-		Tag:  tagRSPAuth1Command,
-		Size: 0,
-		Res:  0,
-	}
-
-	in := []interface{}{rh, ra, b}
-	rh.Size = uint32(packedSize(in))
-	bb, err := pack(in)
+	bb, err := tpmutil.Pack(ra, b)
 	if err != nil {
 		t.Fatal("Couldn't pack the bytes:", err)
 	}
 
-	var rh2 responseHeader
 	var ra2 responseAuth
 	var b2 []byte
-	out := []interface{}{&rh2, &ra2, &b2}
-	if err := unpack(bb, out); err != nil {
+	if err := tpmutil.Unpack(bb, &ra2, &b2); err != nil {
 		t.Fatal("Couldn't unpack the resizeable values:", err)
 	}
 
@@ -267,7 +259,7 @@ func TestLoadKey2(t *testing.T) {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
 
-	if err := handle.CloseKey(rwc); err != nil {
+	if err := CloseKey(rwc, handle); err != nil {
 		t.Fatal("Couldn't flush the AIK from the TPM:", err)
 	}
 }
@@ -289,7 +281,7 @@ func TestQuote2(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
-	defer handle.CloseKey(rwc)
+	defer CloseKey(rwc, handle)
 
 	// Data to quote.
 	data := []byte(`The OS says this test is good`)
@@ -324,7 +316,7 @@ func TestGetPubKey(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
-	defer handle.CloseKey(rwc)
+	defer CloseKey(rwc, handle)
 
 	k, err := GetPubKey(rwc, handle, srkAuth[:])
 	if err != nil {
@@ -352,7 +344,7 @@ func TestQuote(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't load the AIK into the TPM and get a handle for it:", err)
 	}
-	defer handle.CloseKey(rwc)
+	defer CloseKey(rwc, handle)
 
 	// Data to quote.
 	data := []byte(`The OS says this test is good`)
@@ -405,7 +397,7 @@ func TestMakeIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't load the freshly-generated AIK into the TPM and get a handle for it:", err)
 	}
-	defer handle.CloseKey(rwc)
+	defer CloseKey(rwc, handle)
 
 	// Data to quote.
 	data := []byte(`The OS says this test and new AIK is good`)

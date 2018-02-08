@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // setPCR sets a PCR value as selected in a given mask.
@@ -70,7 +72,7 @@ func createPCRComposite(mask pcrMask, pcrs []byte) ([]byte, error) {
 		Selection: pcrSelection{3, mask},
 		Values:    pcrs,
 	}
-	b, err := pack([]interface{}{pcrc})
+	b, err := tpmutil.Pack(pcrc)
 	if err != nil {
 		return nil, err
 	}
