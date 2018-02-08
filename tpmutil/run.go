@@ -29,7 +29,7 @@ const maxTPMResponse = 4096
 
 // RunCommand executes cmd with given tag and arguments. Returns TPM response
 // body (without response header) and response code from the header. Returned
-// error may be nil if response code is not RCSuccess, caller should check
+// error may be nil if response code is not RCSuccess; caller should check
 // both.
 func RunCommand(rw io.ReadWriter, tag Tag, cmd Command, in ...interface{}) ([]byte, ResponseCode, error) {
 	if rw == nil {

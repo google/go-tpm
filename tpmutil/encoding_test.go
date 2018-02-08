@@ -113,51 +113,36 @@ func TestEncodingPackedSize(t *testing.T) {
 }
 
 func TestEncodingPackType(t *testing.T) {
-	if err := packType(ioutil.Discard, uint32(3)); err != nil {
-		t.Fatal("packType failed for a uint32")
+	buf := make([]byte, 10)
+	inputs := []interface{}{
+		uint32(3),
+		buf,
+		&buf,
+		simplePacked{137, 138},
+		nestedPacked{simplePacked{137, 138}, 139},
+		nestedSlice{137, buf},
+		[]byte(nil),
+		RawBytes(buf),
 	}
+	for _, i := range inputs {
+		if err := packType(ioutil.Discard, i); err != nil {
+			t.Errorf("packType(%#v): %v", i, err)
+		}
+	}
+}
 
-	b := make([]byte, 10)
-	if err := packType(ioutil.Discard, b); err != nil {
-		t.Fatal("packType failed for a byte slice")
+func TestEncodingPackTypeWriteFail(t *testing.T) {
+	tests := []struct {
+		limit int
+		in    interface{}
+	}{
+		{4, []byte{1}},
+		{3, []byte(nil)},
 	}
-	if err := packType(ioutil.Discard, &b); err != nil {
-		t.Fatal("packType failed for a pointer to a byte slice")
-	}
-
-	sp := simplePacked{137, 138}
-	if err := packType(ioutil.Discard, sp); err != nil {
-		t.Fatal("packType failed for a simple struct")
-	}
-
-	np := nestedPacked{sp, 139}
-	if err := packType(ioutil.Discard, np); err != nil {
-		t.Fatal("packType failed for a nested struct")
-	}
-
-	ns := nestedSlice{137, b}
-	if err := packType(ioutil.Discard, ns); err != nil {
-		t.Fatal("packType failed for a struct that contains a slice")
-	}
-
-	// Pack an empty array.
-	var empty []byte
-	if err := packType(ioutil.Discard, empty); err != nil {
-		t.Fatal("packType failed for an empty byte slice")
-	}
-
-	// Pack into a writer that doesn't have enough space.
-	// The value l has enough space for a uint32 length, but not any bytes.
-	l := &limitedDiscard{4}
-	bb := []byte{1}
-	if err := packType(l, bb); err == nil {
-		t.Fatal("packType incorrectly packed into an array that didn't have enough space")
-	}
-
-	// The value l2 doesn't even have enough space to pack a uint32.
-	l2 := &limitedDiscard{3}
-	if err := packType(l2, empty); err == nil {
-		t.Fatal("packType incorrectly packed an empty array size into an array that didn't have enough space")
+	for _, tt := range tests {
+		if err := packType(&limitedDiscard{tt.limit}, tt.in); err == nil {
+			t.Errorf("packType(%#v) with write size limit %d returned nil, want error", tt.in, tt.limit)
+		}
 	}
 }
 
