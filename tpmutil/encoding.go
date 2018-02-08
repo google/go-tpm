@@ -112,8 +112,8 @@ func packWithHeader(ch commandHeader, cmd ...interface{}) ([]byte, error) {
 // according to the rules of encoding/binary.
 //
 // It has one difference from encoding/binary: it encodes byte slices with a
-// prepended uint16 length, to match how the TPM encodes variable-length
-// arrays. If you wish to add a byte slice without length prefix, use RawBytes.
+// prepended length, to match how the TPM encodes variable-length arrays. If
+// you wish to add a byte slice without length prefix, use RawBytes.
 func Pack(elts ...interface{}) ([]byte, error) {
 	if lengthPrefixSize == 0 {
 		return nil, errors.New("lengthPrefixSize must be initialized")
@@ -127,11 +127,11 @@ func Pack(elts ...interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// packType recursively packs types the same way that encoding/binary does under
-// binary.BigEndian, but with one difference: it packs a byte slice as a uint16
-// size followed by the bytes. The function unpackType performs the inverse
-// operation of unpacking slices stored in this manner and using encoding/binary
-// for everything else.
+// packType recursively packs types the same way that encoding/binary does
+// under binary.BigEndian, but with one difference: it packs a byte slice as a
+// lengthPrefixSize size followed by the bytes. The function unpackType
+// performs the inverse operation of unpacking slices stored in this manner and
+// using encoding/binary for everything else.
 func packType(buf io.Writer, elts ...interface{}) error {
 	for _, e := range elts {
 		v := reflect.ValueOf(e)
