@@ -115,7 +115,7 @@ func TestEncodeCreatePrimary(t *testing.T) {
 		AlgAES,
 		128,
 		AlgCFB,
-		AlgNULL,
+		AlgNull,
 		0,
 		1024,
 		uint32(0x00010001),
@@ -201,7 +201,7 @@ func TestEncodeCreateKey(t *testing.T) {
 		AlgAES,
 		128,
 		AlgCFB,
-		AlgNULL,
+		AlgNull,
 		0,
 		1024,
 		uint32(0x00010001),
@@ -370,7 +370,7 @@ func TestEncodePasswordData(t *testing.T) {
 }
 
 func TestEncodePasswordAuthArea(t *testing.T) {
-	pwAuth, err := encodePasswordAuthArea("01020304", PasswordSessionHandle)
+	pwAuth, err := encodePasswordAuthArea("01020304", HandlePasswordSession)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +379,7 @@ func TestEncodePasswordAuthArea(t *testing.T) {
 		t.Fatalf("got: %v, want: %v", pwAuth, want)
 	}
 
-	pwAuth, err = encodePasswordAuthArea("", PasswordSessionHandle)
+	pwAuth, err = encodePasswordAuthArea("", HandlePasswordSession)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,7 +411,7 @@ func TestEncodeRSAParams(t *testing.T) {
 		AlgAES,
 		128,
 		AlgCFB,
-		AlgNULL,
+		AlgNull,
 		0,
 		1024,
 		uint32(0x00010001),

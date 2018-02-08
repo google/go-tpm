@@ -20,8 +20,6 @@ func init() {
 	tpmutil.LengthPrefixSize = 2
 }
 
-const maxTPMResponse = 4096
-
 // Algorithm represents a TPM_ALG_ID value.
 type Algorithm uint16
 
@@ -30,10 +28,11 @@ const (
 	AlgRSA       Algorithm = 0x0001
 	AlgSHA1      Algorithm = 0x0004
 	AlgAES       Algorithm = 0x0006
+	AlgKeyedHash Algorithm = 0x0008
 	AlgSHA256    Algorithm = 0x000B
 	AlgSHA384    Algorithm = 0x000C
 	AlgSHA512    Algorithm = 0x000D
-	AlgNULL      Algorithm = 0x0010
+	AlgNull      Algorithm = 0x0010
 	AlgRSASSA    Algorithm = 0x0014
 	AlgRSAES     Algorithm = 0x0015
 	AlgRSAPSS    Algorithm = 0x0016
@@ -47,8 +46,6 @@ const (
 	AlgCBC       Algorithm = 0x0042
 	AlgCFB       Algorithm = 0x0043
 	AlgECB       Algorithm = 0x0044
-	AlgLAST      Algorithm = 0x0044
-	AlgKEYEDHASH Algorithm = 0x0008
 )
 
 // SessionType defines the type of session created in StartAuthSession.
@@ -88,18 +85,18 @@ type Handle uint32
 
 // Reserved Handles.
 const (
-	HandleOwner           Handle = 0x40000001
-	HandleRevoke          Handle = 0x40000002
-	HandleTransport       Handle = 0x40000003
-	HandleOperator        Handle = 0x40000004
-	HandleAdmin           Handle = 0x40000005
-	HandleEK              Handle = 0x40000006
-	HandleNull            Handle = 0x40000007
-	HandleUnassigned      Handle = 0x40000008
-	HandleLockout         Handle = 0x4000000A
-	HandleEndorsement     Handle = 0x4000000B
-	HandlePlatform        Handle = 0x4000000C
-	PasswordSessionHandle Handle = 0x40000009
+	HandleOwner Handle = 0x40000001 + iota
+	HandleRevoke
+	HandleTransport
+	HandleOperator
+	HandleAdmin
+	HandleEK
+	HandleNull
+	HandleUnassigned
+	HandlePasswordSession
+	HandleLockout
+	HandleEndorsement
+	HandlePlatform
 )
 
 // Capability identifies some TPM property or state type.
@@ -107,16 +104,16 @@ type Capability uint32
 
 // TPM Capabilies.
 const (
-	CapabilityAlgs          Capability = 0x00000000
-	CapabilityHandles       Capability = 0x00000001
-	CapabilityCommands      Capability = 0x00000002
-	CapabilityPPCommands    Capability = 0x00000003
-	CapabilityAuditCommands Capability = 0x00000004
-	CapabilityPCRs          Capability = 0x00000005
-	CapabilityTPMProperties Capability = 0x00000006
-	CapabilityPCRProperties Capability = 0x00000007
-	CapabilityECCCurves     Capability = 0x00000008
-	CapabilityAuthPolicies  Capability = 0x00000009
+	CapabilityAlgs Capability = iota
+	CapabilityHandles
+	CapabilityCommands
+	CapabilityPPCommands
+	CapabilityAuditCommands
+	CapabilityPCRs
+	CapabilityTPMProperties
+	CapabilityPCRProperties
+	CapabilityECCCurves
+	CapabilityAuthPolicies
 )
 
 const (
@@ -132,20 +129,28 @@ type StartupType uint16
 
 // Startup types
 const (
-	StartupClear StartupType = 0x0000
-	StartupState StartupType = 0x0001
+	StartupClear StartupType = iota
+	StartupState
 )
 
 // Supported TPM operations.
 const (
 	cmdEvictControl       tpmutil.Command = 0x00000120
+	cmdUndefineSpace      tpmutil.Command = 0x00000122
 	cmdClockSet           tpmutil.Command = 0x00000128
+	cmdDefineSpace        tpmutil.Command = 0x0000012A
 	cmdPCRAllocate        tpmutil.Command = 0x0000012B
 	cmdCreatePrimary      tpmutil.Command = 0x00000131
-	cmdCreate             tpmutil.Command = 0x00000153
+	cmdIncrementNvCounter tpmutil.Command = 0x00000134
+	cmdWriteNv            tpmutil.Command = 0x00000137
+	cmdPCREvent           tpmutil.Command = 0x0000013C
+	cmdStartup            tpmutil.Command = 0x00000144
+	cmdShutdown           tpmutil.Command = 0x00000145
 	cmdStirRandom         tpmutil.Command = 0x00000146
 	cmdActivateCredential tpmutil.Command = 0x00000147
 	cmdCertify            tpmutil.Command = 0x00000148
+	cmdReadNv             tpmutil.Command = 0x0000014E
+	cmdCreate             tpmutil.Command = 0x00000153
 	cmdLoad               tpmutil.Command = 0x00000157
 	cmdQuote              tpmutil.Command = 0x00000158
 	cmdUnseal             tpmutil.Command = 0x0000015E
@@ -154,30 +159,16 @@ const (
 	cmdFlushContext       tpmutil.Command = 0x00000165
 	cmdLoadExternal       tpmutil.Command = 0x00000167
 	cmdMakeCredential     tpmutil.Command = 0x00000168
+	cmdReadPublicNv       tpmutil.Command = 0x00000169
 	cmdReadPublic         tpmutil.Command = 0x00000173
 	cmdStartAuthSession   tpmutil.Command = 0x00000176
 	cmdGetCapability      tpmutil.Command = 0x0000017A
 	cmdGetRandom          tpmutil.Command = 0x0000017B
+	cmdHash               tpmutil.Command = 0x0000017D
 	cmdPCRRead            tpmutil.Command = 0x0000017E
 	cmdPolicyPCR          tpmutil.Command = 0x0000017F
 	cmdReadClock          tpmutil.Command = 0x00000181
 	cmdPCRExtend          tpmutil.Command = 0x00000182
 	cmdPolicyGetDigest    tpmutil.Command = 0x00000189
 	cmdPolicyPassword     tpmutil.Command = 0x0000018C
-	cmdPCREvent           tpmutil.Command = 0x0000013C
-	cmdDefineSpace        tpmutil.Command = 0x0000012A
-	cmdUndefineSpace      tpmutil.Command = 0x00000122
-	cmdReadPublicNv       tpmutil.Command = 0x00000169
-	cmdReadNv             tpmutil.Command = 0x0000014E
-	cmdWriteNv            tpmutil.Command = 0x00000137
-	cmdIncrementNvCounter tpmutil.Command = 0x00000134
-	cmdHash               tpmutil.Command = 0x0000017D
-	cmdStartup            tpmutil.Command = 0x00000144
-	cmdShutdown           tpmutil.Command = 0x00000145
-)
-
-type responseCode uint32
-
-const (
-	rcSuccess responseCode = 0x000
 )

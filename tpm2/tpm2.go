@@ -107,7 +107,7 @@ func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
 		return nil, err
 	}
 	current += 2
-	if parms.SymAlg != AlgNULL {
+	if parms.SymAlg != AlgNull {
 		err = tpmutil.Unpack(rsaBuf[current:], &parms.SymSize, &parms.Mode)
 		if err != nil {
 			return nil, err
@@ -171,7 +171,7 @@ func encodeRSAParams(parms RSAParams) ([]byte, error) {
 	}
 
 	var template []interface{}
-	if parms.SymAlg != AlgNULL {
+	if parms.SymAlg != AlgNull {
 		template = []interface{}{
 			parms.SymAlg,
 			parms.SymSize,
@@ -360,7 +360,7 @@ func encodePCREvent(pcrNum uint32, eventData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodePasswordAuthArea("", PasswordSessionHandle)
+	b2, err := encodePasswordAuthArea("", HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +390,7 @@ func encodeCreatePrimary(owner Handle, pcrNums []int, parentPassword, ownerPassw
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, PasswordSessionHandle)
+	b3, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -514,7 +514,7 @@ func encodeCreateKey(owner Handle, pcrNums []int, parentPassword, ownerPassword 
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, PasswordSessionHandle)
+	b3, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -585,7 +585,7 @@ func encodeLoad(parentHandle Handle, parentAuth, ownerAuth string, publicBlob, p
 	if err != nil {
 		return nil, err
 	}
-	b4, err := encodePasswordAuthArea(ownerAuth, PasswordSessionHandle)
+	b4, err := encodePasswordAuthArea(ownerAuth, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -783,7 +783,7 @@ func encodeQuote(signingHandle Handle, parentPassword, ownerPassword string, toQ
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, PasswordSessionHandle)
+	b3, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -853,11 +853,11 @@ func encodeActivateCredential(activeHandle Handle, keyHandle Handle, activePassw
 	if err != nil {
 		return nil, err
 	}
-	b4a, err := encodePasswordAuthArea(activePassword, PasswordSessionHandle)
+	b4a, err := encodePasswordAuthArea(activePassword, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
-	b4b, err := encodePasswordAuthArea(protectorPassword, PasswordSessionHandle)
+	b4b, err := encodePasswordAuthArea(protectorPassword, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -965,7 +965,7 @@ func encodeEvictControl(owner Handle, tmpHandle, persistantHandle Handle) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	b4, err := encodePasswordAuthArea("", PasswordSessionHandle)
+	b4, err := encodePasswordAuthArea("", HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -1019,7 +1019,7 @@ func ContextLoad(rw io.ReadWriter, saveArea []byte) (Handle, error) {
 }
 
 func encodeIncrementNv(handle Handle, authString string) ([]byte, error) {
-	auth, err := encodePasswordAuthArea(authString, PasswordSessionHandle)
+	auth, err := encodePasswordAuthArea(authString, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -1042,7 +1042,7 @@ func NVIncrement(rw io.ReadWriter, handle Handle, authString string) error {
 }
 
 func encodeUndefineSpace(owner, handle Handle) ([]byte, error) {
-	auth, err := encodePasswordAuthArea("", PasswordSessionHandle)
+	auth, err := encodePasswordAuthArea("", HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -1069,7 +1069,7 @@ func encodeDefineSpace(owner, handle Handle, authString string, attributes uint3
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea("", PasswordSessionHandle)
+	auth, err := encodePasswordAuthArea("", HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -1121,7 +1121,7 @@ func encodeNVRead(handle Handle, authString string, offset, dataSize uint16) ([]
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(authString, PasswordSessionHandle)
+	auth, err := encodePasswordAuthArea(authString, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
@@ -1189,12 +1189,12 @@ func encodeSign(key Handle, password string, digest []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(password, PasswordSessionHandle)
+	auth, err := encodePasswordAuthArea(password, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
 	out = append(out, auth...)
-	params, err := tpmutil.Pack(digest, AlgNULL)
+	params, err := tpmutil.Pack(digest, AlgNull)
 	if err != nil {
 		return nil, err
 	}
