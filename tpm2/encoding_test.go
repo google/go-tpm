@@ -100,7 +100,7 @@ func TestDecodeLoad(t *testing.T) {
 	}
 }
 
-func TestEncodeCreatePrimary(t *testing.T) {
+func TestEncodeCreate(t *testing.T) {
 	testCmdBytes, err := hex.DecodeString("80020000004d00000131400000010000000940000009000001000000080004010203040000001a0001000400030072000000060080004300100400000100010000000000000001000403800000")
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestEncodeCreatePrimary(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	cmdBytes, err := encodeCreatePrimary(HandleOwner, []int{7}, "", "01020304", params)
+	cmdBytes, err := encodeCreate(HandleOwner, []int{7}, "", "01020304", params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,34 +180,6 @@ func TestDecodeStartAuthSession(t *testing.T) {
 
 	if _, _, err = decodeStartAuthSession(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestEncodeCreateKey(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80020000004f00000153800000000000000d40000009000001000401020304000800040102030400000018000100040004007200000010001400040400000100010000000000000001000403800000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	params := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		1024,
-		uint32(0x00010001),
-		[]byte(nil),
-	}
-	cmdBytes, err := encodeCreateKey(HandleOwner, []int{7}, "", "01020304", params)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Equal(cmdBytes, testCmdBytes) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
 	}
 }
 

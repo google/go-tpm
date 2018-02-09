@@ -353,7 +353,8 @@ func PCREvent(rw io.ReadWriter, pcrNum uint32, eventData []byte) error {
 	return err
 }
 
-func encodeCreatePrimary(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
+// encodeCreate works for both TPM2_Create and TPM2_CreatePrimary.
+func encodeCreate(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
 	b1, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
@@ -433,7 +434,7 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 // CreatePrimary initializes the primary key in a given hierarchy.
 // Second return value is the public part of the generated key.
 func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) (tpmutil.Handle, []byte, error) {
-	cmd, err := encodeCreatePrimary(owner, pcrNums, parentPassword, ownerPassword, params)
+	cmd, err := encodeCreate(owner, pcrNums, parentPassword, ownerPassword, params)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -476,48 +477,6 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) ([]byte, []byte, []byte
 	return publicBlob, name, qualifiedName, nil
 }
 
-func encodeCreateKey(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
-	b1, err := tpmutil.Pack(owner)
-	if err != nil {
-		return nil, err
-	}
-	b2, err := tpmutil.Pack([]byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	b3, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
-	if err != nil {
-		return nil, err
-	}
-	t1, err := encodePasswordData(ownerPassword)
-	if err != nil {
-		return nil, err
-	}
-	b4, err := encodeSensitiveArea(t1[2:], []byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	b5, err := encodeRSAParams(params)
-	if err != nil {
-		return nil, err
-	}
-	b6, err := tpmutil.Pack([]byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	b7, err := encodeLongPCR(1, pcrNums)
-	if err != nil {
-		return nil, err
-	}
-	args := append(b1, b2...)
-	args = append(args, b3...)
-	args = append(args, b4...)
-	args = append(args, b5...)
-	args = append(args, b6...)
-	args = append(args, b7...)
-	return args, nil
-}
-
 func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 	var tpm2bPrivate []byte
 	var tpm2bPublic []byte
@@ -532,7 +491,7 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 // CreateKey creates a new RSA key pair under the owner handle.
 // Returns private key and public key blobs.
 func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, []byte, error) {
-	cmd, err := encodeCreateKey(owner, pcrNums, parentPassword, ownerPassword, params)
+	cmd, err := encodeCreate(owner, pcrNums, parentPassword, ownerPassword, params)
 	if err != nil {
 		return nil, nil, err
 	}
