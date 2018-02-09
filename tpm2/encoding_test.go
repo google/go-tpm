@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"testing"
+
+	"github.com/google/go-tpm/tpmutil"
 )
 
 func TestDecodeGetRandom(t *testing.T) {
@@ -25,8 +27,7 @@ func TestDecodeGetRandom(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = decodeGetRandom(testRespBytes[10:])
-	if err != nil {
+	if _, err = decodeGetRandom(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -36,8 +37,7 @@ func TestDecodeReadPCRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, _, err = decodeReadPCRs(testRespBytes[10:])
-	if err != nil {
+	if _, _, _, _, err = decodeReadPCRs(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -48,8 +48,7 @@ func TestDecodeReadClock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = decodeReadClock(testRespBytes[10:])
-	if err != nil {
+	if _, _, err = decodeReadClock(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -81,7 +80,7 @@ func TestEncodeLoad(t *testing.T) {
 	}
 	privateBlob := testCmdBytes[33:123]
 	publicBlob := testCmdBytes[125:]
-	cmdBytes, err := encodeLoad(Handle(0x80000000), "", "01020304", publicBlob, privateBlob)
+	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), "", "01020304", publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("encodeLoad failed %s", err)
 	}
@@ -96,8 +95,7 @@ func TestDecodeLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = decodeLoad(testRespBytes[10:])
-	if err != nil {
+	if _, _, err = decodeLoad(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -145,8 +143,7 @@ func TestDecodeCreatePrimary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = decodeCreatePrimary(testRespBytes[10:])
-	if err != nil {
+	if _, _, err = decodeCreatePrimary(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -156,7 +153,7 @@ func TestEncodePolicyPCR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodePolicyPCR(Handle(0x03000000), []byte(nil), []int{7})
+	cmdBytes, err := encodePolicyPCR(tpmutil.Handle(0x03000000), []byte(nil), []int{7})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,8 +167,7 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = decodePolicyGetDigest(testRespBytes[10:])
-	if err != nil {
+	if _, err = decodePolicyGetDigest(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -182,8 +178,7 @@ func TestDecodeStartAuthSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = decodeStartAuthSession(testRespBytes[10:])
-	if err != nil {
+	if _, _, err = decodeStartAuthSession(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -235,8 +230,7 @@ func TestDecodeCreateKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = decodeCreateKey(testRespBytes[10:])
-	if err != nil {
+	if _, _, err = decodeCreateKey(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -246,7 +240,7 @@ func TestEncodeUnseal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeUnseal(Handle(0x80000001), "01020304", Handle(0x03000000))
+	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), "01020304", tpmutil.Handle(0x03000000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,8 +255,7 @@ func TestDecodeUnseal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = decodeUnseal(testRespBytes[10:])
-	if err != nil {
+	if _, _, err = decodeUnseal(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -273,7 +266,7 @@ func TestEncodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	toQuote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmdBytes, err := encodeQuote(Handle(0x80000001), "01020304", "", toQuote, []int{7}, 0x0010)
+	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), "01020304", "", toQuote, []int{7}, 0x0010)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,8 +289,7 @@ func TestDecodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, _, _, err = decodeQuote(testRespBytes[10:])
-	if err != nil {
+	if _, _, _, _, err = decodeQuote(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -318,8 +310,7 @@ func TestDecodeReadPublic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, _, err = decodeReadPublic(testRespBytes[10:])
-	if err != nil {
+	if _, _, _, err = decodeReadPublic(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -329,7 +320,7 @@ func TestEncodeEvictControl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeEvictControl(Handle(0x40000001), Handle(0x810003e8), Handle(0x810003e8))
+	cmdBytes, err := encodeEvictControl(tpmutil.Handle(0x40000001), tpmutil.Handle(0x810003e8), tpmutil.Handle(0x810003e8))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -418,8 +409,7 @@ func TestEncodeRSAParams(t *testing.T) {
 		[]byte(nil),
 	}
 
-	_, err := encodeRSAParams(parms)
-	if err != nil {
+	if _, err := encodeRSAParams(parms); err != nil {
 		t.Fatal(err)
 	}
 }

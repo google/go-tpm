@@ -14,6 +14,8 @@
 
 package tpm2
 
+import "github.com/google/go-tpm/tpmutil"
+
 // RSAParams us a template for an RSA key.
 type RSAParams struct {
 	EncAlg     Algorithm
@@ -45,7 +47,7 @@ type KeyedHashParams struct {
 
 // NVPublic contains the public area of an NV index.
 type NVPublic struct {
-	NVIndex    Handle
+	NVIndex    tpmutil.Handle
 	NameAlg    Algorithm
 	Attributes uint32
 	AuthPolicy []byte

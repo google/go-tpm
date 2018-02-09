@@ -80,12 +80,9 @@ const (
 		FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
 )
 
-// A Handle is an identifier for TPM objects.
-type Handle uint32
-
 // Reserved Handles.
 const (
-	HandleOwner Handle = 0x40000001 + iota
+	HandleOwner tpmutil.Handle = 0x40000001 + iota
 	HandleRevoke
 	HandleTransport
 	HandleOperator
