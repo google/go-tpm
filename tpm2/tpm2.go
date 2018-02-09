@@ -752,7 +752,9 @@ func decodeQuote(in []byte) ([]byte, uint16, uint16, []byte, error) {
 	return attest, s1, s2, signature, nil
 }
 
-// Quote returns a quote of PCR values.
+// Quote returns a quote of PCR values. A quote is a signature of the PCR
+// values, created using a signing TPM key.
+//
 // Returns attestation data and the signature.
 func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg Algorithm) ([]byte, []byte, error) {
 	cmd, err := encodeQuote(signingHandle, parentPassword, ownerPassword, toQuote, pcrNums, sigAlg)
@@ -882,7 +884,7 @@ func MakeCredential(rw io.ReadWriter, protectorHandle tpmutil.Handle, credential
 	return credBlob, encryptedSecret, nil
 }
 
-func encodeEvictControl(owner tpmutil.Handle, tmpHandle, persistantHandle tpmutil.Handle) ([]byte, error) {
+func encodeEvictControl(owner tpmutil.Handle, tmpHandle, persistentHandle tpmutil.Handle) ([]byte, error) {
 	b1, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
@@ -899,7 +901,7 @@ func encodeEvictControl(owner tpmutil.Handle, tmpHandle, persistantHandle tpmuti
 	if err != nil {
 		return nil, err
 	}
-	b5, err := tpmutil.Pack(persistantHandle)
+	b5, err := tpmutil.Pack(persistentHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -911,8 +913,8 @@ func encodeEvictControl(owner tpmutil.Handle, tmpHandle, persistantHandle tpmuti
 }
 
 // EvictControl toggles persistence of an object within the TPM.
-func EvictControl(rw io.ReadWriter, owner, tmpHandle, persistantHandle tpmutil.Handle) error {
-	cmd, err := encodeEvictControl(owner, tmpHandle, persistantHandle)
+func EvictControl(rw io.ReadWriter, owner, tmpHandle, persistentHandle tpmutil.Handle) error {
+	cmd, err := encodeEvictControl(owner, tmpHandle, persistentHandle)
 	if err != nil {
 		return err
 	}
@@ -921,7 +923,8 @@ func EvictControl(rw io.ReadWriter, owner, tmpHandle, persistantHandle tpmutil.H
 }
 
 // ContextSave returns an encrypted version of the session, object or sequence
-// context for storage outside of the TPM.
+// context for storage outside of the TPM. The handle references context to
+// store.
 func ContextSave(rw io.ReadWriter, handle tpmutil.Handle) ([]byte, error) {
 	return runCommand(rw, tagNoSessions, cmdContextSave, handle)
 }
