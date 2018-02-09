@@ -118,6 +118,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
+	defer FlushContext(rw, parentHandle)
 
 	keyparms := RSAParams{
 		AlgRSA,
@@ -142,16 +143,10 @@ func TestCombinedKeyTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
+	defer FlushContext(rw, keyHandle)
 
 	if _, _, _, err = ReadPublic(rw, keyHandle); err != nil {
 		t.Fatalf("ReadPublic failed: %s", err)
-	}
-
-	if err = FlushContext(rw, keyHandle); err != nil {
-		t.Fatalf("FlushContext failed: %s", err)
-	}
-	if err = FlushContext(rw, parentHandle); err != nil {
-		t.Fatalf("FlushContext failed: %s", err)
 	}
 }
 
@@ -184,6 +179,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
+	defer FlushContext(rw, parentHandle)
 
 	keyparms := RSAParams{
 		AlgRSA,
@@ -208,6 +204,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
+	defer FlushContext(rw, keyHandle)
 
 	_, name, _, err := ReadPublic(rw, keyHandle)
 	if err != nil {
@@ -218,24 +215,16 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	credential := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
 	credBlob, encryptedSecret0, err := MakeCredential(rw, parentHandle, credential, name)
 	if err != nil {
-		FlushContext(rw, keyHandle)
-		FlushContext(rw, parentHandle)
 		t.Fatalf("MakeCredential failed: %s", err)
 	}
 
 	recoveredCredential1, err := ActivateCredential(rw, keyHandle, parentHandle, "01020304", "", credBlob, encryptedSecret0)
 	if err != nil {
-		FlushContext(rw, keyHandle)
-		FlushContext(rw, parentHandle)
 		t.Fatalf("ActivateCredential failed: %s", err)
 	}
 	if bytes.Compare(credential, recoveredCredential1) != 0 {
-		FlushContext(rw, keyHandle)
-		FlushContext(rw, parentHandle)
 		t.Fatalf("Credential and recovered credential differ: got %v, want %v", recoveredCredential1, credential)
 	}
-
-	FlushContext(rw, keyHandle)
 }
 
 func TestCombinedContextTest(t *testing.T) {
@@ -296,7 +285,6 @@ func TestCombinedContextTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
-	defer FlushContext(rw, quoteHandle)
 
 	saveArea, err := ContextSave(rw, quoteHandle)
 	if err != nil {
@@ -308,6 +296,5 @@ func TestCombinedContextTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
-
 	FlushContext(rw, quoteHandle)
 }
