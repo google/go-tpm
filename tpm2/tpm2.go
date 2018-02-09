@@ -52,7 +52,7 @@ func encodePasswordAuthArea(password string, owner tpmutil.Handle) ([]byte, erro
 	return tpmutil.Pack(buf)
 }
 
-func encodeSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
+func encodeSensitiveArea(in1, in2 []byte) ([]byte, error) {
 	t1, err := tpmutil.Pack(in1)
 	if err != nil {
 		return nil, err
@@ -179,9 +179,9 @@ func encodeShortPCRs(pcrNums []int) ([]byte, error) {
 	pcr := []byte{3, 0, 0, 0}
 	var byteNum int
 	var bytePos byte
-	for _, e := range pcrNums {
-		byteNum = 1 + e/8
-		bytePos = 1 << uint16(e%8)
+	for _, n := range pcrNums {
+		byteNum = 1 + n/8
+		bytePos = 1 << uint16(n%8)
 		pcr[byteNum] |= bytePos
 	}
 	return pcr, nil
@@ -191,11 +191,11 @@ func encodeLongPCR(count uint32, pcrNums []int) ([]byte, error) {
 	if count == 0 {
 		return tpmutil.Pack(count)
 	}
-	b1, err := encodeShortPCRs(pcrNums)
+	pcrs, err := encodeShortPCRs(pcrNums)
 	if err != nil {
 		return nil, err
 	}
-	return tpmutil.Pack(count, b1)
+	return tpmutil.Pack(count, pcrs)
 }
 
 func decodeGetRandom(in []byte) ([]byte, error) {
@@ -295,7 +295,7 @@ func decodeGetCapability(in []byte) (Capability, []tpmutil.Handle, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	// only TPM_CAP_HANDLES handled
+	// Only TPM_CAP_HANDLES handled.
 	if capReported != CapabilityHandles {
 		return 0, nil, fmt.Errorf("Only TPM_CAP_HANDLES supported, got %v", capReported)
 	}
@@ -404,7 +404,7 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 	var handle tpmutil.Handle
 	var auth []byte
 
-	// handle and auth data
+	// Handle and auth data.
 	err := tpmutil.Unpack(in, &handle, &auth)
 	if err != nil {
 		return 0, nil, err
@@ -412,7 +412,6 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 
 	var current int
 	current = 6 + 2*len(auth)
-	// size, size-public
 	var tpm2Public []byte
 	err = tpmutil.Unpack(in[current:], &tpm2Public)
 	if err != nil {
