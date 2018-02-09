@@ -17,87 +17,69 @@ package tpm2
 import (
 	"bytes"
 	"flag"
+	"io"
 	"os"
 	"testing"
 )
 
-var runIntegration = flag.Bool("integration", false, "Run integration tests using /dev/tpm0")
+var tpmPath = flag.String("tpm_path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	os.Exit(m.Run())
 }
 
-func TestGetRandom(t *testing.T) {
-	if !*runIntegration {
+func openTPM(t *testing.T) io.ReadWriteCloser {
+	if *tpmPath == "" {
 		t.SkipNow()
 	}
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := OpenTPM(*tpmPath)
 	if err != nil {
 		t.Fatalf("OpenTPM failed: %s", err)
 	}
+	return rw
+}
+
+func TestGetRandom(t *testing.T) {
+	rw := openTPM(t)
 	defer rw.Close()
 
-	if _, err = GetRandom(rw, 16); err != nil {
+	if _, err := GetRandom(rw, 16); err != nil {
 		t.Fatalf("GetRandom failed: %v", err)
 	}
 }
 
 func TestReadPCRs(t *testing.T) {
-	if !*runIntegration {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM("/dev/tpm0")
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %s", err)
-	}
+	rw := openTPM(t)
 	defer rw.Close()
 
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
-	if _, _, _, _, err = ReadPCRs(rw, pcr); err != nil {
+	if _, _, _, _, err := ReadPCRs(rw, pcr); err != nil {
 		t.Fatalf("ReadPCRs failed: %s", err)
 	}
 }
 
 func TestReadClock(t *testing.T) {
-	if !*runIntegration {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM("/dev/tpm0")
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %s", err)
-	}
+	rw := openTPM(t)
 	defer rw.Close()
 
-	if _, _, err = ReadClock(rw); err != nil {
+	if _, _, err := ReadClock(rw); err != nil {
 		t.Fatalf("ReadClock failed: %s", err)
 	}
 
 }
 
 func TestGetCapability(t *testing.T) {
-	if !*runIntegration {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM("/dev/tpm0")
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %s", err)
-	}
+	rw := openTPM(t)
 	defer rw.Close()
 
-	if _, err = GetCapability(rw, CapabilityHandles, 1, 0x80000000); err != nil {
+	if _, err := GetCapability(rw, CapabilityHandles, 1, 0x80000000); err != nil {
 		t.Fatalf("GetCapability failed: %s", err)
 	}
 }
 
 func TestCombinedKeyTest(t *testing.T) {
-	if !*runIntegration {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM("/dev/tpm0")
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %s", err)
-	}
+	rw := openTPM(t)
 	defer rw.Close()
 
 	primaryParams := RSAParams{
@@ -145,20 +127,13 @@ func TestCombinedKeyTest(t *testing.T) {
 	}
 	defer FlushContext(rw, keyHandle)
 
-	if _, _, _, err = ReadPublic(rw, keyHandle); err != nil {
+	if _, _, _, err := ReadPublic(rw, keyHandle); err != nil {
 		t.Fatalf("ReadPublic failed: %s", err)
 	}
 }
 
 func TestCombinedEndorsementTest(t *testing.T) {
-	if !*runIntegration {
-		t.SkipNow()
-	}
-
-	rw, err := OpenTPM("/dev/tpm0")
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %s", err)
-	}
+	rw := openTPM(t)
 	defer rw.Close()
 
 	primaryParams := RSAParams{
@@ -228,13 +203,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 }
 
 func TestCombinedContextTest(t *testing.T) {
-	if !*runIntegration {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM("/dev/tpm0")
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %v", err)
-	}
+	rw := openTPM(t)
 	defer rw.Close()
 
 	pcrs := []int{7}
