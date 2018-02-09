@@ -67,47 +67,47 @@ func encodeSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
 }
 
 func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
-	parms := new(RSAParams)
+	params := new(RSAParams)
 	current := 0
-	err := tpmutil.Unpack(rsaBuf[current:], &parms.EncAlg, &parms.HashAlg, &parms.Attributes, &parms.AuthPolicy)
+	err := tpmutil.Unpack(rsaBuf[current:], &params.EncAlg, &params.HashAlg, &params.Attributes, &params.AuthPolicy)
 	if err != nil {
 		return nil, err
 	}
-	current += 10 + len(parms.AuthPolicy)
-	err = tpmutil.Unpack(rsaBuf[current:], &parms.SymAlg)
+	current += 10 + len(params.AuthPolicy)
+	err = tpmutil.Unpack(rsaBuf[current:], &params.SymAlg)
 	if err != nil {
 		return nil, err
 	}
 	current += 2
-	if parms.SymAlg != AlgNull {
-		err = tpmutil.Unpack(rsaBuf[current:], &parms.SymSize, &parms.Mode)
+	if params.SymAlg != AlgNull {
+		err = tpmutil.Unpack(rsaBuf[current:], &params.SymSize, &params.Mode)
 		if err != nil {
 			return nil, err
 		}
 		current += 4
 	} else {
-		parms.SymSize = 0
-		parms.Mode = 0
-		parms.Scheme = 0
+		params.SymSize = 0
+		params.Mode = 0
+		params.Scheme = 0
 	}
-	err = tpmutil.Unpack(rsaBuf[current:], &parms.Scheme)
+	err = tpmutil.Unpack(rsaBuf[current:], &params.Scheme)
 	if err != nil {
 		return nil, err
 	}
 	current += 2
-	if parms.Scheme == AlgRSASSA {
-		err = tpmutil.Unpack(rsaBuf[current:], &parms.SchemeHash)
+	if params.Scheme == AlgRSASSA {
+		err = tpmutil.Unpack(rsaBuf[current:], &params.SchemeHash)
 		if err != nil {
 			return nil, err
 		}
 		current += 2
 	}
 
-	err = tpmutil.Unpack(rsaBuf[current:], &parms.ModSize, &parms.Exp, &parms.Modulus)
+	err = tpmutil.Unpack(rsaBuf[current:], &params.ModSize, &params.Exp, &params.Modulus)
 	if err != nil {
 		return nil, err
 	}
-	return parms, nil
+	return params, nil
 }
 
 func decodeRSAArea(in []byte) (*RSAParams, error) {
@@ -120,52 +120,52 @@ func decodeRSAArea(in []byte) (*RSAParams, error) {
 	return decodeRSABuf(rsaBuf)
 }
 
-func encodeKeyedHashParams(parms KeyedHashParams) ([]byte, error) {
+func encodeKeyedHashParams(params KeyedHashParams) ([]byte, error) {
 	return tpmutil.Pack(
-		parms.TypeAlg,
-		parms.HashAlg,
-		parms.Attributes,
-		parms.AuthPolicy,
-		parms.Scheme,
-		parms.Unique,
+		params.TypeAlg,
+		params.HashAlg,
+		params.Attributes,
+		params.AuthPolicy,
+		params.Scheme,
+		params.Unique,
 	)
 }
 
-func encodeRSAParams(parms RSAParams) ([]byte, error) {
+func encodeRSAParams(params RSAParams) ([]byte, error) {
 	t1, err := tpmutil.Pack(
-		parms.EncAlg,
-		parms.HashAlg,
-		parms.Attributes,
-		parms.AuthPolicy,
+		params.EncAlg,
+		params.HashAlg,
+		params.Attributes,
+		params.AuthPolicy,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	var template []interface{}
-	if parms.SymAlg != AlgNull {
+	if params.SymAlg != AlgNull {
 		template = []interface{}{
-			parms.SymAlg,
-			parms.SymSize,
-			parms.Mode,
-			parms.Scheme,
+			params.SymAlg,
+			params.SymSize,
+			params.Mode,
+			params.Scheme,
 		}
 	} else {
-		template = []interface{}{parms.SymAlg, parms.Scheme}
+		template = []interface{}{params.SymAlg, params.Scheme}
 	}
 	t2, err := tpmutil.Pack(template...)
 	if err != nil {
 		return nil, err
 	}
-	if parms.Scheme == AlgRSASSA {
-		t3, err := tpmutil.Pack(parms.SchemeHash)
+	if params.Scheme == AlgRSASSA {
+		t3, err := tpmutil.Pack(params.SchemeHash)
 		if err != nil {
 			return nil, err
 		}
 		t2 = append(t2, t3...)
 	}
 
-	t4, err := tpmutil.Pack(parms.ModSize, parms.Exp, parms.Modulus)
+	t4, err := tpmutil.Pack(params.ModSize, params.Exp, params.Modulus)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func PCREvent(rw io.ReadWriter, pcrNum uint32, eventData []byte) error {
 	return err
 }
 
-func encodeCreatePrimary(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
+func encodeCreatePrimary(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
 	b1, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
@@ -374,7 +374,7 @@ func encodeCreatePrimary(owner tpmutil.Handle, pcrNums []int, parentPassword, ow
 	if err != nil {
 		return nil, err
 	}
-	b5, err := encodeRSAParams(parms)
+	b5, err := encodeRSAParams(params)
 	if err != nil {
 		return nil, err
 	}
@@ -433,8 +433,8 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 
 // CreatePrimary initializes the primary key in a given hierarchy.
 // Second return value is the public part of the generated key.
-func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) (tpmutil.Handle, []byte, error) {
-	cmd, err := encodeCreatePrimary(owner, pcrNums, parentPassword, ownerPassword, parms)
+func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) (tpmutil.Handle, []byte, error) {
+	cmd, err := encodeCreatePrimary(owner, pcrNums, parentPassword, ownerPassword, params)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -477,7 +477,7 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) ([]byte, []byte, []byte
 	return publicBlob, name, qualifiedName, nil
 }
 
-func encodeCreateKey(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, error) {
+func encodeCreateKey(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
 	b1, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
@@ -498,7 +498,7 @@ func encodeCreateKey(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerP
 	if err != nil {
 		return nil, err
 	}
-	b5, err := encodeRSAParams(parms)
+	b5, err := encodeRSAParams(params)
 	if err != nil {
 		return nil, err
 	}
@@ -532,8 +532,8 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 
 // CreateKey creates a new RSA key pair under the owner handle.
 // Returns private key and public key blobs.
-func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, parms RSAParams) ([]byte, []byte, error) {
-	cmd, err := encodeCreateKey(owner, pcrNums, parentPassword, ownerPassword, parms)
+func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, []byte, error) {
+	cmd, err := encodeCreateKey(owner, pcrNums, parentPassword, ownerPassword, params)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -105,7 +105,7 @@ func TestEncodeCreatePrimary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parms := RSAParams{
+	params := RSAParams{
 		AlgRSA,
 		AlgSHA1,
 		0x00030072,
@@ -119,7 +119,7 @@ func TestEncodeCreatePrimary(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	cmdBytes, err := encodeCreatePrimary(HandleOwner, []int{7}, "", "01020304", parms)
+	cmdBytes, err := encodeCreatePrimary(HandleOwner, []int{7}, "", "01020304", params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestEncodeCreateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parms := RSAParams{
+	params := RSAParams{
 		AlgRSA,
 		AlgSHA1,
 		0x00030072,
@@ -202,7 +202,7 @@ func TestEncodeCreateKey(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	cmdBytes, err := encodeCreateKey(HandleOwner, []int{7}, "", "01020304", parms)
+	cmdBytes, err := encodeCreateKey(HandleOwner, []int{7}, "", "01020304", params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestEncodeSensitiveArea(t *testing.T) {
 }
 
 func TestEncodeRSAParams(t *testing.T) {
-	parms := RSAParams{
+	params := RSAParams{
 		AlgRSA,
 		AlgSHA1,
 		0x00030072,
@@ -409,7 +409,7 @@ func TestEncodeRSAParams(t *testing.T) {
 		[]byte(nil),
 	}
 
-	if _, err := encodeRSAParams(parms); err != nil {
+	if _, err := encodeRSAParams(params); err != nil {
 		t.Fatal(err)
 	}
 }
