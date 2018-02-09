@@ -19,8 +19,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"net"
-	"os"
 	"unsafe"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -29,33 +27,7 @@ import (
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
 // device, then it treats it like a normal TPM device, and if the file is a
 // Unix domain socket, then it opens a connection to the socket.
-func OpenTPM(path string) (io.ReadWriteCloser, error) {
-	// If it's a regular file, then open it
-	var rwc io.ReadWriteCloser
-	fi, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if fi.Mode()&os.ModeDevice != 0 {
-		var f *os.File
-		f, err = os.OpenFile(path, os.O_RDWR, 0600)
-		if err != nil {
-			return nil, err
-		}
-		rwc = io.ReadWriteCloser(f)
-	} else if fi.Mode()&os.ModeSocket != 0 {
-		uc, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
-		if err != nil {
-			return nil, err
-		}
-		rwc = io.ReadWriteCloser(uc)
-	} else {
-		return nil, fmt.Errorf("unsupported TPM file mode %s", fi.Mode().String())
-	}
-
-	return rwc, nil
-}
+var OpenTPM = tpmutil.OpenTPM
 
 func encodePasswordData(password string) ([]byte, error) {
 	pw, err := hex.DecodeString(password)
