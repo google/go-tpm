@@ -40,6 +40,26 @@ func openTPM(t *testing.T) io.ReadWriteCloser {
 	return rw
 }
 
+var (
+	// PCR7 is for SecureBoot.
+	pcrSelection     = []int{7}
+	defaultKeyParams = RSAParams{
+		AlgRSA,
+		AlgSHA1,
+		0x00030072,
+		[]byte(nil),
+		AlgAES,
+		128,
+		AlgCFB,
+		AlgNull,
+		0,
+		1024,
+		uint32(0x00010001),
+		[]byte(nil),
+	}
+	defaultPassword = "01020304"
+)
+
 func TestGetRandom(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -82,32 +102,18 @@ func TestCombinedKeyTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	keyParams := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		1024,
-		uint32(0x00010001),
-		[]byte(nil),
-	}
-	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, []int{0x7}, "", "01020304", keyParams)
+	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 	defer FlushContext(rw, parentHandle)
 
-	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, []int{7}, "01020304", "01020304", keyParams)
+	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
 
-	keyHandle, _, err := Load(rw, parentHandle, "", "01020304", publicBlob, privateBlob)
+	keyHandle, _, err := Load(rw, parentHandle, "", defaultPassword, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
@@ -122,7 +128,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	keyParams := RSAParams{
+	defaultKeyParams := RSAParams{
 		AlgRSA,
 		AlgSHA1,
 		0x00030072,
@@ -136,13 +142,13 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, []int{0x7}, "", "", keyParams)
+	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 	defer FlushContext(rw, parentHandle)
 
-	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, []int{7}, "", "01020304", keyParams)
+	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, "", defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -165,7 +171,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatalf("MakeCredential failed: %s", err)
 	}
 
-	recoveredCredential1, err := ActivateCredential(rw, keyHandle, parentHandle, "01020304", "", credBlob, encryptedSecret0)
+	recoveredCredential1, err := ActivateCredential(rw, keyHandle, parentHandle, defaultPassword, "", credBlob, encryptedSecret0)
 	if err != nil {
 		t.Fatalf("ActivateCredential failed: %s", err)
 	}
@@ -178,11 +184,9 @@ func TestCombinedContextTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	pcrs := []int{7}
 	keySize := 2048
-	quotePassword := ""
 
-	keyParams := RSAParams{
+	defaultKeyParams := RSAParams{
 		AlgRSA,
 		AlgSHA1,
 		FlagStorageDefault,
@@ -196,19 +200,19 @@ func TestCombinedContextTest(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrs, "", "", keyParams)
+	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %v", err)
 	}
 	defer FlushContext(rw, rootHandle)
 
 	// CreateKey (Quote Key)
-	quotePrivate, quotePublic, err := CreateKey(rw, rootHandle, pcrs, "", quotePassword, keyParams)
+	quotePrivate, quotePublic, err := CreateKey(rw, rootHandle, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
 
-	quoteHandle, _, err := Load(rw, rootHandle, "", quotePassword, quotePublic, quotePrivate)
+	quoteHandle, _, err := Load(rw, rootHandle, "", "", quotePublic, quotePrivate)
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
