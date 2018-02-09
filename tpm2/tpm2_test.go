@@ -38,8 +38,7 @@ func TestGetRandom(t *testing.T) {
 	}
 	defer rw.Close()
 
-	_, err = GetRandom(rw, 16)
-	if err != nil {
+	if _, err = GetRandom(rw, 16); err != nil {
 		t.Fatalf("GetRandom failed: %v", err)
 	}
 }
@@ -55,8 +54,7 @@ func TestReadPCRs(t *testing.T) {
 	defer rw.Close()
 
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
-	_, _, _, _, err = ReadPCRs(rw, pcr)
-	if err != nil {
+	if _, _, _, _, err = ReadPCRs(rw, pcr); err != nil {
 		t.Fatalf("ReadPCRs failed: %s", err)
 	}
 }
@@ -71,8 +69,7 @@ func TestReadClock(t *testing.T) {
 	}
 	defer rw.Close()
 
-	_, _, err = ReadClock(rw)
-	if err != nil {
+	if _, _, err = ReadClock(rw); err != nil {
 		t.Fatalf("ReadClock failed: %s", err)
 	}
 
@@ -88,8 +85,7 @@ func TestGetCapability(t *testing.T) {
 	}
 	defer rw.Close()
 
-	_, err = GetCapability(rw, CapabilityHandles, 1, 0x80000000)
-	if err != nil {
+	if _, err = GetCapability(rw, CapabilityHandles, 1, 0x80000000); err != nil {
 		t.Fatalf("GetCapability failed: %s", err)
 	}
 }
@@ -147,8 +143,7 @@ func TestCombinedKeyTest(t *testing.T) {
 		t.Fatalf("Load failed: %s", err)
 	}
 
-	_, _, _, err = ReadPublic(rw, keyHandle)
-	if err != nil {
+	if _, _, _, err = ReadPublic(rw, keyHandle); err != nil {
 		t.Fatalf("ReadPublic failed: %s", err)
 	}
 
