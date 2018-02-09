@@ -14,10 +14,10 @@
 
 package tpm2
 
-import "github.com/awly/go-tpm/tpmutil"
+import "github.com/google/go-tpm/tpmutil"
 
 func init() {
-	tpmutil.LengthPrefixSize = 2
+	tpmutil.UseTPM20LengthPrefixSize()
 }
 
 // Algorithm represents a TPM_ALG_ID value.

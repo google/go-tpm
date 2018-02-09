@@ -23,7 +23,7 @@ import (
 	"os"
 	"unsafe"
 
-	"github.com/awly/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
