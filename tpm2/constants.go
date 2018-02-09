@@ -138,15 +138,15 @@ const (
 	cmdDefineSpace        tpmutil.Command = 0x0000012A
 	cmdPCRAllocate        tpmutil.Command = 0x0000012B
 	cmdCreatePrimary      tpmutil.Command = 0x00000131
-	cmdIncrementNvCounter tpmutil.Command = 0x00000134
-	cmdWriteNv            tpmutil.Command = 0x00000137
+	cmdIncrementNVCounter tpmutil.Command = 0x00000134
+	cmdWriteNV            tpmutil.Command = 0x00000137
 	cmdPCREvent           tpmutil.Command = 0x0000013C
 	cmdStartup            tpmutil.Command = 0x00000144
 	cmdShutdown           tpmutil.Command = 0x00000145
 	cmdStirRandom         tpmutil.Command = 0x00000146
 	cmdActivateCredential tpmutil.Command = 0x00000147
 	cmdCertify            tpmutil.Command = 0x00000148
-	cmdReadNv             tpmutil.Command = 0x0000014E
+	cmdReadNV             tpmutil.Command = 0x0000014E
 	cmdCreate             tpmutil.Command = 0x00000153
 	cmdLoad               tpmutil.Command = 0x00000157
 	cmdQuote              tpmutil.Command = 0x00000158
@@ -156,7 +156,7 @@ const (
 	cmdFlushContext       tpmutil.Command = 0x00000165
 	cmdLoadExternal       tpmutil.Command = 0x00000167
 	cmdMakeCredential     tpmutil.Command = 0x00000168
-	cmdReadPublicNv       tpmutil.Command = 0x00000169
+	cmdReadPublicNV       tpmutil.Command = 0x00000169
 	cmdReadPublic         tpmutil.Command = 0x00000173
 	cmdStartAuthSession   tpmutil.Command = 0x00000176
 	cmdGetCapability      tpmutil.Command = 0x0000017A

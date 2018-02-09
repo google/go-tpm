@@ -951,7 +951,7 @@ func ContextLoad(rw io.ReadWriter, saveArea []byte) (tpmutil.Handle, error) {
 	return handle, nil
 }
 
-func encodeIncrementNv(handle tpmutil.Handle, authString string) ([]byte, error) {
+func encodeIncrementNV(handle tpmutil.Handle, authString string) ([]byte, error) {
 	auth, err := encodePasswordAuthArea(authString, HandlePasswordSession)
 	if err != nil {
 		return nil, err
@@ -964,13 +964,13 @@ func encodeIncrementNv(handle tpmutil.Handle, authString string) ([]byte, error)
 	return out, nil
 }
 
-// NVIncrement increments a counter NV index.
+// NVIncrement increments a counter in NVRAM.
 func NVIncrement(rw io.ReadWriter, handle tpmutil.Handle, authString string) error {
-	cmd, err := encodeIncrementNv(handle, authString)
+	cmd, err := encodeIncrementNV(handle, authString)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, tagSessions, cmdIncrementNvCounter, tpmutil.RawBytes(cmd))
+	_, err = runCommand(rw, tagSessions, cmdIncrementNVCounter, tpmutil.RawBytes(cmd))
 	return err
 }
 
@@ -1011,9 +1011,9 @@ func encodeDefineSpace(owner, handle tpmutil.Handle, authString string, attribut
 		return nil, err
 	}
 	hashAlg := AlgSHA1
-	sizeNvArea := uint16(2*int(unsafe.Sizeof(owner)) + 3*int(unsafe.Sizeof(dataSize)) + len(policy))
+	sizeNVArea := uint16(2*int(unsafe.Sizeof(owner)) + 3*int(unsafe.Sizeof(dataSize)) + len(policy))
 	out1 = append(append(out1, auth...), pw...)
-	out2, err := tpmutil.Pack(sizeNvArea, handle, hashAlg, attributes, policy, dataSize)
+	out2, err := tpmutil.Pack(sizeNVArea, handle, hashAlg, attributes, policy, dataSize)
 	if err != nil {
 		return nil, err
 	}
@@ -1067,10 +1067,10 @@ func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uin
 	return out, nil
 }
 
-// NVRead reads full data blob from NV index.
+// NVRead reads a full data blob from an NV index.
 func NVRead(rw io.ReadWriter, index tpmutil.Handle) ([]byte, error) {
 	// Read public area to determine data size.
-	resp, err := runCommand(rw, tagNoSessions, cmdReadPublicNv, index)
+	resp, err := runCommand(rw, tagNoSessions, cmdReadPublicNV, index)
 	if err != nil {
 		return nil, fmt.Errorf("running NV_ReadPublic command: %v", err)
 	}
@@ -1084,7 +1084,7 @@ func NVRead(rw io.ReadWriter, index tpmutil.Handle) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building NV_Read command: %v", err)
 	}
-	resp, err = runCommand(rw, tagSessions, cmdReadNv, tpmutil.RawBytes(cmd))
+	resp, err = runCommand(rw, tagSessions, cmdReadNV, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, fmt.Errorf("running NV_Read command: %v", err)
 	}
@@ -1161,7 +1161,7 @@ func Sign(rw io.ReadWriter, key tpmutil.Handle, data []byte) (Algorithm, []byte,
 	if err != nil {
 		return 0, nil, err
 	}
-	resp, err := runCommand(rw, tagSessions, cmdReadNv, tpmutil.RawBytes(cmd))
+	resp, err := runCommand(rw, tagSessions, cmdReadNV, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return 0, nil, err
 	}
