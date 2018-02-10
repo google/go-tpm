@@ -119,7 +119,7 @@ func TestEncodeCreate(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	cmdBytes, err := encodeCreate(HandleOwner, []int{7}, "", "01020304", params)
+	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", "01020304", params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestEncodePolicyPCR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodePolicyPCR(tpmutil.Handle(0x03000000), []byte(nil), []int{7})
+	cmdBytes, err := encodePolicyPCR(tpmutil.Handle(0x03000000), []byte(nil), pcrSelection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestEncodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	toQuote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), "01020304", "", toQuote, []int{7}, 0x0010)
+	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), "01020304", "", toQuote, pcrSelection, 0x0010)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,7 +387,7 @@ func TestEncodeRSAParams(t *testing.T) {
 }
 
 func TestEncodeLongPCR(t *testing.T) {
-	s, err := encodeLongPCR(1, []int{7})
+	s, err := encodeLongPCR(pcrSelection)
 	if err != nil {
 		t.Fatal(err)
 	}

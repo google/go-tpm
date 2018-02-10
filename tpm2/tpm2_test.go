@@ -73,9 +73,8 @@ func TestReadPCRs(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	pcr := []byte{0x03, 0x80, 0x00, 0x00}
-	if _, _, _, _, err := ReadPCRs(rw, pcr); err != nil {
-		t.Fatalf("ReadPCRs failed: %s", err)
+	if _, _, _, _, err := ReadPCRs(rw, AlgSHA1, pcrSelection); err != nil {
+		t.Errorf("ReadPCRs failed: %s", err)
 	}
 }
 

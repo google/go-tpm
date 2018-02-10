@@ -175,29 +175,6 @@ func encodeRSAParams(params RSAParams) ([]byte, error) {
 	return tpmutil.Pack(t5)
 }
 
-func encodeShortPCRs(pcrNums []int) ([]byte, error) {
-	pcr := []byte{3, 0, 0, 0}
-	var byteNum int
-	var bytePos byte
-	for _, n := range pcrNums {
-		byteNum = 1 + n/8
-		bytePos = 1 << uint16(n%8)
-		pcr[byteNum] |= bytePos
-	}
-	return pcr, nil
-}
-
-func encodeLongPCR(count uint32, pcrNums []int) ([]byte, error) {
-	if count == 0 {
-		return tpmutil.Pack(count)
-	}
-	pcrs, err := encodeShortPCRs(pcrNums)
-	if err != nil {
-		return nil, err
-	}
-	return tpmutil.Pack(count, pcrs)
-}
-
 func decodeGetRandom(in []byte) ([]byte, error) {
 	var randBytes []byte
 
@@ -230,6 +207,52 @@ func FlushContext(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
+func encodeShortPCRs(pcrNums []int) ([]byte, error) {
+	// PCR selection is a variable-size bitmask, where position of a set bit is
+	// the selected PCR index.
+	// Size of the bitmask in bytes is pre-pended. It should be at least
+	// sizeOfPCRSelect.
+	//
+	// For example, selecting PCRs 3 and 9 looks like:
+	// size(3)  mask     mask     mask
+	// 00000011 00000000 00000001 00000100
+	pcr := make([]byte, sizeOfPCRSelect+1)
+	pcr[0] = sizeOfPCRSelect
+	// pcrNums parameter is indexes of PCRs, convert hat to set bits.
+	for _, n := range pcrNums {
+		byteNum := 1 + n/8
+		bytePos := byte(1 << byte(n%8))
+		pcr[byteNum] |= bytePos
+	}
+	return pcr, nil
+}
+
+func encodeLongPCR(pcrNums []int) ([]byte, error) {
+	if len(pcrNums) == 0 {
+		return tpmutil.Pack(uint32(0))
+	}
+	pcrs, err := encodeShortPCRs(pcrNums)
+	if err != nil {
+		return nil, err
+	}
+	// Only encode 1 TPMS_PCR_SELECTION value.
+	return tpmutil.Pack(uint32(1), pcrs)
+}
+
+func encodeReadPCRs(hash Algorithm, pcrs []int) ([]byte, error) {
+	// Only encode 1 TPMS_PCR_SELECTION value.
+	req, err := tpmutil.Pack(uint32(1), hash)
+	if err != nil {
+		return nil, err
+	}
+	enc, err := encodeShortPCRs(pcrs)
+	if err != nil {
+		return nil, err
+	}
+	req = append(req, enc...)
+	return req, nil
+}
+
 func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
 	var pcr []byte
 	var digest []byte
@@ -244,9 +267,13 @@ func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
 	return updateCounter, pcr, uint16(t), digest, nil
 }
 
-// ReadPCRs reads a PCR value from the TPM.
-func ReadPCRs(rw io.ReadWriter, pcrSelect []byte) (uint32, []byte, uint16, []byte, error) {
-	resp, err := runCommand(rw, tagNoSessions, cmdPCRRead, 1, pcrSelect)
+// ReadPCRs reads PCR values from the TPM.
+func ReadPCRs(rw io.ReadWriter, hash Algorithm, pcrs []int) (uint32, []byte, uint16, []byte, error) {
+	cmd, err := encodeReadPCRs(hash, pcrs)
+	if err != nil {
+		return 0, nil, 0, nil, err
+	}
+	resp, err := runCommand(rw, tagNoSessions, cmdPCRRead, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
@@ -383,12 +410,7 @@ func encodeCreate(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPass
 	if err != nil {
 		return nil, err
 	}
-	var b7 []byte
-	if len(pcrNums) > 0 {
-		b7, err = encodeLongPCR(1, pcrNums)
-	} else {
-		b7, err = encodeLongPCR(0, pcrNums)
-	}
+	b7, err := encodeLongPCR(pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -570,7 +592,7 @@ func encodePolicyPCR(handle tpmutil.Handle, expectedDigest []byte, pcrNums []int
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodeLongPCR(1, pcrNums)
+	b2, err := encodeLongPCR(pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -721,7 +743,7 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	if err != nil {
 		return nil, err
 	}
-	b5, err := encodeLongPCR(1, pcrNums)
+	b5, err := encodeLongPCR(pcrNums)
 	if err != nil {
 		return nil, err
 	}

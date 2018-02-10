@@ -169,3 +169,6 @@ const (
 	cmdPolicyGetDigest    tpmutil.Command = 0x00000189
 	cmdPolicyPassword     tpmutil.Command = 0x0000018C
 )
+
+// Regular TPM 2.0 devices use 24-bit mask (3 bytes) for PCR selection.
+const sizeOfPCRSelect = 3
