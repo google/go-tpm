@@ -324,7 +324,7 @@ func newCommandAuth(authHandle tpmutil.Handle, nonceEven nonce, key []byte, para
 // with the authentication parameters of ra along with the given odd nonce.
 func (ra *responseAuth) verify(nonceOdd nonce, key []byte, params []interface{}) error {
 	// Auth = HMAC-SHA1(key, SHA1(params) || ra.NonceEven || NonceOdd || ra.ContSession)
-	digestBytes, err := tpmutil.Pack(params)
+	digestBytes, err := tpmutil.Pack(params...)
 	if err != nil {
 		return err
 	}
