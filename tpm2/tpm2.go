@@ -218,7 +218,7 @@ func encodeShortPCRs(pcrNums []int) ([]byte, error) {
 	// 00000011 00000000 00000001 00000100
 	pcr := make([]byte, sizeOfPCRSelect+1)
 	pcr[0] = sizeOfPCRSelect
-	// pcrNums parameter is indexes of PCRs, convert hat to set bits.
+	// pcrNums parameter is indexes of PCRs, convert that to set bits.
 	for _, n := range pcrNums {
 		byteNum := 1 + n/8
 		bytePos := byte(1 << byte(n%8))

@@ -16,7 +16,7 @@ package tpm2
 
 import "github.com/google/go-tpm/tpmutil"
 
-// RSAParams us a template for an RSA key.
+// RSAParams is a template for an RSA key.
 type RSAParams struct {
 	EncAlg     Algorithm
 	HashAlg    Algorithm
