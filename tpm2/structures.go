@@ -67,3 +67,14 @@ type tpmsSensitiveCreate struct {
 	UserAuth []byte
 	Data     []byte
 }
+
+type PCRSelection struct {
+	Hash Algorithm
+	PCRs []int
+}
+
+type tpmsPCRSelection struct {
+	Hash Algorithm
+	Size byte
+	PCRs tpmutil.RawBytes
+}

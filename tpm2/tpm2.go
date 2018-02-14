@@ -38,70 +38,6 @@ func encodePasswordAuthArea(password string, owner tpmutil.Handle) ([]byte, erro
 	return tpmutil.Pack(buf)
 }
 
-func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
-	params := new(RSAParams)
-	current := 0
-	err := tpmutil.Unpack(rsaBuf[current:], &params.EncAlg, &params.HashAlg, &params.Attributes, &params.AuthPolicy)
-	if err != nil {
-		return nil, err
-	}
-	current += 10 + len(params.AuthPolicy)
-	err = tpmutil.Unpack(rsaBuf[current:], &params.SymAlg)
-	if err != nil {
-		return nil, err
-	}
-	current += 2
-	if params.SymAlg != AlgNull {
-		err = tpmutil.Unpack(rsaBuf[current:], &params.SymSize, &params.Mode)
-		if err != nil {
-			return nil, err
-		}
-		current += 4
-	} else {
-		params.SymSize = 0
-		params.Mode = 0
-		params.Scheme = 0
-	}
-	err = tpmutil.Unpack(rsaBuf[current:], &params.Scheme)
-	if err != nil {
-		return nil, err
-	}
-	current += 2
-	if params.Scheme == AlgRSASSA {
-		err = tpmutil.Unpack(rsaBuf[current:], &params.SchemeHash)
-		if err != nil {
-			return nil, err
-		}
-		current += 2
-	}
-
-	err = tpmutil.Unpack(rsaBuf[current:], &params.ModSize, &params.Exp, &params.Modulus)
-	if err != nil {
-		return nil, err
-	}
-	return params, nil
-}
-
-func decodeRSAArea(in []byte) (*RSAParams, error) {
-	var rsaBuf []byte
-
-	err := tpmutil.Unpack(in, &rsaBuf)
-	if err != nil {
-		return nil, err
-	}
-	return decodeRSABuf(rsaBuf)
-}
-
-func decodeGetRandom(in []byte) ([]byte, error) {
-	var randBytes []byte
-
-	err := tpmutil.Unpack(in, &randBytes)
-	if err != nil {
-		return nil, err
-	}
-	return randBytes, nil
-}
-
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriteCloser, size uint16) ([]byte, error) {
 	resp, err := runCommand(rw, tagNoSessions, cmdGetRandom, size)
@@ -109,11 +45,11 @@ func GetRandom(rw io.ReadWriteCloser, size uint16) ([]byte, error) {
 		return nil, err
 	}
 
-	rand, err := decodeGetRandom(resp)
-	if err != nil {
+	var randBytes []byte
+	if err := tpmutil.Unpack(resp, &randBytes); err != nil {
 		return nil, err
 	}
-	return rand, nil
+	return randBytes, nil
 }
 
 // FlushContext removes an object or session under handle to be removed from
@@ -124,7 +60,11 @@ func FlushContext(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
-func encodeShortPCRs(pcrNums []int) ([]byte, error) {
+func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
+	if len(sel.PCRs) == 0 {
+		return tpmutil.Pack(uint32(0))
+	}
+
 	// PCR selection is a variable-size bitmask, where position of a set bit is
 	// the selected PCR index.
 	// Size of the bitmask in bytes is pre-pended. It should be at least
@@ -133,41 +73,19 @@ func encodeShortPCRs(pcrNums []int) ([]byte, error) {
 	// For example, selecting PCRs 3 and 9 looks like:
 	// size(3)  mask     mask     mask
 	// 00000011 00000000 00000001 00000100
-	pcr := make([]byte, sizeOfPCRSelect+1)
-	pcr[0] = sizeOfPCRSelect
+	ts := tpmsPCRSelection{
+		Hash: sel.Hash,
+		Size: sizeOfPCRSelect,
+		PCRs: make([]byte, sizeOfPCRSelect),
+	}
 	// pcrNums parameter is indexes of PCRs, convert that to set bits.
-	for _, n := range pcrNums {
-		byteNum := 1 + n/8
+	for _, n := range sel.PCRs {
+		byteNum := n / 8
 		bytePos := byte(1 << byte(n%8))
-		pcr[byteNum] |= bytePos
+		ts.PCRs[byteNum] |= bytePos
 	}
-	return pcr, nil
-}
-
-func encodeLongPCR(pcrNums []int) ([]byte, error) {
-	if len(pcrNums) == 0 {
-		return tpmutil.Pack(uint32(0))
-	}
-	pcrs, err := encodeShortPCRs(pcrNums)
-	if err != nil {
-		return nil, err
-	}
-	// Only encode 1 TPMS_PCR_SELECTION value.
-	return tpmutil.Pack(uint32(1), pcrs)
-}
-
-func encodeReadPCRs(hash Algorithm, pcrs []int) ([]byte, error) {
-	// Only encode 1 TPMS_PCR_SELECTION value.
-	req, err := tpmutil.Pack(uint32(1), hash)
-	if err != nil {
-		return nil, err
-	}
-	enc, err := encodeShortPCRs(pcrs)
-	if err != nil {
-		return nil, err
-	}
-	req = append(req, enc...)
-	return req, nil
+	// Only encode 1 TPMS_PCR_SELECT value.
+	return tpmutil.Pack(uint32(1), ts)
 }
 
 func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
@@ -185,8 +103,8 @@ func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
 }
 
 // ReadPCRs reads PCR values from the TPM.
-func ReadPCRs(rw io.ReadWriter, hash Algorithm, pcrs []int) (uint32, []byte, uint16, []byte, error) {
-	cmd, err := encodeReadPCRs(hash, pcrs)
+func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (uint32, []byte, uint16, []byte, error) {
+	cmd, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
 		return 0, nil, 0, nil, err
 	}
@@ -334,7 +252,7 @@ func encodeRSAParams(params RSAParams) ([]byte, error) {
 }
 
 // encodeCreate works for both TPM2_Create and TPM2_CreatePrimary.
-func encodeCreate(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
+func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
 	parent, err := tpmutil.Pack(owner, []byte(nil))
 	if err != nil {
 		return nil, err
@@ -355,7 +273,7 @@ func encodeCreate(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPass
 	if err != nil {
 		return nil, err
 	}
-	creationPCR, err := encodeLongPCR(pcrNums)
+	creationPCR, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
 		return nil, err
 	}
@@ -401,8 +319,8 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 
 // CreatePrimary initializes the primary key in a given hierarchy.
 // Second return value is the public part of the generated key.
-func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) (tpmutil.Handle, []byte, error) {
-	cmd, err := encodeCreate(owner, pcrNums, parentPassword, ownerPassword, params)
+func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) (tpmutil.Handle, []byte, error) {
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, params)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -458,8 +376,8 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 
 // CreateKey creates a new RSA key pair under the owner handle.
 // Returns private key and public key blobs.
-func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, []byte, error) {
-	cmd, err := encodeCreate(owner, pcrNums, parentPassword, ownerPassword, params)
+func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, []byte, error) {
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, params)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -533,12 +451,12 @@ func PolicyPassword(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
-func encodePolicyPCR(handle tpmutil.Handle, expectedDigest []byte, pcrNums []int) ([]byte, error) {
+func encodePolicyPCR(handle tpmutil.Handle, expectedDigest []byte, sel PCRSelection) ([]byte, error) {
 	b1, err := tpmutil.Pack(handle, expectedDigest)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodeLongPCR(pcrNums)
+	b2, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
 		return nil, err
 	}
@@ -546,8 +464,8 @@ func encodePolicyPCR(handle tpmutil.Handle, expectedDigest []byte, pcrNums []int
 }
 
 // PolicyPCR sets PCR state binding for authorization on the object.
-func PolicyPCR(rw io.ReadWriter, handle tpmutil.Handle, expectedDigest []byte, pcrNums []int) error {
-	cmd, err := encodePolicyPCR(handle, expectedDigest, pcrNums)
+func PolicyPCR(rw io.ReadWriter, handle tpmutil.Handle, expectedDigest []byte, sel PCRSelection) error {
+	cmd, err := encodePolicyPCR(handle, expectedDigest, sel)
 	if err != nil {
 		return err
 	}
@@ -672,7 +590,7 @@ func Unseal(rw io.ReadWriter, itemHandle tpmutil.Handle, password string, sessio
 	return unsealed, nonce, nil
 }
 
-func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg Algorithm) ([]byte, error) {
+func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, error) {
 	b1, err := tpmutil.Pack(signingHandle)
 	if err != nil {
 		return nil, err
@@ -689,7 +607,7 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	if err != nil {
 		return nil, err
 	}
-	b5, err := encodeLongPCR(pcrNums)
+	b5, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
 		return nil, err
 	}
@@ -724,8 +642,8 @@ func decodeQuote(in []byte) ([]byte, uint16, uint16, []byte, error) {
 // values, created using a signing TPM key.
 //
 // Returns attestation data and the signature.
-func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, pcrNums []int, sigAlg Algorithm) ([]byte, []byte, error) {
-	cmd, err := encodeQuote(signingHandle, parentPassword, ownerPassword, toQuote, pcrNums, sigAlg)
+func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, []byte, error) {
+	cmd, err := encodeQuote(signingHandle, parentPassword, ownerPassword, toQuote, sel, sigAlg)
 	if err != nil {
 		return nil, nil, err
 	}

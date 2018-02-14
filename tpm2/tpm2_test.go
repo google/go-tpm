@@ -19,6 +19,7 @@ import (
 	"flag"
 	"io"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -42,7 +43,7 @@ func openTPM(t *testing.T) io.ReadWriteCloser {
 
 var (
 	// PCR7 is for SecureBoot.
-	pcrSelection     = []int{7}
+	pcrSelection     = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
 	defaultKeyParams = RSAParams{
 		AlgRSA,
 		AlgSHA1,
@@ -73,8 +74,12 @@ func TestReadPCRs(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	if _, _, _, _, err := ReadPCRs(rw, AlgSHA1, pcrSelection); err != nil {
+	_, pcr, _, _, err := ReadPCRs(rw, pcrSelection)
+	if err != nil {
 		t.Errorf("ReadPCRs failed: %s", err)
+	}
+	if empty := make([]byte, len(pcr)); reflect.DeepEqual(empty, pcr) {
+		t.Errorf("Value of PCR %v is empty", pcrSelection)
 	}
 }
 

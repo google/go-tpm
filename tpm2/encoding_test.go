@@ -24,16 +24,6 @@ import (
 
 const defaultPW = "\x01\x02\x03\x04"
 
-func TestDecodeGetRandom(t *testing.T) {
-	testRespBytes, err := hex.DecodeString("80010000001c00000000001024357dadbf82ec9f245d1fcdcda33ed7")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = decodeGetRandom(testRespBytes[10:]); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestDecodeReadPCRs(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("800100000032000000000000001400000001000403800000000000010014427d27fe15f8f69736e02b6007b8f6ea674c0745")
 	if err != nil {
@@ -303,18 +293,6 @@ func TestEncodeEvictControl(t *testing.T) {
 	}
 }
 
-func TestEncodeShortPCRs(t *testing.T) {
-	pcrNums := []int{7, 8}
-	pcr, err := encodeShortPCRs(pcrNums)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []byte{0x03, 0x80, 0x01, 0x00}
-	if !bytes.Equal(want, pcr) {
-		t.Fatalf("got: %v, want: %v", pcr, want)
-	}
-}
-
 func TestEncodePasswordAuthArea(t *testing.T) {
 	pwAuth, err := encodePasswordAuthArea(defaultPW, HandlePasswordSession)
 	if err != nil {
@@ -367,8 +345,8 @@ func TestEncodeRSAParams(t *testing.T) {
 	}
 }
 
-func TestEncodeLongPCR(t *testing.T) {
-	s, err := encodeLongPCR(pcrSelection)
+func TestEncodeTPMLPCRSelection(t *testing.T) {
+	s, err := encodeTPMLPCRSelection(pcrSelection)
 	if err != nil {
 		t.Fatal(err)
 	}
