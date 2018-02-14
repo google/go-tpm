@@ -22,6 +22,8 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
+const defaultPW = "\x01\x02\x03\x04"
+
 func TestDecodeGetRandom(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("80010000001c00000000001024357dadbf82ec9f245d1fcdcda33ed7")
 	if err != nil {
@@ -80,7 +82,7 @@ func TestEncodeLoad(t *testing.T) {
 	}
 	privateBlob := testCmdBytes[33:123]
 	publicBlob := testCmdBytes[125:]
-	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), "", "01020304", publicBlob, privateBlob)
+	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), "", defaultPW, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("encodeLoad failed %s", err)
 	}
@@ -119,7 +121,7 @@ func TestEncodeCreate(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", "01020304", params)
+	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPW, params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +214,7 @@ func TestEncodeUnseal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), "01020304", tpmutil.Handle(0x03000000))
+	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), defaultPW, tpmutil.Handle(0x03000000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +240,7 @@ func TestEncodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	toQuote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), "01020304", "", toQuote, pcrSelection, 0x0010)
+	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), defaultPW, "", toQuote, pcrSelection, 0x0010)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,27 +315,8 @@ func TestEncodeShortPCRs(t *testing.T) {
 	}
 }
 
-func TestEncodePasswordData(t *testing.T) {
-	pw, err := encodePasswordData("01020304")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []byte{0, 4, 1, 2, 3, 4}
-	if !bytes.Equal(want, pw) {
-		t.Fatalf("got: %v, want: %v", pw, want)
-	}
-	pw, err = encodePasswordData("0102030405")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want = []byte{0, 5, 1, 2, 3, 4, 5}
-	if !bytes.Equal(want, pw) {
-		t.Fatalf("got: %v, want: %v", pw, want)
-	}
-}
-
 func TestEncodePasswordAuthArea(t *testing.T) {
-	pwAuth, err := encodePasswordAuthArea("01020304", HandlePasswordSession)
+	pwAuth, err := encodePasswordAuthArea(defaultPW, HandlePasswordSession)
 	if err != nil {
 		t.Fatal(err)
 	}

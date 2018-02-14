@@ -32,19 +32,6 @@ type RSAParams struct {
 	Modulus    []byte
 }
 
-// KeyedHashParams contains parameters of a keyed hash object.
-type KeyedHashParams struct {
-	TypeAlg    Algorithm
-	HashAlg    Algorithm
-	Attributes uint32
-	AuthPolicy []byte
-	SymAlg     Algorithm
-	SymSize    uint16
-	Mode       Algorithm
-	Scheme     Algorithm
-	Unique     []byte
-}
-
 // NVPublic contains the public area of an NV index.
 type NVPublic struct {
 	NVIndex    tpmutil.Handle

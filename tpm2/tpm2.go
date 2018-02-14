@@ -16,7 +16,6 @@
 package tpm2
 
 import (
-	"encoding/hex"
 	"fmt"
 	"io"
 	"unsafe"
@@ -29,26 +28,12 @@ import (
 // Unix domain socket, then it opens a connection to the socket.
 var OpenTPM = tpmutil.OpenTPM
 
-func encodePasswordData(password string) ([]byte, error) {
-	pw, err := hex.DecodeString(password)
-	if err != nil {
-		return nil, err
-	}
-	return tpmutil.Pack(pw)
-}
-
 func encodePasswordAuthArea(password string, owner tpmutil.Handle) ([]byte, error) {
-	ownerStr, err := tpmutil.Pack(owner)
+	// TODO what are these magic values?
+	buf, err := tpmutil.Pack(owner, tpmutil.RawBytes{0, 0, 1}, []byte(password))
 	if err != nil {
 		return nil, err
 	}
-	suffix := []byte{0, 0, 1}
-	pw, err := encodePasswordData(password)
-	if err != nil {
-		return nil, err
-	}
-	buf := append(ownerStr, suffix...)
-	buf = append(buf, pw...)
 	return tpmutil.Pack(buf)
 }
 
@@ -120,59 +105,30 @@ func decodeRSAArea(in []byte) (*RSAParams, error) {
 	return decodeRSABuf(rsaBuf)
 }
 
-func encodeKeyedHashParams(params KeyedHashParams) ([]byte, error) {
-	return tpmutil.Pack(
-		params.TypeAlg,
-		params.HashAlg,
-		params.Attributes,
-		params.AuthPolicy,
-		params.Scheme,
-		params.Unique,
-	)
-}
-
 func encodeRSAParams(params RSAParams) ([]byte, error) {
-	t1, err := tpmutil.Pack(
+	fields := []interface{}{
 		params.EncAlg,
 		params.HashAlg,
 		params.Attributes,
 		params.AuthPolicy,
-	)
-	if err != nil {
-		return nil, err
+		params.SymAlg,
 	}
-
-	var template []interface{}
 	if params.SymAlg != AlgNull {
-		template = []interface{}{
-			params.SymAlg,
-			params.SymSize,
-			params.Mode,
-			params.Scheme,
-		}
-	} else {
-		template = []interface{}{params.SymAlg, params.Scheme}
+		fields = append(fields, params.SymSize, params.Mode)
 	}
-	t2, err := tpmutil.Pack(template...)
-	if err != nil {
-		return nil, err
-	}
+	fields = append(fields, params.Scheme)
 	if params.Scheme == AlgRSASSA {
-		t3, err := tpmutil.Pack(params.SchemeHash)
-		if err != nil {
-			return nil, err
-		}
-		t2 = append(t2, t3...)
+		fields = append(fields, params.SchemeHash)
 	}
+	fields = append(fields, params.ModSize, params.Exp, params.Modulus)
 
-	t4, err := tpmutil.Pack(params.ModSize, params.Exp, params.Modulus)
+	// TPMT_PUBLIC structure.
+	buf, err := tpmutil.Pack(fields...)
 	if err != nil {
 		return nil, err
 	}
-
-	t5 := append(t1, t2...)
-	t5 = append(t5, t4...)
-	return tpmutil.Pack(t5)
+	// Pack TPMT_PUBLIC in TPM2B_PUBLIC.
+	return tpmutil.Pack(buf)
 }
 
 func decodeGetRandom(in []byte) ([]byte, error) {
@@ -394,7 +350,7 @@ func encodeCreate(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPass
 	if err != nil {
 		return nil, err
 	}
-	t1, err := encodePasswordData(ownerPassword)
+	t1, err := tpmutil.Pack([]byte(ownerPassword))
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +489,7 @@ func encodeLoad(parentHandle tpmutil.Handle, parentAuth, ownerAuth string, publi
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordData(parentAuth)
+	b3, err := tpmutil.Pack([]byte(parentAuth))
 	if err != nil {
 		return nil, err
 	}
@@ -1020,7 +976,7 @@ func NVUndefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle) error {
 }
 
 func encodeDefineSpace(owner, handle tpmutil.Handle, authString string, attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
-	pw, err := encodePasswordData(authString)
+	pw, err := tpmutil.Pack([]byte(authString))
 	if err != nil {
 		return nil, err
 	}
