@@ -16,6 +16,7 @@
 package tpm2
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"unsafe"
@@ -35,20 +36,6 @@ func encodePasswordAuthArea(password string, owner tpmutil.Handle) ([]byte, erro
 		return nil, err
 	}
 	return tpmutil.Pack(buf)
-}
-
-func encodeSensitiveArea(in1, in2 []byte) ([]byte, error) {
-	t1, err := tpmutil.Pack(in1)
-	if err != nil {
-		return nil, err
-	}
-	t2, err := tpmutil.Pack(in2)
-	if err != nil {
-		return nil, err
-	}
-
-	t := append(t1, t2...)
-	return tpmutil.Pack(t)
 }
 
 func decodeRSABuf(rsaBuf []byte) (*RSAParams, error) {
@@ -103,32 +90,6 @@ func decodeRSAArea(in []byte) (*RSAParams, error) {
 		return nil, err
 	}
 	return decodeRSABuf(rsaBuf)
-}
-
-func encodeRSAParams(params RSAParams) ([]byte, error) {
-	fields := []interface{}{
-		params.EncAlg,
-		params.HashAlg,
-		params.Attributes,
-		params.AuthPolicy,
-		params.SymAlg,
-	}
-	if params.SymAlg != AlgNull {
-		fields = append(fields, params.SymSize, params.Mode)
-	}
-	fields = append(fields, params.Scheme)
-	if params.Scheme == AlgRSASSA {
-		fields = append(fields, params.SchemeHash)
-	}
-	fields = append(fields, params.ModSize, params.Exp, params.Modulus)
-
-	// TPMT_PUBLIC structure.
-	buf, err := tpmutil.Pack(fields...)
-	if err != nil {
-		return nil, err
-	}
-	// Pack TPMT_PUBLIC in TPM2B_PUBLIC.
-	return tpmutil.Pack(buf)
 }
 
 func decodeGetRandom(in []byte) ([]byte, error) {
@@ -336,47 +297,76 @@ func PCREvent(rw io.ReadWriter, pcrNum uint32, eventData []byte) error {
 	return err
 }
 
+func encodeSensitiveArea(s tpmsSensitiveCreate) ([]byte, error) {
+	// TPMS_SENSITIVE_CREATE
+	buf, err := tpmutil.Pack(s)
+	if err != nil {
+		return nil, err
+	}
+	// TPM2B_SENSITIVE_CREATE
+	return tpmutil.Pack(buf)
+}
+
+func encodeRSAParams(params RSAParams) ([]byte, error) {
+	fields := []interface{}{
+		params.EncAlg,
+		params.HashAlg,
+		params.Attributes,
+		params.AuthPolicy,
+		params.SymAlg,
+	}
+	if params.SymAlg != AlgNull {
+		fields = append(fields, params.SymSize, params.Mode)
+	}
+	fields = append(fields, params.Scheme)
+	if params.Scheme == AlgRSASSA {
+		fields = append(fields, params.SchemeHash)
+	}
+	fields = append(fields, params.ModSize, params.Exp, params.Modulus)
+
+	// TPMT_PUBLIC structure.
+	buf, err := tpmutil.Pack(fields...)
+	if err != nil {
+		return nil, err
+	}
+	// Pack TPMT_PUBLIC in TPM2B_PUBLIC.
+	return tpmutil.Pack(buf)
+}
+
 // encodeCreate works for both TPM2_Create and TPM2_CreatePrimary.
 func encodeCreate(owner tpmutil.Handle, pcrNums []int, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
-	b1, err := tpmutil.Pack(owner)
+	parent, err := tpmutil.Pack(owner, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
-	b2, err := tpmutil.Pack([]byte(nil))
+	auth, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
-	b3, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
+	inSensitive, err := encodeSensitiveArea(tpmsSensitiveCreate{UserAuth: []byte(ownerPassword)})
 	if err != nil {
 		return nil, err
 	}
-	t1, err := tpmutil.Pack([]byte(ownerPassword))
+	inPublic, err := encodeRSAParams(params)
 	if err != nil {
 		return nil, err
 	}
-	b4, err := encodeSensitiveArea(t1[2:], []byte(nil))
+	outsideInfo, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
 	}
-	b5, err := encodeRSAParams(params)
+	creationPCR, err := encodeLongPCR(pcrNums)
 	if err != nil {
 		return nil, err
 	}
-	b6, err := tpmutil.Pack([]byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	b7, err := encodeLongPCR(pcrNums)
-	if err != nil {
-		return nil, err
-	}
-	args := append(b1, b2...)
-	args = append(args, b3...)
-	args = append(args, b4...)
-	args = append(args, b5...)
-	args = append(args, b6...)
-	args = append(args, b7...)
-	return args, nil
+	return bytes.Join([][]byte{
+		parent,
+		auth,
+		inSensitive,
+		inPublic,
+		outsideInfo,
+		creationPCR,
+	}, nil), nil
 }
 
 func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {

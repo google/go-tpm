@@ -62,3 +62,8 @@ type tpmtRSAScheme struct {
 	KeyBits uint16
 	Mode    Algorithm
 }
+
+type tpmsSensitiveCreate struct {
+	UserAuth []byte
+	Data     []byte
+}

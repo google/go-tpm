@@ -336,9 +336,7 @@ func TestEncodePasswordAuthArea(t *testing.T) {
 }
 
 func TestEncodeSensitiveArea(t *testing.T) {
-	a1 := []byte{1, 2, 3, 4}
-	var a2 []byte
-	s, err := encodeSensitiveArea(a1, a2)
+	s, err := encodeSensitiveArea(tpmsSensitiveCreate{UserAuth: []byte(defaultPW)})
 	if err != nil {
 		t.Fatal(err)
 	}
