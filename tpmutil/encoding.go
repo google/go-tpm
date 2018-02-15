@@ -182,12 +182,13 @@ func packType(buf io.Writer, elts ...interface{}) error {
 	return nil
 }
 
-// Unpack performs the inverse operation from Pack.
-func Unpack(b []byte, elts ...interface{}) error {
-	// TODO(awly): also return number of bytes consumed, to allow partial
-	// unpacking.
+// Unpack performs the inverse operation from Pack. Unpack returns the number
+// of bytes read from b to fill elts and error, if any.
+func Unpack(b []byte, elts ...interface{}) (int, error) {
 	buf := bytes.NewBuffer(b)
-	return unpackType(buf, elts...)
+	err := unpackType(buf, elts...)
+	read := len(b) - buf.Len()
+	return read, err
 }
 
 // unpackType recursively unpacks types from a reader just as encoding/binary

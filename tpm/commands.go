@@ -33,7 +33,7 @@ func submitTPMRequest(rw io.ReadWriter, tag uint16, ord uint32, in []interface{}
 		return uint32(code), tpmError(code)
 	}
 
-	err = tpmutil.Unpack(resp, out...)
+	_, err = tpmutil.Unpack(resp, out...)
 	return 0, err
 }
 
@@ -168,7 +168,7 @@ func quote2(rw io.ReadWriter, keyHandle tpmutil.Handle, hash [20]byte, pcrs *pcr
 
 	size := binary.Size(capInfo.CapVersionFixed)
 	capInfo.VendorSpecific = make([]byte, len(capBytes)-size)
-	if err := tpmutil.Unpack(capBytes[:size], &capInfo.CapVersionFixed); err != nil {
+	if _, err := tpmutil.Unpack(capBytes[:size], &capInfo.CapVersionFixed); err != nil {
 		return nil, nil, nil, nil, nil, 0, err
 	}
 
