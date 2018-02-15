@@ -226,24 +226,34 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 }
 
 func decodeGetCapability(in []byte) (Capability, []tpmutil.Handle, error) {
-	var numHandles uint32
+	var moreData byte
 	var capReported Capability
 
-	_, err := tpmutil.Unpack(in[1:9], &capReported, &numHandles)
+	read, err := tpmutil.Unpack(in, &moreData, &capReported)
 	if err != nil {
 		return 0, nil, err
 	}
+	in = in[read:]
 	// Only TPM_CAP_HANDLES handled.
 	if capReported != CapabilityHandles {
 		return 0, nil, fmt.Errorf("Only TPM_CAP_HANDLES supported, got %v", capReported)
 	}
+
+	var numHandles uint32
+	read, err = tpmutil.Unpack(in, &numHandles)
+	if err != nil {
+		return 0, nil, err
+	}
+	in = in[read:]
+
 	var handles []tpmutil.Handle
-	var handle tpmutil.Handle
 	for i := 0; i < int(numHandles); i++ {
-		_, err := tpmutil.Unpack(in[8+4*i:12+4*i], &handle)
+		var handle tpmutil.Handle
+		read, err = tpmutil.Unpack(in, &handle)
 		if err != nil {
 			return 0, nil, err
 		}
+		in = in[read:]
 		handles = append(handles, handle)
 	}
 
