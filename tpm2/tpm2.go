@@ -17,6 +17,9 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
 	"io"
 	"unsafe"
@@ -88,36 +91,109 @@ func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
 	return tpmutil.Pack(uint32(1), ts)
 }
 
-func decodeReadPCRs(in []byte) (uint32, []byte, uint16, []byte, error) {
-	var pcr []byte
-	var digest []byte
-	var updateCounter uint32
-	var t uint32
-	var s uint32
+func decodeTPMLPCRSelection(buf []byte) (int, PCRSelection, error) {
+	initialLen := len(buf)
 
-	_, err := tpmutil.Unpack(in, &t, &updateCounter, &pcr, &s, &digest)
+	var count uint32
+	var sel PCRSelection
+	read, err := tpmutil.Unpack(buf, &count)
 	if err != nil {
-		return 0, nil, 0, nil, err
+		return 0, sel, err
 	}
-	return updateCounter, pcr, uint16(t), digest, nil
+	buf = buf[read:]
+	if count != 1 {
+		return 0, sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
+	}
+
+	// See comment in encodeTPMLPCRSelection for details on this format.
+	var ts tpmsPCRSelection
+	read, err = tpmutil.Unpack(buf, &ts.Hash, &ts.Size)
+	if err != nil {
+		return 0, sel, err
+	}
+	buf = buf[read:]
+	ts.PCRs, buf = buf[:ts.Size], buf[ts.Size:]
+
+	sel.Hash = ts.Hash
+	for i := 0; i < int(ts.Size); i++ {
+		for j := 0; j < 8; j++ {
+			set := ts.PCRs[i] & byte(1<<byte(j))
+			if set == 0 {
+				continue
+			}
+			sel.PCRs = append(sel.PCRs, 8*i+j)
+		}
+	}
+	return initialLen - len(buf), sel, nil
+}
+
+func decodeReadPCRs(in []byte) (map[int][]byte, error) {
+	var updateCounter uint32
+	read, err := tpmutil.Unpack(in, &updateCounter)
+	if err != nil {
+		return nil, err
+	}
+	in = in[read:]
+
+	read, sel, err := decodeTPMLPCRSelection(in)
+	if err != nil {
+		return nil, fmt.Errorf("decoding TPML_PCR_SELECTION: %v", err)
+	}
+	in = in[read:]
+
+	var digestCount uint32
+	read, err = tpmutil.Unpack(in, &digestCount)
+	if err != nil {
+		return nil, fmt.Errorf("decoding TPML_DIGEST length: %v", err)
+	}
+	in = in[read:]
+	if int(digestCount) != len(sel.PCRs) {
+		return nil, fmt.Errorf("received %d PCRs but %d digests", len(sel.PCRs), digestCount)
+	}
+
+	vals := make(map[int][]byte)
+	for _, pcr := range sel.PCRs {
+		var alg Algorithm
+		read, err = tpmutil.Unpack(in, &alg)
+		if err != nil {
+			return nil, fmt.Errorf("decoding TPML_DIGEST item: %v", err)
+		}
+		in = in[read:]
+
+		var digestSize int
+		switch alg {
+		case AlgSHA1:
+			digestSize = sha1.Size
+		case AlgSHA256:
+			digestSize = sha256.Size
+		case AlgSHA512:
+			digestSize = sha512.Size
+		case AlgRSASSA:
+			digestSize = sha1.Size
+		default:
+			return nil, fmt.Errorf("TPM_ALG_ID 0x%x not supported", alg)
+		}
+		vals[pcr], in = in[:digestSize], in[digestSize:]
+	}
+	return vals, nil
 }
 
 // ReadPCRs reads PCR values from the TPM.
-func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (uint32, []byte, uint16, []byte, error) {
+func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
 	cmd, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
-		return 0, nil, 0, nil, err
+		return nil, err
 	}
 	resp, err := runCommand(rw, tagNoSessions, cmdPCRRead, tpmutil.RawBytes(cmd))
 	if err != nil {
-		return 0, nil, 0, nil, err
+		return nil, err
 	}
 
-	counter, pcr, alg, digest, err := decodeReadPCRs(resp)
+	vals, err := decodeReadPCRs(resp)
 	if err != nil {
-		return 0, nil, 0, nil, err
+		return nil, err
 	}
-	return counter, pcr, alg, digest, err
+	return vals, err
 }
 
 func decodeReadClock(in []byte) (uint64, uint64, error) {

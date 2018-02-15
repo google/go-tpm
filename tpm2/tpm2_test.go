@@ -74,12 +74,14 @@ func TestReadPCRs(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	_, pcr, _, _, err := ReadPCRs(rw, pcrSelection)
+	pcrs, err := ReadPCRs(rw, pcrSelection)
 	if err != nil {
 		t.Errorf("ReadPCRs failed: %s", err)
 	}
-	if empty := make([]byte, len(pcr)); reflect.DeepEqual(empty, pcr) {
-		t.Errorf("Value of PCR %v is empty", pcrSelection)
+	for pcr, val := range pcrs {
+		if empty := make([]byte, len(val)); reflect.DeepEqual(empty, val) {
+			t.Errorf("Value of PCR %d is empty", pcr)
+		}
 	}
 }
 

@@ -17,6 +17,7 @@ package tpm2
 import (
 	"bytes"
 	"encoding/hex"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -29,8 +30,23 @@ func TestDecodeReadPCRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err = decodeReadPCRs(testRespBytes[10:]); err != nil {
+	if _, err = decodeReadPCRs(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestEncodeDecodeTPMLSelection(t *testing.T) {
+	buf, err := encodeTPMLPCRSelection(pcrSelection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, got, err := decodeTPMLPCRSelection(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(got, pcrSelection) {
+		t.Errorf("after decoding: %+v, before encoding: %+v", got, pcrSelection)
 	}
 }
 

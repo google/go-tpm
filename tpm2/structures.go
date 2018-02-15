@@ -68,6 +68,8 @@ type tpmsSensitiveCreate struct {
 	Data     []byte
 }
 
+// PCRSelection contains a slice of PCR indexes and a hash algorithm used in
+// them.
 type PCRSelection struct {
 	Hash Algorithm
 	PCRs []int
