@@ -80,3 +80,15 @@ type tpmsPCRSelection struct {
 	Size byte
 	PCRs tpmutil.RawBytes
 }
+
+// Public contains the public area of an object.
+//
+// TODO(awly): this is RSA-specific right now. Make it work for other Types.
+type Public struct {
+	Type       Algorithm
+	NameAlg    Algorithm
+	Attributes uint32
+	AuthPolicy []byte
+	Parameters tpmsRSAParams
+	PublicKey  []byte
+}

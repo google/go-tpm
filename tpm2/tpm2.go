@@ -32,15 +32,6 @@ import (
 // Unix domain socket, then it opens a connection to the socket.
 var OpenTPM = tpmutil.OpenTPM
 
-func encodePasswordAuthArea(password string, owner tpmutil.Handle) ([]byte, error) {
-	// TODO what are these magic values?
-	buf, err := tpmutil.Pack(owner, tpmutil.RawBytes{0, 0, 1}, []byte(password))
-	if err != nil {
-		return nil, err
-	}
-	return tpmutil.Pack(buf)
-}
-
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriteCloser, size uint16) ([]byte, error) {
 	resp, err := runCommand(rw, tagNoSessions, cmdGetRandom, size)
@@ -275,25 +266,38 @@ func GetCapability(rw io.ReadWriter, cap Capability, count uint32, property uint
 	return handles, nil
 }
 
-func encodePCREvent(pcrNum uint32, eventData []byte) ([]byte, error) {
-	b1, err := tpmutil.Pack(pcrNum, []byte(nil))
+func encodePasswordAuthArea(password string, owner tpmutil.Handle) ([]byte, error) {
+	// TODO what are these magic values?
+	buf, err := tpmutil.Pack(owner, tpmutil.RawBytes{0, 0, 1}, []byte(password))
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodePasswordAuthArea("", HandlePasswordSession)
+	return tpmutil.Pack(buf)
+}
+
+func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
+	ha, err := tpmutil.Pack(pcr, HandleNull)
 	if err != nil {
 		return nil, err
 	}
-	b3, err := tpmutil.Pack(eventData)
+	auth, err := encodePasswordAuthArea("", HandlePasswordSession)
 	if err != nil {
 		return nil, err
 	}
-	return append(append(b1, b2...), b3...), nil
+	event, err := tpmutil.Pack(eventData)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.Join([][]byte{
+		ha,
+		auth,
+		event,
+	}, nil), nil
 }
 
 // PCREvent writes an update to the specified PCR.
-func PCREvent(rw io.ReadWriter, pcrNum uint32, eventData []byte) error {
-	cmd, err := encodePCREvent(pcrNum, eventData)
+func PCREvent(rw io.ReadWriter, pcr tpmutil.Handle, eventData []byte) error {
+	cmd, err := encodePCREvent(pcr, eventData)
 	if err != nil {
 		return err
 	}
@@ -378,26 +382,24 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 	var auth []byte
 
 	// Handle and auth data.
-	_, err := tpmutil.Unpack(in, &handle, &auth)
+	read, err := tpmutil.Unpack(in, &handle, &auth)
 	if err != nil {
 		return 0, nil, err
 	}
+	in = in[read:]
 
-	var current int
-	current = 6 + 2*len(auth)
-	var tpm2Public []byte
-	_, err = tpmutil.Unpack(in[current:], &tpm2Public)
+	var public []byte
+	read, err = tpmutil.Unpack(in, &public)
 	if err != nil {
 		return 0, nil, err
 	}
-
-	var rsaParamsBuf []byte
-	_, err = tpmutil.Unpack(tpm2Public, &rsaParamsBuf)
+	var rsaParams []byte
+	_, err = tpmutil.Unpack(public, &rsaParams)
 	if err != nil {
 		return 0, nil, err
 	}
 	var pub tpmtPublic
-	if _, err := tpmutil.Unpack(rsaParamsBuf, &pub); err != nil {
+	if _, err := tpmutil.Unpack(rsaParams, &pub); err != nil {
 		return 0, nil, err
 	}
 	return handle, pub.Unique, nil
@@ -422,42 +424,50 @@ func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, par
 	return handle, publicBlob, nil
 }
 
-func decodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
-	var publicBlob []byte
-	var name []byte
-	var qualifiedName []byte
-
-	_, err := tpmutil.Unpack(in, &publicBlob, &name, &qualifiedName)
-	if err != nil {
-		return nil, nil, nil, err
+func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
+	var resp struct {
+		Public        []byte
+		Name          []byte
+		QualifiedName []byte
 	}
-	return publicBlob, name, qualifiedName, nil
+	_, err := tpmutil.Unpack(in, &resp)
+	if err != nil {
+		return Public{}, nil, nil, err
+	}
+	var pub Public
+	if _, err := tpmutil.Unpack(resp.Public, &pub); err != nil {
+		return Public{}, nil, nil, err
+	}
+	return pub, resp.Name, resp.QualifiedName, nil
 }
 
 // ReadPublic reads the public part of the object under handle.
 // Returns the public data, name and qualified name.
-func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) ([]byte, []byte, []byte, error) {
+func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte, error) {
 	resp, err := runCommand(rw, tagNoSessions, cmdReadPublic, handle)
 	if err != nil {
-		return nil, nil, nil, err
+		return Public{}, nil, nil, err
 	}
 
-	publicBlob, name, qualifiedName, err := decodeReadPublic(resp)
+	public, name, qualifiedName, err := decodeReadPublic(resp)
 	if err != nil {
-		return nil, nil, nil, err
+		return Public{}, nil, nil, err
 	}
-	return publicBlob, name, qualifiedName, nil
+	return public, name, qualifiedName, nil
 }
 
 func decodeCreateKey(in []byte) ([]byte, []byte, error) {
-	var tpm2bPrivate []byte
-	var tpm2bPublic []byte
+	var resp struct {
+		Handle  tpmutil.Handle
+		Private []byte
+		Public  []byte
+	}
 
-	_, err := tpmutil.Unpack(in[4:], &tpm2bPrivate, &tpm2bPublic)
+	_, err := tpmutil.Unpack(in, &resp)
 	if err != nil {
 		return nil, nil, err
 	}
-	return tpm2bPrivate, tpm2bPublic, nil
+	return resp.Private, resp.Public, nil
 }
 
 // CreateKey creates a new RSA key pair under the owner handle.

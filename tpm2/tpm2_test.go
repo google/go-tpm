@@ -108,7 +108,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
@@ -148,7 +148,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
