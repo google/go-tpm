@@ -16,6 +16,8 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"flag"
 	"io"
@@ -260,4 +262,33 @@ func TestHash(t *testing.T) {
 	if !bytes.Equal(got, want[:]) {
 		t.Errorf("Hash(%q) returned %x, want %x", val, got, want)
 	}
+}
+
+func TestLoadExternalPublicKey(t *testing.T) {
+	pk, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rw := openTPM(t)
+	defer rw.Close()
+
+	rp := RSAParams{
+		EncAlg:     AlgRSA,
+		HashAlg:    AlgSHA1,
+		Attributes: FlagStorageDefault,
+		SymAlg:     AlgAES,
+		SymSize:    128,
+		Mode:       AlgCFB,
+		Scheme:     AlgNull,
+
+		ModSize: 2048,
+		Exp:     uint32(pk.PublicKey.E),
+		Modulus: pk.PublicKey.N.Bytes(),
+	}
+	h, _, err := LoadExternal(rw, rp, nil, HandleNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer FlushContext(rw, h)
 }

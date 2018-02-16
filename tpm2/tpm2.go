@@ -496,6 +496,52 @@ func Load(rw io.ReadWriter, parentHandle tpmutil.Handle, parentAuth string, publ
 	return decodeLoad(resp)
 }
 
+func encodeLoadExternal(rp RSAParams, privateBlob []byte, hierarchy tpmutil.Handle) ([]byte, error) {
+	buf, err := tpmutil.Pack(privateBlob)
+	if err != nil {
+		return nil, err
+	}
+	publicBlob, err := encodeRSAParams(rp)
+	if err != nil {
+		return nil, err
+	}
+	buf = append(buf, publicBlob...)
+	hb, err := tpmutil.Pack(hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	return append(buf, hb...), nil
+}
+
+func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
+	var handle tpmutil.Handle
+	var name []byte
+
+	_, err := tpmutil.Unpack(in, &handle, &name)
+	if err != nil {
+		return 0, nil, err
+	}
+	return handle, name, nil
+}
+
+// LoadExternal loads public (and optionally private) key into an object in the
+// TPM. Returns loaded object handle and its name.
+func LoadExternal(rw io.ReadWriter, rp RSAParams, private []byte, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
+	cmd, err := encodeLoadExternal(rp, private, hierarchy)
+	if err != nil {
+		return 0, nil, err
+	}
+	resp, err := runCommand(rw, tagNoSessions, cmdLoadExternal, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return 0, nil, err
+	}
+	handle, name, err := decodeLoadExternal(resp)
+	if err != nil {
+		return 0, nil, err
+	}
+	return handle, name, nil
+}
+
 // PolicyPassword sets password authorization requirement on the object.
 func PolicyPassword(rw io.ReadWriter, handle tpmutil.Handle) error {
 	_, err := runCommand(rw, tagNoSessions, cmdPolicyPassword, handle)
