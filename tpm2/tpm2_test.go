@@ -292,3 +292,31 @@ func TestLoadExternalPublicKey(t *testing.T) {
 	}
 	defer FlushContext(rw, h)
 }
+
+func TestCertify(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %s", err)
+	}
+	defer FlushContext(rw, parentHandle)
+
+	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreateKey failed: %s", err)
+	}
+
+	keyHandle, name, err := Load(rw, parentHandle, "", defaultPassword, publicBlob, privateBlob)
+	if err != nil {
+		t.Fatalf("Load failed: %s", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	sig, err := Certify(rw, defaultPassword, keyHandle, parentHandle, name)
+	if err != nil {
+		t.Fatalf("Certify failed: %s", err)
+	}
+	t.Logf("signature (hex): %x", sig)
+}

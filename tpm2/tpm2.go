@@ -1026,6 +1026,48 @@ func Sign(rw io.ReadWriter, key tpmutil.Handle, data []byte) (Algorithm, []byte,
 	return decodeSign(resp)
 }
 
+func encodeCertify(password string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, error) {
+	ha, err := tpmutil.Pack(object, signer)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodePasswordAuthArea(password, HandlePasswordSession)
+	if err != nil {
+		return nil, err
+	}
+	scheme := struct {
+		Scheme Algorithm
+		HMAC   Algorithm
+		Hash   Algorithm
+	}{AlgNull, AlgNull, AlgNull}
+	params, err := tpmutil.Pack(qualifyingData, scheme)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.Join([][]byte{ha, auth, params}, nil), nil
+}
+
+func decodeCertify(resp []byte) ([]byte, error) {
+	var auth, attest, signature []byte
+	var sigAlg, hashAlg Algorithm
+	if _, err := tpmutil.Unpack(resp, &auth, &attest, &sigAlg, &hashAlg, &signature); err != nil {
+		return nil, err
+	}
+	return signature, nil
+}
+
+func Certify(rw io.ReadWriter, password string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, error) {
+	cmd, err := encodeCertify(password, object, signer, qualifyingData)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, tagSessions, cmdCertify, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeCertify(resp)
+}
+
 func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...interface{}) ([]byte, error) {
 	resp, code, err := tpmutil.RunCommand(rw, tag, cmd, in...)
 	if err != nil {
