@@ -184,6 +184,8 @@ func packType(buf io.Writer, elts ...interface{}) error {
 
 // Unpack performs the inverse operation from Pack.
 func Unpack(b []byte, elts ...interface{}) error {
+	// TODO(awly): also return number of bytes consumed, to allow partial
+	// unpacking.
 	buf := bytes.NewBuffer(b)
 	return unpackType(buf, elts...)
 }
