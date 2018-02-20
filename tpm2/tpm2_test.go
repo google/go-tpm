@@ -119,7 +119,7 @@ func TestCombinedKeyTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
 
-	keyHandle, _, err := Load(rw, parentHandle, "", defaultPassword, publicBlob, privateBlob)
+	keyHandle, _, err := Load(rw, parentHandle, defaultPassword, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
@@ -159,7 +159,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
 
-	keyHandle, _, err := Load(rw, parentHandle, "", "", publicBlob, privateBlob)
+	keyHandle, _, err := Load(rw, parentHandle, "", publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
@@ -218,10 +218,11 @@ func TestCombinedContextTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
 
-	quoteHandle, _, err := Load(rw, rootHandle, "", "", quotePublic, quotePrivate)
+	quoteHandle, _, err := Load(rw, rootHandle, "", quotePublic, quotePrivate)
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
+	defer FlushContext(rw, quoteHandle)
 
 	saveArea, err := ContextSave(rw, quoteHandle)
 	if err != nil {
@@ -233,5 +234,4 @@ func TestCombinedContextTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
-	FlushContext(rw, quoteHandle)
 }

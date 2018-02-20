@@ -266,13 +266,26 @@ func GetCapability(rw io.ReadWriter, cap Capability, count uint32, property uint
 	return handles, nil
 }
 
-func encodePasswordAuthArea(password string, owner tpmutil.Handle) ([]byte, error) {
-	// TODO what are these magic values?
-	buf, err := tpmutil.Pack(owner, tpmutil.RawBytes{0, 0, 1}, []byte(password))
+func encodePasswordAuthArea(passwords ...string) ([]byte, error) {
+	var res []byte
+	for _, p := range passwords {
+		// Empty nonce.
+		var nonce []byte
+		// continueSession set, all other bits clear.
+		attributes := byte(1)
+		buf, err := tpmutil.Pack(HandlePasswordSession, nonce, attributes, []byte(p))
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, buf...)
+	}
+
+	size, err := tpmutil.Pack(uint32(len(res)))
 	if err != nil {
 		return nil, err
 	}
-	return tpmutil.Pack(buf)
+
+	return append(size, res...), nil
 }
 
 func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
@@ -280,7 +293,7 @@ func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea("", HandlePasswordSession)
+	auth, err := encodePasswordAuthArea("")
 	if err != nil {
 		return nil, err
 	}
@@ -343,11 +356,11 @@ func encodeRSAParams(params RSAParams) ([]byte, error) {
 
 // encodeCreate works for both TPM2_Create and TPM2_CreatePrimary.
 func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
-	parent, err := tpmutil.Pack(owner, []byte(nil))
+	parent, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
+	auth, err := encodePasswordAuthArea(parentPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -379,10 +392,10 @@ func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerP
 
 func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 	var handle tpmutil.Handle
-	var auth []byte
+	var paramSize uint32
 
 	// Handle and auth data.
-	read, err := tpmutil.Unpack(in, &handle, &auth)
+	read, err := tpmutil.Unpack(in, &handle, &paramSize)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -391,16 +404,11 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 	var public []byte
 	read, err = tpmutil.Unpack(in, &public)
 	if err != nil {
-		return 0, nil, err
-	}
-	var rsaParams []byte
-	_, err = tpmutil.Unpack(public, &rsaParams)
-	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("decoding TPM2B_PUBLIC: %v", err)
 	}
 	var pub tpmtPublic
-	if _, err := tpmutil.Unpack(rsaParams, &pub); err != nil {
-		return 0, nil, err
+	if _, err := tpmutil.Unpack(public, &pub); err != nil {
+		return 0, nil, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
 	}
 	return handle, pub.Unique, nil
 }
@@ -488,16 +496,12 @@ func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentP
 	return privateBlob, publicBlob, nil
 }
 
-func encodeLoad(parentHandle tpmutil.Handle, parentAuth, ownerAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
+func encodeLoad(parentHandle tpmutil.Handle, parentAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
 	b1, err := tpmutil.Pack(parentHandle)
 	if err != nil {
 		return nil, err
 	}
-	b3, err := tpmutil.Pack([]byte(parentAuth))
-	if err != nil {
-		return nil, err
-	}
-	b4, err := encodePasswordAuthArea(ownerAuth, HandlePasswordSession)
+	b4, err := encodePasswordAuthArea(parentAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -505,18 +509,17 @@ func encodeLoad(parentHandle tpmutil.Handle, parentAuth, ownerAuth string, publi
 	if err != nil {
 		return nil, err
 	}
-	args := append(b1, b3...)
-	args = append(args, b4...)
+	args := append(b1, b4...)
 	args = append(args, b5...)
 	return args, nil
 }
 
 func decodeLoad(in []byte) (tpmutil.Handle, []byte, error) {
 	var handle tpmutil.Handle
-	var auth []byte
+	var paramSize uint32
 	var name []byte
 
-	_, err := tpmutil.Unpack(in, &handle, &auth, &name)
+	_, err := tpmutil.Unpack(in, &handle, &paramSize, &name)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -525,8 +528,8 @@ func decodeLoad(in []byte) (tpmutil.Handle, []byte, error) {
 
 // Load loads public/private blobs into an object in the TPM.
 // Returns loaded object handle and its name.
-func Load(rw io.ReadWriter, parentHandle tpmutil.Handle, parentAuth, ownerAuth string, publicBlob, privateBlob []byte) (tpmutil.Handle, []byte, error) {
-	cmd, err := encodeLoad(parentHandle, parentAuth, ownerAuth, publicBlob, privateBlob)
+func Load(rw io.ReadWriter, parentHandle tpmutil.Handle, parentAuth string, publicBlob, privateBlob []byte) (tpmutil.Handle, []byte, error) {
+	cmd, err := encodeLoad(parentHandle, parentAuth, publicBlob, privateBlob)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -645,12 +648,12 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey tpmutil.Handle, nonceCal
 	return handle, nonce, nil
 }
 
-func encodeUnseal(itemHandle tpmutil.Handle, password string, sessionHandle tpmutil.Handle) ([]byte, error) {
-	b1, err := tpmutil.Pack(itemHandle, []byte(nil))
+func encodeUnseal(itemHandle tpmutil.Handle, password string) ([]byte, error) {
+	b1, err := tpmutil.Pack(itemHandle)
 	if err != nil {
 		return nil, err
 	}
-	b2, err := encodePasswordAuthArea(password, sessionHandle)
+	b2, err := encodePasswordAuthArea(password)
 	if err != nil {
 		return nil, err
 	}
@@ -670,8 +673,8 @@ func decodeUnseal(in []byte) ([]byte, []byte, error) {
 
 // Unseal returns the data for a loaded sealed object.
 // Returns unsealed data and a digest.
-func Unseal(rw io.ReadWriter, itemHandle tpmutil.Handle, password string, sessionHandle tpmutil.Handle, digest []byte) ([]byte, []byte, error) {
-	cmd, err := encodeUnseal(itemHandle, password, sessionHandle)
+func Unseal(rw io.ReadWriter, itemHandle tpmutil.Handle, password string) ([]byte, []byte, error) {
+	cmd, err := encodeUnseal(itemHandle, password)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -691,11 +694,7 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	if err != nil {
 		return nil, err
 	}
-	b2, err := tpmutil.Pack([]byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	b3, err := encodePasswordAuthArea(parentPassword, HandlePasswordSession)
+	b3, err := encodePasswordAuthArea(parentPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -707,8 +706,7 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	if err != nil {
 		return nil, err
 	}
-	args := append(b1, b2...)
-	args = append(args, b3...)
+	args := append(b1, b3...)
 	args = append(args, b4...)
 	args = append(args, b5...)
 	return args, nil
@@ -763,20 +761,7 @@ func encodeActivateCredential(activeHandle tpmutil.Handle, keyHandle tpmutil.Han
 	if err != nil {
 		return nil, err
 	}
-	b3, err := tpmutil.Pack([]byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	b4a, err := encodePasswordAuthArea(activePassword, HandlePasswordSession)
-	if err != nil {
-		return nil, err
-	}
-	b4b, err := encodePasswordAuthArea(protectorPassword, HandlePasswordSession)
-	if err != nil {
-		return nil, err
-	}
-	b4t := append(b4a[2:], b4b[2:]...)
-	b4, err := tpmutil.Pack(b4t)
+	b4, err := encodePasswordAuthArea(activePassword, protectorPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -785,7 +770,6 @@ func encodeActivateCredential(activeHandle tpmutil.Handle, keyHandle tpmutil.Han
 		return nil, err
 	}
 	args := append(b1, b2...)
-	args = append(args, b3...)
 	args = append(args, b4...)
 	args = append(args, b5...)
 	return args, nil
@@ -875,11 +859,7 @@ func encodeEvictControl(owner tpmutil.Handle, tmpHandle, persistentHandle tpmuti
 	if err != nil {
 		return nil, err
 	}
-	b3, err := tpmutil.Pack([]byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	b4, err := encodePasswordAuthArea("", HandlePasswordSession)
+	b4, err := encodePasswordAuthArea("")
 	if err != nil {
 		return nil, err
 	}
@@ -888,7 +868,6 @@ func encodeEvictControl(owner tpmutil.Handle, tmpHandle, persistentHandle tpmuti
 		return nil, err
 	}
 	args := append(b1, b2...)
-	args = append(args, b3...)
 	args = append(args, b4...)
 	args = append(args, b5...)
 	return args, nil
@@ -934,11 +913,11 @@ func ContextLoad(rw io.ReadWriter, saveArea []byte) (tpmutil.Handle, error) {
 }
 
 func encodeIncrementNV(handle tpmutil.Handle, authString string) ([]byte, error) {
-	auth, err := encodePasswordAuthArea(authString, HandlePasswordSession)
+	auth, err := encodePasswordAuthArea(authString)
 	if err != nil {
 		return nil, err
 	}
-	out, err := tpmutil.Pack(handle, handle, []byte(nil))
+	out, err := tpmutil.Pack(handle, handle)
 	if err != nil {
 		return nil, err
 	}
@@ -957,7 +936,7 @@ func NVIncrement(rw io.ReadWriter, handle tpmutil.Handle, authString string) err
 }
 
 func encodeUndefineSpace(owner, handle tpmutil.Handle) ([]byte, error) {
-	auth, err := encodePasswordAuthArea("", HandlePasswordSession)
+	auth, err := encodePasswordAuthArea("")
 	if err != nil {
 		return nil, err
 	}
@@ -984,11 +963,11 @@ func encodeDefineSpace(owner, handle tpmutil.Handle, authString string, attribut
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea("", HandlePasswordSession)
+	auth, err := encodePasswordAuthArea("")
 	if err != nil {
 		return nil, err
 	}
-	out1, err := tpmutil.Pack(owner, []byte(nil))
+	out1, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
 	}
@@ -1032,11 +1011,11 @@ func decodeNVRead(in []byte) ([]byte, error) {
 }
 
 func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uint16) ([]byte, error) {
-	out, err := tpmutil.Pack(handle, handle, []byte(nil))
+	out, err := tpmutil.Pack(handle, handle)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(authString, HandlePasswordSession)
+	auth, err := encodePasswordAuthArea(authString)
 	if err != nil {
 		return nil, err
 	}
@@ -1100,11 +1079,11 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 }
 
 func encodeSign(key tpmutil.Handle, password string, digest []byte) ([]byte, error) {
-	out, err := tpmutil.Pack(key, []byte(nil))
+	out, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(password, HandlePasswordSession)
+	auth, err := encodePasswordAuthArea(password)
 	if err != nil {
 		return nil, err
 	}

@@ -88,12 +88,12 @@ func TestEncodeLoad(t *testing.T) {
 	}
 	privateBlob := testCmdBytes[33:123]
 	publicBlob := testCmdBytes[125:]
-	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), "", defaultPW, publicBlob, privateBlob)
+	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), defaultPW, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("encodeLoad failed %s", err)
 	}
 	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
+		t.Fatalf("got:\n%v\nwant:\n%v", cmdBytes, testCmdBytes[10:])
 	}
 }
 
@@ -132,7 +132,7 @@ func TestEncodeCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
+		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes[10:])
 	}
 }
 
@@ -166,7 +166,7 @@ func TestEncodePolicyPCR(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
+		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes[10:])
 	}
 }
 
@@ -216,16 +216,16 @@ func TestDecodeCreateKey(t *testing.T) {
 }
 
 func TestEncodeUnseal(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80020000001f0000015e800000010000000d03000000000001000401020304")
+	testCmdBytes, err := hex.DecodeString("80020000001f0000015e800000010000000d40000009000001000401020304")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), defaultPW, tpmutil.Handle(0x03000000))
+	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), defaultPW)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
+		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes[10:])
 	}
 }
 
@@ -251,7 +251,7 @@ func TestEncodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
+		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes[10:])
 	}
 }
 
@@ -305,25 +305,25 @@ func TestEncodeEvictControl(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(cmdBytes, testCmdBytes[10:]) {
-		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes)
+		t.Fatalf("got: %v, want: %v", cmdBytes, testCmdBytes[10:])
 	}
 }
 
 func TestEncodePasswordAuthArea(t *testing.T) {
-	pwAuth, err := encodePasswordAuthArea(defaultPW, HandlePasswordSession)
+	pwAuth, err := encodePasswordAuthArea(defaultPW)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []byte{0, 0xd, 0x40, 0, 0, 9, 0, 0, 1, 0, 4, 1, 2, 3, 4}
+	want := []byte{0, 0, 0, 0xd, 0x40, 0, 0, 9, 0, 0, 1, 0, 4, 1, 2, 3, 4}
 	if !bytes.Equal(want, pwAuth) {
 		t.Fatalf("got: %v, want: %v", pwAuth, want)
 	}
 
-	pwAuth, err = encodePasswordAuthArea("", HandlePasswordSession)
+	pwAuth, err = encodePasswordAuthArea("")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want = []byte{0, 0x9, 0x40, 0, 0, 9, 0, 0, 1, 0, 0}
+	want = []byte{0, 0, 0, 0x9, 0x40, 0, 0, 9, 0, 0, 1, 0, 0}
 	if !bytes.Equal(want, pwAuth) {
 		t.Fatalf("got: %v, want: %v", pwAuth, want)
 	}
