@@ -1026,20 +1026,19 @@ func Sign(rw io.ReadWriter, key tpmutil.Handle, data []byte) (Algorithm, []byte,
 	return decodeSign(resp)
 }
 
-func encodeCertify(password string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, error) {
+func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, error) {
 	ha, err := tpmutil.Pack(object, signer)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(password, HandlePasswordSession)
+
+	auth, err := encodePasswordAuthArea(parentAuth, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
-	scheme := struct {
-		Scheme Algorithm
-		HMAC   Algorithm
-		Hash   Algorithm
-	}{AlgNull, AlgNull, AlgNull}
+
+	scheme := struct{ Scheme, Hash Algorithm }{AlgRSASSA, AlgSHA256}
+	// Use signing key's scheme.
 	params, err := tpmutil.Pack(qualifyingData, scheme)
 	if err != nil {
 		return nil, err
@@ -1048,16 +1047,17 @@ func encodeCertify(password string, object, signer tpmutil.Handle, qualifyingDat
 }
 
 func decodeCertify(resp []byte) ([]byte, error) {
-	var auth, attest, signature []byte
+	var paramSize uint32
+	var attest, signature []byte
 	var sigAlg, hashAlg Algorithm
-	if _, err := tpmutil.Unpack(resp, &auth, &attest, &sigAlg, &hashAlg, &signature); err != nil {
+	if _, err := tpmutil.Unpack(resp, &paramSize, &attest, &sigAlg, &hashAlg, &signature); err != nil {
 		return nil, err
 	}
 	return signature, nil
 }
 
-func Certify(rw io.ReadWriter, password string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, error) {
-	cmd, err := encodeCertify(password, object, signer, qualifyingData)
+func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, error) {
+	cmd, err := encodeCertify(parentAuth, ownerAuth, object, signer, qualifyingData)
 	if err != nil {
 		return nil, err
 	}

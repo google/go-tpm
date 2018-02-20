@@ -296,7 +296,6 @@ func TestLoadExternalPublicKey(t *testing.T) {
 func TestCertify(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
-
 	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
@@ -305,18 +304,21 @@ func TestCertify(t *testing.T) {
 
 	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
-		t.Fatalf("CreateKey failed: %s", err)
+		t.Errorf("CreateKey failed: %s", err)
+		return
 	}
 
-	keyHandle, name, err := Load(rw, parentHandle, "", defaultPassword, publicBlob, privateBlob)
+	keyHandle, name, err := Load(rw, parentHandle, defaultPassword, publicBlob, privateBlob)
 	if err != nil {
-		t.Fatalf("Load failed: %s", err)
+		t.Errorf("Load failed: %s", err)
+		return
 	}
 	defer FlushContext(rw, keyHandle)
 
-	sig, err := Certify(rw, defaultPassword, keyHandle, parentHandle, name)
+	sig, err := Certify(rw, defaultPassword, defaultPassword, keyHandle, parentHandle, name)
 	if err != nil {
-		t.Fatalf("Certify failed: %s", err)
+		t.Errorf("Certify failed: %s", err)
+		return
 	}
 	t.Logf("signature (hex): %x", sig)
 }
