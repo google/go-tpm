@@ -836,7 +836,7 @@ func encodeDefineSpace(owner, handle tpmutil.Handle, ownerAuth, authVal string, 
 	if err != nil {
 		return nil, err
 	}
-	params, err := tpmutil.Pack(authVal, publicInfo)
+	params, err := tpmutil.Pack([]byte(authVal), publicInfo)
 	if err != nil {
 		return nil, err
 	}
