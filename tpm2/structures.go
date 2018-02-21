@@ -92,3 +92,9 @@ type Public struct {
 	Parameters tpmsRSAParams
 	PublicKey  []byte
 }
+
+type tpmtSignatureRSA struct {
+	SigAlg    Algorithm
+	HashAlg   Algorithm
+	Signature []byte
+}

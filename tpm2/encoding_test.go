@@ -170,16 +170,6 @@ func TestEncodePolicyPCR(t *testing.T) {
 	}
 }
 
-func TestDecodePolicyGetDigest(t *testing.T) {
-	testRespBytes, err := hex.DecodeString("8001000000200000000000140000000000000000000000000000000000000000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = decodePolicyGetDigest(testRespBytes[10:]); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestDecodeStartAuthSession(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("800100000020000000000300000000106cf0c90c419ce1a96d5205eb870ec527")
 	if err != nil {
@@ -235,7 +225,7 @@ func TestDecodeUnseal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, err = decodeUnseal(testRespBytes[10:]); err != nil {
+	if _, err = decodeUnseal(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -269,7 +259,7 @@ func TestDecodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, _, _, err = decodeQuote(testRespBytes[10:]); err != nil {
+	if _, _, err = decodeQuote(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -300,7 +290,7 @@ func TestEncodeEvictControl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeEvictControl(tpmutil.Handle(0x40000001), tpmutil.Handle(0x810003e8), tpmutil.Handle(0x810003e8))
+	cmdBytes, err := encodeEvictControl("", tpmutil.Handle(0x40000001), tpmutil.Handle(0x810003e8), tpmutil.Handle(0x810003e8))
 	if err != nil {
 		t.Fatal(err)
 	}
