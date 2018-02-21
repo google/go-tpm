@@ -140,18 +140,13 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 
 	vals := make(map[int][]byte)
 	for _, pcr := range sel.PCRs {
-		var alg Algorithm
-		read, err = tpmutil.Unpack(in, &alg)
+		var val []byte
+		read, err = tpmutil.Unpack(in, &val)
 		if err != nil {
 			return nil, fmt.Errorf("decoding TPML_DIGEST item: %v", err)
 		}
 		in = in[read:]
-
-		ds := digestSize(alg)
-		if ds == 0 {
-			return nil, fmt.Errorf("TPM_ALG_ID 0x%x not supported", alg)
-		}
-		vals[pcr], in = in[:ds], in[ds:]
+		vals[pcr] = val
 	}
 	return vals, nil
 }
