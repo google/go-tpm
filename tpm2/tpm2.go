@@ -292,11 +292,7 @@ func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{
-		ha,
-		auth,
-		event,
-	}, nil), nil
+	return concat(ha, auth, event)
 }
 
 // PCREvent writes an update to the specified PCR.
@@ -371,14 +367,14 @@ func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerP
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{
+	return concat(
 		parent,
 		auth,
 		inSensitive,
 		inPublic,
 		outsideInfo,
 		creationPCR,
-	}, nil), nil
+	)
 }
 
 func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
@@ -488,7 +484,7 @@ func encodeLoad(parentHandle tpmutil.Handle, parentAuth string, publicBlob, priv
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{ah, auth, params}, nil), nil
+	return concat(ah, auth, params)
 }
 
 func decodeLoad(in []byte) (tpmutil.Handle, []byte, error) {
@@ -646,7 +642,7 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{ha, auth, params, pcrs}, nil), nil
+	return concat(ha, auth, params, pcrs)
 }
 
 func decodeQuote(in []byte) ([]byte, []byte, error) {
@@ -691,7 +687,7 @@ func encodeActivateCredential(activeHandle tpmutil.Handle, keyHandle tpmutil.Han
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{ha, auth, params}, nil), nil
+	return concat(ha, auth, params)
 }
 
 func decodeActivateCredential(in []byte) ([]byte, error) {
@@ -769,7 +765,7 @@ func encodeEvictControl(ownerAuth string, owner, objectHandle, persistentHandle 
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{ha, auth, params}, nil), nil
+	return concat(ha, auth, params)
 }
 
 // EvictControl toggles persistence of an object within the TPM.
@@ -861,7 +857,7 @@ func encodeDefineSpace(owner, handle tpmutil.Handle, ownerAuth, authVal string, 
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{ha, auth, params}, nil), nil
+	return concat(ha, auth, params)
 }
 
 // NVDefineSpace creates an index in TPM's NV storage.
@@ -1019,4 +1015,11 @@ func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...in
 		return nil, fmt.Errorf("response status 0x%x", code)
 	}
 	return resp, nil
+}
+
+// concat is a helper for encoding functions that separately encode handle,
+// auth and param areas. A nil error is always returned, so that callers can
+// simply return concat(a, b, c).
+func concat(chunks ...[]byte) ([]byte, error) {
+	return bytes.Join(chunks, nil), nil
 }
