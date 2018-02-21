@@ -21,6 +21,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/google/go-tpm/tpmutil"
 )
 
 var tpmPath = flag.String("tpm_path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
@@ -134,20 +136,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	defaultKeyParams := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		2048,
-		uint32(0x00010001),
-		[]byte(nil),
-	}
 	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
@@ -190,22 +178,6 @@ func TestCombinedContextTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	keySize := 2048
-
-	defaultKeyParams := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		FlagStorageDefault,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		uint16(keySize),
-		uint32(0x00010001),
-		[]byte(nil),
-	}
 	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %v", err)
@@ -233,5 +205,42 @@ func TestCombinedContextTest(t *testing.T) {
 	quoteHandle, err = ContextLoad(rw, saveArea)
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
+	}
+}
+
+func TestEvictControl(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %v", err)
+	}
+	defer FlushContext(rw, rootHandle)
+
+	// CreateKey (Quote Key)
+	quotePrivate, quotePublic, err := CreateKey(rw, rootHandle, pcrSelection, "", "", defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreateKey failed: %v", err)
+	}
+
+	quoteHandle, _, err := Load(rw, rootHandle, "", quotePublic, quotePrivate)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	defer FlushContext(rw, quoteHandle)
+
+	persistentHandle := tpmutil.Handle(0x817FFFFF)
+	// Evict persistent key, if there is one already (e.g. last test run failed).
+	if err := EvictControl(rw, "", HandleOwner, persistentHandle, persistentHandle); err != nil {
+		t.Logf("EvictControl failed: %v", err)
+	}
+	// Make key persistent.
+	if err := EvictControl(rw, "", HandleOwner, quoteHandle, persistentHandle); err != nil {
+		t.Fatalf("EvictControl failed: %v", err)
+	}
+	// Evict persistent key.
+	if err := EvictControl(rw, "", HandleOwner, persistentHandle, persistentHandle); err != nil {
+		t.Fatalf("EvictControl failed: %v", err)
 	}
 }
