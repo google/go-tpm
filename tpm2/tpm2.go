@@ -259,7 +259,7 @@ func encodePasswordAuthArea(passwords ...string) ([]byte, error) {
 		return nil, err
 	}
 
-	return append(size, res...), nil
+	return concat(size, res)
 }
 
 func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
@@ -511,7 +511,7 @@ func encodePolicyPCR(session tpmutil.Handle, expectedDigest []byte, sel PCRSelec
 	if err != nil {
 		return nil, err
 	}
-	return append(params, pcrs...), nil
+	return concat(params, pcrs)
 }
 
 // PolicyPCR sets PCR state binding for authorization on a session.
@@ -545,7 +545,7 @@ func encodeStartAuthSession(tpmKey, bindKey tpmutil.Handle, nonceCaller, secret 
 	if err != nil {
 		return nil, err
 	}
-	return append(ha, params...), nil
+	return concat(ha, params)
 }
 
 func decodeStartAuthSession(in []byte) (tpmutil.Handle, []byte, error) {
@@ -581,7 +581,7 @@ func encodeUnseal(itemHandle tpmutil.Handle, password string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(ha, auth...), nil
+	return concat(ha, auth)
 }
 
 func decodeUnseal(in []byte) ([]byte, error) {
@@ -707,7 +707,7 @@ func encodeMakeCredential(protectorHandle tpmutil.Handle, credential, activeName
 	if err != nil {
 		return nil, err
 	}
-	return append(ha, params...), nil
+	return concat(ha, params)
 }
 
 func decodeMakeCredential(in []byte) ([]byte, []byte, error) {
@@ -788,7 +788,7 @@ func encodeIncrementNV(handle tpmutil.Handle, authString string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	return append(out, auth...), nil
+	return concat(out, auth)
 }
 
 // NVIncrement increments a counter in NVRAM.
@@ -810,7 +810,7 @@ func encodeUndefineSpace(ownerAuth string, owner, index tpmutil.Handle) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	return append(out, auth...), nil
+	return concat(out, auth)
 }
 
 // NVUndefineSpace removes an index from TPM's NV storage.
@@ -873,7 +873,7 @@ func decodeNVRead(in []byte) ([]byte, error) {
 }
 
 func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uint16) ([]byte, error) {
-	out, err := tpmutil.Pack(handle, handle)
+	ha, err := tpmutil.Pack(handle, handle)
 	if err != nil {
 		return nil, err
 	}
@@ -881,13 +881,11 @@ func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uin
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, auth...)
 	params, err := tpmutil.Pack(dataSize, offset)
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, params...)
-	return out, nil
+	return concat(ha, auth, params)
 }
 
 // NVRead reads a full data blob from an NV index.
@@ -941,7 +939,7 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 }
 
 func encodeSign(key tpmutil.Handle, password string, digest []byte) ([]byte, error) {
-	out, err := tpmutil.Pack(key)
+	ha, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
 	}
@@ -949,18 +947,11 @@ func encodeSign(key tpmutil.Handle, password string, digest []byte) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, auth...)
-	params, err := tpmutil.Pack(digest, AlgNull)
+	params, err := tpmutil.Pack(digest, AlgNull, tagHashcheck, HandleNull, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, params...)
-	ticket, err := tpmutil.Pack(tagHashcheck, HandleNull, []byte(nil))
-	if err != nil {
-		return nil, err
-	}
-	out = append(out, ticket...)
-	return out, nil
+	return concat(ha, auth, params)
 }
 
 func decodeSign(buf []byte) (Algorithm, []byte, error) {
