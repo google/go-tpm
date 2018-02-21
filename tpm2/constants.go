@@ -14,7 +14,13 @@
 
 package tpm2
 
-import "github.com/google/go-tpm/tpmutil"
+import (
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+
+	"github.com/google/go-tpm/tpmutil"
+)
 
 func init() {
 	tpmutil.UseTPM20LengthPrefixSize()
@@ -172,3 +178,18 @@ const (
 
 // Regular TPM 2.0 devices use 24-bit mask (3 bytes) for PCR selection.
 const sizeOfPCRSelect = 3
+
+// digestSize returns the size of a digest for hashing algorithm alg, or 0 if
+// it's not recognized.
+func digestSize(alg Algorithm) int {
+	switch alg {
+	case AlgSHA1:
+		return sha1.Size
+	case AlgSHA256:
+		return sha256.Size
+	case AlgSHA512:
+		return sha512.Size
+	default:
+		return 0
+	}
+}

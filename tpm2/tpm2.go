@@ -17,9 +17,6 @@ package tpm2
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"fmt"
 	"io"
 
@@ -150,20 +147,11 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 		}
 		in = in[read:]
 
-		var digestSize int
-		switch alg {
-		case AlgSHA1:
-			digestSize = sha1.Size
-		case AlgSHA256:
-			digestSize = sha256.Size
-		case AlgSHA512:
-			digestSize = sha512.Size
-		case AlgRSASSA:
-			digestSize = sha1.Size
-		default:
+		ds := digestSize(alg)
+		if ds == 0 {
 			return nil, fmt.Errorf("TPM_ALG_ID 0x%x not supported", alg)
 		}
-		vals[pcr], in = in[:digestSize], in[digestSize:]
+		vals[pcr], in = in[:ds], in[ds:]
 	}
 	return vals, nil
 }
