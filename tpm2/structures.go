@@ -32,19 +32,6 @@ type RSAParams struct {
 	Modulus    []byte
 }
 
-// KeyedHashParams contains parameters of a keyed hash object.
-type KeyedHashParams struct {
-	TypeAlg    Algorithm
-	HashAlg    Algorithm
-	Attributes uint32
-	AuthPolicy []byte
-	SymAlg     Algorithm
-	SymSize    uint16
-	Mode       Algorithm
-	Scheme     Algorithm
-	Unique     []byte
-}
-
 // NVPublic contains the public area of an NV index.
 type NVPublic struct {
 	NVIndex    tpmutil.Handle
@@ -74,4 +61,40 @@ type tpmtRSAScheme struct {
 	Alg     Algorithm
 	KeyBits uint16
 	Mode    Algorithm
+}
+
+type tpmsSensitiveCreate struct {
+	UserAuth []byte
+	Data     []byte
+}
+
+// PCRSelection contains a slice of PCR indexes and a hash algorithm used in
+// them.
+type PCRSelection struct {
+	Hash Algorithm
+	PCRs []int
+}
+
+type tpmsPCRSelection struct {
+	Hash Algorithm
+	Size byte
+	PCRs tpmutil.RawBytes
+}
+
+// Public contains the public area of an object.
+//
+// TODO(awly): this is RSA-specific right now. Make it work for other Types.
+type Public struct {
+	Type       Algorithm
+	NameAlg    Algorithm
+	Attributes uint32
+	AuthPolicy []byte
+	Parameters tpmsRSAParams
+	PublicKey  []byte
+}
+
+type tpmtSignatureRSA struct {
+	SigAlg    Algorithm
+	HashAlg   Algorithm
+	Signature []byte
 }

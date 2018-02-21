@@ -208,7 +208,7 @@ func TestResizeableSlice(t *testing.T) {
 
 	var ra2 responseAuth
 	var b2 []byte
-	if err := tpmutil.Unpack(bb, &ra2, &b2); err != nil {
+	if _, err := tpmutil.Unpack(bb, &ra2, &b2); err != nil {
 		t.Fatal("Couldn't unpack the resizeable values:", err)
 	}
 

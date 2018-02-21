@@ -47,7 +47,7 @@ func GetKeys(rw io.ReadWriter) ([]tpmutil.Handle, error) {
 		return nil, err
 	}
 	var handles []tpmutil.Handle
-	if err := tpmutil.Unpack(b, &handles); err != nil {
+	if _, err := tpmutil.Unpack(b, &handles); err != nil {
 		return nil, err
 	}
 	return handles, err
@@ -113,7 +113,7 @@ func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 func LoadKey2(rw io.ReadWriter, keyBlob []byte, srkAuth []byte) (tpmutil.Handle, error) {
 	// Deserialize the keyBlob as a key
 	var k key
-	if err := tpmutil.Unpack(keyBlob, &k); err != nil {
+	if _, err := tpmutil.Unpack(keyBlob, &k); err != nil {
 		return 0, err
 	}
 
@@ -407,7 +407,7 @@ func Unseal(rw io.ReadWriter, sealed []byte, srkAuth []byte) ([]byte, error) {
 
 	// Convert the sealed value into a tpmStoredData.
 	var tsd tpmStoredData
-	if err := tpmutil.Unpack(sealed, &tsd); err != nil {
+	if _, err := tpmutil.Unpack(sealed, &tsd); err != nil {
 		return nil, errors.New("couldn't convert the sealed data into a tpmStoredData struct")
 	}
 

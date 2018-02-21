@@ -20,7 +20,6 @@
 package tpmutil
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -89,14 +88,15 @@ func RunCommand(rw io.ReadWriter, tag Tag, cmd Command, in ...interface{}) ([]by
 	outb = outb[:outlen]
 
 	var rh responseHeader
-	rhSize := binary.Size(rh)
-	if err := Unpack(outb[:rhSize], &rh); err != nil {
+	read, err := Unpack(outb, &rh)
+	if err != nil {
 		return nil, 0, err
 	}
+	outb = outb[read:]
 
 	if rh.Res != RCSuccess {
 		return nil, rh.Res, nil
 	}
 
-	return outb[rhSize:], rh.Res, nil
+	return outb, rh.Res, nil
 }

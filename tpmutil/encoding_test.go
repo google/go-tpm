@@ -199,7 +199,7 @@ func TestEncodingCommandHeaderEncoding(t *testing.T) {
 
 	var hdr commandHeader
 	var size uint32
-	if err := Unpack(b, &hdr, &size); err != nil {
+	if _, err := Unpack(b, &hdr, &size); err != nil {
 		t.Fatal("Couldn't unpack the packed bytes")
 	}
 
@@ -274,7 +274,7 @@ func TestEncodingUnpack(t *testing.T) {
 		t.Fatal("Couldn't pack a simple struct:", err)
 	}
 	var sp2 simplePacked
-	if err := Unpack(bsp, &sp2); err != nil {
+	if _, err := Unpack(bsp, &sp2); err != nil {
 		t.Fatal("Couldn't unpack a simple struct:", err)
 	}
 
@@ -283,7 +283,7 @@ func TestEncodingUnpack(t *testing.T) {
 	}
 
 	// Try unpacking a version that's missing a byte at the end.
-	if err := Unpack(bsp[:len(bsp)-1], &sp2); err == nil {
+	if _, err := Unpack(bsp[:len(bsp)-1], &sp2); err == nil {
 		t.Fatal("unpack incorrectly unpacked from a byte array that didn't have enough values")
 	}
 
@@ -293,7 +293,7 @@ func TestEncodingUnpack(t *testing.T) {
 		t.Fatal("Couldn't pack a nested struct")
 	}
 	var np2 nestedPacked
-	if err := Unpack(bnp, &np2); err != nil {
+	if _, err := Unpack(bnp, &np2); err != nil {
 		t.Fatal("Couldn't unpack a nested struct:", err)
 	}
 	if np.SP.A != np2.SP.A || np.SP.B != np2.SP.B || np.C != np2.C {
@@ -306,7 +306,7 @@ func TestEncodingUnpack(t *testing.T) {
 		t.Fatal("Couldn't pack a struct with a nested byte slice:", err)
 	}
 	var ns2 nestedSlice
-	if err := Unpack(bns, &ns2); err != nil {
+	if _, err := Unpack(bns, &ns2); err != nil {
 		t.Fatal("Couldn't unpacked a struct with a nested slice:", err)
 	}
 	if ns.A != ns2.A || !bytes.Equal(ns.S, ns2.S) {
@@ -314,10 +314,38 @@ func TestEncodingUnpack(t *testing.T) {
 	}
 
 	var hs []Handle
-	if err := Unpack([]byte{0, 3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, &hs); err != nil {
+	if _, err := Unpack([]byte{0, 3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, &hs); err != nil {
 		t.Fatal("Couldn't unpack a list of Handles:", err)
 	}
 	if want := []Handle{0x01020304, 0x05060708, 0x090a0b0c}; !reflect.DeepEqual(want, hs) {
 		t.Fatalf("Unpacking []Handle: got %v, want %v", hs, want)
+	}
+}
+
+func TestPartialUnpack(t *testing.T) {
+	u1, u2 := uint32(1), uint32(2)
+	buf, err := Pack(u1, u2)
+	if err != nil {
+		t.Fatalf("packing uint32 value: %v", err)
+	}
+
+	var gu1, gu2 uint32
+	read1, err := Unpack(buf, &gu1)
+	if err != nil {
+		t.Fatalf("unpacking first uint32 value: %v", err)
+	}
+	if gu1 != u1 {
+		t.Errorf("first unpacked value: got %d, want %d", gu1, u1)
+	}
+	read2, err := Unpack(buf[read1:], &gu2)
+	if err != nil {
+		t.Fatalf("unpacking second uint32 value: %v", err)
+	}
+	if gu2 != u2 {
+		t.Errorf("second unpacked value: got %d, want %d", gu2, u2)
+	}
+
+	if read1+read2 != len(buf) {
+		t.Errorf("sum of bytes read doesn't ad up to total packed size: got %d+%d=%d, want %d", read1, read2, read1+read2, len(buf))
 	}
 }

@@ -16,10 +16,14 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"flag"
 	"io"
 	"os"
+	"reflect"
 	"testing"
+
+	"github.com/google/go-tpm/tpmutil"
 )
 
 var tpmPath = flag.String("tpm_path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
@@ -42,7 +46,7 @@ func openTPM(t *testing.T) io.ReadWriteCloser {
 
 var (
 	// PCR7 is for SecureBoot.
-	pcrSelection     = []int{7}
+	pcrSelection     = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
 	defaultKeyParams = RSAParams{
 		AlgRSA,
 		AlgSHA1,
@@ -73,8 +77,14 @@ func TestReadPCRs(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	if _, _, _, _, err := ReadPCRs(rw, AlgSHA1, pcrSelection); err != nil {
+	pcrs, err := ReadPCRs(rw, pcrSelection)
+	if err != nil {
 		t.Errorf("ReadPCRs failed: %s", err)
+	}
+	for pcr, val := range pcrs {
+		if empty := make([]byte, len(val)); reflect.DeepEqual(empty, val) {
+			t.Errorf("Value of PCR %d is empty", pcr)
+		}
 	}
 }
 
@@ -101,7 +111,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
@@ -112,7 +122,7 @@ func TestCombinedKeyTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
 
-	keyHandle, _, err := Load(rw, parentHandle, "", defaultPassword, publicBlob, privateBlob)
+	keyHandle, _, err := Load(rw, parentHandle, defaultPassword, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
@@ -127,21 +137,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	defaultKeyParams := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		2048,
-		uint32(0x00010001),
-		[]byte(nil),
-	}
-	parentHandle, publicBlob, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
@@ -152,7 +148,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
 
-	keyHandle, _, err := Load(rw, parentHandle, "", "", publicBlob, privateBlob)
+	keyHandle, _, err := Load(rw, parentHandle, "", publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
@@ -183,22 +179,6 @@ func TestCombinedContextTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	keySize := 2048
-
-	defaultKeyParams := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		FlagStorageDefault,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		uint16(keySize),
-		uint32(0x00010001),
-		[]byte(nil),
-	}
 	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %v", err)
@@ -211,10 +191,11 @@ func TestCombinedContextTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
 
-	quoteHandle, _, err := Load(rw, rootHandle, "", "", quotePublic, quotePrivate)
+	quoteHandle, _, err := Load(rw, rootHandle, "", quotePublic, quotePrivate)
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
+	defer FlushContext(rw, quoteHandle)
 
 	saveArea, err := ContextSave(rw, quoteHandle)
 	if err != nil {
@@ -226,5 +207,57 @@ func TestCombinedContextTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
-	FlushContext(rw, quoteHandle)
+}
+
+func TestEvictControl(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", "", defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %v", err)
+	}
+	defer FlushContext(rw, rootHandle)
+
+	// CreateKey (Quote Key)
+	quotePrivate, quotePublic, err := CreateKey(rw, rootHandle, pcrSelection, "", "", defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreateKey failed: %v", err)
+	}
+
+	quoteHandle, _, err := Load(rw, rootHandle, "", quotePublic, quotePrivate)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	defer FlushContext(rw, quoteHandle)
+
+	persistentHandle := tpmutil.Handle(0x817FFFFF)
+	// Evict persistent key, if there is one already (e.g. last test run failed).
+	if err := EvictControl(rw, "", HandleOwner, persistentHandle, persistentHandle); err != nil {
+		t.Logf("(expected) EvictControl failed: %v", err)
+	}
+	// Make key persistent.
+	if err := EvictControl(rw, "", HandleOwner, quoteHandle, persistentHandle); err != nil {
+		t.Fatalf("EvictControl failed: %v", err)
+	}
+	// Evict persistent key.
+	if err := EvictControl(rw, "", HandleOwner, persistentHandle, persistentHandle); err != nil {
+		t.Fatalf("EvictControl failed: %v", err)
+	}
+}
+
+func TestHash(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	val := []byte("garmonbozia")
+	got, err := Hash(rw, AlgSHA256, val)
+	if err != nil {
+		t.Fatalf("Hash failed: %v", err)
+	}
+	want := sha256.Sum256(val)
+
+	if !bytes.Equal(got, want[:]) {
+		t.Errorf("Hash(%q) returned %x, want %x", val, got, want)
+	}
 }
