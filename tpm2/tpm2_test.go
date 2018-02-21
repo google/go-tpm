@@ -16,6 +16,7 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"flag"
 	"io"
 	"os"
@@ -233,7 +234,7 @@ func TestEvictControl(t *testing.T) {
 	persistentHandle := tpmutil.Handle(0x817FFFFF)
 	// Evict persistent key, if there is one already (e.g. last test run failed).
 	if err := EvictControl(rw, "", HandleOwner, persistentHandle, persistentHandle); err != nil {
-		t.Logf("EvictControl failed: %v", err)
+		t.Logf("(expected) EvictControl failed: %v", err)
 	}
 	// Make key persistent.
 	if err := EvictControl(rw, "", HandleOwner, quoteHandle, persistentHandle); err != nil {
@@ -242,5 +243,21 @@ func TestEvictControl(t *testing.T) {
 	// Evict persistent key.
 	if err := EvictControl(rw, "", HandleOwner, persistentHandle, persistentHandle); err != nil {
 		t.Fatalf("EvictControl failed: %v", err)
+	}
+}
+
+func TestHash(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	val := []byte("garmonbozia")
+	got, err := Hash(rw, AlgSHA256, val)
+	if err != nil {
+		t.Fatalf("Hash failed: %v", err)
+	}
+	want := sha256.Sum256(val)
+
+	if !bytes.Equal(got, want[:]) {
+		t.Errorf("Hash(%q) returned %x, want %x", val, got, want)
 	}
 }
