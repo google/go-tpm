@@ -276,17 +276,19 @@ func TestLoadExternalPublicKey(t *testing.T) {
 	rp := RSAParams{
 		EncAlg:     AlgRSA,
 		HashAlg:    AlgSHA1,
-		Attributes: FlagStorageDefault,
-		SymAlg:     AlgAES,
-		SymSize:    128,
-		Mode:       AlgCFB,
-		Scheme:     AlgNull,
-
-		ModSize: 2048,
-		Exp:     uint32(pk.PublicKey.E),
-		Modulus: pk.PublicKey.N.Bytes(),
+		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		SymAlg:     AlgNull,
+		Scheme:     AlgRSASSA,
+		SchemeHash: AlgSHA1,
+		ModSize:    2048,
+		Exp:        uint32(pk.PublicKey.E),
+		Modulus:    pk.PublicKey.N.Bytes(),
 	}
-	h, _, err := LoadExternal(rw, rp, nil, HandleNull)
+	private := Private{
+		Type:      AlgRSA,
+		Sensitive: pk.Primes[0].Bytes(),
+	}
+	h, _, err := LoadExternal(rw, rp, private, HandleNull)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,26 +298,82 @@ func TestLoadExternalPublicKey(t *testing.T) {
 func TestCertify(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
-	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, defaultKeyParams)
-	if err != nil {
-		t.Fatalf("CreatePrimary failed: %s", err)
-	}
-	defer FlushContext(rw, parentHandle)
 
-	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, defaultKeyParams)
+	params := RSAParams{
+		EncAlg:     AlgRSA,
+		HashAlg:    AlgSHA256,
+		Attributes: FlagSignerDefault,
+		SymAlg:     AlgNull,
+		Scheme:     AlgRSASSA,
+		SchemeHash: AlgSHA256,
+		ModSize:    1024,
+	}
+	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, params)
 	if err != nil {
-		t.Errorf("CreateKey failed: %s", err)
+		t.Fatalf("CreatePrimary(signer) failed: %s", err)
+	}
+	defer FlushContext(rw, signerHandle)
+
+	subjectHandle, _, err := CreatePrimary(rw, HandlePlatform, pcrSelection, "", defaultPassword, params)
+	if err != nil {
+		t.Fatalf("CreatePrimary(subject) failed: %s", err)
+	}
+	defer FlushContext(rw, subjectHandle)
+
+	sig, err := Certify(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil)
+	if err != nil {
+		t.Errorf("Certify failed: %s", err)
 		return
 	}
+	t.Logf("signature (hex): %x", sig)
+}
 
-	keyHandle, name, err := Load(rw, parentHandle, defaultPassword, publicBlob, privateBlob)
+func TestCertifyExternalKey(t *testing.T) {
+	pk, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		t.Errorf("Load failed: %s", err)
-		return
+		t.Fatal(err)
 	}
-	defer FlushContext(rw, keyHandle)
 
-	sig, err := Certify(rw, defaultPassword, defaultPassword, keyHandle, parentHandle, name)
+	rw := openTPM(t)
+	defer rw.Close()
+
+	rp := RSAParams{
+		EncAlg:     AlgRSA,
+		HashAlg:    AlgSHA1,
+		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		SymAlg:     AlgNull,
+		Scheme:     AlgRSASSA,
+		SchemeHash: AlgSHA1,
+		ModSize:    2048,
+		Exp:        uint32(pk.PublicKey.E),
+		Modulus:    pk.PublicKey.N.Bytes(),
+	}
+	private := Private{
+		Type:      AlgRSA,
+		Sensitive: pk.Primes[0].Bytes(),
+	}
+	subjectHandle, _, err := LoadExternal(rw, rp, private, HandleNull)
+	if err != nil {
+		t.Fatalf("LoadExternal: %v", err)
+	}
+	defer FlushContext(rw, subjectHandle)
+
+	params := RSAParams{
+		EncAlg:     AlgRSA,
+		HashAlg:    AlgSHA256,
+		Attributes: FlagSignerDefault,
+		SymAlg:     AlgNull,
+		Scheme:     AlgRSASSA,
+		SchemeHash: AlgSHA256,
+		ModSize:    1024,
+	}
+	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, params)
+	if err != nil {
+		t.Fatalf("CreatePrimary(signer) failed: %s", err)
+	}
+	defer FlushContext(rw, signerHandle)
+
+	sig, err := Certify(rw, "", defaultPassword, subjectHandle, signerHandle, nil)
 	if err != nil {
 		t.Errorf("Certify failed: %s", err)
 		return

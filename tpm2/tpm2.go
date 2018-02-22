@@ -376,8 +376,25 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, []byte, error) {
 	if err != nil {
 		return 0, nil, fmt.Errorf("decoding TPM2B_PUBLIC: %v", err)
 	}
+
 	var pub tpmtPublic
-	if _, err := tpmutil.Unpack(public, &pub); err != nil {
+	read, err = tpmutil.Unpack(public, &pub.Type, &pub.NameAlg, &pub.Attributes, &pub.AuthPolicy, &pub.Parameters.Symmetric.Alg)
+	if err != nil {
+		return 0, nil, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
+	}
+	public = public[read:]
+
+	// Only restricted decrypt keys have the following fields.
+	// Symmetric.Alg == AlgNull means it's not a restricted decrypt key.
+	if pub.Parameters.Symmetric.Alg != AlgNull {
+		read, err = tpmutil.Unpack(public, &pub.Parameters.Symmetric.KeyBits, &pub.Parameters.Symmetric.Mode)
+		if err != nil {
+			return 0, nil, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
+		}
+		public = public[read:]
+	}
+
+	if _, err := tpmutil.Unpack(public, &pub.Parameters.Scheme, &pub.Parameters.KeyBits, &pub.Parameters.Exponent, &pub.Unique); err != nil {
 		return 0, nil, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
 	}
 	return handle, pub.Unique, nil
@@ -496,8 +513,16 @@ func Load(rw io.ReadWriter, parentHandle tpmutil.Handle, parentAuth string, publ
 	return decodeLoad(resp)
 }
 
-func encodeLoadExternal(rp RSAParams, privateBlob []byte, hierarchy tpmutil.Handle) ([]byte, error) {
-	buf, err := tpmutil.Pack(privateBlob)
+func encodeLoadExternal(rp RSAParams, private Private, hierarchy tpmutil.Handle) ([]byte, error) {
+	var tpmtSensitive []byte
+	if private.Type != 0 && private.Type != AlgNull {
+		var err error
+		tpmtSensitive, err = tpmutil.Pack(private)
+		if err != nil {
+			return nil, err
+		}
+	}
+	privateBlob, err := tpmutil.Pack(tpmtSensitive)
 	if err != nil {
 		return nil, err
 	}
@@ -505,12 +530,11 @@ func encodeLoadExternal(rp RSAParams, privateBlob []byte, hierarchy tpmutil.Hand
 	if err != nil {
 		return nil, err
 	}
-	buf = append(buf, publicBlob...)
 	hb, err := tpmutil.Pack(hierarchy)
 	if err != nil {
 		return nil, err
 	}
-	return append(buf, hb...), nil
+	return concat(privateBlob, publicBlob, hb)
 }
 
 func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
@@ -526,7 +550,7 @@ func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
 
 // LoadExternal loads public (and optionally private) key into an object in the
 // TPM. Returns loaded object handle and its name.
-func LoadExternal(rw io.ReadWriter, rp RSAParams, private []byte, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
+func LoadExternal(rw io.ReadWriter, rp RSAParams, private Private, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
 	cmd, err := encodeLoadExternal(rp, private, hierarchy)
 	if err != nil {
 		return 0, nil, err
@@ -1043,7 +1067,7 @@ func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, 
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Join([][]byte{ha, auth, params}, nil), nil
+	return concat(ha, auth, params)
 }
 
 func decodeCertify(resp []byte) ([]byte, error) {

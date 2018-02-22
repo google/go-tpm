@@ -45,7 +45,7 @@ type tpmtPublic struct {
 	Type       uint16
 	NameAlg    Algorithm
 	Attributes uint32
-	Digest     []byte
+	AuthPolicy []byte
 	Parameters tpmsRSAParams
 	Unique     []byte
 }
@@ -97,4 +97,14 @@ type tpmtSignatureRSA struct {
 	SigAlg    Algorithm
 	HashAlg   Algorithm
 	Signature []byte
+}
+
+// Private contains private section of a TPM key.
+//
+// TODO(awly): this is RSA-specific right now. Make it work for other Types.
+type Private struct {
+	Type      Algorithm
+	AuthValue []byte
+	SeedValue []byte
+	Sensitive []byte
 }
