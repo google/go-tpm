@@ -193,3 +193,5 @@ func digestSize(alg Algorithm) int {
 		return 0
 	}
 }
+
+const defaultRSAExponent = 1<<16 + 1

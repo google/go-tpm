@@ -16,6 +16,7 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -308,7 +309,7 @@ func TestCertify(t *testing.T) {
 		SchemeHash: AlgSHA256,
 		ModSize:    1024,
 	}
-	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, params)
+	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimary(signer) failed: %s", err)
 	}
@@ -320,12 +321,16 @@ func TestCertify(t *testing.T) {
 	}
 	defer FlushContext(rw, subjectHandle)
 
-	sig, err := Certify(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil)
+	attest, sig, err := Certify(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil)
 	if err != nil {
 		t.Errorf("Certify failed: %s", err)
 		return
 	}
-	t.Logf("signature (hex): %x", sig)
+
+	attestHash := sha256.Sum256(attest)
+	if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, attestHash[:], sig); err != nil {
+		t.Errorf("Signature verification failed: %v", err)
+	}
 }
 
 func TestCertifyExternalKey(t *testing.T) {
@@ -365,18 +370,22 @@ func TestCertifyExternalKey(t *testing.T) {
 		SymAlg:     AlgNull,
 		Scheme:     AlgRSASSA,
 		SchemeHash: AlgSHA256,
-		ModSize:    1024,
+		ModSize:    2048,
 	}
-	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, params)
+	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, "", defaultPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimary(signer) failed: %s", err)
 	}
 	defer FlushContext(rw, signerHandle)
 
-	sig, err := Certify(rw, "", defaultPassword, subjectHandle, signerHandle, nil)
+	attest, sig, err := Certify(rw, "", defaultPassword, subjectHandle, signerHandle, nil)
 	if err != nil {
 		t.Errorf("Certify failed: %s", err)
 		return
 	}
-	t.Logf("signature (hex): %x", sig)
+
+	attestHash := sha256.Sum256(attest)
+	if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, attestHash[:], sig); err != nil {
+		t.Errorf("Signature verification failed: %v", err)
+	}
 }
