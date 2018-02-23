@@ -100,3 +100,8 @@ type Private struct {
 	SeedValue []byte
 	Sensitive []byte
 }
+
+type tpmtSigScheme struct {
+	Scheme Algorithm
+	Hash   Algorithm
+}

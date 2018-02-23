@@ -423,6 +423,8 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	if err != nil {
 		return 0, nil, err
 	}
+	// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
+	// (big-endian).
 	pubKey := &rsa.PublicKey{N: big.NewInt(0).SetBytes(pub.Unique), E: int(pub.Parameters.Exponent)}
 	return handle, pubKey, nil
 }
@@ -575,8 +577,8 @@ func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
 	return handle, name, nil
 }
 
-// LoadExternal loads public (and optionally private) key into an object in the
-// TPM. Returns loaded object handle and its name.
+// LoadExternal loads a public (and optionally a private) key into an object in
+// the TPM. Returns loaded object handle and its name.
 func LoadExternal(rw io.ReadWriter, rp RSAParams, private Private, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
 	cmd, err := encodeLoadExternal(rp, private, hierarchy)
 	if err != nil {
@@ -1087,7 +1089,7 @@ func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, 
 		return nil, err
 	}
 
-	scheme := struct{ Scheme, Hash Algorithm }{AlgRSASSA, AlgSHA256}
+	scheme := tpmtSigScheme{AlgRSASSA, AlgSHA256}
 	// Use signing key's scheme.
 	params, err := tpmutil.Pack(qualifyingData, scheme)
 	if err != nil {
