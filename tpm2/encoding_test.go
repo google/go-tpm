@@ -23,8 +23,6 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-const defaultPW = "\x01\x02\x03\x04"
-
 func TestDecodeReadPCRs(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("800100000032000000000000001400000001000403800000000000010014427d27fe15f8f69736e02b6007b8f6ea674c0745")
 	if err != nil {
@@ -88,7 +86,7 @@ func TestEncodeLoad(t *testing.T) {
 	}
 	privateBlob := testCmdBytes[33:123]
 	publicBlob := testCmdBytes[125:]
-	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), defaultPW, publicBlob, privateBlob)
+	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), defaultPassword, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("encodeLoad failed %s", err)
 	}
@@ -127,7 +125,7 @@ func TestEncodeCreate(t *testing.T) {
 		uint32(0x00010001),
 		[]byte(nil),
 	}
-	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPW, params)
+	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPassword, params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +208,7 @@ func TestEncodeUnseal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), defaultPW)
+	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), defaultPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +234,7 @@ func TestEncodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	toQuote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), defaultPW, "", toQuote, pcrSelection, 0x0010)
+	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), defaultPassword, "", toQuote, pcrSelection, 0x0010)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +298,7 @@ func TestEncodeEvictControl(t *testing.T) {
 }
 
 func TestEncodePasswordAuthArea(t *testing.T) {
-	pwAuth, err := encodePasswordAuthArea(defaultPW)
+	pwAuth, err := encodePasswordAuthArea(defaultPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -320,7 +318,7 @@ func TestEncodePasswordAuthArea(t *testing.T) {
 }
 
 func TestEncodeSensitiveArea(t *testing.T) {
-	s, err := encodeSensitiveArea(tpmsSensitiveCreate{UserAuth: []byte(defaultPW)})
+	s, err := encodeSensitiveArea(tpmsSensitiveCreate{UserAuth: []byte(defaultPassword)})
 	if err != nil {
 		t.Fatal(err)
 	}

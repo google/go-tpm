@@ -41,24 +41,16 @@ type NVPublic struct {
 	DataSize   uint16
 }
 
-type tpmtPublic struct {
-	Type       uint16
-	NameAlg    Algorithm
-	Attributes uint32
-	Digest     []byte
-	Parameters tpmsRSAParams
-	Unique     []byte
-}
-
 type tpmsRSAParams struct {
 	Symmetric tpmtRSAScheme
-	Scheme    Algorithm
+	Scheme    tpmtRSAScheme
 	KeyBits   uint16
 	Exponent  uint32
 }
 
 type tpmtRSAScheme struct {
 	Alg     Algorithm
+	Hash    Algorithm
 	KeyBits uint16
 	Mode    Algorithm
 }
@@ -90,11 +82,26 @@ type Public struct {
 	Attributes uint32
 	AuthPolicy []byte
 	Parameters tpmsRSAParams
-	PublicKey  []byte
+	Unique     []byte
 }
 
 type tpmtSignatureRSA struct {
 	SigAlg    Algorithm
 	HashAlg   Algorithm
 	Signature []byte
+}
+
+// Private contains private section of a TPM key.
+//
+// TODO(awly): this is RSA-specific right now. Make it work for other Types.
+type Private struct {
+	Type      Algorithm
+	AuthValue []byte
+	SeedValue []byte
+	Sensitive []byte
+}
+
+type tpmtSigScheme struct {
+	Scheme Algorithm
+	Hash   Algorithm
 }
