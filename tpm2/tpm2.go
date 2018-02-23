@@ -546,8 +546,7 @@ func encodeLoadExternal(rp RSAParams, private Private, hierarchy tpmutil.Handle)
 	var tpmtSensitive []byte
 	if private.Type != 0 && private.Type != AlgNull {
 		var err error
-		tpmtSensitive, err = tpmutil.Pack(private)
-		if err != nil {
+		if tpmtSensitive, err = tpmutil.Pack(private); err != nil {
 			return nil, err
 		}
 	}
