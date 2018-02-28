@@ -328,6 +328,14 @@ func encodeRSAParams(params RSAParams) ([]byte, error) {
 
 // encodeCreate works for both TPM2_Create and TPM2_CreatePrimary.
 func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
+	inPublic, err := encodeRSAParams(params)
+	if err != nil {
+		return nil, err
+	}
+	return encodeCreateRawTemplate(owner, sel, parentPassword, ownerPassword, inPublic)
+}
+
+func encodeCreateRawTemplate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, inPublic []byte) ([]byte, error) {
 	parent, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
@@ -337,10 +345,6 @@ func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerP
 		return nil, err
 	}
 	inSensitive, err := encodeSensitiveArea(tpmsSensitiveCreate{UserAuth: []byte(ownerPassword)})
-	if err != nil {
-		return nil, err
-	}
-	inPublic, err := encodeRSAParams(params)
 	if err != nil {
 		return nil, err
 	}
@@ -433,6 +437,22 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 // Second return value is the public part of the generated key.
 func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) (tpmutil.Handle, *rsa.PublicKey, error) {
 	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, params)
+	if err != nil {
+		return 0, nil, err
+	}
+	resp, err := runCommand(rw, tagSessions, cmdCreatePrimary, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return decodeCreatePrimary(resp)
+}
+
+// CreatePrimaryRawTemplate is CreatePrimary, but with the public template
+// (TPM2B_PUBLIC) provided pre-encoded. This is commonly used with key
+// templates stored in NV RAM.
+func CreatePrimaryRawTemplate(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, public []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
+	cmd, err := encodeCreateRawTemplate(owner, sel, parentPassword, ownerPassword, public)
 	if err != nil {
 		return 0, nil, err
 	}
