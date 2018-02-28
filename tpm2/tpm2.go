@@ -449,7 +449,7 @@ func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, par
 }
 
 // CreatePrimaryRawTemplate is CreatePrimary, but with the public template
-// (TPM2B_PUBLIC) provided pre-encoded. This is commonly using with key
+// (TPM2B_PUBLIC) provided pre-encoded. This is commonly used with key
 // templates stored in NV RAM.
 func CreatePrimaryRawTemplate(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, public []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	cmd, err := encodeCreateRawTemplate(owner, sel, parentPassword, ownerPassword, public)
