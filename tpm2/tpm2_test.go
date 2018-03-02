@@ -17,6 +17,8 @@ package tpm2
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -267,34 +269,72 @@ func TestHash(t *testing.T) {
 }
 
 func TestLoadExternalPublicKey(t *testing.T) {
-	pk, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	rw := openTPM(t)
 	defer rw.Close()
 
-	rp := RSAParams{
-		EncAlg:     AlgRSA,
-		HashAlg:    AlgSHA1,
-		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
-		SymAlg:     AlgNull,
-		Scheme:     AlgRSASSA,
-		SchemeHash: AlgSHA1,
-		ModSize:    2048,
-		Exp:        uint32(pk.PublicKey.E),
-		Modulus:    pk.PublicKey.N.Bytes(),
+	run := func(t *testing.T, public Public, private Private) {
+		t.Helper()
+
+		h, _, err := LoadExternal(rw, public, private, HandleNull)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer FlushContext(rw, h)
 	}
-	private := Private{
-		Type:      AlgRSA,
-		Sensitive: pk.Primes[0].Bytes(),
-	}
-	h, _, err := LoadExternal(rw, rp, private, HandleNull)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer FlushContext(rw, h)
+
+	t.Run("RSA", func(t *testing.T) {
+		pk, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rp := Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			RSAParameters: &TempRSAParams{
+				Sign: &SigScheme{
+					Alg:  AlgRSASSA,
+					Hash: AlgSHA1,
+				},
+				KeyBits:  2048,
+				Exponent: uint32(pk.PublicKey.E),
+			},
+			Unique: pk.PublicKey.N.Bytes(),
+		}
+		private := Private{
+			Type:      AlgRSA,
+			Sensitive: pk.Primes[0].Bytes(),
+		}
+		run(t, rp, private)
+	})
+	t.Run("ECC", func(t *testing.T) {
+		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		unique, err := tpmutil.Pack(pk.PublicKey.X.Bytes(), pk.PublicKey.Y.Bytes())
+		if err != nil {
+			t.Fatal(err)
+		}
+		public := Public{
+			Type:       AlgECC,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			ECCParameters: &ECCParams{
+				Sign: &SigScheme{
+					Alg:  AlgECDSA,
+					Hash: AlgSHA1,
+				},
+				CurveID: ECCCurveNISTP256,
+			},
+			Unique: unique,
+		}
+		private := Private{
+			Type:      AlgECC,
+			Sensitive: pk.D.Bytes(),
+		}
+		run(t, public, private)
+	})
 }
 
 func TestCertify(t *testing.T) {
@@ -343,16 +383,19 @@ func TestCertifyExternalKey(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	rp := RSAParams{
-		EncAlg:     AlgRSA,
-		HashAlg:    AlgSHA1,
+	rp := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA1,
 		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
-		SymAlg:     AlgNull,
-		Scheme:     AlgRSASSA,
-		SchemeHash: AlgSHA1,
-		ModSize:    2048,
-		Exp:        uint32(pk.PublicKey.E),
-		Modulus:    pk.PublicKey.N.Bytes(),
+		RSAParameters: &TempRSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA1,
+			},
+			KeyBits:  2048,
+			Exponent: uint32(pk.PublicKey.E),
+		},
+		Unique: pk.PublicKey.N.Bytes(),
 	}
 	private := Private{
 		Type:      AlgRSA,

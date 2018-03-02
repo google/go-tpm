@@ -366,46 +366,6 @@ func encodeCreateRawTemplate(owner tpmutil.Handle, sel PCRSelection, parentPassw
 	)
 }
 
-func decodePublic(in []byte) (Public, error) {
-	var pub Public
-	read, err := tpmutil.Unpack(in, &pub.Type, &pub.NameAlg, &pub.Attributes, &pub.AuthPolicy, &pub.Parameters.Symmetric.Alg)
-	if err != nil {
-		return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-	}
-	in = in[read:]
-
-	// Only restricted decrypt keys have the following fields.
-	// Symmetric.Alg == AlgNull means it's not a restricted decrypt key.
-	if pub.Parameters.Symmetric.Alg != AlgNull {
-		read, err = tpmutil.Unpack(in, &pub.Parameters.Symmetric.KeyBits, &pub.Parameters.Symmetric.Mode)
-		if err != nil {
-			return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-		}
-		in = in[read:]
-	}
-
-	read, err = tpmutil.Unpack(in, &pub.Parameters.Scheme.Alg)
-	if err != nil {
-		return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-	}
-	in = in[read:]
-	if pub.Parameters.Scheme.Alg != AlgNull {
-		read, err = tpmutil.Unpack(in, &pub.Parameters.Scheme.Hash)
-		if err != nil {
-			return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-		}
-		in = in[read:]
-	}
-	if _, err = tpmutil.Unpack(in, &pub.Parameters.KeyBits, &pub.Parameters.Exponent, &pub.Unique); err != nil {
-		return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-	}
-	if pub.Parameters.Exponent == 0 {
-		pub.Parameters.Exponent = defaultRSAExponent
-	}
-
-	return pub, nil
-}
-
 func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	var handle tpmutil.Handle
 	var paramSize uint32
@@ -423,13 +383,13 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 		return 0, nil, fmt.Errorf("decoding TPM2B_PUBLIC: %v", err)
 	}
 
-	pub, err := decodePublic(public)
+	pub, err := decodePublic(bytes.NewBuffer(public))
 	if err != nil {
 		return 0, nil, err
 	}
 	// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
 	// (big-endian).
-	pubKey := &rsa.PublicKey{N: big.NewInt(0).SetBytes(pub.Unique), E: int(pub.Parameters.Exponent)}
+	pubKey := &rsa.PublicKey{N: big.NewInt(0).SetBytes(pub.Unique), E: int(pub.RSAParameters.Exponent)}
 	return handle, pubKey, nil
 }
 
@@ -470,11 +430,10 @@ func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
 		Name          []byte
 		QualifiedName []byte
 	}
-	_, err := tpmutil.Unpack(in, &resp)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &resp); err != nil {
 		return Public{}, nil, nil, err
 	}
-	pub, err := decodePublic(resp.Public)
+	pub, err := decodePublic(bytes.NewBuffer(resp.Public))
 	if err != nil {
 		return Public{}, nil, nil, err
 	}
@@ -562,27 +521,17 @@ func Load(rw io.ReadWriter, parentHandle tpmutil.Handle, parentAuth string, publ
 	return decodeLoad(resp)
 }
 
-func encodeLoadExternal(rp RSAParams, private Private, hierarchy tpmutil.Handle) ([]byte, error) {
-	var tpmtSensitive []byte
-	if private.Type != 0 && private.Type != AlgNull {
-		var err error
-		if tpmtSensitive, err = tpmutil.Pack(private); err != nil {
-			return nil, err
-		}
-	}
-	privateBlob, err := tpmutil.Pack(tpmtSensitive)
+func encodeLoadExternal(pub Public, private Private, hierarchy tpmutil.Handle) ([]byte, error) {
+	privateBlob, err := private.encode()
 	if err != nil {
 		return nil, err
 	}
-	publicBlob, err := encodeRSAParams(rp)
+	publicBlob, err := pub.encode()
 	if err != nil {
 		return nil, err
 	}
-	hb, err := tpmutil.Pack(hierarchy)
-	if err != nil {
-		return nil, err
-	}
-	return concat(privateBlob, publicBlob, hb)
+
+	return tpmutil.Pack(privateBlob, publicBlob, hierarchy)
 }
 
 func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
@@ -598,8 +547,8 @@ func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
 
 // LoadExternal loads a public (and optionally a private) key into an object in
 // the TPM. Returns loaded object handle and its name.
-func LoadExternal(rw io.ReadWriter, rp RSAParams, private Private, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
-	cmd, err := encodeLoadExternal(rp, private, hierarchy)
+func LoadExternal(rw io.ReadWriter, pub Public, private Private, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
+	cmd, err := encodeLoadExternal(pub, private, hierarchy)
 	if err != nil {
 		return 0, nil, err
 	}

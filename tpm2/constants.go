@@ -29,6 +29,11 @@ func init() {
 // Algorithm represents a TPM_ALG_ID value.
 type Algorithm uint16
 
+// IsNull returns true if a is AlgNull or zero (unset).
+func (a Algorithm) IsNull() bool {
+	return a == AlgNull || a == 0
+}
+
 // Supported Algorithms.
 const (
 	AlgRSA       Algorithm = 0x0001
@@ -46,6 +51,7 @@ const (
 	AlgECDSA     Algorithm = 0x0018
 	AlgECDH      Algorithm = 0x0019
 	AlgECDAA     Algorithm = 0x001A
+	AlgKDF2      Algorithm = 0x0021
 	AlgECC       Algorithm = 0x0023
 	AlgCTR       Algorithm = 0x0040
 	AlgOFB       Algorithm = 0x0041
@@ -134,6 +140,23 @@ type StartupType uint16
 const (
 	StartupClear StartupType = iota
 	StartupState
+)
+
+// ECCCurve identifies specific ECC curves.
+type ECCCurve uint16
+
+// ECC curves supported by TPM 2.0 spec.
+const (
+	ECCCurveNISTP192 = ECCCurve(iota + 1)
+	ECCCurveNISTP256
+	ECCCurveNISTP384
+	ECCCurveNISTP521
+	ECCCurveNISTP224
+
+	ECCCurveBNP256 = ECCCurve(iota + 10)
+	ECCCurveBNP638
+
+	ECCCurveSM2P256 = ECCCurve(0x0020)
 )
 
 // Supported TPM operations.
