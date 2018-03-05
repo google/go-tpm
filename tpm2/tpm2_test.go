@@ -377,37 +377,8 @@ func TestCertify(t *testing.T) {
 }
 
 func TestCertifyExternalKey(t *testing.T) {
-	pk, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	rw := openTPM(t)
 	defer rw.Close()
-
-	rp := Public{
-		Type:       AlgRSA,
-		NameAlg:    AlgSHA1,
-		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
-		RSAParameters: &RSAParams{
-			Sign: &SigScheme{
-				Alg:  AlgRSASSA,
-				Hash: AlgSHA1,
-			},
-			KeyBits:  2048,
-			Exponent: uint32(pk.PublicKey.E),
-			Modulus:  pk.PublicKey.N,
-		},
-	}
-	private := Private{
-		Type:      AlgRSA,
-		Sensitive: pk.Primes[0].Bytes(),
-	}
-	subjectHandle, _, err := LoadExternal(rw, rp, private, HandleNull)
-	if err != nil {
-		t.Fatalf("LoadExternal: %v", err)
-	}
-	defer FlushContext(rw, subjectHandle)
 
 	params := Public{
 		Type:       AlgRSA,
@@ -428,14 +399,72 @@ func TestCertifyExternalKey(t *testing.T) {
 	}
 	defer FlushContext(rw, signerHandle)
 
-	attest, sig, err := Certify(rw, emptyPassword, defaultPassword, subjectHandle, signerHandle, nil)
-	if err != nil {
-		t.Errorf("Certify failed: %s", err)
-		return
-	}
+	run := func(t *testing.T, public Public, private Private) {
+		t.Helper()
+		subjectHandle, _, err := LoadExternal(rw, public, private, HandleNull)
+		if err != nil {
+			t.Fatalf("LoadExternal: %v", err)
+		}
+		defer FlushContext(rw, subjectHandle)
 
-	attestHash := sha256.Sum256(attest)
-	if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, attestHash[:], sig); err != nil {
-		t.Errorf("Signature verification failed: %v", err)
+		attest, sig, err := Certify(rw, emptyPassword, defaultPassword, subjectHandle, signerHandle, nil)
+		if err != nil {
+			t.Errorf("Certify failed: %s", err)
+			return
+		}
+
+		attestHash := sha256.Sum256(attest)
+		if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, attestHash[:], sig); err != nil {
+			t.Errorf("Signature verification failed: %v", err)
+		}
 	}
+	t.Run("RSA", func(t *testing.T) {
+		pk, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		public := Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			RSAParameters: &RSAParams{
+				Sign: &SigScheme{
+					Alg:  AlgRSASSA,
+					Hash: AlgSHA1,
+				},
+				KeyBits:  2048,
+				Exponent: uint32(pk.PublicKey.E),
+				Modulus:  pk.PublicKey.N,
+			},
+		}
+		private := Private{
+			Type:      AlgRSA,
+			Sensitive: pk.Primes[0].Bytes(),
+		}
+		run(t, public, private)
+	})
+	t.Run("ECC", func(t *testing.T) {
+		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		public := Public{
+			Type:       AlgECC,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			ECCParameters: &ECCParams{
+				Sign: &SigScheme{
+					Alg:  AlgECDSA,
+					Hash: AlgSHA1,
+				},
+				CurveID: ECCCurveNISTP256,
+				Point:   ECCPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+			},
+		}
+		private := Private{
+			Type:      AlgECC,
+			Sensitive: pk.D.Bytes(),
+		}
+		run(t, public, private)
+	})
 }
