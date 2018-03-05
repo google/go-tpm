@@ -21,22 +21,6 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-// RSAParams is a template for an RSA key.
-type RSAParams struct {
-	EncAlg     Algorithm
-	HashAlg    Algorithm
-	Attributes KeyProp
-	AuthPolicy []byte
-	SymAlg     Algorithm
-	SymSize    uint16
-	Mode       Algorithm
-	Scheme     Algorithm
-	SchemeHash Algorithm
-	ModSize    uint16
-	Exp        uint32
-	Modulus    []byte
-}
-
 // NVPublic contains the public area of an NV index.
 type NVPublic struct {
 	NVIndex    tpmutil.Handle
@@ -44,20 +28,6 @@ type NVPublic struct {
 	Attributes KeyProp
 	AuthPolicy []byte
 	DataSize   uint16
-}
-
-type tpmsRSAParams struct {
-	Symmetric tpmtRSAScheme
-	Scheme    tpmtRSAScheme
-	KeyBits   uint16
-	Exponent  uint32
-}
-
-type tpmtRSAScheme struct {
-	Alg     Algorithm
-	Hash    Algorithm
-	KeyBits uint16
-	Mode    Algorithm
 }
 
 type tpmsSensitiveCreate struct {
@@ -84,7 +54,7 @@ type Public struct {
 	NameAlg       Algorithm
 	Attributes    KeyProp
 	AuthPolicy    []byte
-	RSAParameters *TempRSAParams
+	RSAParameters *RSAParams
 	ECCParameters *ECCParams
 	// TODO: this is struct{x, y} for ECC
 	Unique []byte
@@ -137,14 +107,14 @@ func decodePublic(in *bytes.Buffer) (Public, error) {
 	return pub, err
 }
 
-type TempRSAParams struct {
+type RSAParams struct {
 	Symmetric *SymScheme
 	Sign      *SigScheme
 	KeyBits   uint16
 	Exponent  uint32
 }
 
-func (p *TempRSAParams) encode() ([]byte, error) {
+func (p *RSAParams) encode() ([]byte, error) {
 	if p == nil {
 		return nil, nil
 	}
@@ -163,8 +133,8 @@ func (p *TempRSAParams) encode() ([]byte, error) {
 	return concat(sym, sig, rest)
 }
 
-func decodeRSAParams(in *bytes.Buffer) (*TempRSAParams, error) {
-	var params TempRSAParams
+func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
+	var params RSAParams
 	var err error
 
 	params.Symmetric, err = decodeSymScheme(in)

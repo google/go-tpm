@@ -300,35 +300,9 @@ func encodeSensitiveArea(s tpmsSensitiveCreate) ([]byte, error) {
 	return tpmutil.Pack(buf)
 }
 
-func encodeRSAParams(params RSAParams) ([]byte, error) {
-	fields := []interface{}{
-		params.EncAlg,
-		params.HashAlg,
-		params.Attributes,
-		params.AuthPolicy,
-		params.SymAlg,
-	}
-	if params.SymAlg != AlgNull {
-		fields = append(fields, params.SymSize, params.Mode)
-	}
-	fields = append(fields, params.Scheme)
-	if params.Scheme == AlgRSASSA {
-		fields = append(fields, params.SchemeHash)
-	}
-	fields = append(fields, params.ModSize, params.Exp, params.Modulus)
-
-	// TPMT_PUBLIC structure.
-	buf, err := tpmutil.Pack(fields...)
-	if err != nil {
-		return nil, err
-	}
-	// Pack TPMT_PUBLIC in TPM2B_PUBLIC.
-	return tpmutil.Pack(buf)
-}
-
 // encodeCreate works for both TPM2_Create and TPM2_CreatePrimary.
-func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
-	inPublic, err := encodeRSAParams(params)
+func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, error) {
+	inPublic, err := pub.encode()
 	if err != nil {
 		return nil, err
 	}
@@ -348,6 +322,10 @@ func encodeCreateRawTemplate(owner tpmutil.Handle, sel PCRSelection, parentPassw
 	if err != nil {
 		return nil, err
 	}
+	publicBlob, err := tpmutil.Pack(inPublic)
+	if err != nil {
+		return nil, err
+	}
 	outsideInfo, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
@@ -360,7 +338,7 @@ func encodeCreateRawTemplate(owner tpmutil.Handle, sel PCRSelection, parentPassw
 		parent,
 		auth,
 		inSensitive,
-		inPublic,
+		publicBlob,
 		outsideInfo,
 		creationPCR,
 	)
@@ -395,8 +373,8 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 
 // CreatePrimary initializes the primary key in a given hierarchy.
 // Second return value is the public part of the generated key.
-func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) (tpmutil.Handle, *rsa.PublicKey, error) {
-	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, params)
+func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (tpmutil.Handle, *rsa.PublicKey, error) {
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, pub)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -409,8 +387,8 @@ func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, par
 }
 
 // CreatePrimaryRawTemplate is CreatePrimary, but with the public template
-// (TPM2B_PUBLIC) provided pre-encoded. This is commonly used with key
-// templates stored in NV RAM.
+// (TPMT_PUBLIC) provided pre-encoded. This is commonly used with key templates
+// stored in NV RAM.
 func CreatePrimaryRawTemplate(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, public []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	cmd, err := encodeCreateRawTemplate(owner, sel, parentPassword, ownerPassword, public)
 	if err != nil {
@@ -467,8 +445,8 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 
 // CreateKey creates a new RSA key pair under the owner handle.
 // Returns private key and public key blobs.
-func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, []byte, error) {
-	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, params)
+func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, pub)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -52,19 +52,19 @@ func openTPM(t *testing.T) io.ReadWriteCloser {
 var (
 	// PCR7 is for SecureBoot.
 	pcrSelection     = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
-	defaultKeyParams = RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		2048,
-		uint32(0x00010001),
-		[]byte(nil),
+	defaultKeyParams = Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA1,
+		Attributes: 0x00030072,
+		RSAParameters: &RSAParams{
+			Symmetric: &SymScheme{
+				Alg:     AlgAES,
+				KeyBits: 128,
+				Mode:    AlgCFB,
+			},
+			KeyBits:  2048,
+			Exponent: uint32(0x00010001),
+		},
 	}
 	defaultPassword = "\x01\x02\x03\x04"
 	emptyPassword   = ""
@@ -291,7 +291,7 @@ func TestLoadExternalPublicKey(t *testing.T) {
 			Type:       AlgRSA,
 			NameAlg:    AlgSHA1,
 			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
-			RSAParameters: &TempRSAParams{
+			RSAParameters: &RSAParams{
 				Sign: &SigScheme{
 					Alg:  AlgRSASSA,
 					Hash: AlgSHA1,
@@ -341,14 +341,17 @@ func TestCertify(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	params := RSAParams{
-		EncAlg:     AlgRSA,
-		HashAlg:    AlgSHA256,
+	params := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
 		Attributes: FlagSignerDefault,
-		SymAlg:     AlgNull,
-		Scheme:     AlgRSASSA,
-		SchemeHash: AlgSHA256,
-		ModSize:    2048,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA256,
+			},
+			KeyBits: 2048,
+		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, params)
 	if err != nil {
@@ -387,7 +390,7 @@ func TestCertifyExternalKey(t *testing.T) {
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
 		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
-		RSAParameters: &TempRSAParams{
+		RSAParameters: &RSAParams{
 			Sign: &SigScheme{
 				Alg:  AlgRSASSA,
 				Hash: AlgSHA1,
@@ -407,14 +410,17 @@ func TestCertifyExternalKey(t *testing.T) {
 	}
 	defer FlushContext(rw, subjectHandle)
 
-	params := RSAParams{
-		EncAlg:     AlgRSA,
-		HashAlg:    AlgSHA256,
+	params := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
 		Attributes: FlagSignerDefault,
-		SymAlg:     AlgNull,
-		Scheme:     AlgRSASSA,
-		SchemeHash: AlgSHA256,
-		ModSize:    2048,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA256,
+			},
+			KeyBits: 2048,
+		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, params)
 	if err != nil {

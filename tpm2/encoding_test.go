@@ -111,19 +111,19 @@ func TestEncodeCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	params := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		1024,
-		uint32(0x00010001),
-		[]byte(nil),
+	params := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA1,
+		Attributes: 0x00030072,
+		RSAParameters: &RSAParams{
+			Symmetric: &SymScheme{
+				Alg:     AlgAES,
+				KeyBits: 128,
+				Mode:    AlgCFB,
+			},
+			KeyBits:  1024,
+			Exponent: uint32(0x00010001),
+		},
 	}
 	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPassword, params)
 	if err != nil {
@@ -325,27 +325,6 @@ func TestEncodeSensitiveArea(t *testing.T) {
 	want := []byte{0, 8, 0, 4, 1, 2, 3, 4, 0, 0}
 	if !bytes.Equal(want, s) {
 		t.Fatalf("got: %v, want: %v", s, want)
-	}
-}
-
-func TestEncodeRSAParams(t *testing.T) {
-	params := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		1024,
-		uint32(0x00010001),
-		[]byte(nil),
-	}
-
-	if _, err := encodeRSAParams(params); err != nil {
-		t.Fatal(err)
 	}
 }
 
