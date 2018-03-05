@@ -16,7 +16,9 @@ package tpm2
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -56,8 +58,6 @@ type Public struct {
 	AuthPolicy    []byte
 	RSAParameters *RSAParams
 	ECCParameters *ECCParams
-	// TODO: this is struct{x, y} for ECC
-	Unique []byte
 }
 
 func (p Public) encode() ([]byte, error) {
@@ -77,11 +77,7 @@ func (p Public) encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	tail, err := tpmutil.Pack(p.Unique)
-	if err != nil {
-		return nil, err
-	}
-	return concat(head, params, tail)
+	return concat(head, params)
 }
 
 func decodePublic(in *bytes.Buffer) (Public, error) {
@@ -99,11 +95,6 @@ func decodePublic(in *bytes.Buffer) (Public, error) {
 	default:
 		err = fmt.Errorf("unsupported type in TPMT_PUBLIC: %v", pub.Type)
 	}
-	if err != nil {
-		return pub, err
-	}
-
-	err = tpmutil.UnpackBuf(in, &pub.Unique)
 	return pub, err
 }
 
@@ -112,6 +103,7 @@ type RSAParams struct {
 	Sign      *SigScheme
 	KeyBits   uint16
 	Exponent  uint32
+	Modulus   *big.Int
 }
 
 func (p *RSAParams) encode() ([]byte, error) {
@@ -126,7 +118,10 @@ func (p *RSAParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	rest, err := tpmutil.Pack(p.KeyBits, p.Exponent)
+	if p.Modulus == nil {
+		return nil, errors.New("RSAParams.Modulus must be set")
+	}
+	rest, err := tpmutil.Pack(p.KeyBits, p.Exponent, p.Modulus.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -145,12 +140,14 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := tpmutil.UnpackBuf(in, &params.KeyBits, &params.Exponent); err != nil {
+	var modBytes []byte
+	if err := tpmutil.UnpackBuf(in, &params.KeyBits, &params.Exponent, &modBytes); err != nil {
 		return nil, err
 	}
 	if params.Exponent == 0 {
 		params.Exponent = defaultRSAExponent
 	}
+	params.Modulus = new(big.Int).SetBytes(modBytes)
 	return &params, nil
 }
 
@@ -159,6 +156,11 @@ type ECCParams struct {
 	Sign      *SigScheme
 	CurveID   ECCCurve
 	KDF       *KDFScheme
+	Point     ECCPoint
+}
+
+type ECCPoint struct {
+	X, Y *big.Int
 }
 
 func (p *ECCParams) encode() ([]byte, error) {
@@ -181,7 +183,11 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return concat(sym, sig, curve, kdf)
+	point, err := tpmutil.Pack(p.Point.X.Bytes(), p.Point.Y.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return concat(sym, sig, curve, kdf, point)
 }
 
 func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
@@ -203,6 +209,12 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 	if err != nil {
 		return nil, err
 	}
+	var x, y []byte
+	if err := tpmutil.UnpackBuf(in, &x, &y); err != nil {
+		return nil, err
+	}
+	params.Point.X = new(big.Int).SetBytes(x)
+	params.Point.Y = new(big.Int).SetBytes(y)
 	return &params, nil
 }
 

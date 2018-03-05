@@ -24,6 +24,7 @@ import (
 	"crypto/sha256"
 	"flag"
 	"io"
+	"math/big"
 	"os"
 	"reflect"
 	"testing"
@@ -64,6 +65,7 @@ var (
 			},
 			KeyBits:  2048,
 			Exponent: uint32(0x00010001),
+			Modulus:  big.NewInt(0),
 		},
 	}
 	defaultPassword = "\x01\x02\x03\x04"
@@ -298,8 +300,8 @@ func TestLoadExternalPublicKey(t *testing.T) {
 				},
 				KeyBits:  2048,
 				Exponent: uint32(pk.PublicKey.E),
+				Modulus:  pk.PublicKey.N,
 			},
-			Unique: pk.PublicKey.N.Bytes(),
 		}
 		private := Private{
 			Type:      AlgRSA,
@@ -309,10 +311,6 @@ func TestLoadExternalPublicKey(t *testing.T) {
 	})
 	t.Run("ECC", func(t *testing.T) {
 		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
-		unique, err := tpmutil.Pack(pk.PublicKey.X.Bytes(), pk.PublicKey.Y.Bytes())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -326,8 +324,8 @@ func TestLoadExternalPublicKey(t *testing.T) {
 					Hash: AlgSHA1,
 				},
 				CurveID: ECCCurveNISTP256,
+				Point:   ECCPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
 			},
-			Unique: unique,
 		}
 		private := Private{
 			Type:      AlgECC,
@@ -351,6 +349,7 @@ func TestCertify(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
+			Modulus: big.NewInt(0),
 		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, params)
@@ -397,8 +396,8 @@ func TestCertifyExternalKey(t *testing.T) {
 			},
 			KeyBits:  2048,
 			Exponent: uint32(pk.PublicKey.E),
+			Modulus:  pk.PublicKey.N,
 		},
-		Unique: pk.PublicKey.N.Bytes(),
 	}
 	private := Private{
 		Type:      AlgRSA,
@@ -420,6 +419,7 @@ func TestCertifyExternalKey(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
+			Modulus: big.NewInt(0),
 		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, params)

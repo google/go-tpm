@@ -16,7 +16,11 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/hex"
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -123,6 +127,7 @@ func TestEncodeCreate(t *testing.T) {
 			},
 			KeyBits:  1024,
 			Exponent: uint32(0x00010001),
+			Modulus:  big.NewInt(0),
 		},
 	}
 	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPassword, params)
@@ -336,5 +341,33 @@ func TestEncodeTPMLPCRSelection(t *testing.T) {
 	want := []byte{0, 0, 0, 1, 0, 4, 3, 0x80, 0, 0}
 	if !bytes.Equal(want, s) {
 		t.Fatalf("got: %v, want: %v", s, want)
+	}
+}
+
+func TestECCParamsEncodeDecode(t *testing.T) {
+	pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := &ECCParams{
+		Sign: &SigScheme{
+			Alg:  AlgECDSA,
+			Hash: AlgSHA1,
+		},
+		CurveID: ECCCurveNISTP256,
+		Point:   ECCPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+	}
+
+	buf, err := params.encode()
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	got, err := decodeECCParams(bytes.NewBuffer(buf))
+	if err != nil {
+		t.Fatalf("decodeECCParams: %v", err)
+	}
+
+	if !reflect.DeepEqual(got, params) {
+		t.Fatalf("got: %+v\nwant: %+v", got, params)
 	}
 }

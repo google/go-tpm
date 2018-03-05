@@ -20,7 +20,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -348,7 +347,7 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	}
 	// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
 	// (big-endian).
-	pubKey := &rsa.PublicKey{N: big.NewInt(0).SetBytes(pub.Unique), E: int(pub.RSAParameters.Exponent)}
+	pubKey := &rsa.PublicKey{N: pub.RSAParameters.Modulus, E: int(pub.RSAParameters.Exponent)}
 	return handle, pubKey, nil
 }
 
