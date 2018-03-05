@@ -52,10 +52,13 @@ type tpmsPCRSelection struct {
 
 // Public contains the public area of an object.
 type Public struct {
-	Type          Algorithm
-	NameAlg       Algorithm
-	Attributes    KeyProp
-	AuthPolicy    []byte
+	Type       Algorithm
+	NameAlg    Algorithm
+	Attributes KeyProp
+	AuthPolicy []byte
+
+	// Only one of the Parameters fields should be set. When encoding/decoding,
+	// one will be picked based on Type.
 	RSAParameters *RSAParams
 	ECCParameters *ECCParams
 }
@@ -98,6 +101,10 @@ func decodePublic(in *bytes.Buffer) (Public, error) {
 	return pub, err
 }
 
+// RSAParams represents parameters of an RSA key pair.
+//
+// Symmetric and Sign may be nil, depending on key Attributes in Public.
+// Modulus must always be non-nil.
 type RSAParams struct {
 	Symmetric *SymScheme
 	Sign      *SigScheme
@@ -151,6 +158,9 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	return &params, nil
 }
 
+// ECCParams represents parameters of an ECC key pair.
+//
+// Symmetric, Sign and KDF may be nil, depending on key Attributes in Public.
 type ECCParams struct {
 	Symmetric *SymScheme
 	Sign      *SigScheme
@@ -159,6 +169,7 @@ type ECCParams struct {
 	Point     ECCPoint
 }
 
+// ECCPoint represents a ECC coordinates for a point.
 type ECCPoint struct {
 	X, Y *big.Int
 }
@@ -218,6 +229,7 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 	return &params, nil
 }
 
+// SymScheme represents a symmetric encryption scheme.
 type SymScheme struct {
 	Alg     Algorithm
 	KeyBits uint16
@@ -245,6 +257,7 @@ func decodeSymScheme(in *bytes.Buffer) (*SymScheme, error) {
 	return &scheme, nil
 }
 
+// SigScheme represents a signing scheme.
 type SigScheme struct {
 	Alg  Algorithm
 	Hash Algorithm
@@ -271,6 +284,7 @@ func decodeSigScheme(in *bytes.Buffer) (*SigScheme, error) {
 	return &scheme, nil
 }
 
+// KDFScheme represents a KDF (Key Derivation Function) scheme.
 type KDFScheme struct {
 	Alg  Algorithm
 	Hash Algorithm
@@ -304,8 +318,6 @@ type tpmtSignatureRSA struct {
 }
 
 // Private contains private section of a TPM key.
-//
-// TODO(awly): this is RSA-specific right now. Make it work for other Types.
 type Private struct {
 	Type      Algorithm
 	AuthValue []byte

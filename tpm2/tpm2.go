@@ -422,7 +422,7 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 	return resp.Private, resp.Public, nil
 }
 
-// CreateKey creates a new RSA key pair under the owner handle.
+// CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs.
 func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
 	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, pub)
