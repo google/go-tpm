@@ -38,7 +38,7 @@ func TestEncodeDecodeTPMLSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, got, err := decodeTPMLPCRSelection(buf)
+	got, err := decodeTPMLPCRSelection(bytes.NewBuffer(buf))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -80,28 +80,23 @@ func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
 	return tpmutil.Pack(uint32(1), ts)
 }
 
-func decodeTPMLPCRSelection(buf []byte) (int, PCRSelection, error) {
-	initialLen := len(buf)
-
+func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
 	var count uint32
 	var sel PCRSelection
-	read, err := tpmutil.Unpack(buf, &count)
-	if err != nil {
-		return 0, sel, err
+	if err := tpmutil.UnpackBuf(buf, &count); err != nil {
+		return sel, err
 	}
-	buf = buf[read:]
 	if count != 1 {
-		return 0, sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
+		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
 	}
 
 	// See comment in encodeTPMLPCRSelection for details on this format.
 	var ts tpmsPCRSelection
-	read, err = tpmutil.Unpack(buf, &ts.Hash, &ts.Size)
-	if err != nil {
-		return 0, sel, err
+	if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
+		return sel, err
 	}
-	buf = buf[read:]
-	ts.PCRs, buf = buf[:ts.Size], buf[ts.Size:]
+	ts.PCRs = make([]byte, ts.Size)
+	buf.Read(ts.PCRs)
 
 	sel.Hash = ts.Hash
 	for i := 0; i < int(ts.Size); i++ {
@@ -113,29 +108,25 @@ func decodeTPMLPCRSelection(buf []byte) (int, PCRSelection, error) {
 			sel.PCRs = append(sel.PCRs, 8*i+j)
 		}
 	}
-	return initialLen - len(buf), sel, nil
+	return sel, nil
 }
 
 func decodeReadPCRs(in []byte) (map[int][]byte, error) {
+	buf := bytes.NewBuffer(in)
 	var updateCounter uint32
-	read, err := tpmutil.Unpack(in, &updateCounter)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &updateCounter); err != nil {
 		return nil, err
 	}
-	in = in[read:]
 
-	read, sel, err := decodeTPMLPCRSelection(in)
+	sel, err := decodeTPMLPCRSelection(buf)
 	if err != nil {
 		return nil, fmt.Errorf("decoding TPML_PCR_SELECTION: %v", err)
 	}
-	in = in[read:]
 
 	var digestCount uint32
-	read, err = tpmutil.Unpack(in, &digestCount)
-	if err != nil {
+	if err = tpmutil.UnpackBuf(buf, &digestCount); err != nil {
 		return nil, fmt.Errorf("decoding TPML_DIGEST length: %v", err)
 	}
-	in = in[read:]
 	if int(digestCount) != len(sel.PCRs) {
 		return nil, fmt.Errorf("received %d PCRs but %d digests", len(sel.PCRs), digestCount)
 	}
@@ -143,11 +134,9 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 	vals := make(map[int][]byte)
 	for _, pcr := range sel.PCRs {
 		var val []byte
-		read, err = tpmutil.Unpack(in, &val)
-		if err != nil {
+		if err = tpmutil.UnpackBuf(buf, &val); err != nil {
 			return nil, fmt.Errorf("decoding TPML_DIGEST item: %v", err)
 		}
-		in = in[read:]
 		vals[pcr] = val
 	}
 	return vals, nil
@@ -170,8 +159,7 @@ func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
 func decodeReadClock(in []byte) (uint64, uint64, error) {
 	var curTime, curClock uint64
 
-	_, err := tpmutil.Unpack(in, &curTime, &curClock)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &curTime, &curClock); err != nil {
 		return 0, 0, err
 	}
 	return curTime, curClock, nil
@@ -196,31 +184,26 @@ func decodeGetCapability(in []byte) (Capability, []tpmutil.Handle, error) {
 	var moreData byte
 	var capReported Capability
 
-	read, err := tpmutil.Unpack(in, &moreData, &capReported)
-	if err != nil {
+	buf := bytes.NewBuffer(in)
+	if err := tpmutil.UnpackBuf(buf, &moreData, &capReported); err != nil {
 		return 0, nil, err
 	}
-	in = in[read:]
 	// Only TPM_CAP_HANDLES handled.
 	if capReported != CapabilityHandles {
 		return 0, nil, fmt.Errorf("Only TPM_CAP_HANDLES supported, got %v", capReported)
 	}
 
 	var numHandles uint32
-	read, err = tpmutil.Unpack(in, &numHandles)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &numHandles); err != nil {
 		return 0, nil, err
 	}
-	in = in[read:]
 
 	var handles []tpmutil.Handle
 	for i := 0; i < int(numHandles); i++ {
 		var handle tpmutil.Handle
-		read, err = tpmutil.Unpack(in, &handle)
-		if err != nil {
+		if err := tpmutil.UnpackBuf(buf, &handle); err != nil {
 			return 0, nil, err
 		}
-		in = in[read:]
 		handles = append(handles, handle)
 	}
 
@@ -348,16 +331,14 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	var handle tpmutil.Handle
 	var paramSize uint32
 
+	buf := bytes.NewBuffer(in)
 	// Handle and auth data.
-	read, err := tpmutil.Unpack(in, &handle, &paramSize)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &handle, &paramSize); err != nil {
 		return 0, nil, err
 	}
-	in = in[read:]
 
 	var public []byte
-	read, err = tpmutil.Unpack(in, &public)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &public); err != nil {
 		return 0, nil, fmt.Errorf("decoding TPM2B_PUBLIC: %v", err)
 	}
 
@@ -436,8 +417,7 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 		Public  []byte
 	}
 
-	_, err := tpmutil.Unpack(in, &resp)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &resp); err != nil {
 		return nil, nil, err
 	}
 	return resp.Private, resp.Public, nil
@@ -478,8 +458,7 @@ func decodeLoad(in []byte) (tpmutil.Handle, []byte, error) {
 	var paramSize uint32
 	var name []byte
 
-	_, err := tpmutil.Unpack(in, &handle, &paramSize, &name)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &handle, &paramSize, &name); err != nil {
 		return 0, nil, err
 	}
 	return handle, name, nil
@@ -516,8 +495,7 @@ func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
 	var handle tpmutil.Handle
 	var name []byte
 
-	_, err := tpmutil.Unpack(in, &handle, &name)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &handle, &name); err != nil {
 		return 0, nil, err
 	}
 	return handle, name, nil
@@ -596,8 +574,7 @@ func encodeStartAuthSession(tpmKey, bindKey tpmutil.Handle, nonceCaller, secret 
 func decodeStartAuthSession(in []byte) (tpmutil.Handle, []byte, error) {
 	var handle tpmutil.Handle
 	var nonce []byte
-	_, err := tpmutil.Unpack(in, &handle, &nonce)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &handle, &nonce); err != nil {
 		return 0, nil, err
 	}
 	return handle, nonce, nil
@@ -633,8 +610,7 @@ func decodeUnseal(in []byte) ([]byte, error) {
 	var paramSize uint32
 	var unsealed []byte
 
-	_, err := tpmutil.Unpack(in, &paramSize, &unsealed)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &paramSize, &unsealed); err != nil {
 		return nil, err
 	}
 	return unsealed, nil
@@ -722,8 +698,7 @@ func decodeActivateCredential(in []byte) ([]byte, error) {
 	var paramSize uint32
 	var certInfo []byte
 
-	_, err := tpmutil.Unpack(in, &paramSize, &certInfo)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &paramSize, &certInfo); err != nil {
 		return nil, err
 	}
 	return certInfo, nil
@@ -759,8 +734,7 @@ func decodeMakeCredential(in []byte) ([]byte, []byte, error) {
 	var credBlob []byte
 	var encryptedSecret []byte
 
-	_, err := tpmutil.Unpack(in, &credBlob, &encryptedSecret)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &credBlob, &encryptedSecret); err != nil {
 		return nil, nil, err
 	}
 	return credBlob, encryptedSecret, nil
@@ -966,6 +940,7 @@ func Hash(rw io.ReadWriter, alg Algorithm, buf []byte) ([]byte, error) {
 
 	var digest []byte
 	if _, err = tpmutil.Unpack(resp, &digest); err != nil {
+		return nil, err
 	}
 	return digest, nil
 }
