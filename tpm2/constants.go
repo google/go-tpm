@@ -148,10 +148,10 @@ type ECCCurve uint16
 // ECC curves supported by TPM 2.0 spec.
 const (
 	ECCCurveNISTP192 = ECCCurve(iota + 1)
+	ECCCurveNISTP224
 	ECCCurveNISTP256
 	ECCCurveNISTP384
 	ECCCurveNISTP521
-	ECCCurveNISTP224
 
 	ECCCurveBNP256 = ECCCurve(iota + 10)
 	ECCCurveBNP638
