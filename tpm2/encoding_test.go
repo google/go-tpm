@@ -354,8 +354,8 @@ func TestECCParamsEncodeDecode(t *testing.T) {
 			Alg:  AlgECDSA,
 			Hash: AlgSHA1,
 		},
-		CurveID: ECCCurveNISTP256,
-		Point:   ECCPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+		CurveID: CurveNISTP256,
+		Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
 	}
 
 	buf, err := params.encode()

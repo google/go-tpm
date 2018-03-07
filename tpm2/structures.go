@@ -139,12 +139,10 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	var params RSAParams
 	var err error
 
-	params.Symmetric, err = decodeSymScheme(in)
-	if err != nil {
+	if params.Symmetric, err = decodeSymScheme(in); err != nil {
 		return nil, err
 	}
-	params.Sign, err = decodeSigScheme(in)
-	if err != nil {
+	if params.Sign, err = decodeSigScheme(in); err != nil {
 		return nil, err
 	}
 	var modBytes []byte
@@ -164,13 +162,13 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 type ECCParams struct {
 	Symmetric *SymScheme
 	Sign      *SigScheme
-	CurveID   ECCCurve
+	CurveID   EllipticCurve
 	KDF       *KDFScheme
-	Point     ECCPoint
+	Point     ECPoint
 }
 
-// ECCPoint represents a ECC coordinates for a point.
-type ECCPoint struct {
+// ECPoint represents a ECC coordinates for a point.
+type ECPoint struct {
 	X, Y *big.Int
 }
 
@@ -205,19 +203,16 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 	var params ECCParams
 	var err error
 
-	params.Symmetric, err = decodeSymScheme(in)
-	if err != nil {
+	if params.Symmetric, err = decodeSymScheme(in); err != nil {
 		return nil, err
 	}
-	params.Sign, err = decodeSigScheme(in)
-	if err != nil {
+	if params.Sign, err = decodeSigScheme(in); err != nil {
 		return nil, err
 	}
 	if err := tpmutil.UnpackBuf(in, &params.CurveID); err != nil {
 		return nil, err
 	}
-	params.KDF, err = decodeKDFScheme(in)
-	if err != nil {
+	if params.KDF, err = decodeKDFScheme(in); err != nil {
 		return nil, err
 	}
 	var x, y []byte

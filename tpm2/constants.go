@@ -31,11 +31,12 @@ type Algorithm uint16
 
 // IsNull returns true if a is AlgNull or zero (unset).
 func (a Algorithm) IsNull() bool {
-	return a == AlgNull || a == 0
+	return a == AlgNull || a == AlgUnknown
 }
 
 // Supported Algorithms.
 const (
+	AlgUnknown   Algorithm = 0x0000
 	AlgRSA       Algorithm = 0x0001
 	AlgSHA1      Algorithm = 0x0004
 	AlgAES       Algorithm = 0x0006
@@ -142,21 +143,21 @@ const (
 	StartupState
 )
 
-// ECCCurve identifies specific ECC curves.
-type ECCCurve uint16
+// EllipticCurve identifies specific EC curves.
+type EllipticCurve uint16
 
 // ECC curves supported by TPM 2.0 spec.
 const (
-	ECCCurveNISTP192 = ECCCurve(iota + 1)
-	ECCCurveNISTP224
-	ECCCurveNISTP256
-	ECCCurveNISTP384
-	ECCCurveNISTP521
+	CurveNISTP192 = EllipticCurve(iota + 1)
+	CurveNISTP224
+	CurveNISTP256
+	CurveNISTP384
+	CurveNISTP521
 
-	ECCCurveBNP256 = ECCCurve(iota + 10)
-	ECCCurveBNP638
+	CurveBNP256 = EllipticCurve(iota + 10)
+	CurveBNP638
 
-	ECCCurveSM2P256 = ECCCurve(0x0020)
+	CurveSM2P256 = EllipticCurve(0x0020)
 )
 
 // Supported TPM operations.

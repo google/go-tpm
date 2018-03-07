@@ -95,7 +95,9 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
 		return sel, err
 	}
 	ts.PCRs = make([]byte, ts.Size)
-	buf.Read(ts.PCRs)
+	if _, err := buf.Read(ts.PCRs); err != nil {
+		return sel, err
+	}
 
 	sel.Hash = ts.Hash
 	for i := 0; i < int(ts.Size); i++ {
