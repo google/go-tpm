@@ -214,35 +214,35 @@ func TestEncodingInvalidUnpack(t *testing.T) {
 	// The value ui is a serialization of uint32(0).
 	ui := []byte{0, 0, 0, 0}
 	uiBuf := bytes.NewBuffer(ui)
-	if err := unpackType(uiBuf, i); err == nil {
-		t.Fatal("unpackType incorrectly deserialized into a nil pointer")
+	if err := UnpackBuf(uiBuf, i); err == nil {
+		t.Fatal("UnpackBuf incorrectly deserialized into a nil pointer")
 	}
 
 	var ii uint32
-	if err := unpackType(uiBuf, ii); err == nil {
-		t.Fatal("unpackType incorrectly deserialized into a non pointer")
+	if err := UnpackBuf(uiBuf, ii); err == nil {
+		t.Fatal("UnpackBuf incorrectly deserialized into a non pointer")
 	}
 
 	var b []byte
 	var empty []byte
 	emptyBuf := bytes.NewBuffer(empty)
-	if err := unpackType(emptyBuf, &b); err == nil {
-		t.Fatal("unpackType incorrectly deserialized an empty byte array into a byte slice")
+	if err := UnpackBuf(emptyBuf, &b); err == nil {
+		t.Fatal("UnpackBuf incorrectly deserialized an empty byte array into a byte slice")
 	}
 
 	// Try to deserialize a byte array that has a length but not enough bytes.
 	// The slice ui represents uint32(1), which is the length of an empty byte array.
 	ui2 := []byte{0, 0, 0, 1}
 	uiBuf2 := bytes.NewBuffer(ui2)
-	if err := unpackType(uiBuf2, &b); err == nil {
-		t.Fatal("unpackType incorrectly deserialized a byte array that didn't have enough bytes available")
+	if err := UnpackBuf(uiBuf2, &b); err == nil {
+		t.Fatal("UnpackBuf incorrectly deserialized a byte array that didn't have enough bytes available")
 	}
 
 	var iii []int
 	ui3 := []byte{0, 0, 0, 1}
 	uiBuf3 := bytes.NewBuffer(ui3)
-	if err := unpackType(uiBuf3, &iii); err == nil {
-		t.Fatal("unpackType incorrectly deserialized into a slice of ints (only byte slices are supported)")
+	if err := UnpackBuf(uiBuf3, &iii); err == nil {
+		t.Fatal("UnpackBuf incorrectly deserialized into a slice of ints (only byte slices are supported)")
 	}
 
 }
@@ -253,19 +253,19 @@ func TestEncodingUnpack(t *testing.T) {
 	// The slice ui represents uint32(0), which is the length of an empty byte array.
 	ui := []byte{0, 0, 0, 0}
 	uiBuf := bytes.NewBuffer(ui)
-	if err := unpackType(uiBuf, &b); err != nil {
-		t.Fatal("unpackType failed to unpack the empty byte array")
+	if err := UnpackBuf(uiBuf, &b); err != nil {
+		t.Fatal("UnpackBuf failed to unpack the empty byte array")
 	}
 
 	// A byte slice of length 1 with a single entry: b[0] == 137
 	ui2 := []byte{0, 0, 0, 1, 137}
 	uiBuf2 := bytes.NewBuffer(ui2)
-	if err := unpackType(uiBuf2, &b); err != nil {
-		t.Fatal("unpackType failed to unpack a byte array with a single value in it")
+	if err := UnpackBuf(uiBuf2, &b); err != nil {
+		t.Fatal("UnpackBuf failed to unpack a byte array with a single value in it")
 	}
 
 	if !bytes.Equal(b, []byte{137}) {
-		t.Fatal("unpackType unpacked a small byte array incorrectly")
+		t.Fatal("UnpackBuf unpacked a small byte array incorrectly")
 	}
 
 	sp := simplePacked{137, 138}
