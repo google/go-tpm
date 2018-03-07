@@ -182,21 +182,21 @@ func packType(buf io.Writer, elts ...interface{}) error {
 	return nil
 }
 
-// Unpack performs the inverse operation from Pack. Unpack returns the number
+// Unpack is a convenience wrapper around UnpackBuf. Unpack returns the number
 // of bytes read from b to fill elts and error, if any.
 func Unpack(b []byte, elts ...interface{}) (int, error) {
 	buf := bytes.NewBuffer(b)
-	err := unpackType(buf, elts...)
+	err := UnpackBuf(buf, elts...)
 	read := len(b) - buf.Len()
 	return read, err
 }
 
-// unpackType recursively unpacks types from a reader just as encoding/binary
+// UnpackBuf recursively unpacks types from a reader just as encoding/binary
 // does under binary.BigEndian, but with one difference: it unpacks a byte
 // slice by first reading an integer with lengthPrefixSize bytes, then reading
 // that many bytes. It assumes that incoming values are pointers to values so
 // that, e.g., underlying slices can be resized as needed.
-func unpackType(buf io.Reader, elts ...interface{}) error {
+func UnpackBuf(buf io.Reader, elts ...interface{}) error {
 	for _, e := range elts {
 		v := reflect.ValueOf(e)
 		k := v.Kind()
@@ -213,7 +213,7 @@ func unpackType(buf io.Reader, elts ...interface{}) error {
 		case reflect.Struct:
 			// Decompose the struct and copy over the values.
 			for i := 0; i < iv.NumField(); i++ {
-				if err := unpackType(buf, iv.Field(i).Addr().Interface()); err != nil {
+				if err := UnpackBuf(buf, iv.Field(i).Addr().Interface()); err != nil {
 					return err
 				}
 			}

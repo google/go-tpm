@@ -16,7 +16,11 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/hex"
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -38,7 +42,7 @@ func TestEncodeDecodeTPMLSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, got, err := decodeTPMLPCRSelection(buf)
+	got, err := decodeTPMLPCRSelection(bytes.NewBuffer(buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,19 +115,20 @@ func TestEncodeCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	params := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		1024,
-		uint32(0x00010001),
-		[]byte(nil),
+	params := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA1,
+		Attributes: 0x00030072,
+		RSAParameters: &RSAParams{
+			Symmetric: &SymScheme{
+				Alg:     AlgAES,
+				KeyBits: 128,
+				Mode:    AlgCFB,
+			},
+			KeyBits:  1024,
+			Exponent: uint32(0x00010001),
+			Modulus:  big.NewInt(0),
+		},
 	}
 	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPassword, params)
 	if err != nil {
@@ -328,27 +333,6 @@ func TestEncodeSensitiveArea(t *testing.T) {
 	}
 }
 
-func TestEncodeRSAParams(t *testing.T) {
-	params := RSAParams{
-		AlgRSA,
-		AlgSHA1,
-		0x00030072,
-		[]byte(nil),
-		AlgAES,
-		128,
-		AlgCFB,
-		AlgNull,
-		0,
-		1024,
-		uint32(0x00010001),
-		[]byte(nil),
-	}
-
-	if _, err := encodeRSAParams(params); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestEncodeTPMLPCRSelection(t *testing.T) {
 	s, err := encodeTPMLPCRSelection(pcrSelection)
 	if err != nil {
@@ -357,5 +341,33 @@ func TestEncodeTPMLPCRSelection(t *testing.T) {
 	want := []byte{0, 0, 0, 1, 0, 4, 3, 0x80, 0, 0}
 	if !bytes.Equal(want, s) {
 		t.Fatalf("got: %v, want: %v", s, want)
+	}
+}
+
+func TestECCParamsEncodeDecode(t *testing.T) {
+	pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := &ECCParams{
+		Sign: &SigScheme{
+			Alg:  AlgECDSA,
+			Hash: AlgSHA1,
+		},
+		CurveID: CurveNISTP256,
+		Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+	}
+
+	buf, err := params.encode()
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	got, err := decodeECCParams(bytes.NewBuffer(buf))
+	if err != nil {
+		t.Fatalf("decodeECCParams: %v", err)
+	}
+
+	if !reflect.DeepEqual(got, params) {
+		t.Fatalf("got: %+v\nwant: %+v", got, params)
 	}
 }

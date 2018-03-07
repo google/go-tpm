@@ -20,7 +20,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -80,28 +79,25 @@ func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
 	return tpmutil.Pack(uint32(1), ts)
 }
 
-func decodeTPMLPCRSelection(buf []byte) (int, PCRSelection, error) {
-	initialLen := len(buf)
-
+func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
 	var count uint32
 	var sel PCRSelection
-	read, err := tpmutil.Unpack(buf, &count)
-	if err != nil {
-		return 0, sel, err
+	if err := tpmutil.UnpackBuf(buf, &count); err != nil {
+		return sel, err
 	}
-	buf = buf[read:]
 	if count != 1 {
-		return 0, sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
+		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
 	}
 
 	// See comment in encodeTPMLPCRSelection for details on this format.
 	var ts tpmsPCRSelection
-	read, err = tpmutil.Unpack(buf, &ts.Hash, &ts.Size)
-	if err != nil {
-		return 0, sel, err
+	if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
+		return sel, err
 	}
-	buf = buf[read:]
-	ts.PCRs, buf = buf[:ts.Size], buf[ts.Size:]
+	ts.PCRs = make([]byte, ts.Size)
+	if _, err := buf.Read(ts.PCRs); err != nil {
+		return sel, err
+	}
 
 	sel.Hash = ts.Hash
 	for i := 0; i < int(ts.Size); i++ {
@@ -113,29 +109,25 @@ func decodeTPMLPCRSelection(buf []byte) (int, PCRSelection, error) {
 			sel.PCRs = append(sel.PCRs, 8*i+j)
 		}
 	}
-	return initialLen - len(buf), sel, nil
+	return sel, nil
 }
 
 func decodeReadPCRs(in []byte) (map[int][]byte, error) {
+	buf := bytes.NewBuffer(in)
 	var updateCounter uint32
-	read, err := tpmutil.Unpack(in, &updateCounter)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &updateCounter); err != nil {
 		return nil, err
 	}
-	in = in[read:]
 
-	read, sel, err := decodeTPMLPCRSelection(in)
+	sel, err := decodeTPMLPCRSelection(buf)
 	if err != nil {
 		return nil, fmt.Errorf("decoding TPML_PCR_SELECTION: %v", err)
 	}
-	in = in[read:]
 
 	var digestCount uint32
-	read, err = tpmutil.Unpack(in, &digestCount)
-	if err != nil {
+	if err = tpmutil.UnpackBuf(buf, &digestCount); err != nil {
 		return nil, fmt.Errorf("decoding TPML_DIGEST length: %v", err)
 	}
-	in = in[read:]
 	if int(digestCount) != len(sel.PCRs) {
 		return nil, fmt.Errorf("received %d PCRs but %d digests", len(sel.PCRs), digestCount)
 	}
@@ -143,11 +135,9 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 	vals := make(map[int][]byte)
 	for _, pcr := range sel.PCRs {
 		var val []byte
-		read, err = tpmutil.Unpack(in, &val)
-		if err != nil {
+		if err = tpmutil.UnpackBuf(buf, &val); err != nil {
 			return nil, fmt.Errorf("decoding TPML_DIGEST item: %v", err)
 		}
-		in = in[read:]
 		vals[pcr] = val
 	}
 	return vals, nil
@@ -170,8 +160,7 @@ func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
 func decodeReadClock(in []byte) (uint64, uint64, error) {
 	var curTime, curClock uint64
 
-	_, err := tpmutil.Unpack(in, &curTime, &curClock)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &curTime, &curClock); err != nil {
 		return 0, 0, err
 	}
 	return curTime, curClock, nil
@@ -196,31 +185,26 @@ func decodeGetCapability(in []byte) (Capability, []tpmutil.Handle, error) {
 	var moreData byte
 	var capReported Capability
 
-	read, err := tpmutil.Unpack(in, &moreData, &capReported)
-	if err != nil {
+	buf := bytes.NewBuffer(in)
+	if err := tpmutil.UnpackBuf(buf, &moreData, &capReported); err != nil {
 		return 0, nil, err
 	}
-	in = in[read:]
 	// Only TPM_CAP_HANDLES handled.
 	if capReported != CapabilityHandles {
 		return 0, nil, fmt.Errorf("Only TPM_CAP_HANDLES supported, got %v", capReported)
 	}
 
 	var numHandles uint32
-	read, err = tpmutil.Unpack(in, &numHandles)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &numHandles); err != nil {
 		return 0, nil, err
 	}
-	in = in[read:]
 
 	var handles []tpmutil.Handle
 	for i := 0; i < int(numHandles); i++ {
 		var handle tpmutil.Handle
-		read, err = tpmutil.Unpack(in, &handle)
-		if err != nil {
+		if err := tpmutil.UnpackBuf(buf, &handle); err != nil {
 			return 0, nil, err
 		}
-		in = in[read:]
 		handles = append(handles, handle)
 	}
 
@@ -300,35 +284,9 @@ func encodeSensitiveArea(s tpmsSensitiveCreate) ([]byte, error) {
 	return tpmutil.Pack(buf)
 }
 
-func encodeRSAParams(params RSAParams) ([]byte, error) {
-	fields := []interface{}{
-		params.EncAlg,
-		params.HashAlg,
-		params.Attributes,
-		params.AuthPolicy,
-		params.SymAlg,
-	}
-	if params.SymAlg != AlgNull {
-		fields = append(fields, params.SymSize, params.Mode)
-	}
-	fields = append(fields, params.Scheme)
-	if params.Scheme == AlgRSASSA {
-		fields = append(fields, params.SchemeHash)
-	}
-	fields = append(fields, params.ModSize, params.Exp, params.Modulus)
-
-	// TPMT_PUBLIC structure.
-	buf, err := tpmutil.Pack(fields...)
-	if err != nil {
-		return nil, err
-	}
-	// Pack TPMT_PUBLIC in TPM2B_PUBLIC.
-	return tpmutil.Pack(buf)
-}
-
 // encodeCreate works for both TPM2_Create and TPM2_CreatePrimary.
-func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, error) {
-	inPublic, err := encodeRSAParams(params)
+func encodeCreate(owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, error) {
+	inPublic, err := pub.encode()
 	if err != nil {
 		return nil, err
 	}
@@ -348,6 +306,10 @@ func encodeCreateRawTemplate(owner tpmutil.Handle, sel PCRSelection, parentPassw
 	if err != nil {
 		return nil, err
 	}
+	publicBlob, err := tpmutil.Pack(inPublic)
+	if err != nil {
+		return nil, err
+	}
 	outsideInfo, err := tpmutil.Pack([]byte(nil))
 	if err != nil {
 		return nil, err
@@ -360,83 +322,41 @@ func encodeCreateRawTemplate(owner tpmutil.Handle, sel PCRSelection, parentPassw
 		parent,
 		auth,
 		inSensitive,
-		inPublic,
+		publicBlob,
 		outsideInfo,
 		creationPCR,
 	)
-}
-
-func decodePublic(in []byte) (Public, error) {
-	var pub Public
-	read, err := tpmutil.Unpack(in, &pub.Type, &pub.NameAlg, &pub.Attributes, &pub.AuthPolicy, &pub.Parameters.Symmetric.Alg)
-	if err != nil {
-		return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-	}
-	in = in[read:]
-
-	// Only restricted decrypt keys have the following fields.
-	// Symmetric.Alg == AlgNull means it's not a restricted decrypt key.
-	if pub.Parameters.Symmetric.Alg != AlgNull {
-		read, err = tpmutil.Unpack(in, &pub.Parameters.Symmetric.KeyBits, &pub.Parameters.Symmetric.Mode)
-		if err != nil {
-			return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-		}
-		in = in[read:]
-	}
-
-	read, err = tpmutil.Unpack(in, &pub.Parameters.Scheme.Alg)
-	if err != nil {
-		return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-	}
-	in = in[read:]
-	if pub.Parameters.Scheme.Alg != AlgNull {
-		read, err = tpmutil.Unpack(in, &pub.Parameters.Scheme.Hash)
-		if err != nil {
-			return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-		}
-		in = in[read:]
-	}
-	if _, err = tpmutil.Unpack(in, &pub.Parameters.KeyBits, &pub.Parameters.Exponent, &pub.Unique); err != nil {
-		return pub, fmt.Errorf("decoding TPMT_PUBLIC: %v", err)
-	}
-	if pub.Parameters.Exponent == 0 {
-		pub.Parameters.Exponent = defaultRSAExponent
-	}
-
-	return pub, nil
 }
 
 func decodeCreatePrimary(in []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	var handle tpmutil.Handle
 	var paramSize uint32
 
+	buf := bytes.NewBuffer(in)
 	// Handle and auth data.
-	read, err := tpmutil.Unpack(in, &handle, &paramSize)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &handle, &paramSize); err != nil {
 		return 0, nil, err
 	}
-	in = in[read:]
 
 	var public []byte
-	read, err = tpmutil.Unpack(in, &public)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &public); err != nil {
 		return 0, nil, fmt.Errorf("decoding TPM2B_PUBLIC: %v", err)
 	}
 
-	pub, err := decodePublic(public)
+	pub, err := decodePublic(bytes.NewBuffer(public))
 	if err != nil {
 		return 0, nil, err
 	}
 	// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
 	// (big-endian).
-	pubKey := &rsa.PublicKey{N: big.NewInt(0).SetBytes(pub.Unique), E: int(pub.Parameters.Exponent)}
+	pubKey := &rsa.PublicKey{N: pub.RSAParameters.Modulus, E: int(pub.RSAParameters.Exponent)}
 	return handle, pubKey, nil
 }
 
 // CreatePrimary initializes the primary key in a given hierarchy.
 // Second return value is the public part of the generated key.
-func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) (tpmutil.Handle, *rsa.PublicKey, error) {
-	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, params)
+func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (tpmutil.Handle, *rsa.PublicKey, error) {
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, pub)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -449,8 +369,8 @@ func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, par
 }
 
 // CreatePrimaryRawTemplate is CreatePrimary, but with the public template
-// (TPM2B_PUBLIC) provided pre-encoded. This is commonly used with key
-// templates stored in NV RAM.
+// (TPMT_PUBLIC) provided pre-encoded. This is commonly used with key templates
+// stored in NV RAM.
 func CreatePrimaryRawTemplate(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, public []byte) (tpmutil.Handle, *rsa.PublicKey, error) {
 	cmd, err := encodeCreateRawTemplate(owner, sel, parentPassword, ownerPassword, public)
 	if err != nil {
@@ -470,11 +390,10 @@ func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
 		Name          []byte
 		QualifiedName []byte
 	}
-	_, err := tpmutil.Unpack(in, &resp)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &resp); err != nil {
 		return Public{}, nil, nil, err
 	}
-	pub, err := decodePublic(resp.Public)
+	pub, err := decodePublic(bytes.NewBuffer(resp.Public))
 	if err != nil {
 		return Public{}, nil, nil, err
 	}
@@ -499,17 +418,16 @@ func decodeCreateKey(in []byte) ([]byte, []byte, error) {
 		Public  []byte
 	}
 
-	_, err := tpmutil.Unpack(in, &resp)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &resp); err != nil {
 		return nil, nil, err
 	}
 	return resp.Private, resp.Public, nil
 }
 
-// CreateKey creates a new RSA key pair under the owner handle.
+// CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs.
-func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, params RSAParams) ([]byte, []byte, error) {
-	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, params)
+func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, pub)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -541,8 +459,7 @@ func decodeLoad(in []byte) (tpmutil.Handle, []byte, error) {
 	var paramSize uint32
 	var name []byte
 
-	_, err := tpmutil.Unpack(in, &handle, &paramSize, &name)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &handle, &paramSize, &name); err != nil {
 		return 0, nil, err
 	}
 	return handle, name, nil
@@ -562,35 +479,24 @@ func Load(rw io.ReadWriter, parentHandle tpmutil.Handle, parentAuth string, publ
 	return decodeLoad(resp)
 }
 
-func encodeLoadExternal(rp RSAParams, private Private, hierarchy tpmutil.Handle) ([]byte, error) {
-	var tpmtSensitive []byte
-	if private.Type != 0 && private.Type != AlgNull {
-		var err error
-		if tpmtSensitive, err = tpmutil.Pack(private); err != nil {
-			return nil, err
-		}
-	}
-	privateBlob, err := tpmutil.Pack(tpmtSensitive)
+func encodeLoadExternal(pub Public, private Private, hierarchy tpmutil.Handle) ([]byte, error) {
+	privateBlob, err := private.encode()
 	if err != nil {
 		return nil, err
 	}
-	publicBlob, err := encodeRSAParams(rp)
+	publicBlob, err := pub.encode()
 	if err != nil {
 		return nil, err
 	}
-	hb, err := tpmutil.Pack(hierarchy)
-	if err != nil {
-		return nil, err
-	}
-	return concat(privateBlob, publicBlob, hb)
+
+	return tpmutil.Pack(privateBlob, publicBlob, hierarchy)
 }
 
 func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
 	var handle tpmutil.Handle
 	var name []byte
 
-	_, err := tpmutil.Unpack(in, &handle, &name)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &handle, &name); err != nil {
 		return 0, nil, err
 	}
 	return handle, name, nil
@@ -598,8 +504,8 @@ func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
 
 // LoadExternal loads a public (and optionally a private) key into an object in
 // the TPM. Returns loaded object handle and its name.
-func LoadExternal(rw io.ReadWriter, rp RSAParams, private Private, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
-	cmd, err := encodeLoadExternal(rp, private, hierarchy)
+func LoadExternal(rw io.ReadWriter, pub Public, private Private, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
+	cmd, err := encodeLoadExternal(pub, private, hierarchy)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -669,8 +575,7 @@ func encodeStartAuthSession(tpmKey, bindKey tpmutil.Handle, nonceCaller, secret 
 func decodeStartAuthSession(in []byte) (tpmutil.Handle, []byte, error) {
 	var handle tpmutil.Handle
 	var nonce []byte
-	_, err := tpmutil.Unpack(in, &handle, &nonce)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &handle, &nonce); err != nil {
 		return 0, nil, err
 	}
 	return handle, nonce, nil
@@ -706,8 +611,7 @@ func decodeUnseal(in []byte) ([]byte, error) {
 	var paramSize uint32
 	var unsealed []byte
 
-	_, err := tpmutil.Unpack(in, &paramSize, &unsealed)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &paramSize, &unsealed); err != nil {
 		return nil, err
 	}
 	return unsealed, nil
@@ -795,8 +699,7 @@ func decodeActivateCredential(in []byte) ([]byte, error) {
 	var paramSize uint32
 	var certInfo []byte
 
-	_, err := tpmutil.Unpack(in, &paramSize, &certInfo)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &paramSize, &certInfo); err != nil {
 		return nil, err
 	}
 	return certInfo, nil
@@ -832,8 +735,7 @@ func decodeMakeCredential(in []byte) ([]byte, []byte, error) {
 	var credBlob []byte
 	var encryptedSecret []byte
 
-	_, err := tpmutil.Unpack(in, &credBlob, &encryptedSecret)
-	if err != nil {
+	if _, err := tpmutil.Unpack(in, &credBlob, &encryptedSecret); err != nil {
 		return nil, nil, err
 	}
 	return credBlob, encryptedSecret, nil
@@ -1039,6 +941,7 @@ func Hash(rw io.ReadWriter, alg Algorithm, buf []byte) ([]byte, error) {
 
 	var digest []byte
 	if _, err = tpmutil.Unpack(resp, &digest); err != nil {
+		return nil, err
 	}
 	return digest, nil
 }

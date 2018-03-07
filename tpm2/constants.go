@@ -29,8 +29,14 @@ func init() {
 // Algorithm represents a TPM_ALG_ID value.
 type Algorithm uint16
 
+// IsNull returns true if a is AlgNull or zero (unset).
+func (a Algorithm) IsNull() bool {
+	return a == AlgNull || a == AlgUnknown
+}
+
 // Supported Algorithms.
 const (
+	AlgUnknown   Algorithm = 0x0000
 	AlgRSA       Algorithm = 0x0001
 	AlgSHA1      Algorithm = 0x0004
 	AlgAES       Algorithm = 0x0006
@@ -46,6 +52,7 @@ const (
 	AlgECDSA     Algorithm = 0x0018
 	AlgECDH      Algorithm = 0x0019
 	AlgECDAA     Algorithm = 0x001A
+	AlgKDF2      Algorithm = 0x0021
 	AlgECC       Algorithm = 0x0023
 	AlgCTR       Algorithm = 0x0040
 	AlgOFB       Algorithm = 0x0041
@@ -134,6 +141,23 @@ type StartupType uint16
 const (
 	StartupClear StartupType = iota
 	StartupState
+)
+
+// EllipticCurve identifies specific EC curves.
+type EllipticCurve uint16
+
+// ECC curves supported by TPM 2.0 spec.
+const (
+	CurveNISTP192 = EllipticCurve(iota + 1)
+	CurveNISTP224
+	CurveNISTP256
+	CurveNISTP384
+	CurveNISTP521
+
+	CurveBNP256 = EllipticCurve(iota + 10)
+	CurveBNP638
+
+	CurveSM2P256 = EllipticCurve(0x0020)
 )
 
 // Supported TPM operations.
