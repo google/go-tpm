@@ -371,7 +371,7 @@ func TestCertify(t *testing.T) {
 	}
 
 	attestHash := sha256.Sum256(attest)
-	if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, attestHash[:], sig); err != nil {
+	if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 }
@@ -414,7 +414,7 @@ func TestCertifyExternalKey(t *testing.T) {
 		}
 
 		attestHash := sha256.Sum256(attest)
-		if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, attestHash[:], sig); err != nil {
+		if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig); err != nil {
 			t.Errorf("Signature verification failed: %v", err)
 		}
 	}
@@ -466,5 +466,66 @@ func TestCertifyExternalKey(t *testing.T) {
 			Sensitive: pk.D.Bytes(),
 		}
 		run(t, public, private)
+	})
+}
+
+func TestSign(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	run := func(t *testing.T, pub Public) {
+		signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, pub)
+		if err != nil {
+			t.Fatalf("CreatePrimary failed: %s", err)
+		}
+		defer FlushContext(rw, signerHandle)
+
+		digest := sha256.Sum256([]byte("heyo"))
+
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:])
+		if err != nil {
+			t.Fatalf("Sign failed: %s", err)
+		}
+		switch signerPub := signerPub.(type) {
+		case *rsa.PublicKey:
+			if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature); err != nil {
+				t.Errorf("Signature verification failed: %v", err)
+			}
+		case *ecdsa.PublicKey:
+			if !ecdsa.Verify(signerPub, digest[:], sig.ECC.R, sig.ECC.S) {
+				t.Error("Signature verification failed")
+			}
+		}
+	}
+
+	t.Run("RSA", func(t *testing.T) {
+		run(t, Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA256,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			RSAParameters: &RSAParams{
+				Sign: &SigScheme{
+					Alg:  AlgRSASSA,
+					Hash: AlgSHA256,
+				},
+				KeyBits: 2048,
+				Modulus: big.NewInt(0),
+			},
+		})
+	})
+	t.Run("ECC", func(t *testing.T) {
+		run(t, Public{
+			Type:       AlgECC,
+			NameAlg:    AlgSHA256,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			ECCParameters: &ECCParams{
+				Sign: &SigScheme{
+					Alg:  AlgECDSA,
+					Hash: AlgSHA256,
+				},
+				CurveID: CurveNISTP256,
+				Point:   ECPoint{X: big.NewInt(0), Y: big.NewInt(0)},
+			},
+		})
 	})
 }

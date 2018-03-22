@@ -306,10 +306,49 @@ func decodeKDFScheme(in *bytes.Buffer) (*KDFScheme, error) {
 	return &scheme, nil
 }
 
-type tpmtSignatureRSA struct {
-	SigAlg    Algorithm
+// Signature combines all possible signatures from RSA and RCC keys. Only one
+// of RSA or ECC will be populated.
+type Signature struct {
+	Alg Algorithm
+	RSA *SignatureRSA
+	ECC *SignatureECC
+}
+
+func decodeSignature(in *bytes.Buffer) (Signature, error) {
+	var sig Signature
+	if err := tpmutil.UnpackBuf(in, &sig.Alg); err != nil {
+		return sig, err
+	}
+	switch sig.Alg {
+	case AlgRSASSA:
+		sig.RSA = new(SignatureRSA)
+		if err := tpmutil.UnpackBuf(in, sig.RSA); err != nil {
+			return sig, err
+		}
+	case AlgECDSA:
+		sig.ECC = new(SignatureECC)
+		var r, s []byte
+		if err := tpmutil.UnpackBuf(in, &sig.ECC.HashAlg, &r, &s); err != nil {
+			return sig, err
+		}
+		sig.ECC.R = big.NewInt(0).SetBytes(r)
+		sig.ECC.S = big.NewInt(0).SetBytes(s)
+	default:
+		return sig, fmt.Errorf("unsupported signature algorithm 0x%x", sig.Alg)
+	}
+	return sig, nil
+}
+
+// SignatureRSA is an RSA-specific signature value.
+type SignatureRSA struct {
 	HashAlg   Algorithm
 	Signature []byte
+}
+
+// SignatureECC is an ECC-specific signature value.
+type SignatureECC struct {
+	HashAlg Algorithm
+	R, S    *big.Int
 }
 
 // Private contains private section of a TPM key.

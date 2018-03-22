@@ -15,6 +15,7 @@
 package tpm2
 
 import (
+	"crypto/elliptic"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -160,6 +161,13 @@ const (
 	CurveSM2P256 = EllipticCurve(0x0020)
 )
 
+var toGoCurve = map[EllipticCurve]elliptic.Curve{
+	CurveNISTP224: elliptic.P224(),
+	CurveNISTP256: elliptic.P256(),
+	CurveNISTP384: elliptic.P384(),
+	CurveNISTP521: elliptic.P521(),
+}
+
 // Supported TPM operations.
 const (
 	cmdEvictControl       tpmutil.Command = 0x00000120
@@ -180,6 +188,7 @@ const (
 	cmdCreate             tpmutil.Command = 0x00000153
 	cmdLoad               tpmutil.Command = 0x00000157
 	cmdQuote              tpmutil.Command = 0x00000158
+	cmdSign               tpmutil.Command = 0x0000015D
 	cmdUnseal             tpmutil.Command = 0x0000015E
 	cmdContextLoad        tpmutil.Command = 0x00000161
 	cmdContextSave        tpmutil.Command = 0x00000162
