@@ -356,12 +356,15 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, crypto.PublicKey, error) {
 		// (big-endian).
 		pubKey = &rsa.PublicKey{N: pub.RSAParameters.Modulus, E: int(pub.RSAParameters.Exponent)}
 	case AlgECC:
-		pubKey = &ecdsa.PublicKey{X: pub.ECCParameters.Point.X, Y: pub.ECCParameters.Point.Y}
 		curve, ok := toGoCurve[pub.ECCParameters.CurveID]
 		if !ok {
 			return 0, nil, fmt.Errorf("can't map TPM EC curve ID 0x%x to Go elliptic.Curve value", pub.ECCParameters.CurveID)
 		}
-		pubKey.(*ecdsa.PublicKey).Curve = curve
+		pubKey = &ecdsa.PublicKey{
+			X:     pub.ECCParameters.Point.X,
+			Y:     pub.ECCParameters.Point.Y,
+			Curve: curve,
+		}
 	default:
 		return 0, nil, fmt.Errorf("unsupported primary key type 0x%x", pub.Type)
 	}
@@ -665,12 +668,12 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	return concat(ha, auth, params, pcrs)
 }
 
-func decodeQuote(in []byte) ([]byte, Signature, error) {
+func decodeQuote(in []byte) ([]byte, *Signature, error) {
 	buf := bytes.NewBuffer(in)
 	var paramSize uint32
 	var attest []byte
 	if err := tpmutil.UnpackBuf(buf, &paramSize, &attest); err != nil {
-		return nil, Signature{}, err
+		return nil, nil, err
 	}
 	sig, err := decodeSignature(buf)
 	return attest, sig, err
@@ -682,14 +685,14 @@ func decodeQuote(in []byte) ([]byte, Signature, error) {
 // Returns attestation data and the signature.
 //
 // Note: currently only RSA signatures are supported.
-func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, Signature, error) {
+func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, *Signature, error) {
 	cmd, err := encodeQuote(signingHandle, parentPassword, ownerPassword, toQuote, sel, sigAlg)
 	if err != nil {
-		return nil, Signature{}, err
+		return nil, nil, err
 	}
 	resp, err := runCommand(rw, tagSessions, cmdQuote, tpmutil.RawBytes(cmd))
 	if err != nil {
-		return nil, Signature{}, err
+		return nil, nil, err
 	}
 	return decodeQuote(resp)
 }
@@ -989,25 +992,25 @@ func encodeSign(key tpmutil.Handle, password string, digest []byte) ([]byte, err
 	return concat(ha, auth, params)
 }
 
-func decodeSign(buf []byte) (Signature, error) {
+func decodeSign(buf []byte) (*Signature, error) {
 	in := bytes.NewBuffer(buf)
 	var paramSize uint32
 	if err := tpmutil.UnpackBuf(in, &paramSize); err != nil {
-		return Signature{}, err
+		return nil, err
 	}
 	return decodeSignature(in)
 }
 
 // Sign computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type.
-func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte) (Signature, error) {
+func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte) (*Signature, error) {
 	cmd, err := encodeSign(key, password, digest)
 	if err != nil {
-		return Signature{}, err
+		return nil, err
 	}
 	resp, err := runCommand(rw, tagSessions, cmdSign, tpmutil.RawBytes(cmd))
 	if err != nil {
-		return Signature{}, err
+		return nil, err
 	}
 	return decodeSign(resp)
 }
