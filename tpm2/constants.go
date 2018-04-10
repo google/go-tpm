@@ -128,10 +128,11 @@ const (
 )
 
 const (
-	tagNull       tpmutil.Tag = 0x8000
-	tagNoSessions tpmutil.Tag = 0x8001
-	tagSessions   tpmutil.Tag = 0x8002
-	tagHashcheck  tpmutil.Tag = 0x8024
+	tagNull          tpmutil.Tag = 0x8000
+	tagNoSessions    tpmutil.Tag = 0x8001
+	tagSessions      tpmutil.Tag = 0x8002
+	tagAttestCertify tpmutil.Tag = 0x8017
+	tagHashcheck     tpmutil.Tag = 0x8024
 )
 
 // StartupType instructs the TPM on how to handle its state during Shutdown or
@@ -228,3 +229,11 @@ func digestSize(alg Algorithm) int {
 }
 
 const defaultRSAExponent = 1<<16 + 1
+
+var hashSizes = map[Algorithm]int{
+	AlgNull:   0,
+	AlgSHA1:   20,
+	AlgSHA256: 32,
+	AlgSHA384: 48,
+	AlgSHA512: 64,
+}

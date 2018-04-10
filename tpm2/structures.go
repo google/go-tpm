@@ -16,8 +16,12 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"errors"
 	"fmt"
+	"hash"
 	"math/big"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -370,4 +374,166 @@ func (p Private) encode() ([]byte, error) {
 type tpmtSigScheme struct {
 	Scheme Algorithm
 	Hash   Algorithm
+}
+
+// AttestationData contains data attested by TPM commands (like Certify).
+type AttestationData struct {
+	Magic               uint32
+	Type                tpmutil.Tag
+	QualifiedSigner     Name
+	ExtraData           []byte
+	ClockInfo           ClockInfo
+	FirmwareVersion     uint64
+	AttestedCertifyInfo *CertifyInfo
+}
+
+// DecodeAttestationData decode a TPMS_ATTEST message. No error is returned if
+// in has extra trailing data.
+func DecodeAttestationData(in []byte) (*AttestationData, error) {
+	buf := bytes.NewBuffer(in)
+
+	var ad AttestationData
+	if err := tpmutil.UnpackBuf(buf,
+		&ad.Magic,
+		&ad.Type,
+	); err != nil {
+		return nil, fmt.Errorf("decoding Magic/Type: %v", err)
+	}
+	n, err := decodeName(buf)
+	if err != nil {
+		return nil, fmt.Errorf("decoding QualifiedSigner: %v", err)
+	}
+	ad.QualifiedSigner = *n
+	if err := tpmutil.UnpackBuf(buf,
+		&ad.ExtraData,
+		&ad.ClockInfo,
+		&ad.FirmwareVersion,
+	); err != nil {
+		return nil, fmt.Errorf("decoding ExtraData/ClockInfo/FirmwareVersion: %v", err)
+	}
+
+	// Add support for more types as needed.
+	if ad.Type != tagAttestCertify {
+		return nil, fmt.Errorf("only Certify attestation structure is supported, got type 0x%x", ad.Type)
+	}
+	ad.AttestedCertifyInfo, err = decodeCertifyInfo(buf)
+	if err != nil {
+		return nil, fmt.Errorf("decoding AttestedCertifyInfo: %v", err)
+	}
+	return &ad, nil
+}
+
+// CertifyInfo contains Certify-specific data for TPMS_ATTEST.
+type CertifyInfo struct {
+	Name          Name
+	QualifiedName Name
+}
+
+func decodeCertifyInfo(in *bytes.Buffer) (*CertifyInfo, error) {
+	var ci CertifyInfo
+
+	n, err := decodeName(in)
+	if err != nil {
+		return nil, fmt.Errorf("decoding Name: %v", err)
+	}
+	ci.Name = *n
+
+	n, err = decodeName(in)
+	if err != nil {
+		return nil, fmt.Errorf("decoding QualifiedName: %v", err)
+	}
+	ci.QualifiedName = *n
+
+	return &ci, nil
+}
+
+// Name contains a Name for TPM entities. This is either a handle or a digest.
+// Only one of Handle/Digest will be set.
+type Name struct {
+	Handle *tpmutil.Handle
+	Digest *HashValue
+}
+
+func decodeName(in *bytes.Buffer) (*Name, error) {
+	var nameBuf []byte
+	if err := tpmutil.UnpackBuf(in, &nameBuf); err != nil {
+		return nil, err
+	}
+
+	name := new(Name)
+	switch len(nameBuf) {
+	case 0:
+		// no name is present
+	case 4:
+		name.Handle = new(tpmutil.Handle)
+		if err := tpmutil.UnpackBuf(bytes.NewBuffer(nameBuf), name.Handle); err != nil {
+			return nil, fmt.Errorf("decoding Handle: %v", err)
+		}
+	default:
+		var err error
+		name.Digest, err = decodeHashValue(bytes.NewBuffer(nameBuf))
+		if err != nil {
+			return nil, fmt.Errorf("decoding Digest: %v", err)
+		}
+	}
+	return name, nil
+}
+
+// MatchesPublic compares Digest in Name against given Public structure. Note:
+// this only works for regular Names, not Qualified Names.
+func (n Name) MatchesPublic(p Public) (bool, error) {
+	buf, err := p.encode()
+	if err != nil {
+		return false, err
+	}
+	if n.Digest == nil {
+		return false, errors.New("Name doesn't have a Digest, can't compare to Public")
+	}
+	var h hash.Hash
+	switch n.Digest.Alg {
+	case AlgSHA1:
+		h = sha1.New()
+	case AlgSHA256:
+		h = sha256.New()
+	case AlgSHA384:
+		h = sha512.New384()
+	case AlgSHA512:
+		h = sha512.New()
+	default:
+		return false, fmt.Errorf("Name hash algorithm 0x%x not supported", n.Digest.Alg)
+	}
+
+	h.Write(buf)
+	digest := h.Sum(nil)
+	return bytes.Equal(digest, n.Digest.Value), nil
+}
+
+// HashValue is an algorithm-specific hash value.
+type HashValue struct {
+	Alg   Algorithm
+	Value []byte
+}
+
+func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
+	var hv HashValue
+	if err := tpmutil.UnpackBuf(in, &hv.Alg); err != nil {
+		return nil, fmt.Errorf("decoding Alg: %v", err)
+	}
+	size, ok := hashSizes[hv.Alg]
+	if !ok {
+		return nil, fmt.Errorf("unsupported hash algorithm type 0x%x", hv.Alg)
+	}
+	hv.Value = make([]byte, size)
+	if _, err := in.Read(hv.Value); err != nil {
+		return nil, fmt.Errorf("decoding Value: %v", err)
+	}
+	return &hv, nil
+}
+
+// ClockInfo contains TPM state info included in AttestationData.
+type ClockInfo struct {
+	Clock        uint64
+	ResetCount   uint32
+	RestartCount uint32
+	Safe         byte
 }
