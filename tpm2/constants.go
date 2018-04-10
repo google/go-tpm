@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"hash"
 
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -230,10 +231,9 @@ func digestSize(alg Algorithm) int {
 
 const defaultRSAExponent = 1<<16 + 1
 
-var hashSizes = map[Algorithm]int{
-	AlgNull:   0,
-	AlgSHA1:   20,
-	AlgSHA256: 32,
-	AlgSHA384: 48,
-	AlgSHA512: 64,
+var toGoHashes = map[Algorithm]func() hash.Hash{
+	AlgSHA1:   sha1.New,
+	AlgSHA256: sha256.New,
+	AlgSHA384: sha512.New384,
+	AlgSHA512: sha512.New,
 }

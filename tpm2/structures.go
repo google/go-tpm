@@ -16,12 +16,8 @@ package tpm2
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"errors"
 	"fmt"
-	"hash"
 	"math/big"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -489,22 +485,15 @@ func (n Name) MatchesPublic(p Public) (bool, error) {
 	if n.Digest == nil {
 		return false, errors.New("Name doesn't have a Digest, can't compare to Public")
 	}
-	var h hash.Hash
-	switch n.Digest.Alg {
-	case AlgSHA1:
-		h = sha1.New()
-	case AlgSHA256:
-		h = sha256.New()
-	case AlgSHA384:
-		h = sha512.New384()
-	case AlgSHA512:
-		h = sha512.New()
-	default:
+	hfn, ok := toGoHashes[n.Digest.Alg]
+	if !ok {
 		return false, fmt.Errorf("Name hash algorithm 0x%x not supported", n.Digest.Alg)
 	}
 
+	h := hfn()
 	h.Write(buf)
 	digest := h.Sum(nil)
+
 	return bytes.Equal(digest, n.Digest.Value), nil
 }
 
@@ -519,11 +508,11 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 	if err := tpmutil.UnpackBuf(in, &hv.Alg); err != nil {
 		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
-	size, ok := hashSizes[hv.Alg]
+	h, ok := toGoHashes[hv.Alg]
 	if !ok {
 		return nil, fmt.Errorf("unsupported hash algorithm type 0x%x", hv.Alg)
 	}
-	hv.Value = make([]byte, size)
+	hv.Value = make([]byte, h().Size())
 	if _, err := in.Read(hv.Value); err != nil {
 		return nil, fmt.Errorf("decoding Value: %v", err)
 	}
