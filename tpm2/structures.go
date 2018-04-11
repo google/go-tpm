@@ -384,15 +384,12 @@ type AttestationData struct {
 }
 
 // DecodeAttestationData decode a TPMS_ATTEST message. No error is returned if
-// in has extra trailing data.
+// the input has extra trailing data.
 func DecodeAttestationData(in []byte) (*AttestationData, error) {
 	buf := bytes.NewBuffer(in)
 
 	var ad AttestationData
-	if err := tpmutil.UnpackBuf(buf,
-		&ad.Magic,
-		&ad.Type,
-	); err != nil {
+	if err := tpmutil.UnpackBuf(buf, &ad.Magic, &ad.Type); err != nil {
 		return nil, fmt.Errorf("decoding Magic/Type: %v", err)
 	}
 	n, err := decodeName(buf)
@@ -400,20 +397,17 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 		return nil, fmt.Errorf("decoding QualifiedSigner: %v", err)
 	}
 	ad.QualifiedSigner = *n
-	if err := tpmutil.UnpackBuf(buf,
-		&ad.ExtraData,
-		&ad.ClockInfo,
-		&ad.FirmwareVersion,
-	); err != nil {
+	if err := tpmutil.UnpackBuf(buf, &ad.ExtraData, &ad.ClockInfo, &ad.FirmwareVersion); err != nil {
 		return nil, fmt.Errorf("decoding ExtraData/ClockInfo/FirmwareVersion: %v", err)
 	}
 
-	// Add support for more types as needed.
+	// The spec specifies several other types of attestation data. We only need
+	// parsing of Certify attestation data for now. If you need support for
+	// other attestation types, add them here.
 	if ad.Type != tagAttestCertify {
 		return nil, fmt.Errorf("only Certify attestation structure is supported, got type 0x%x", ad.Type)
 	}
-	ad.AttestedCertifyInfo, err = decodeCertifyInfo(buf)
-	if err != nil {
+	if ad.AttestedCertifyInfo, err = decodeCertifyInfo(buf); err != nil {
 		return nil, fmt.Errorf("decoding AttestedCertifyInfo: %v", err)
 	}
 	return &ad, nil
@@ -443,8 +437,8 @@ func decodeCertifyInfo(in *bytes.Buffer) (*CertifyInfo, error) {
 	return &ci, nil
 }
 
-// Name contains a Name for TPM entities. This is either a handle or a digest.
-// Only one of Handle/Digest will be set.
+// Name contains a name for TPM entities. Only one of Handle/Digest should be
+// set.
 type Name struct {
 	Handle *tpmutil.Handle
 	Digest *HashValue
@@ -459,7 +453,7 @@ func decodeName(in *bytes.Buffer) (*Name, error) {
 	name := new(Name)
 	switch len(nameBuf) {
 	case 0:
-		// no name is present
+		// No name is present.
 	case 4:
 		name.Handle = new(tpmutil.Handle)
 		if err := tpmutil.UnpackBuf(bytes.NewBuffer(nameBuf), name.Handle); err != nil {
@@ -485,7 +479,7 @@ func (n Name) MatchesPublic(p Public) (bool, error) {
 	if n.Digest == nil {
 		return false, errors.New("Name doesn't have a Digest, can't compare to Public")
 	}
-	hfn, ok := toGoHashes[n.Digest.Alg]
+	hfn, ok := hashConstructors[n.Digest.Alg]
 	if !ok {
 		return false, fmt.Errorf("Name hash algorithm 0x%x not supported", n.Digest.Alg)
 	}
@@ -508,11 +502,11 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 	if err := tpmutil.UnpackBuf(in, &hv.Alg); err != nil {
 		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
-	h, ok := toGoHashes[hv.Alg]
+	hfn, ok := hashConstructors[hv.Alg]
 	if !ok {
 		return nil, fmt.Errorf("unsupported hash algorithm type 0x%x", hv.Alg)
 	}
-	hv.Value = make([]byte, h().Size())
+	hv.Value = make([]byte, hfn().Size())
 	if _, err := in.Read(hv.Value); err != nil {
 		return nil, fmt.Errorf("decoding Value: %v", err)
 	}

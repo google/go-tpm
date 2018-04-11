@@ -985,7 +985,7 @@ func encodeSign(key tpmutil.Handle, password string, digest []byte) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	params, err := tpmutil.Pack(digest, AlgNull, tagHashcheck, HandleNull, []byte(nil))
+	params, err := tpmutil.Pack(digest, AlgNull, tagHashCheck, HandleNull, []byte(nil))
 	if err != nil {
 		return nil, err
 	}
