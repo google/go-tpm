@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"hash"
 
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -128,10 +129,11 @@ const (
 )
 
 const (
-	tagNull       tpmutil.Tag = 0x8000
-	tagNoSessions tpmutil.Tag = 0x8001
-	tagSessions   tpmutil.Tag = 0x8002
-	tagHashcheck  tpmutil.Tag = 0x8024
+	tagNull          tpmutil.Tag = 0x8000
+	tagNoSessions    tpmutil.Tag = 0x8001
+	tagSessions      tpmutil.Tag = 0x8002
+	tagAttestCertify tpmutil.Tag = 0x8017
+	tagHashCheck     tpmutil.Tag = 0x8024
 )
 
 // StartupType instructs the TPM on how to handle its state during Shutdown or
@@ -228,3 +230,10 @@ func digestSize(alg Algorithm) int {
 }
 
 const defaultRSAExponent = 1<<16 + 1
+
+var hashConstructors = map[Algorithm]func() hash.Hash{
+	AlgSHA1:   sha1.New,
+	AlgSHA256: sha256.New,
+	AlgSHA384: sha512.New384,
+	AlgSHA512: sha512.New,
+}
