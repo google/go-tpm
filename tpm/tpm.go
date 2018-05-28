@@ -1008,11 +1008,13 @@ func PcrReset(rw io.ReadWriter, pcrs []int) error {
 
 // ForceClear is normally used by firmware but on some platforms
 // vendors got it wrong and didn't call TPM_DisableForceClear.
-func ForceClear(rw io.ReadWriter) (uint32, error) {
-	ret, err := submitTPMRequest(rw, tagRQUCommand, ordForceClear)
+func ForceClear(rw io.ReadWriter) error {
+	in := []interface{}{}
+	out := []interface{}{}
+	_, err := submitTPMRequest(rw, tagRQUCommand, ordForceClear, in, out)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return ret, nil
+	return nil
 }
