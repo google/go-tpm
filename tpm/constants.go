@@ -50,6 +50,7 @@ const (
 	ordLoadKey2             uint32 = 0x00000041
 	ordGetRandom            uint32 = 0x00000046
 	ordOwnerClear           uint32 = 0x0000005B
+	ordForceClear           uint32 = 0x0000005D
 	ordGetCapability        uint32 = 0x00000065
 	ordMakeIdentity         uint32 = 0x00000079
 	ordReadPubEK            uint32 = 0x0000007C
