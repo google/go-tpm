@@ -15,20 +15,20 @@ import (
 var (
 	tpmPath   = flag.String("tpm-path", "/dev/tpm0", "Path to the TPM device (character device or a Unix socket)")
 	certIndex = flag.Uint("cert-index", 0, "NVRAM index of the certificate file")
-	outPath   = flag.String("output", "", "File path to for output. Leave blank to write to stdout.")
+	outPath   = flag.String("output", "", "File path for output. Leave blank to write to stdout.")
 )
 
 func main() {
 	flag.Parse()
 
 	if *certIndex == 0 {
-		fmt.Println("--cert-index must be set")
+		fmt.Fprintln(os.Stderr, "--cert-index must be set")
 		os.Exit(2)
 	}
 
 	cert, err := readEKCert(*tpmPath, uint32(*certIndex))
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	if *outPath == "" {
@@ -36,7 +36,7 @@ func main() {
 		return
 	}
 	if err := ioutil.WriteFile(*outPath, cert, os.ModePerm); err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
