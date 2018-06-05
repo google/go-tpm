@@ -23,7 +23,7 @@ func main() {
 
 	if *certIndex == 0 {
 		fmt.Fprintln(os.Stderr, "--cert-index must be set")
-		os.Exit(2)
+		os.Exit(1)
 	}
 
 	cert, err := readEKCert(*tpmPath, uint32(*certIndex))
