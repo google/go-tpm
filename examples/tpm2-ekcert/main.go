@@ -17,16 +17,11 @@ var (
 	// Default value is defined in section 7.8
 	// https://trustedcomputinggroup.org/wp-content/uploads/TCG-TPM-v2.0-Provisioning-Guidance-Published-v1r1.pdf
 	certIndex = flag.Uint("cert-index", 0x01C00002, "NVRAM index of the certificate file")
-	outPath   = flag.String("output", "", "File path for output. Leave blank to write to stdout.")
+	outPath   = flag.String("output", "", "File path for output; leave blank to write to stdout")
 )
 
 func main() {
 	flag.Parse()
-
-	if *certIndex == 0 {
-		fmt.Fprintln(os.Stderr, "--cert-index must be set")
-		os.Exit(1)
-	}
 
 	cert, err := readEKCert(*tpmPath, uint32(*certIndex))
 	if err != nil {
