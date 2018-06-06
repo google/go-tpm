@@ -14,7 +14,7 @@ import (
 
 var (
 	tpmPath = flag.String("tpm-path", "/dev/tpm0", "Path to the TPM device (character device or a Unix socket)")
-	// Default value is defined in section 7.8
+	// Default value is defined in section 7.8, "NV Memory" of the latest version pdf on:
 	// https://trustedcomputinggroup.org/resource/tcg-tpm-v2-0-provisioning-guidance/
 	certIndex = flag.Uint("cert-index", 0x01C00002, "NVRAM index of the certificate file")
 	outPath   = flag.String("output", "", "File path for output; leave blank to write to stdout")
