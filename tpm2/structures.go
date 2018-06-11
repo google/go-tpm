@@ -254,13 +254,17 @@ func decodeSymScheme(in *bytes.Buffer) (*SymScheme, error) {
 
 // SigScheme represents a signing scheme.
 type SigScheme struct {
-	Alg  Algorithm
-	Hash Algorithm
+	Alg   Algorithm
+	Hash  Algorithm
+	Count uint32
 }
 
 func (s *SigScheme) encode() ([]byte, error) {
 	if s == nil || s.Alg.IsNull() {
 		return tpmutil.Pack(AlgNull)
+	}
+	if s.Alg.UsesCount() {
+		return tpmutil.Pack(s.Alg, s.Hash, s.Count)
 	}
 	return tpmutil.Pack(s.Alg, s.Hash)
 }
@@ -275,6 +279,11 @@ func decodeSigScheme(in *bytes.Buffer) (*SigScheme, error) {
 	}
 	if err := tpmutil.UnpackBuf(in, &scheme.Hash); err != nil {
 		return nil, err
+	}
+	if scheme.Alg.UsesCount() {
+		if err := tpmutil.UnpackBuf(in, &scheme.Count); err != nil {
+			return nil, err
+		}
 	}
 	return &scheme, nil
 }
