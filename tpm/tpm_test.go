@@ -501,11 +501,12 @@ func TestTakeOwnership(t *testing.T) {
 
 func TestForceClear(t *testing.T) {
 	// Only enable this if you know what you're doing.
+	// TPM force clear clears the ownership of the TPM.
+	// Beware of running this test on a production system.
 	t.Skip()
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
 
-	// This test code assumes that the owner auth is the well-known value.
 	if err := ForceClear(rwc); err != nil {
 		t.Fatal("Couldn't clear the TPM without owner auth in physical presence mode:", err)
 	}
