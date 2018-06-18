@@ -41,7 +41,7 @@ func TestPCRMask(t *testing.T) {
 		t.Fatal("Incorrectly said PCR wasn't set when it should have been")
 	}
 
-	if err := mask.setPCR(18); err != nil {
+	if err = mask.setPCR(18); err != nil {
 		t.Fatal("Couldn't set PCR 18 in the mask:", err)
 	}
 

@@ -253,7 +253,10 @@ func TestCustomSeal(t *testing.T) {
 
 	pcrMap := make(map[int][]byte)
 	pcrMap[23] = make([]byte, 20)
-	pcrs, err := CustomPcrInfoLong(0, pcrMap)
+	pcrs, err := CustomPCRInfoLong(0, pcrMap)
+	if err != nil {
+		t.Fatal("Couldn't retrieve PCR info long structure:", err)
+	}
 
 	srkAuth := getAuth(srkAuthEnvVar)
 	sealed, err := Seal(rwc, 0, nil, pcrs, data, srkAuth[:])
