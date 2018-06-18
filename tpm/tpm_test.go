@@ -253,6 +253,7 @@ func TestCustomSeal(t *testing.T) {
 
 	pcrMap := make(map[int][]byte)
 	pcrMap[23] = make([]byte, 20)
+	pcrMap[16] = make([]byte, 20)
 	pcrs, err := CustomPCRInfoLong(0, pcrMap)
 	if err != nil {
 		t.Fatal("Couldn't retrieve PCR info long structure:", err)
