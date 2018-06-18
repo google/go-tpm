@@ -138,7 +138,7 @@ func TestFetchPCRValues(t *testing.T) {
 	var locality byte
 	_, err = createPCRInfoLong(locality, mask, pcrs)
 	if err != nil {
-		t.Fatal("Couldn't create a pcrInfoLong structure for these PCRs")
+		t.Fatal("Couldn't create a PcrInfoLong structure for these PCRs")
 	}
 }
 
@@ -227,7 +227,36 @@ func TestSeal(t *testing.T) {
 	data[2] = 139
 
 	srkAuth := getAuth(srkAuthEnvVar)
-	sealed, err := Seal(rwc, 0 /* locality 0 */, []int{17} /* PCR 17 */, data, srkAuth[:])
+	sealed, err := Seal(rwc, 0 /* locality 0 */, []int{17} /* PCR 17 */, nil, data, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't seal the data:", err)
+	}
+
+	data2, err := Unseal(rwc, sealed, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't unseal the data:", err)
+	}
+
+	if !bytes.Equal(data2, data) {
+		t.Fatal("Unsealed data doesn't match original data")
+	}
+}
+
+func TestCustomSeal(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	data := make([]byte, 64)
+	data[0] = 137
+	data[1] = 138
+	data[2] = 139
+
+	pcrMap := make(map[int][]byte)
+	pcrMap[23] = make([]byte, 20)
+	pcrs, err := CustomPcrInfoLong(0, pcrMap)
+
+	srkAuth := getAuth(srkAuthEnvVar)
+	sealed, err := Seal(rwc, 0, nil, pcrs, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}

@@ -43,8 +43,8 @@ type pcrSelection struct {
 	Mask pcrMask
 }
 
-// pcrInfoLong stores detailed information about PCRs.
-type pcrInfoLong struct {
+// PcrInfoLong stores detailed information about PCRs.
+type PcrInfoLong struct {
 	Tag              uint16
 	LocAtCreation    byte
 	LocAtRelease     byte

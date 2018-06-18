@@ -125,11 +125,11 @@ func TestWrongNewPCRInfoLong(t *testing.T) {
 	defer rwc.Close()
 
 	if _, err := newPCRInfoLong(rwc, 0, []int{400}); err == nil {
-		t.Fatal("Incorrectly created a pcrInfoLong for PCR 400")
+		t.Fatal("Incorrectly created a PcrInfoLong for PCR 400")
 	}
 
 	// This case uses a reasonable PCR value but a nil file.
 	if _, err := newPCRInfoLong(nil, 0, []int{17}); err == nil {
-		t.Fatal("Incorrectly created a pcrInfoLong using a nil file")
+		t.Fatal("Incorrectly created a PcrInfoLong using a nil file")
 	}
 }

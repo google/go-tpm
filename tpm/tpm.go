@@ -325,10 +325,15 @@ func zeroBytes(b []byte) {
 }
 
 // Seal encrypts data against a given locality and PCRs and returns the sealed data.
-func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []byte) ([]byte, error) {
-	pcrInfo, err := newPCRInfoLong(rw, locality, pcrs)
-	if err != nil {
-		return nil, err
+func Seal(rw io.ReadWriter, locality byte, pcrs []int, customPcrs *PcrInfoLong, data []byte, srkAuth []byte) ([]byte, error) {
+	var pcrInfo *PcrInfoLong
+	if customPcrs != nil {
+		pcrInfo = customPcrs
+	} else {
+		pcrInfo, err := newPCRInfoLong(rw, locality, pcrs)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
@@ -375,7 +380,7 @@ func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []by
 
 	// Check the response authentication.
 	raIn := []interface{}{ret, ordSeal, sealed}
-	if err := ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
+	if err = ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
 		return nil, err
 	}
 

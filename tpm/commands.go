@@ -67,7 +67,7 @@ func osap(rw io.ReadWriter, osap *osapCommand) (*osapResponse, error) {
 }
 
 // seal performs a seal operation on the TPM.
-func seal(rw io.ReadWriter, sc *sealCommand, pcrs *pcrInfoLong, data []byte, ca *commandAuth) (*tpmStoredData, *responseAuth, uint32, error) {
+func seal(rw io.ReadWriter, sc *sealCommand, pcrs *PcrInfoLong, data []byte, ca *commandAuth) (*tpmStoredData, *responseAuth, uint32, error) {
 	pcrsize := binary.Size(pcrs)
 	if pcrsize < 0 {
 		return nil, nil, 0, errors.New("couldn't compute the size of a pcrInfoLong")
