@@ -242,6 +242,34 @@ func TestSeal(t *testing.T) {
 	}
 }
 
+func TestReseal(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	data := make([]byte, 64)
+	data[0] = 137
+	data[1] = 138
+	data[2] = 139
+
+	pcrMap := make(map[int][]byte)
+	pcrMap[23] = make([]byte, 20)
+	pcrMap[16] = make([]byte, 20)
+	srkAuth := getAuth(srkAuthEnvVar)
+	sealed, err := Reseal(rwc, 0 /* locality 0 */, pcrMap, data, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't seal the data:", err)
+	}
+
+	data2, err := Unseal(rwc, sealed, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't unseal the data:", err)
+	}
+
+	if !bytes.Equal(data2, data) {
+		t.Fatal("Unsealed data doesn't match original data")
+	}
+}
+
 func TestLoadKey2(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()

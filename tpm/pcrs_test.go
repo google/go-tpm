@@ -133,3 +133,13 @@ func TestWrongNewPCRInfoLong(t *testing.T) {
 		t.Fatal("Incorrectly created a pcrInfoLong using a nil file")
 	}
 }
+
+func TestNewPCRInfoLongWithHashes(t *testing.T) {
+	pcrMap := make(map[int][]byte)
+	pcrMap[23] = make([]byte, 20)
+	pcrMap[16] = make([]byte, 20)
+
+	if _, err := newPCRInfoLongWithHashes(0, pcrMap); err != nil {
+		t.Fatal("Couldn't create pcrInfoLong structure")
+	}
+}
