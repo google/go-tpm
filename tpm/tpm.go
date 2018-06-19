@@ -324,8 +324,7 @@ func zeroBytes(b []byte) {
 	}
 }
 
-// Seal encrypts data against a given locality and PCRs and returns the sealed data.
-func Seal(rw io.ReadWriter, locality byte, pcrs []int, customPcrs *PcrInfoLong, data []byte, srkAuth []byte) ([]byte, error) {
+func sealHelper(rw io.ReadWriter, pcrInfo *PCRInfoLong, data []byte, srkAuth []byte) ([]byte, error) {
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle.
 	sharedSecret, osapr, err := newOSAPSession(rw, etSRK, khSRK, srkAuth)
@@ -352,15 +351,6 @@ func Seal(rw io.ReadWriter, locality byte, pcrs []int, customPcrs *PcrInfoLong, 
 		sc.EncAuth[i] = srkAuth[i] ^ encAuthData[i]
 	}
 
-	var pcrInfo *PcrInfoLong
-	if customPcrs != nil {
-		pcrInfo = customPcrs
-	} else {
-		pcrInfo, err = newPCRInfoLong(rw, locality, pcrs)
-		if err != nil {
-			return nil, err
-		}
-	}
 	// The digest input for seal authentication is
 	//
 	// digest = SHA1(ordSeal || encAuth || binary.Size(pcrInfo) || pcrInfo ||
@@ -379,7 +369,7 @@ func Seal(rw io.ReadWriter, locality byte, pcrs []int, customPcrs *PcrInfoLong, 
 
 	// Check the response authentication.
 	raIn := []interface{}{ret, ordSeal, sealed}
-	if err = ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
+	if err := ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
 		return nil, err
 	}
 
@@ -389,6 +379,21 @@ func Seal(rw io.ReadWriter, locality byte, pcrs []int, customPcrs *PcrInfoLong, 
 	}
 
 	return sealedBytes, nil
+}
+
+// Seal encrypts data against a given locality and PCRs and returns the sealed data.
+func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []byte) ([]byte, error) {
+	pcrInfo, err := newPCRInfoLong(rw, locality, pcrs)
+	if err != nil {
+		return nil, err
+	}
+
+	return sealHelper(rw, pcrInfo, data, srkAuth)
+}
+
+// Seal2 encrypts data against a given PCRInfoLong structure and returns the sealed data.
+func Seal2(rw io.ReadWriter, pcrInfo *PCRInfoLong, data []byte, srkAuth []byte) ([]byte, error) {
+	return sealHelper(rw, pcrInfo, data, srkAuth)
 }
 
 // Unseal decrypts data encrypted by the TPM.

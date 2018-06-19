@@ -41,7 +41,7 @@ func TestPCRMask(t *testing.T) {
 		t.Fatal("Incorrectly said PCR wasn't set when it should have been")
 	}
 
-	if err = mask.setPCR(18); err != nil {
+	if err := mask.setPCR(18); err != nil {
 		t.Fatal("Couldn't set PCR 18 in the mask:", err)
 	}
 
@@ -125,11 +125,11 @@ func TestWrongNewPCRInfoLong(t *testing.T) {
 	defer rwc.Close()
 
 	if _, err := newPCRInfoLong(rwc, 0, []int{400}); err == nil {
-		t.Fatal("Incorrectly created a PcrInfoLong for PCR 400")
+		t.Fatal("Incorrectly created a PCRInfoLong for PCR 400")
 	}
 
 	// This case uses a reasonable PCR value but a nil file.
 	if _, err := newPCRInfoLong(nil, 0, []int{17}); err == nil {
-		t.Fatal("Incorrectly created a PcrInfoLong using a nil file")
+		t.Fatal("Incorrectly created a PCRInfoLong using a nil file")
 	}
 }
