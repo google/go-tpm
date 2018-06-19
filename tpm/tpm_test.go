@@ -242,7 +242,7 @@ func TestSeal(t *testing.T) {
 	}
 }
 
-func TestSeal2(t *testing.T) {
+func TestReseal(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
 
