@@ -383,7 +383,7 @@ func sealHelper(rw io.ReadWriter, pcrInfo *pcrInfoLong, data []byte, srkAuth []b
 
 // Seal encrypts data against a given locality and PCRs and returns the sealed data.
 func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []byte) ([]byte, error) {
-	pcrInfo, err := newpcrInfoLong(rw, locality, pcrs)
+	pcrInfo, err := newPCRInfoLong(rw, locality, pcrs)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []by
 // sealing to provide a way of updating software which is part of a measured
 // boot process.
 func Reseal(rw io.ReadWriter, locality byte, pcrs map[int][]byte, data []byte, srkAuth []byte) ([]byte, error) {
-	pcrInfo, err := newpcrInfoLongWithHashes(locality, pcrs)
+	pcrInfo, err := newPCRInfoLongWithHashes(locality, pcrs)
 	if err != nil {
 		return nil, err
 	}

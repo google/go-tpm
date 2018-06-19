@@ -136,7 +136,7 @@ func TestFetchPCRValues(t *testing.T) {
 	}
 
 	var locality byte
-	_, err = createpcrInfoLong(locality, mask, pcrs)
+	_, err = createPCRInfoLong(locality, mask, pcrs)
 	if err != nil {
 		t.Fatal("Couldn't create a pcrInfoLong structure for these PCRs")
 	}
