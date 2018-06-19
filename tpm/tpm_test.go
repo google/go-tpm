@@ -136,9 +136,9 @@ func TestFetchPCRValues(t *testing.T) {
 	}
 
 	var locality byte
-	_, err = createPCRInfoLong(locality, mask, pcrs)
+	_, err = createpcrInfoLong(locality, mask, pcrs)
 	if err != nil {
-		t.Fatal("Couldn't create a PCRInfoLong structure for these PCRs")
+		t.Fatal("Couldn't create a pcrInfoLong structure for these PCRs")
 	}
 }
 
@@ -254,13 +254,8 @@ func TestSeal2(t *testing.T) {
 	pcrMap := make(map[int][]byte)
 	pcrMap[23] = make([]byte, 20)
 	pcrMap[16] = make([]byte, 20)
-	pcrs, err := NewPCRInfoLongWithHashes(0, pcrMap)
-	if err != nil {
-		t.Fatal("Couldn't retrieve PCR info long structure:", err)
-	}
-
 	srkAuth := getAuth(srkAuthEnvVar)
-	sealed, err := Seal2(rwc, pcrs, data, srkAuth[:])
+	sealed, err := Reseal(rwc, 0 /* locality 0 */, pcrMap, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}

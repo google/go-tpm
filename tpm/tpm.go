@@ -324,7 +324,7 @@ func zeroBytes(b []byte) {
 	}
 }
 
-func sealHelper(rw io.ReadWriter, pcrInfo *PCRInfoLong, data []byte, srkAuth []byte) ([]byte, error) {
+func sealHelper(rw io.ReadWriter, pcrInfo *pcrInfoLong, data []byte, srkAuth []byte) ([]byte, error) {
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle.
 	sharedSecret, osapr, err := newOSAPSession(rw, etSRK, khSRK, srkAuth)
@@ -383,16 +383,22 @@ func sealHelper(rw io.ReadWriter, pcrInfo *PCRInfoLong, data []byte, srkAuth []b
 
 // Seal encrypts data against a given locality and PCRs and returns the sealed data.
 func Seal(rw io.ReadWriter, locality byte, pcrs []int, data []byte, srkAuth []byte) ([]byte, error) {
-	pcrInfo, err := newPCRInfoLong(rw, locality, pcrs)
+	pcrInfo, err := newpcrInfoLong(rw, locality, pcrs)
 	if err != nil {
 		return nil, err
 	}
-
 	return sealHelper(rw, pcrInfo, data, srkAuth)
 }
 
-// Seal2 encrypts data against a given PCRInfoLong structure and returns the sealed data.
-func Seal2(rw io.ReadWriter, pcrInfo *PCRInfoLong, data []byte, srkAuth []byte) ([]byte, error) {
+// Reseal takes a pre-calculated PCR map and locality in order to seal data
+// with a srkAuth. This function is necessary for PCR pre-calculation and later
+// sealing to provide a way of updating software which is part of a measured
+// boot process.
+func Reseal(rw io.ReadWriter, locality byte, pcrs map[int][]byte, data []byte, srkAuth []byte) ([]byte, error) {
+	pcrInfo, err := newpcrInfoLongWithHashes(locality, pcrs)
+	if err != nil {
+		return nil, err
+	}
 	return sealHelper(rw, pcrInfo, data, srkAuth)
 }
 

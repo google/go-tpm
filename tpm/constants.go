@@ -23,7 +23,7 @@ func init() {
 
 // Supported TPM commands.
 const (
-	tagPCRInfoLong     uint16 = 0x06
+	tagpcrInfoLong     uint16 = 0x06
 	tagRQUCommand      uint16 = 0x00C1
 	tagRQUAuth1Command uint16 = 0x00C2
 	tagRQUAuth2Command uint16 = 0x00C3

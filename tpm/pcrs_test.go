@@ -106,7 +106,7 @@ func TestIncorrectCreatePCRComposite(t *testing.T) {
 	}
 }
 
-func TestWrongCreatePCRInfoLong(t *testing.T) {
+func TestWrongCreatepcrInfoLong(t *testing.T) {
 	pcrs, err := newPCRSelection([]int{17, 18})
 	if err != nil {
 		t.Fatal("Couldn't set up a PCR selection with PCRs 17 and 18")
@@ -115,21 +115,21 @@ func TestWrongCreatePCRInfoLong(t *testing.T) {
 	// This byte array is far too long and isn't a multiple of PCRSize, since it
 	// is of prime size.
 	pcrValues := make([]byte, 541)
-	if _, err := createPCRInfoLong(0, pcrs.Mask, pcrValues); err == nil {
+	if _, err := createpcrInfoLong(0, pcrs.Mask, pcrValues); err == nil {
 		t.Fatal("Incorrectly created a PCR composite with wrong PCR length")
 	}
 }
 
-func TestWrongNewPCRInfoLong(t *testing.T) {
+func TestWrongNewpcrInfoLong(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
 
-	if _, err := newPCRInfoLong(rwc, 0, []int{400}); err == nil {
-		t.Fatal("Incorrectly created a PCRInfoLong for PCR 400")
+	if _, err := newpcrInfoLong(rwc, 0, []int{400}); err == nil {
+		t.Fatal("Incorrectly created a pcrInfoLong for PCR 400")
 	}
 
 	// This case uses a reasonable PCR value but a nil file.
-	if _, err := newPCRInfoLong(nil, 0, []int{17}); err == nil {
-		t.Fatal("Incorrectly created a PCRInfoLong using a nil file")
+	if _, err := newpcrInfoLong(nil, 0, []int{17}); err == nil {
+		t.Fatal("Incorrectly created a pcrInfoLong using a nil file")
 	}
 }

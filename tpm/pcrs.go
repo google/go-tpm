@@ -81,9 +81,9 @@ func createPCRComposite(mask pcrMask, pcrs []byte) ([]byte, error) {
 	return h[:], nil
 }
 
-// String returns a string representation of a PCRInfoLong.
-func (pcri PCRInfoLong) String() string {
-	return fmt.Sprintf("PCRInfoLong{Tag: %x, LocAtCreation: %x, LocAtRelease: %x, PCRsAtCreation: %s, PCRsAtRelease: %s, DigestAtCreation: % x, DigestAtRelease: % x}", pcri.Tag, pcri.LocAtCreation, pcri.LocAtRelease, pcri.PCRsAtCreation, pcri.PCRsAtRelease, pcri.DigestAtCreation, pcri.DigestAtRelease)
+// String returns a string representation of a pcrInfoLong.
+func (pcri pcrInfoLong) String() string {
+	return fmt.Sprintf("pcrInfoLong{Tag: %x, LocAtCreation: %x, LocAtRelease: %x, PCRsAtCreation: %s, PCRsAtRelease: %s, DigestAtCreation: % x, DigestAtRelease: % x}", pcri.Tag, pcri.LocAtCreation, pcri.LocAtRelease, pcri.PCRsAtCreation, pcri.PCRsAtRelease, pcri.DigestAtCreation, pcri.DigestAtRelease)
 }
 
 // String returns a string representation of a pcrInfoShort.
@@ -91,17 +91,17 @@ func (pcri pcrInfoShort) String() string {
 	return fmt.Sprintf("pcrInfoShort{LocAtRelease: %x, PCRsAtRelease: %s, DigestAtRelease: % x}", pcri.LocAtRelease, pcri.PCRsAtRelease, pcri.DigestAtRelease)
 }
 
-// createPCRInfoLong creates a PCRInfoLong structure from a mask and some PCR
+// createpcrInfoLong creates a pcrInfoLong structure from a mask and some PCR
 // values that match this mask, along with a TPM locality.
-func createPCRInfoLong(loc byte, mask pcrMask, pcrVals []byte) (*PCRInfoLong, error) {
+func createpcrInfoLong(loc byte, mask pcrMask, pcrVals []byte) (*pcrInfoLong, error) {
 	d, err := createPCRComposite(mask, pcrVals)
 	if err != nil {
 		return nil, err
 	}
 
 	locVal := byte(1 << loc)
-	pcri := &PCRInfoLong{
-		Tag:            tagPCRInfoLong,
+	pcri := &pcrInfoLong{
+		Tag:            tagpcrInfoLong,
 		LocAtCreation:  locVal,
 		LocAtRelease:   locVal,
 		PCRsAtCreation: pcrSelection{3, mask},
@@ -114,9 +114,9 @@ func createPCRInfoLong(loc byte, mask pcrMask, pcrVals []byte) (*PCRInfoLong, er
 	return pcri, nil
 }
 
-// newPCRInfoLong creates and returns a PCRInfoLong structure for the given PCR
+// newpcrInfoLong creates and returns a pcrInfoLong structure for the given PCR
 // values.
-func newPCRInfoLong(rw io.ReadWriter, loc byte, pcrNums []int) (*PCRInfoLong, error) {
+func newpcrInfoLong(rw io.ReadWriter, loc byte, pcrNums []int) (*pcrInfoLong, error) {
 	var mask pcrMask
 	for _, pcr := range pcrNums {
 		if err := mask.setPCR(pcr); err != nil {
@@ -129,7 +129,7 @@ func newPCRInfoLong(rw io.ReadWriter, loc byte, pcrNums []int) (*PCRInfoLong, er
 		return nil, err
 	}
 
-	return createPCRInfoLong(loc, mask, pcrVals)
+	return createpcrInfoLong(loc, mask, pcrVals)
 }
 
 func newPCRInfo(rw io.ReadWriter, pcrNums []int) (*pcrInfo, error) {
@@ -157,9 +157,9 @@ func newPCRInfo(rw io.ReadWriter, pcrNums []int) (*pcrInfo, error) {
 	return pcri, nil
 }
 
-// NewPCRInfoLongWithHashes creates and returns a PCRInfoLong structure for the
+// newpcrInfoLongWithHashes creates and returns a pcrInfoLong structure for the
 // given PCR and hashes.
-func NewPCRInfoLongWithHashes(location byte, pcrs map[int][]byte) (*PCRInfoLong, error) {
+func newpcrInfoLongWithHashes(locality byte, pcrs map[int][]byte) (*pcrInfoLong, error) {
 	var mask pcrMask
 	var hashes []byte
 	for index, hash := range pcrs {
@@ -169,5 +169,5 @@ func NewPCRInfoLongWithHashes(location byte, pcrs map[int][]byte) (*PCRInfoLong,
 		hashes = append(hashes, hash...)
 	}
 
-	return createPCRInfoLong(location, mask, hashes)
+	return createpcrInfoLong(locality, mask, hashes)
 }
