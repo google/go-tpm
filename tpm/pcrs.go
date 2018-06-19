@@ -157,8 +157,8 @@ func newPCRInfo(rw io.ReadWriter, pcrNums []int) (*pcrInfo, error) {
 	return pcri, nil
 }
 
-// newpcrInfoLongWithHashes creates and returns a pcrInfoLong structure for the
-// given PCR and hashes.
+// newPCRInfoLongWithHashes creates and returns a pcrInfoLong structure for the
+// given PCRs and hashes.
 func newPCRInfoLongWithHashes(locality byte, pcrs map[int][]byte) (*pcrInfoLong, error) {
 	var mask pcrMask
 	var hashes []byte

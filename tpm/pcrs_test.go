@@ -139,8 +139,7 @@ func TestNewPCRInfoLongWithHashes(t *testing.T) {
 	pcrMap[23] = make([]byte, 20)
 	pcrMap[16] = make([]byte, 20)
 
-	_, err := newPCRInfoLongWithHashes(0, pcrMap)
-	if err != nil {
+	if _, err := newPCRInfoLongWithHashes(0, pcrMap); err != nil {
 		t.Fatal("Couldn't create pcrInfoLong structure")
 	}
 }
