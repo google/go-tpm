@@ -977,10 +977,6 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 }
 
 func encodeSign(key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) ([]byte, error) {
-	if sigScheme == nil {
-		sigScheme = &SigScheme{Alg: AlgNull}
-	}
-
 	ha, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
