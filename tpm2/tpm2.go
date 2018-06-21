@@ -976,7 +976,7 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 	return err
 }
 
-func encodeSign(key tpmutil.Handle, password string, digest []byte) ([]byte, error) {
+func encodeSign(key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) ([]byte, error) {
 	ha, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
@@ -985,11 +985,20 @@ func encodeSign(key tpmutil.Handle, password string, digest []byte) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	params, err := tpmutil.Pack(digest, AlgNull, tagHashCheck, HandleNull, []byte(nil))
+	d, err := tpmutil.Pack(digest)
 	if err != nil {
 		return nil, err
 	}
-	return concat(ha, auth, params)
+	s, err := sigScheme.encode()
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(HandleNull, []byte(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	return concat(ha, auth, d, s, params)
 }
 
 func decodeSign(buf []byte) (*Signature, error) {
@@ -1003,8 +1012,8 @@ func decodeSign(buf []byte) (*Signature, error) {
 
 // Sign computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type.
-func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte) (*Signature, error) {
-	cmd, err := encodeSign(key, password, digest)
+func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
+	cmd, err := encodeSign(key, password, digest, sigScheme)
 	if err != nil {
 		return nil, err
 	}

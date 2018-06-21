@@ -36,6 +36,11 @@ func (a Algorithm) IsNull() bool {
 	return a == AlgNull || a == AlgUnknown
 }
 
+// UsesCount returns true if a signature algorithm uses count value.
+func (a Algorithm) UsesCount() bool {
+	return a == AlgECDAA
+}
+
 // Supported Algorithms.
 const (
 	AlgUnknown   Algorithm = 0x0000
