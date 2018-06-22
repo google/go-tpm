@@ -371,3 +371,38 @@ func TestECCParamsEncodeDecode(t *testing.T) {
 		t.Fatalf("got: %+v\nwant: %+v", got, params)
 	}
 }
+
+func TestSignEncode(t *testing.T) {
+	t.Run("AlgNone", func(t *testing.T) {
+		testCmdBytes, err := hex.DecodeString("800000010000000d40000009000001000401020304000301020300108024400000070000")
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := []byte{0x01, 0x02, 0x03}
+		cmdBytes, err := encodeSign(tpmutil.Handle(0x80000001), defaultPassword, digest, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(cmdBytes, testCmdBytes) {
+			t.Fatalf("got: %s, want: %s", hex.EncodeToString(cmdBytes), hex.EncodeToString(testCmdBytes))
+		}
+	})
+
+	t.Run("AlgSHA256", func(t *testing.T) {
+		testCmdBytes, err := hex.DecodeString("800000010000000d4000000900000100040102030400030102030001000b8024400000070000")
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := []byte{0x01, 0x02, 0x03}
+		cmdBytes, err := encodeSign(tpmutil.Handle(0x80000001), defaultPassword, digest, &SigScheme{
+			Alg:  AlgRSA,
+			Hash: AlgSHA256,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(cmdBytes, testCmdBytes) {
+			t.Fatalf("got: %s, want: %s", hex.EncodeToString(cmdBytes), hex.EncodeToString(testCmdBytes))
+		}
+	})
+}
