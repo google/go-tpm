@@ -373,7 +373,7 @@ func TestECCParamsEncodeDecode(t *testing.T) {
 }
 
 func TestSignEncode(t *testing.T) {
-	t.Run("AlgNone", func(t *testing.T) {
+	t.Run("AlgNull", func(t *testing.T) {
 		testCmdBytes, err := hex.DecodeString("800000010000000d40000009000001000401020304000301020300108024400000070000")
 		if err != nil {
 			t.Fatal(err)
