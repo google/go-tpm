@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"reflect"
 
@@ -93,9 +92,9 @@ func readEKCert(path string, certIdx, tmplIdx uint32) ([]byte, error) {
 					KeyBits: 128,
 					Mode:    tpm2.AlgCFB,
 				},
-				KeyBits:  2048,
-				Exponent: 0,
-				Modulus:  big.NewInt(0).SetBytes(make([]byte, 256)),
+				KeyBits:    2048,
+				Exponent:   0,
+				ModulusRaw: make([]byte, 256),
 			},
 		})
 		if err != nil {
