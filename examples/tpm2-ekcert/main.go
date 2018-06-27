@@ -22,6 +22,33 @@ var (
 	certIndex = flag.Uint("cert-index", 0x01C00002, "NVRAM index of the certificate file")
 	tmplIndex = flag.Uint("template-index", 0, "NVRAM index of the EK template; if empty, default RSA EK template is used")
 	outPath   = flag.String("output", "", "File path for output; leave blank to write to stdout")
+
+	// Default EK template defined in:
+	// https://trustedcomputinggroup.org/wp-content/uploads/Credential_Profile_EK_V2.0_R14_published.pdf
+	defaultEKTemplate = tpm2.Public{
+		Type:    tpm2.AlgRSA,
+		NameAlg: tpm2.AlgSHA256,
+		Attributes: tpm2.FlagFixedTPM | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin |
+			tpm2.FlagAdminWithPolicy | tpm2.FlagRestricted | tpm2.FlagDecrypt,
+		AuthPolicy: []byte{
+			0x83, 0x71, 0x97, 0x67, 0x44, 0x84,
+			0xB3, 0xF8, 0x1A, 0x90, 0xCC, 0x8D,
+			0x46, 0xA5, 0xD7, 0x24, 0xFD, 0x52,
+			0xD7, 0x6E, 0x06, 0x52, 0x0B, 0x64,
+			0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14,
+			0x69, 0xAA,
+		},
+		RSAParameters: &tpm2.RSAParams{
+			Symmetric: &tpm2.SymScheme{
+				Alg:     tpm2.AlgAES,
+				KeyBits: 128,
+				Mode:    tpm2.AlgCFB,
+			},
+			KeyBits:    2048,
+			Exponent:   0,
+			ModulusRaw: make([]byte, 256),
+		},
+	}
 )
 
 func main() {
@@ -71,32 +98,7 @@ func readEKCert(path string, certIdx, tmplIdx uint32) ([]byte, error) {
 			return nil, fmt.Errorf("creating EK: %v", err)
 		}
 	} else {
-		// Default EK template defined in:
-		// https://trustedcomputinggroup.org/wp-content/uploads/Credential_Profile_EK_V2.0_R14_published.pdf
-		ekh, ekPub, err = tpm2.CreatePrimary(rwc, tpm2.HandleEndorsement, tpm2.PCRSelection{}, "", "", tpm2.Public{
-			Type:    tpm2.AlgRSA,
-			NameAlg: tpm2.AlgSHA256,
-			Attributes: tpm2.FlagFixedTPM | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin |
-				tpm2.FlagAdminWithPolicy | tpm2.FlagRestricted | tpm2.FlagDecrypt,
-			AuthPolicy: []byte{
-				0x83, 0x71, 0x97, 0x67, 0x44, 0x84,
-				0xB3, 0xF8, 0x1A, 0x90, 0xCC, 0x8D,
-				0x46, 0xA5, 0xD7, 0x24, 0xFD, 0x52,
-				0xD7, 0x6E, 0x06, 0x52, 0x0B, 0x64,
-				0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14,
-				0x69, 0xAA,
-			},
-			RSAParameters: &tpm2.RSAParams{
-				Symmetric: &tpm2.SymScheme{
-					Alg:     tpm2.AlgAES,
-					KeyBits: 128,
-					Mode:    tpm2.AlgCFB,
-				},
-				KeyBits:    2048,
-				Exponent:   0,
-				ModulusRaw: make([]byte, 256),
-			},
-		})
+		ekh, ekPub, err = tpm2.CreatePrimary(rwc, tpm2.HandleEndorsement, tpm2.PCRSelection{}, "", "", defaultEKTemplate)
 		if err != nil {
 			return nil, fmt.Errorf("creating EK: %v", err)
 		}

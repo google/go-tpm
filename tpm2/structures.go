@@ -106,9 +106,8 @@ func decodePublic(in *bytes.Buffer) (Public, error) {
 // Symmetric and Sign may be nil, depending on key Attributes in Public.
 //
 // One of Modulus and ModulusRaw must always be non-nil. Modulus takes
-// precedence.
-// ModulusRaw is used for key templates where "unique" field must be a byte
-// array of all zeroes.
+// precedence. ModulusRaw is used for key templates where the field named
+// "unique" must be a byte array of all zeroes.
 type RSAParams struct {
 	Symmetric  *SymScheme
 	Sign       *SigScheme
@@ -137,6 +136,9 @@ func (p *RSAParams) encode() ([]byte, error) {
 
 	if p.Modulus == nil && len(p.ModulusRaw) == 0 {
 		return nil, errors.New("RSAParams.Modulus or RSAParams.ModulusRaw must be set")
+	}
+	if p.Modulus != nil && len(p.ModulusRaw) > 0 {
+		return nil, errors.New("both RSAParams.Modulus and RSAParams.ModulusRaw can't be set")
 	}
 	mod := p.ModulusRaw
 	if p.Modulus != nil {
