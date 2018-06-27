@@ -20,7 +20,7 @@ var (
 	// Default value is defined in section 7.8, "NV Memory" of the latest version pdf on:
 	// https://trustedcomputinggroup.org/resource/tcg-tpm-v2-0-provisioning-guidance/
 	certIndex = flag.Uint("cert-index", 0x01C00002, "NVRAM index of the certificate file")
-	tmplIndex = flag.Uint("template-index", 0, "NVRAM index of the EK template; if empty, default RSA EK template is used")
+	tmplIndex = flag.Uint("template-index", 0, "NVRAM index of the EK template; if zero, default RSA EK template is used")
 	outPath   = flag.String("output", "", "File path for output; leave blank to write to stdout")
 
 	// Default EK template defined in:
