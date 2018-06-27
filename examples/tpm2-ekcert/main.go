@@ -95,7 +95,7 @@ func readEKCert(path string, certIdx, tmplIdx uint32) ([]byte, error) {
 				},
 				KeyBits:  2048,
 				Exponent: 0,
-				Modulus:  big.NewInt(0),
+				Modulus:  big.NewInt(0).SetBytes(make([]byte, 256)),
 			},
 		})
 		if err != nil {
