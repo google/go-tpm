@@ -373,6 +373,7 @@ func TestECCParamsEncodeDecode(t *testing.T) {
 }
 
 func TestSignEncode(t *testing.T) {
+	// The expected output blobs (testCmdBytes) were recorded while successfully running Sign against a real TPM device.
 	t.Run("AlgNull", func(t *testing.T) {
 		testCmdBytes, err := hex.DecodeString("800000010000000d40000009000001000401020304000301020300108024400000070000")
 		if err != nil {
@@ -384,12 +385,11 @@ func TestSignEncode(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !bytes.Equal(cmdBytes, testCmdBytes) {
-			t.Fatalf("got: %s, want: %s", hex.EncodeToString(cmdBytes), hex.EncodeToString(testCmdBytes))
+			t.Fatalf("encoded Sign message did not match golden value. got: %s, want: %s", hex.EncodeToString(cmdBytes), hex.EncodeToString(testCmdBytes))
 		}
 	})
 
 	t.Run("AlgSHA256", func(t *testing.T) {
-		// The expected output blobs were recorded while successfully running Sign against a real TPM device.
 		testCmdBytes, err := hex.DecodeString("800000010000000d4000000900000100040102030400030102030014000b8024400000070000")
 		if err != nil {
 			t.Fatal(err)
@@ -403,7 +403,7 @@ func TestSignEncode(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !bytes.Equal(cmdBytes, testCmdBytes) {
-			t.Fatalf("got: %s, want: %s", hex.EncodeToString(cmdBytes), hex.EncodeToString(testCmdBytes))
+			t.Fatalf("encoded Sign message did not match golden value. got: %s, want: %s", hex.EncodeToString(cmdBytes), hex.EncodeToString(testCmdBytes))
 		}
 	})
 }
