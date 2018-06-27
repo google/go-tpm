@@ -104,13 +104,17 @@ func decodePublic(in *bytes.Buffer) (Public, error) {
 // RSAParams represents parameters of an RSA key pair.
 //
 // Symmetric and Sign may be nil, depending on key Attributes in Public.
-// Modulus must always be non-nil.
+//
+// One of Modulus and ModulusRaw must always be non-nil. Modulus takes
+// precedence. ModulusRaw is used for key templates where the field named
+// "unique" must be a byte array of all zeroes.
 type RSAParams struct {
-	Symmetric *SymScheme
-	Sign      *SigScheme
-	KeyBits   uint16
-	Exponent  uint32
-	Modulus   *big.Int
+	Symmetric  *SymScheme
+	Sign       *SigScheme
+	KeyBits    uint16
+	Exponent   uint32
+	ModulusRaw []byte
+	Modulus    *big.Int
 }
 
 func (p *RSAParams) encode() ([]byte, error) {
@@ -125,14 +129,27 @@ func (p *RSAParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.Modulus == nil {
-		return nil, errors.New("RSAParams.Modulus must be set")
-	}
-	rest, err := tpmutil.Pack(p.KeyBits, p.Exponent, p.Modulus.Bytes())
+	rest, err := tpmutil.Pack(p.KeyBits, p.Exponent)
 	if err != nil {
 		return nil, err
 	}
-	return concat(sym, sig, rest)
+
+	if p.Modulus == nil && len(p.ModulusRaw) == 0 {
+		return nil, errors.New("RSAParams.Modulus or RSAParams.ModulusRaw must be set")
+	}
+	if p.Modulus != nil && len(p.ModulusRaw) > 0 {
+		return nil, errors.New("both RSAParams.Modulus and RSAParams.ModulusRaw can't be set")
+	}
+	mod := p.ModulusRaw
+	if p.Modulus != nil {
+		mod = p.Modulus.Bytes()
+	}
+	unique, err := tpmutil.Pack(mod)
+	if err != nil {
+		return nil, err
+	}
+
+	return concat(sym, sig, rest, unique)
 }
 
 func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
