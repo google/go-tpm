@@ -158,12 +158,6 @@ const (
 	authPrivUseOnly byte = 0x03
 )
 
-// maxTPMResponse is the largest possible response from the TPM. We need to know
-// this because we don't always know the length of the TPM response, and
-// /dev/tpm insists on giving it all back in a single value rather than
-// returning a header and a body in separate responses.
-const maxTPMResponse = 4096
-
 // fixedQuote is the fixed constant string used in quoteInfo.
 var fixedQuote = [4]byte{byte('Q'), byte('U'), byte('O'), byte('T')}
 
