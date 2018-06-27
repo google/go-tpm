@@ -25,37 +25,48 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 )
 
-// OpenTPM opens a channel to the TPM at the given path. If the file is a
-// device, then it treats it like a normal TPM device, and if the file is a
-// Unix domain socket, then it opens a connection to the socket.
+const localSocketPrefix = "localhost:"
+
+// OpenTPM opens a channel to the TPM at the given path.
+//
+// If path is a local TCP socket (i.e. starts with "localhost:"), it's dialed
+// and returned.
+// If path is a unix socket, it's dialed and returned.
+// If path is a device file, then it's opened and returned.
 func OpenTPM(path string) (io.ReadWriteCloser, error) {
-	// If it's a regular file, then open it
-	var rwc io.ReadWriteCloser
+	// If it's a local TCP socket, dial it.
+	if strings.HasPrefix(path, localSocketPrefix) {
+		con, err := net.Dial("tcp", path)
+		if err != nil {
+			return nil, err
+		}
+		return con, nil
+	}
+
+	// If it's a regular file, open it.
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
-
 	if fi.Mode()&os.ModeDevice != 0 {
 		var f *os.File
 		f, err = os.OpenFile(path, os.O_RDWR, 0600)
 		if err != nil {
 			return nil, err
 		}
-		rwc = io.ReadWriteCloser(f)
-	} else if fi.Mode()&os.ModeSocket != 0 {
-		uc, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+		return f, nil
+	}
+	if fi.Mode()&os.ModeSocket != 0 {
+		uc, err := net.Dial("unix", path)
 		if err != nil {
 			return nil, err
 		}
-		rwc = io.ReadWriteCloser(uc)
-	} else {
-		return nil, fmt.Errorf("unsupported TPM file mode %s", fi.Mode().String())
+		return uc, nil
 	}
-
-	return rwc, nil
+	return nil, fmt.Errorf("unsupported TPM file mode %s", fi.Mode().String())
 }
 
 // maxTPMResponse is the largest possible response from the TPM. We need to know
