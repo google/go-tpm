@@ -251,7 +251,7 @@ func encodePasswordAuthArea(passwords ...string) ([]byte, error) {
 }
 
 func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
-	ha, err := tpmutil.Pack(pcr, HandleNull)
+	ha, err := tpmutil.Pack(pcr)
 	if err != nil {
 		return nil, err
 	}
