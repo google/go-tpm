@@ -15,15 +15,14 @@
 package tpm
 
 import (
-	"bytes"
-	"crypto/rand"
-	"crypto/sha1"
-	"io"
-	"io/ioutil"
-	"os"
-	"testing"
+	bytes "bytes"
+	rand "crypto/rand"
+	sha1 "crypto/sha1"
+	ioutil "io/ioutil"
+	os "os"
+	testing "testing"
 
-	"github.com/google/go-tpm/tpmutil"
+	tpmutil "github.com/google/go-tpm/tpmutil"
 )
 
 var (
@@ -44,21 +43,6 @@ func getAuth(name string) [20]byte {
 		copy(auth[:], aa[:])
 	}
 	return auth
-}
-
-// Skip the test if we can't open the TPM.
-func openTPMOrSkip(t *testing.T) io.ReadWriteCloser {
-	tpmPath := os.Getenv(tpmPathEnvVar)
-	if tpmPath == "" {
-		tpmPath = "/dev/tpm0"
-	}
-
-	rwc, err := OpenTPM(tpmPath)
-	if err != nil {
-		t.Skipf("Skipping test, since we can't open %s for read/write: %s\n", tpmPath, err)
-	}
-
-	return rwc
 }
 
 func TestGetKeys(t *testing.T) {
@@ -228,34 +212,6 @@ func TestSeal(t *testing.T) {
 
 	srkAuth := getAuth(srkAuthEnvVar)
 	sealed, err := Seal(rwc, 0 /* locality 0 */, []int{17} /* PCR 17 */, data, srkAuth[:])
-	if err != nil {
-		t.Fatal("Couldn't seal the data:", err)
-	}
-
-	data2, err := Unseal(rwc, sealed, srkAuth[:])
-	if err != nil {
-		t.Fatal("Couldn't unseal the data:", err)
-	}
-
-	if !bytes.Equal(data2, data) {
-		t.Fatal("Unsealed data doesn't match original data")
-	}
-}
-
-func TestReseal(t *testing.T) {
-	rwc := openTPMOrSkip(t)
-	defer rwc.Close()
-
-	data := make([]byte, 64)
-	data[0] = 137
-	data[1] = 138
-	data[2] = 139
-
-	pcrMap := make(map[int][]byte)
-	pcrMap[23] = make([]byte, 20)
-	pcrMap[16] = make([]byte, 20)
-	srkAuth := getAuth(srkAuthEnvVar)
-	sealed, err := Reseal(rwc, 0 /* locality 0 */, pcrMap, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}
@@ -524,18 +480,5 @@ func TestTakeOwnership(t *testing.T) {
 
 	if err := TakeOwnership(rwc, ownerAuth, srkAuth, pubek); err != nil {
 		t.Fatal("Couldn't take ownership of the TPM:", err)
-	}
-}
-
-func TestForceClear(t *testing.T) {
-	// Only enable this if you know what you're doing.
-	// TPM force clear clears the ownership of the TPM.
-	// Beware of running this test on a production system.
-	t.Skip()
-	rwc := openTPMOrSkip(t)
-	defer rwc.Close()
-
-	if err := ForceClear(rwc); err != nil {
-		t.Fatal("Couldn't clear the TPM without owner auth in physical presence mode:", err)
 	}
 }

@@ -15,39 +15,25 @@
 package tpm2
 
 import (
-	"bytes"
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"flag"
-	"io"
-	"math/big"
-	"os"
-	"reflect"
-	"testing"
+	bytes "bytes"
+	crypto "crypto"
+	ecdsa "crypto/ecdsa"
+	elliptic "crypto/elliptic"
+	rand "crypto/rand"
+	rsa "crypto/rsa"
+	sha256 "crypto/sha256"
+	flag "flag"
+	big "math/big"
+	os "os"
+	reflect "reflect"
+	testing "testing"
 
-	"github.com/google/go-tpm/tpmutil"
+	tpmutil "github.com/google/go-tpm/tpmutil"
 )
-
-var tpmPath = flag.String("tpm_path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 	os.Exit(m.Run())
-}
-
-func openTPM(t *testing.T) io.ReadWriteCloser {
-	if *tpmPath == "" {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM(*tpmPath)
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %s", err)
-	}
-	return rw
 }
 
 var (
@@ -358,7 +344,7 @@ func TestCertify(t *testing.T) {
 	}
 	defer FlushContext(rw, signerHandle)
 
-	subjectHandle, subjectPub, err := CreatePrimary(rw, HandlePlatform, pcrSelection, emptyPassword, defaultPassword, params)
+	subjectHandle, _, err := CreatePrimary(rw, HandlePlatform, pcrSelection, emptyPassword, defaultPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimary(subject) failed: %s", err)
 	}
@@ -374,35 +360,6 @@ func TestCertify(t *testing.T) {
 	if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
-
-	t.Run("DecodeAttestationData", func(t *testing.T) {
-		ad, err := DecodeAttestationData(attest)
-		if err != nil {
-			t.Fatal("DecodeAttestationData:", err)
-		}
-		params := Public{
-			Type:       AlgRSA,
-			NameAlg:    AlgSHA256,
-			Attributes: FlagSignerDefault,
-			RSAParameters: &RSAParams{
-				Sign: &SigScheme{
-					Alg:  AlgRSASSA,
-					Hash: AlgSHA256,
-				},
-				KeyBits: 2048,
-				// Note: we don't include Exponent because CreatePrimary also
-				// returns Public without it.
-				Modulus: subjectPub.(*rsa.PublicKey).N,
-			},
-		}
-		matches, err := ad.AttestedCertifyInfo.Name.MatchesPublic(params)
-		if err != nil {
-			t.Fatalf("AttestedCertifyInfo.Name.MatchesPublic error: %v", err)
-		}
-		if !matches {
-			t.Error("Name in AttestationData doesn't match Public structure of subject")
-		}
-	})
 }
 
 func TestCertifyExternalKey(t *testing.T) {
@@ -511,7 +468,7 @@ func TestSign(t *testing.T) {
 
 		digest := sha256.Sum256([]byte("heyo"))
 
-		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256})
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:])
 		if err != nil {
 			t.Fatalf("Sign failed: %s", err)
 		}
