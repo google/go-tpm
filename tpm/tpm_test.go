@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha1"
-	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -44,21 +43,6 @@ func getAuth(name string) [20]byte {
 		copy(auth[:], aa[:])
 	}
 	return auth
-}
-
-// Skip the test if we can't open the TPM.
-func openTPMOrSkip(t *testing.T) io.ReadWriteCloser {
-	tpmPath := os.Getenv(tpmPathEnvVar)
-	if tpmPath == "" {
-		tpmPath = "/dev/tpm0"
-	}
-
-	rwc, err := OpenTPM(tpmPath)
-	if err != nil {
-		t.Skipf("Skipping test, since we can't open %s for read/write: %s\n", tpmPath, err)
-	}
-
-	return rwc
 }
 
 func TestGetKeys(t *testing.T) {
