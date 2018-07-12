@@ -28,7 +28,7 @@ func openTPM(t *testing.T) io.ReadWriteCloser {
 	if *runTPMTests == false {
 		t.SkipNow()
 	}
-	rw, err := OpenTPM(tpmutil.DefaultPriority)
+	rw, err := OpenTPM(tpmutil.HighPriority)
 	if err != nil {
 		t.Fatalf("Open TPM failed: %s\n", err)
 	}

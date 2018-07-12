@@ -23,10 +23,12 @@ import (
 
 // Tbs.dll Docs:
 // https://docs.microsoft.com/en-us/windows/desktop/TBS/tpm-base-services-portal
-var tbsDll = syscall.NewLazyDLL("Tbs.dll")
-var tbsCreateContext = tbsDll.NewProc("Tbsi_Context_Create")
-var tbsSubmitCommand = tbsDll.NewProc("Tbsip_Submit_Command")
-var tbsContextClose = tbsDll.NewProc("Tbsip_Context_Close")
+var (
+	tbsDLL           = syscall.NewLazyDLL("Tbs.dll")
+	tbsCreateContext = tbsDLL.NewProc("Tbsi_Context_Create")
+	tbsSubmitCommand = tbsDLL.NewProc("Tbsip_Submit_Command")
+	tbsContextClose  = tbsDLL.NewProc("Tbsip_Context_Close")
+)
 
 // tbsContextParams2 Docs:
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/ns-tbs-tdtbs_context_params2
@@ -35,10 +37,12 @@ type tbsContextParams2 struct {
 	flags   uint32
 }
 
+// tbs.h Docs:
+// https://github.com/tpn/winsdk-10/blob/master/Include/10.0.10240.0/shared/tbs.h
 const (
-	tpm2Version            uint32  = 2
-	bothTPMVersionsFlag    uint32  = 6
-	tbsCommandLocalityZero uintptr = 0
+	tpm2Version            uint32  = 2 // value of TPM_VERSION_20 tbs.h constant
+	bothTPMVersionsFlag    uint32  = 6 // value of union struct to include TPM 1.2 and 2.0 (see tbsContextParams2)
+	tbsCommandLocalityZero uintptr = 0 // value of TBS_COMMAND_LOCALITY_ZERO tbs.h constant
 )
 
 // CommandPriority Parameter Docs
@@ -48,11 +52,10 @@ type CommandPriority uint32
 // CommandPriority is used to determine which pending command to submit whenever the TPM is free.
 // https://docs.microsoft.com/en-us/windows/desktop/tbs/command-scheduling
 const (
-	LowPriority     CommandPriority = 100          // used for low priority application use.
-	NormalPriority  CommandPriority = 200          // used for normal priority application use.
-	HighPriority    CommandPriority = 300          // used for high priority application use.
-	SystemPriority  CommandPriority = 400          // used for system tasks that access the TPM.
-	DefaultPriority                 = HighPriority // uses HighPriority as default
+	LowPriority    CommandPriority = 100 // used for low priority application use.
+	NormalPriority CommandPriority = 200 // used for normal priority application use.
+	HighPriority   CommandPriority = 300 // used for high priority application use.
+	SystemPriority CommandPriority = 400 // used for system tasks that access the TPM.
 )
 
 // Error Codes:
@@ -86,9 +89,9 @@ func tbsError(err uintptr) error {
 		return nil
 	}
 	if description, ok := errMap[err]; ok {
-		return fmt.Errorf("TBS Error: %s", description)
+		return fmt.Errorf("TBS Error %v: %s", err, description)
 	}
-	return fmt.Errorf("TBS Error: %v", err)
+	return fmt.Errorf("Unrecognized TBS Error %v", err)
 }
 
 // winTPMBuffer is a ReadWriteCloser to access the TPM in Windows.
@@ -98,13 +101,13 @@ type winTPMBuffer struct {
 	priority  CommandPriority
 }
 
-// Executes the TPM command specified by inBuff, returning the number of bytes in the command
+// Executes the TPM command specified by commandBuffer, returning the number of bytes in the command
 // and any error code returned by executing the TPM command. Command response can be read by calling
 // Read().
 func (rwc *winTPMBuffer) Write(commandBuffer []byte) (int, error) {
 	// TPM spec defines longest possible response to be maxTPMResponse
 	outBufferLen := maxTPMResponse
-	rwc.outBuffer = make([]byte, outBufferLen)
+	rwc.outBuffer = rwc.outBuffer[:outBufferLen]
 
 	// TBS_RESULT Tbsip_Submit_Command(
 	//   _In_          TBS_HCONTEXT         hContext,
@@ -135,9 +138,9 @@ func (rwc *winTPMBuffer) Read(responseBuffer []byte) (int, error) {
 	if len(rwc.outBuffer) == 0 {
 		return 0, io.EOF
 	}
-	lenCopied := copy(responseBuffer[:], rwc.outBuffer[:])
+	lenCopied := copy(responseBuffer, rwc.outBuffer)
 	// Implements same behavior as linux "/dev/tpm0": discard unread components after read
-	rwc.outBuffer = nil
+	rwc.outBuffer = rwc.outBuffer[:0]
 	return lenCopied, nil
 }
 
@@ -158,7 +161,8 @@ func OpenTPM(commandPriority CommandPriority) (io.ReadWriteCloser, error) {
 	}
 
 	rwc := winTPMBuffer{
-		priority: commandPriority,
+		outBuffer: make([]byte, maxTPMResponse),
+		priority:  commandPriority,
 	}
 	// TBS_RESULT Tbsi_Context_Create(
 	//   _In_  PCTBS_CONTEXT_PARAMS pContextParams,

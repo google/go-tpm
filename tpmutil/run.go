@@ -24,6 +24,7 @@ import (
 	"io"
 )
 
+// maxTPMResponse is the largest possible response from the TPM. We need to know
 const maxTPMResponse = 4096
 
 // RunCommand executes cmd with given tag and arguments. Returns TPM response
