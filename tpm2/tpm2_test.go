@@ -511,7 +511,14 @@ func TestSign(t *testing.T) {
 
 		digest := sha256.Sum256([]byte("heyo"))
 
-		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256})
+		var scheme *SigScheme
+		if pub.RSAParameters != nil {
+			scheme = pub.RSAParameters.Sign
+		}
+		if pub.ECCParameters != nil {
+			scheme = pub.ECCParameters.Sign
+		}
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], scheme)
 		if err != nil {
 			t.Fatalf("Sign failed: %s", err)
 		}
