@@ -21,7 +21,7 @@ import (
 	"unsafe"
 )
 
-// Tbs.dll Docs:
+// Tbs.dll provides an API for making calls to the TPM:
 // https://docs.microsoft.com/en-us/windows/desktop/TBS/tpm-base-services-portal
 var (
 	tbsDLL           = syscall.NewLazyDLL("Tbs.dll")
@@ -30,14 +30,14 @@ var (
 	tbsContextClose  = tbsDLL.NewProc("Tbsip_Context_Close")
 )
 
-// tbsContextParams2 Docs:
+// tbsContextParams2 specifies the version of TPM and TBS implementation:
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/ns-tbs-tdtbs_context_params2
 type tbsContextParams2 struct {
 	version uint32
 	flags   uint32
 }
 
-// tbs.h Docs:
+// tbs.h contains constants used in the TBS library:
 // https://github.com/tpn/winsdk-10/blob/master/Include/10.0.10240.0/shared/tbs.h
 const (
 	tpm2Version            uint32  = 2 // value of TPM_VERSION_20 tbs.h constant
@@ -45,11 +45,11 @@ const (
 	tbsCommandLocalityZero uintptr = 0 // value of TBS_COMMAND_LOCALITY_ZERO tbs.h constant
 )
 
-// CommandPriority Parameter Docs
+// CommandPriority Parameter Docs:
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/nf-tbs-tbsip_submit_command#parameters
 type CommandPriority uint32
 
-// CommandPriority is used to determine which pending command to submit whenever the TPM is free.
+// CommandPriority is used to determine which pending command to submit whenever the TPM is free:
 // https://docs.microsoft.com/en-us/windows/desktop/tbs/command-scheduling
 const (
 	LowPriority    CommandPriority = 100 // used for low priority application use.
@@ -58,7 +58,7 @@ const (
 	SystemPriority CommandPriority = 400 // used for system tasks that access the TPM.
 )
 
-// Error Codes:
+// TBS Error Codes:
 // https://docs.microsoft.com/en-us/windows/desktop/TBS/tbs-return-codes
 var errMap = map[uintptr]string{
 	0x80284001: "An internal software error occurred.",
@@ -96,7 +96,7 @@ func tbsError(err uintptr) error {
 
 // winTPMBuffer is a ReadWriteCloser to access the TPM in Windows.
 type winTPMBuffer struct {
-	hContext  uintptr
+	context  uintptr
 	outBuffer []byte
 	priority  CommandPriority
 }
@@ -105,7 +105,7 @@ type winTPMBuffer struct {
 // and any error code returned by executing the TPM command. Command response can be read by calling
 // Read().
 func (rwc *winTPMBuffer) Write(commandBuffer []byte) (int, error) {
-	// TPM spec defines longest possible response to be maxTPMResponse
+	// TPM spec defines longest possible response to be maxTPMResponse.
 	outBufferLen := maxTPMResponse
 	rwc.outBuffer = rwc.outBuffer[:outBufferLen]
 
@@ -119,8 +119,8 @@ func (rwc *winTPMBuffer) Write(commandBuffer []byte) (int, error) {
 	//   _Inout_       UINT32               *pcbOutput
 	// );
 	errResp, _, _ := tbsSubmitCommand.Call(
-		rwc.hContext,
-		tbsCommandLocalityZero, // Windows currently only supports TBS_COMMAND_LOCALITY_ZERO
+		rwc.context,
+		tbsCommandLocalityZero, // Windows currently only supports TBS_COMMAND_LOCALITY_ZERO.
 		uintptr(rwc.priority),
 		uintptr(unsafe.Pointer(&(commandBuffer[0]))),
 		uintptr(len(commandBuffer)),
@@ -128,7 +128,7 @@ func (rwc *winTPMBuffer) Write(commandBuffer []byte) (int, error) {
 		uintptr(unsafe.Pointer(&outBufferLen)),
 	)
 
-	// shrink outBuffer so it is length of response
+	// Shrink outBuffer so it is length of response.
 	rwc.outBuffer = rwc.outBuffer[:outBufferLen]
 	return len(commandBuffer), tbsError(errResp)
 }
@@ -139,7 +139,7 @@ func (rwc *winTPMBuffer) Read(responseBuffer []byte) (int, error) {
 		return 0, io.EOF
 	}
 	lenCopied := copy(responseBuffer, rwc.outBuffer)
-	// Implements same behavior as linux "/dev/tpm0": discard unread components after read
+	// Implements same behavior as linux "/dev/tpm0": discard unread components after read.
 	rwc.outBuffer = rwc.outBuffer[:0]
 	return lenCopied, nil
 }
@@ -148,7 +148,7 @@ func (rwc *winTPMBuffer) Close() error {
 	// TBS_RESULT Tbsip_Context_Close(
 	//   _In_ TBS_HCONTEXT hContext
 	// );
-	errResp, _, _ := tbsContextClose.Call(rwc.hContext)
+	errResp, _, _ := tbsContextClose.Call(rwc.context)
 	return tbsError(errResp)
 }
 
@@ -170,7 +170,7 @@ func OpenTPM(commandPriority CommandPriority) (io.ReadWriteCloser, error) {
 	// );
 	errResp, _, _ := tbsCreateContext.Call(
 		uintptr(unsafe.Pointer(&params)),
-		uintptr(unsafe.Pointer(&rwc.hContext)),
+		uintptr(unsafe.Pointer(&rwc.context)),
 	)
 	return &rwc, tbsError(errResp)
 }
