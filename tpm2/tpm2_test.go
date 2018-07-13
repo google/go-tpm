@@ -564,8 +564,7 @@ func TestPCREvent(t *testing.T) {
 	defer rw.Close()
 	debugPCR := uint32(16)
 	arbitraryBytes := []byte{1}
-	err := PCREvent(rw, tpmutil.Handle(debugPCR), arbitraryBytes)
-	if err != nil {
+	if err := PCREvent(rw, tpmutil.Handle(debugPCR), arbitraryBytes); err != nil {
 		t.Fatal(err)
 	}
 }
