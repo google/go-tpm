@@ -25,6 +25,9 @@ import (
 )
 
 // maxTPMResponse is the largest possible response from the TPM. We need to know
+// this because we don't always know the length of the TPM response, and
+// /dev/tpm insists on giving it all back in a single value rather than
+// returning a header and a body in separate responses.
 const maxTPMResponse = 4096
 
 // RunCommand executes cmd with given tag and arguments. Returns TPM response

@@ -52,10 +52,10 @@ type CommandPriority uint32
 // CommandPriority is used to determine which pending command to submit whenever the TPM is free:
 // https://docs.microsoft.com/en-us/windows/desktop/tbs/command-scheduling
 const (
-	LowPriority    CommandPriority = 100 // used for low priority application use.
-	NormalPriority CommandPriority = 200 // used for normal priority application use.
-	HighPriority   CommandPriority = 300 // used for high priority application use.
-	SystemPriority CommandPriority = 400 // used for system tasks that access the TPM.
+	LowPriority    CommandPriority = 100 // For low priority application use.
+	NormalPriority CommandPriority = 200 // For normal priority application use.
+	HighPriority   CommandPriority = 300 // For high priority application use.
+	SystemPriority CommandPriority = 400 // For system tasks that access the TPM.
 )
 
 // TBS Error Codes:
@@ -96,7 +96,7 @@ func tbsError(err uintptr) error {
 
 // winTPMBuffer is a ReadWriteCloser to access the TPM in Windows.
 type winTPMBuffer struct {
-	context  uintptr
+	context   uintptr
 	outBuffer []byte
 	priority  CommandPriority
 }
@@ -161,7 +161,7 @@ func OpenTPM(commandPriority CommandPriority) (io.ReadWriteCloser, error) {
 	}
 
 	rwc := winTPMBuffer{
-		outBuffer: make([]byte, maxTPMResponse),
+		outBuffer: make([]byte, 0, maxTPMResponse),
 		priority:  commandPriority,
 	}
 	// TBS_RESULT Tbsi_Context_Create(
