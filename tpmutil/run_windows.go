@@ -128,9 +128,13 @@ func (rwc *winTPMBuffer) Write(commandBuffer []byte) (int, error) {
 		uintptr(unsafe.Pointer(&outBufferLen)),
 	)
 
+	if err := tbsError(errResp); err != nil {
+		rwc.outBuffer = rwc.outBuffer[:0]
+		return 0, err
+	}
 	// Shrink outBuffer so it is length of response.
 	rwc.outBuffer = rwc.outBuffer[:outBufferLen]
-	return len(commandBuffer), tbsError(errResp)
+	return len(commandBuffer), nil
 }
 
 // Provides TPM response from the command called in the last Write call.
