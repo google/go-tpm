@@ -15,11 +15,11 @@
 package tpm2
 
 import (
-	flag "flag"
-	io "io"
-	testing "testing"
+	"flag"
+	"io"
+	"testing"
 
-	tpmutil "github.com/google/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 var runTPMTests = flag.Bool("run_tpm_tests", false, "Run the Windows TPM integration tests. Defaults to false.")
@@ -28,7 +28,7 @@ func openTPM(t *testing.T) io.ReadWriteCloser {
 	if *runTPMTests == false {
 		t.SkipNow()
 	}
-	rw, err := OpenTPM(tpmutil.DefaultPriority)
+	rw, err := OpenTPM(tpmutil.HighPriority)
 	if err != nil {
 		t.Fatalf("Open TPM failed: %s\n", err)
 	}

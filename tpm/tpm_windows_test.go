@@ -15,15 +15,15 @@
 package tpm
 
 import (
-	io "io"
-	testing "testing"
+	"io"
+	"testing"
 
-	tpmutil "github.com/google/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // Skip the test if we can't open the TPM.
 func openTPMOrSkip(t *testing.T) io.ReadWriteCloser {
-	rwc, err := OpenTPM(tpmutil.DefaultPriority)
+	rwc, err := OpenTPM(tpmutil.HighPriority)
 	if err != nil {
 		t.Skipf("Skipping test, since we can't access the TPM: %s\n", err)
 	}

@@ -15,20 +15,20 @@
 package tpm2
 
 import (
-	bytes "bytes"
-	crypto "crypto"
-	ecdsa "crypto/ecdsa"
-	elliptic "crypto/elliptic"
-	rand "crypto/rand"
-	rsa "crypto/rsa"
-	sha256 "crypto/sha256"
-	flag "flag"
-	big "math/big"
-	os "os"
-	reflect "reflect"
-	testing "testing"
+	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"flag"
+	"math/big"
+	"os"
+	"reflect"
+	"testing"
 
-	tpmutil "github.com/google/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 func TestMain(m *testing.M) {
@@ -468,7 +468,18 @@ func TestSign(t *testing.T) {
 
 		digest := sha256.Sum256([]byte("heyo"))
 
+<<<<<<< HEAD
 		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:])
+=======
+		var scheme *SigScheme
+		if pub.RSAParameters != nil {
+			scheme = pub.RSAParameters.Sign
+		}
+		if pub.ECCParameters != nil {
+			scheme = pub.ECCParameters.Sign
+		}
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], scheme)
+>>>>>>> e965e8a65d24d3bb2e9daaf23686b645e0bf76fe
 		if err != nil {
 			t.Fatalf("Sign failed: %s", err)
 		}
@@ -514,4 +525,14 @@ func TestSign(t *testing.T) {
 			},
 		})
 	})
+}
+
+func TestPCREvent(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	debugPCR := uint32(16)
+	arbitraryBytes := []byte{1}
+	if err := PCREvent(rw, tpmutil.Handle(debugPCR), arbitraryBytes); err != nil {
+		t.Fatal(err)
+	}
 }

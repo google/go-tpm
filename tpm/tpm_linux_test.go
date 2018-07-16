@@ -15,9 +15,9 @@
 package tpm
 
 import (
-	io "io"
-	os "os"
-	testing "testing"
+	"io"
+	"os"
+	"testing"
 )
 
 // Skip the test if we can't open the TPM.

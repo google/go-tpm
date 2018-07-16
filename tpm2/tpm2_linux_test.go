@@ -15,9 +15,9 @@
 package tpm2
 
 import (
-	flag "flag"
-	io "io"
-	testing "testing"
+	"flag"
+	"io"
+	"testing"
 )
 
 var tpmPath = flag.String("tpm_path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")

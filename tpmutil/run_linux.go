@@ -15,10 +15,10 @@
 package tpmutil
 
 import (
-	fmt "fmt"
-	io "io"
-	net "net"
-	os "os"
+	"fmt"
+	"io"
+	"net"
+	"os"
 )
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a

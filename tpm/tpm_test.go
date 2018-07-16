@@ -15,14 +15,14 @@
 package tpm
 
 import (
-	bytes "bytes"
-	rand "crypto/rand"
-	sha1 "crypto/sha1"
-	ioutil "io/ioutil"
-	os "os"
-	testing "testing"
+	"bytes"
+	"crypto/rand"
+	"crypto/sha1"
+	"io/ioutil"
+	"os"
+	"testing"
 
-	tpmutil "github.com/google/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil"
 )
 
 var (
