@@ -23,7 +23,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"flag"
-	"io"
 	"math/big"
 	"os"
 	"reflect"
@@ -32,22 +31,9 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-var tpmPath = flag.String("tpm_path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
-
 func TestMain(m *testing.M) {
 	flag.Parse()
 	os.Exit(m.Run())
-}
-
-func openTPM(t *testing.T) io.ReadWriteCloser {
-	if *tpmPath == "" {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM(*tpmPath)
-	if err != nil {
-		t.Fatalf("OpenTPM failed: %s", err)
-	}
-	return rw
 }
 
 var (
