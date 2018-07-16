@@ -565,3 +565,13 @@ func TestSign(t *testing.T) {
 		})
 	})
 }
+
+func TestPCREvent(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	debugPCR := uint32(16)
+	arbitraryBytes := []byte{1}
+	if err := PCREvent(rw, tpmutil.Handle(debugPCR), arbitraryBytes); err != nil {
+		t.Fatal(err)
+	}
+}
