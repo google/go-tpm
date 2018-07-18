@@ -1,4 +1,18 @@
-package tpm2_integration_test
+// Copyright (c) 2014, Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tpm2integrationtest
 
 import (
 	"bytes"
@@ -9,16 +23,8 @@ import (
 )
 
 var (
-	tpmPath = flag.String(
-		"tpm-path",
-		"",
-		"Path to TPM character device. Most Linux systems expose it under /dev/tpm0. "+
-			"Empty value (default) will disable all integration tests.")
-
-	binPath = flag.String(
-		"bin-path",
-		"./",
-		"The path to the directory where the binaries for the examples live.")
+	tpmPath = flag.String("tpm-path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
+	binPath = flag.String("bin-path", "./", "The path to the directory where the binaries for the examples live.")
 )
 
 func TestMain(m *testing.M) {
@@ -30,16 +36,19 @@ func TestMain(m *testing.M) {
 	}
 }
 
-func TestExtendPcr(t *testing.T) {
-	pcr1ValBefore := runTpm2Cmd(t, "readpcr", "-pcr", "1")
-	runTpm2Cmd(t, "extendpcr", "-pcr", "1", "-data", "FF")
-	pcr1ValAfter := runTpm2Cmd(t, "readpcr", "-pcr", "1")
+// TODO(nlehrer): TestReadPCR
+
+func TestExtendPCR(t *testing.T) {
+	pcr1ValBefore := runTPM2Cmd(t, "readpcr", "-pcr", "1")
+	runTPM2Cmd(t, "extendpcr", "-pcr", "1", "-data", "FF")
+	pcr1ValAfter := runTPM2Cmd(t, "readpcr", "-pcr", "1")
 	if pcr1ValBefore == pcr1ValAfter {
+		// TODO(nlehrer): Add message.
 		t.Fail()
 	}
 }
 
-func runTpm2Cmd(t *testing.T, cmdName string, args ...string) string {
+func runTPM2Cmd(t *testing.T, cmdName string, args ...string) string {
 	progName := *binPath + "tpm2-" + cmdName
 	progArgs := make([]string, 0, len(args)+2)
 	progArgs = append(append(progArgs, "-tpm-path", *tpmPath), args...)

@@ -1,4 +1,4 @@
-// Copyright (c) 2018, Ian Haken. All rights reserved.
+// Copyright (c) 2014, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Outputs the value of a PCR in hex.
+// Command tpm2-readpcr outputs the value of a PCR in hex.
 package main
 
 import (
@@ -24,14 +24,8 @@ import (
 )
 
 var (
-	tpmPath = flag.String(
-		"tpm-path",
-		"/dev/tpm0",
-		"Path to the TPM device (character device or a Unix socket).")
-	pcr = flag.Int(
-		"pcr",
-		0,
-		"PCR to read. Must be within [0, 23].")
+	tpmPath = flag.String("tpm-path", "/dev/tpm0", "Path to the TPM device (character device or a Unix socket).")
+	pcr     = flag.Int("pcr", 0, "PCR to read. Must be within [0, 23].")
 )
 
 func main() {
@@ -39,7 +33,7 @@ func main() {
 	var errors []error
 	readpcr(&errors)
 	for _, err := range errors {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
 	if len(errors) > 0 {
 		os.Exit(1)
@@ -48,19 +42,20 @@ func main() {
 
 func readpcr(errors *[]error) {
 	if *pcr < 0 || *pcr > 23 {
-		*errors = append(*errors, fmt.Errorf("invalid flag 'pcr': out of range"))
+		*errors = append(
+			*errors, fmt.Errorf("invalid flag 'pcr': %d is out of range", *pcr))
 		return
 	}
 
 	rwc, err := tpm2.OpenTPM(*tpmPath)
 	if err != nil {
-		*errors = append(*errors, fmt.Errorf("can't open TPM %q: %s", *tpmPath, err))
+		*errors = append(*errors, fmt.Errorf("can't open TPM %q: %v", *tpmPath, err))
 		return
 	}
 	defer func() {
 		if err := rwc.Close(); err != nil {
 			*errors = append(
-				*errors, fmt.Errorf("unable to close connection to TPM: %s", err))
+				*errors, fmt.Errorf("unable to close connection to TPM: %v", err))
 		}
 	}()
 
@@ -71,14 +66,14 @@ func readpcr(errors *[]error) {
 			PCRs: []int{*pcr},
 		})
 	if err != nil {
-		*errors = append(*errors, fmt.Errorf("unable to read PCRs from TPM: %s\n", err))
+		*errors = append(*errors, fmt.Errorf("unable to read PCRs from TPM: %v\n", err))
 		return
 	}
 
 	val, present := pcrValues[*pcr]
 	if !present {
-		*errors = append(*errors, fmt.Errorf("pcr value missing from response.\n"))
+		*errors = append(*errors, fmt.Errorf("PCR value missing from response.\n"))
 		return
 	}
-	fmt.Fprintf(os.Stdout, "%x\n", val)
+	fmt.Printf("%x\n", val)
 }

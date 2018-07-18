@@ -1,4 +1,4 @@
-// Copyright (c) 2018, Ian Haken. All rights reserved.
+// Copyright (c) 2014, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Extends a pcr with some data.
+// Command tpm2-extendpcr extends a pcr with some data.
 package main
 
 import (
@@ -26,18 +26,9 @@ import (
 )
 
 var (
-	tpmPath = flag.String(
-		"tpm-path",
-		"/dev/tpm0",
-		"Path to the TPM device (character device or a Unix socket).")
-	pcr = flag.Int(
-		"pcr",
-		-1,
-		"Pcr to read. Must be within [0, 23].")
-	data = flag.String(
-		"data",
-		"",
-		"The hex encoded bytes with which to extend the PCR. Must not exceed 1024 bytes.")
+	tpmPath = flag.String("tpm-path", "/dev/tpm0", "Path to the TPM device (character device or a Unix socket).")
+	pcr     = flag.Int("pcr", -1, "PCR to read. Must be within [0, 23].")
+	data    = flag.String("data", "", "The hex encoded bytes with which to extend the PCR. Must not exceed 1024 bytes.")
 )
 
 func main() {
@@ -45,7 +36,7 @@ func main() {
 	var errors []error
 	seal(&errors)
 	for _, err := range errors {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
 	if len(errors) > 0 {
 		os.Exit(1)
@@ -54,13 +45,14 @@ func main() {
 
 func seal(errors *[]error) {
 	if *pcr < 0 || *pcr > 23 {
-		*errors = append(*errors, fmt.Errorf("invalid flag 'pcr': out of range"))
+		*errors = append(
+			*errors, fmt.Errorf("invalid flag 'pcr': %d is out of range", *pcr))
 		return
 	}
 
 	dataBytes, err := hex.DecodeString(*data)
 	if err != nil {
-		*errors = append(*errors, fmt.Errorf("invalid flag 'data': %s", err))
+		*errors = append(*errors, fmt.Errorf("invalid flag 'data': %v", err))
 		return
 	}
 	if len(dataBytes) > 1024 {
@@ -71,19 +63,18 @@ func seal(errors *[]error) {
 
 	rwc, err := tpm2.OpenTPM(*tpmPath)
 	if err != nil {
-		*errors = append(*errors, fmt.Errorf("can't open TPM at %q: %s", *tpmPath, err))
+		*errors = append(*errors, fmt.Errorf("can't open TPM at %q: %v", *tpmPath, err))
 		return
 	}
 	defer func() {
 		if err := rwc.Close(); err != nil {
 			*errors = append(
-				*errors, fmt.Errorf("unable to close connection to TPM: %s", err))
+				*errors, fmt.Errorf("unable to close connection to TPM: %v", err))
 		}
 	}()
 
-	err = tpm2.PCREvent(rwc, tpmutil.Handle(uint32(*pcr)), dataBytes)
-	if err != nil {
-		*errors = append(*errors, fmt.Errorf("unable to extend PCR: %s", err))
+	if err = tpm2.PCREvent(rwc, tpmutil.Handle(uint32(*pcr)), dataBytes); err != nil {
+		*errors = append(*errors, fmt.Errorf("unable to extend PCR: %v", err))
 		return
 	}
 }
