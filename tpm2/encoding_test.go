@@ -302,8 +302,8 @@ func TestEncodeEvictControl(t *testing.T) {
 	}
 }
 
-func TestEncodePasswordAuthArea(t *testing.T) {
-	pwAuth, err := encodePasswordAuthArea(defaultPassword)
+func TestEncodeAuthArea(t *testing.T) {
+	pwAuth, err := encodeAuthArea(HandlePasswordSession, defaultPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +312,7 @@ func TestEncodePasswordAuthArea(t *testing.T) {
 		t.Fatalf("got: %v, want: %v", pwAuth, want)
 	}
 
-	pwAuth, err = encodePasswordAuthArea("")
+	pwAuth, err = encodeAuthArea(HandlePasswordSession, "")
 	if err != nil {
 		t.Fatal(err)
 	}
