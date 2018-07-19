@@ -460,8 +460,8 @@ func decodeCreate(in []byte) ([]byte, []byte, error) {
 }
 
 // Returns private key and public key blobs.
-func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, objectAuthPolicy []byte, sensitiveData []byte, pub Public) ([]byte, []byte, error) {
-	cmd, err := encodeCreate(parentHandle, PCRSelection{}, parentPassword, objectPassword, sensitiveData, inPublic)
+func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, sensitiveData []byte, pub Public) ([]byte, []byte, error) {
+	cmd, err := encodeCreate(parentHandle, PCRSelection{}, parentPassword, objectPassword, sensitiveData, pub)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -475,7 +475,7 @@ func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objec
 // CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs.
 func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
-	return CreateKey(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub)
+	return create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub)
 }
 
 // Create a data blob object that seals the sensitive data under a parent and with a
@@ -488,7 +488,7 @@ func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectP
 		Attributes: FlagFixedTPM | FlagFixedParent,
 		AuthPolicy: objectAuthPolicy,
 	}
-	return CreateKey(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic)
+	return create(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic)
 }
 
 func encodeLoad(parentHandle tpmutil.Handle, parentAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
@@ -672,7 +672,7 @@ func decodeUnseal(in []byte) ([]byte, error) {
 
 // Unseal returns the data for a loaded sealed object.
 func Unseal(rw io.ReadWriter, itemHandle tpmutil.Handle, password string) ([]byte, error) {
-	return UnsealWithSession(HandlePasswordSession, itemHandle, password)
+	return UnsealWithSession(rw, HandlePasswordSession, itemHandle, password)
 }
 
 // UnsealWithSession returns the data for a loaded sealed object.
