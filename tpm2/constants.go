@@ -82,12 +82,14 @@ const (
 type SessionAttributes byte
 
 const (
-	AttrContinueSession SessionAttributes = 0x00000001
-	AttrAuditExclusive  SessionAttributes = 0x00000010
-	AttrAuditReset      SessionAttributes = 0x00000100
-	AttrDecrypt         SessionAttributes = 0x00100000
-	AttrEcrypt          SessionAttributes = 0x01000000
-	AttrAudit           SessionAttributes = 0x10000000
+	AttrContinueSession SessionAttributes = 1 << iota
+	AttrAuditExclusive
+	AttrAuditReset
+	_ // bit 3 reserved
+	_ // bit 4 reserved
+	AttrDecrypt
+	AttrEcrypt
+	AttrAudit
 )
 
 // KeyProp is a bitmask used in Attributes field of key templates. Individual
