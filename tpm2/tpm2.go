@@ -228,32 +228,16 @@ func GetCapability(rw io.ReadWriter, cap Capability, count uint32, property uint
 	return handles, nil
 }
 
-func encodePasswordAuthArea(passwords ...string) ([]byte, error) {
+func encodeAuthArea(sessionHandle tpmutil.Handle, passwords ...string) ([]byte, error) {
 	var res []byte
 	for _, p := range passwords {
 		// Empty nonce.
 		var nonce []byte
-		buf, err := tpmutil.Pack(HandlePasswordSession, nonce, AttrContinueSession, []byte(p))
+		buf, err := tpmutil.Pack(sessionHandle, nonce, AttrContinueSession, []byte(p))
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, buf...)
-	}
-
-	size, err := tpmutil.Pack(uint32(len(res)))
-	if err != nil {
-		return nil, err
-	}
-
-	return concat(size, res)
-}
-
-func encodeAuthArea(sessionHandle tpmutil.Handle, password string) ([]byte, error) {
-	// Empty nonce.
-	var nonce []byte
-	res, err := tpmutil.Pack(sessionHandle, nonce, AttrContinueSession, []byte(password))
-	if err != nil {
-		return nil, err
 	}
 
 	size, err := tpmutil.Pack(uint32(len(res)))
@@ -269,7 +253,7 @@ func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea("")
+	auth, err := encodeAuthArea(HandlePasswordSession, "")
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +298,7 @@ func encodeCreateRawTemplate(owner tpmutil.Handle, sel PCRSelection, parentPassw
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(parentPassword)
+	auth, err := encodeAuthArea(HandlePasswordSession, parentPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -478,7 +462,7 @@ func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentP
 	return create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
 }
 
-// Create a data blob object that seals the sensitive data under a parent and with a
+// Seal creates a data blob object that seals the sensitive data under a parent and with a
 // password and auth policy. Access to the parent must be available with a simple password.
 // Returns private and public portions of the created object.
 func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, objectAuthPolicy []byte, sensitiveData []byte) ([]byte, []byte, error) {
@@ -496,7 +480,7 @@ func encodeLoad(parentHandle tpmutil.Handle, parentAuth string, publicBlob, priv
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(parentAuth)
+	auth, err := encodeAuthArea(HandlePasswordSession, parentAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -693,7 +677,7 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(parentPassword)
+	auth, err := encodeAuthArea(HandlePasswordSession, parentPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -742,7 +726,7 @@ func encodeActivateCredential(activeHandle tpmutil.Handle, keyHandle tpmutil.Han
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(activePassword, protectorPassword)
+	auth, err := encodeAuthArea(HandlePasswordSession, activePassword, protectorPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -818,7 +802,7 @@ func encodeEvictControl(ownerAuth string, owner, objectHandle, persistentHandle 
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(ownerAuth)
+	auth, err := encodeAuthArea(HandlePasswordSession, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -858,7 +842,7 @@ func ContextLoad(rw io.ReadWriter, saveArea []byte) (tpmutil.Handle, error) {
 }
 
 func encodeIncrementNV(handle tpmutil.Handle, authString string) ([]byte, error) {
-	auth, err := encodePasswordAuthArea(authString)
+	auth, err := encodeAuthArea(HandlePasswordSession, authString)
 	if err != nil {
 		return nil, err
 	}
@@ -880,7 +864,7 @@ func NVIncrement(rw io.ReadWriter, handle tpmutil.Handle, authString string) err
 }
 
 func encodeUndefineSpace(ownerAuth string, owner, index tpmutil.Handle) ([]byte, error) {
-	auth, err := encodePasswordAuthArea(ownerAuth)
+	auth, err := encodeAuthArea(HandlePasswordSession, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -906,7 +890,7 @@ func encodeDefineSpace(owner, handle tpmutil.Handle, ownerAuth, authVal string, 
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(ownerAuth)
+	auth, err := encodeAuthArea(HandlePasswordSession, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -955,7 +939,7 @@ func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uin
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(authString)
+	auth, err := encodeAuthArea(HandlePasswordSession, authString)
 	if err != nil {
 		return nil, err
 	}
@@ -1021,7 +1005,7 @@ func encodeSign(key tpmutil.Handle, password string, digest []byte, sigScheme *S
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodePasswordAuthArea(password)
+	auth, err := encodeAuthArea(HandlePasswordSession, password)
 	if err != nil {
 		return nil, err
 	}
@@ -1074,7 +1058,7 @@ func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, 
 		return nil, err
 	}
 
-	auth, err := encodePasswordAuthArea(parentAuth, ownerAuth)
+	auth, err := encodeAuthArea(HandlePasswordSession, parentAuth, ownerAuth)
 	if err != nil {
 		return nil, err
 	}
