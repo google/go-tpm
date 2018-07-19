@@ -78,6 +78,13 @@ const (
 	SessionTrial  SessionType = 0x03
 )
 
+// SessionAttributes represents an attribute of a session.
+type SessionAttributes byte
+
+const (
+	AttrContinueSession = SessionAttributes(1)
+)
+
 // KeyProp is a bitmask used in Attributes field of key templates. Individual
 // flags should be OR-ed to form a full mask.
 type KeyProp uint32

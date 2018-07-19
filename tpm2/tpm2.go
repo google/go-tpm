@@ -233,9 +233,7 @@ func encodePasswordAuthArea(passwords ...string) ([]byte, error) {
 	for _, p := range passwords {
 		// Empty nonce.
 		var nonce []byte
-		// continueSession set, all other bits clear.
-		attributes := byte(1)
-		buf, err := tpmutil.Pack(HandlePasswordSession, nonce, attributes, []byte(p))
+		buf, err := tpmutil.Pack(HandlePasswordSession, nonce, AttrContinueSession, []byte(p))
 		if err != nil {
 			return nil, err
 		}
@@ -253,9 +251,7 @@ func encodePasswordAuthArea(passwords ...string) ([]byte, error) {
 func encodeAuthArea(sessionHandle tpmutil.Handle, password string) ([]byte, error) {
 	// Empty nonce.
 	var nonce []byte
-	// continueSession set, all other bits clear.
-	attributes := byte(1)
-	res, err := tpmutil.Pack(sessionHandle, nonce, attributes, []byte(password))
+	res, err := tpmutil.Pack(sessionHandle, nonce, AttrContinueSession, []byte(password))
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +391,7 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, crypto.PublicKey, error) {
 // CreatePrimary initializes the primary key in a given hierarchy.
 // Second return value is the public part of the generated key.
 func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (tpmutil.Handle, crypto.PublicKey, error) {
-	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, []byte{} /*inSensitive*/, pub)
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, nil /*inSensitive*/, pub)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -463,10 +459,9 @@ func decodeCreate(in []byte) ([]byte, []byte, error) {
 	return resp.Private, resp.Public, nil
 }
 
-// CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs.
-func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
-	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, []byte{} /*inSensitive*/, pub)
+func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, objectAuthPolicy []byte, sensitiveData []byte, pub Public) ([]byte, []byte, error) {
+	cmd, err := encodeCreate(parentHandle, PCRSelection{}, parentPassword, objectPassword, sensitiveData, inPublic)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -477,27 +472,23 @@ func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentP
 	return decodeCreate(resp)
 }
 
+// CreateKey creates a new key pair under the owner handle.
+// Returns private key and public key blobs.
+func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
+	return CreateKey(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub)
+}
+
 // Create a data blob object that seals the sensitive data under a parent and with a
 // password and auth policy. Access to the parent must be available with a simple password.
 // Returns private and public portions of the created object.
 func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, objectAuthPolicy []byte, sensitiveData []byte) ([]byte, []byte, error) {
-
 	inPublic := Public{
 		Type:       AlgKeyedHash,
 		NameAlg:    AlgSHA256,
 		Attributes: FlagFixedTPM | FlagFixedParent,
 		AuthPolicy: objectAuthPolicy,
 	}
-
-	cmd, err := encodeCreate(parentHandle, PCRSelection{}, parentPassword, objectPassword, sensitiveData, inPublic)
-	if err != nil {
-		return nil, nil, err
-	}
-	resp, err := runCommand(rw, tagSessions, cmdCreate, tpmutil.RawBytes(cmd))
-	if err != nil {
-		return nil, nil, err
-	}
-	return decodeCreate(resp)
+	return CreateKey(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic)
 }
 
 func encodeLoad(parentHandle tpmutil.Handle, parentAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
@@ -681,22 +672,11 @@ func decodeUnseal(in []byte) ([]byte, error) {
 
 // Unseal returns the data for a loaded sealed object.
 func Unseal(rw io.ReadWriter, itemHandle tpmutil.Handle, password string) ([]byte, error) {
-	cmd, err := encodeUnseal(HandlePasswordSession, itemHandle, password)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := runCommand(rw, tagSessions, cmdUnseal, tpmutil.RawBytes(cmd))
-	if err != nil {
-		return nil, err
-	}
-	return decodeUnseal(resp)
+	return UnsealWithSession(HandlePasswordSession, itemHandle, password)
 }
 
-// Unseal returns the data for a loaded sealed object.
-func UnsealWithSession(
-	rw io.ReadWriter,
-	sessionHandle, itemHandle tpmutil.Handle,
-	password string) ([]byte, error) {
+// UnsealWithSession returns the data for a loaded sealed object.
+func UnsealWithSession(rw io.ReadWriter, sessionHandle, itemHandle tpmutil.Handle, password string) ([]byte, error) {
 	cmd, err := encodeUnseal(sessionHandle, itemHandle, password)
 	if err != nil {
 		return nil, err

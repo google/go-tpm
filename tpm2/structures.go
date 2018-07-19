@@ -76,7 +76,7 @@ func (p Public) encode() ([]byte, error) {
 	case AlgKeyedHash:
 		// We only support "keyedHash" objects for the purposes of
 		// creating "Sealed Data Blobs".
-		var unique uint16 = 0
+		var unique uint16
 		params, err = tpmutil.Pack(AlgNull, unique)
 	case AlgECC:
 		params, err = p.ECCParameters.encode()
