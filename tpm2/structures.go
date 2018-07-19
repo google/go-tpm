@@ -57,7 +57,8 @@ type Public struct {
 	Attributes KeyProp
 	AuthPolicy []byte
 
-	// Only one of the Parameters fields should be set. When encoding/decoding,
+	// If Type is AlgKeyedHash, then do not set these.
+	// Otherwise, only one of the Parameters fields should be set. When encoding/decoding,
 	// one will be picked based on Type.
 	RSAParameters *RSAParams
 	ECCParameters *ECCParams
@@ -72,6 +73,11 @@ func (p Public) encode() ([]byte, error) {
 	switch p.Type {
 	case AlgRSA:
 		params, err = p.RSAParameters.encode()
+	case AlgKeyedHash:
+		// We only support "keyedHash" objects for the purposes of
+		// creating "Sealed Data Blobs".
+		var unique uint16 = 0
+		params, err = tpmutil.Pack(AlgNull, unique)
 	case AlgECC:
 		params, err = p.ECCParameters.encode()
 	default:

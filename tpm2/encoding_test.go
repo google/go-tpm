@@ -111,7 +111,7 @@ func TestDecodeLoad(t *testing.T) {
 }
 
 func TestEncodeCreate(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80020000004d00000131400000010000000940000009000001000000080004010203040000001a0001000400030072000000060080004300100400000100010000000000000001000403800000")
+	testCmdBytes, err := hex.DecodeString("80020000004d00000131400000010000000940000009000001000000090004010203040001FF001a0001000400030072000000060080004300100400000100010000000000000001000403800000")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestEncodeCreate(t *testing.T) {
 			Modulus:  big.NewInt(0),
 		},
 	}
-	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPassword, params)
+	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPassword, []byte{255} /*sensitiveData*/, params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestDecodeStartAuthSession(t *testing.T) {
 	}
 }
 
-func TestDecodeCreateKey(t *testing.T) {
+func TestDecodeCreate(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("8002000001ba00000000000001a70076001405f2c6b6035d4" +
 		"fab43fdc2ed0b6544de59ebd07100100e88a20eb9f58f0f13474a8ab6135144f7c" +
 		"49b80f0f1c2f4900458e2c573c94e7d81e413a06031c634890ccf47e6d02762366" +
@@ -203,7 +203,7 @@ func TestDecodeCreateKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, err = decodeCreateKey(testRespBytes[10:]); err != nil {
+	if _, _, err = decodeCreate(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -213,7 +213,7 @@ func TestEncodeUnseal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodeUnseal(tpmutil.Handle(0x80000001), defaultPassword)
+	cmdBytes, err := encodeUnseal(HandlePasswordSession, tpmutil.Handle(0x80000001), defaultPassword)
 	if err != nil {
 		t.Fatal(err)
 	}

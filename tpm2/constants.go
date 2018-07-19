@@ -89,6 +89,7 @@ const (
 	FlagSensitiveDataOrigin KeyProp = 0x00000020
 	FlagUserWithAuth        KeyProp = 0x00000040
 	FlagAdminWithPolicy     KeyProp = 0x00000080
+	FlagNoDA                KeyProp = 0x00000400
 	FlagRestricted          KeyProp = 0x00010000
 	FlagDecrypt             KeyProp = 0x00020000
 	FlagSign                KeyProp = 0x00040000
