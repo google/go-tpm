@@ -17,13 +17,11 @@ package tpm
 import (
 	"io"
 	"testing"
-
-	"github.com/google/go-tpm/tpmutil"
 )
 
 // Skip the test if we can't open the TPM.
 func openTPMOrSkip(t *testing.T) io.ReadWriteCloser {
-	rwc, err := OpenTPM(tpmutil.HighPriority)
+	rwc, err := OpenTPM()
 	if err != nil {
 		t.Skipf("Skipping test, since we can't access the TPM: %s\n", err)
 	}
