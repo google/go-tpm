@@ -141,7 +141,7 @@ func run(pcr int, tpmPath string) (retErr error) {
 	fmt.Printf("Trying to unseal with wrong password resulted in: %v\n", err)
 
 	// Extend the PCR
-	if err = tpm2.PCREvent(rwc, tpmutil.Handle(pcr), []byte{1}); err != nil {
+	if err := tpm2.PCREvent(rwc, tpmutil.Handle(pcr), []byte{1}); err != nil {
 		return fmt.Errorf("unable to extend PCR: %v", err)
 	}
 	fmt.Printf("Extended PCR %d\n", pcr)
@@ -178,7 +178,7 @@ func unseal(rwc io.ReadWriteCloser, pcr int, objectPassword string, objectHandle
 	if err != nil {
 		return nil, fmt.Errorf("unable to unseal data: %v", err)
 	}
-	return unsealedData, err
+	return unsealedData, nil
 }
 
 // Returns session handle and policy digest.
