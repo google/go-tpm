@@ -536,3 +536,15 @@ func TestPCREvent(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestReadPCR(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	pcrVal, err := ReadPCR(rw, 16 /*pcr*/, AlgSHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pcrVal) != 32 {
+		t.Fatalf("Expected a 32 byte PCR value but got: %v", pcrVal)
+	}
+}
