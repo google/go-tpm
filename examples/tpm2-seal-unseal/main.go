@@ -93,7 +93,7 @@ func run(pcr int, tpmPath string) (errs []error) {
 	fmt.Printf("Created parent key with handle: 0x%x\n", srkHandle)
 
 	// Note the value of the pcr against which we will seal the data
-	pcrVal, err := readPCR(rwc, pcr)
+	pcrVal, err := tpm2.ReadPCR(rwc, pcr, tpm2.AlgSHA256)
 	if err != nil {
 		return append(errs, fmt.Errorf("unable to read PCR: %v", err))
 	}
@@ -102,15 +102,15 @@ func run(pcr int, tpmPath string) (errs []error) {
 	// Get the authorization policy that will protect the data to be sealed
 	objectPassword := "objectPassword"
 	sessHandle, policy, err := policyPCRPasswordSession(rwc, pcr, objectPassword)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("unable to get policy: %v", err))
+	}
 	if sessHandle != tpm2.HandleNull {
 		if flushErr := tpm2.FlushContext(rwc, sessHandle); flushErr != nil {
 			errs = append(errs, fmt.Errorf("unable to flush session: %v", flushErr))
 		} else {
 			sessHandle = tpm2.HandleNull
 		}
-	}
-	if err != nil {
-		errs = append(errs, fmt.Errorf("unable to get policy: %v", err))
 	}
 	if len(errs) > 0 {
 		return
@@ -139,9 +139,9 @@ func run(pcr int, tpmPath string) (errs []error) {
 	fmt.Printf("Loaded sealed data with handle: 0x%x\n", objectHandle)
 
 	// Unseal the data
-	unsealedData, unsealErr, otherErrs := unseal(rwc, pcr, objectPassword, objectHandle)
-	if unsealErr != nil {
-		errs = append(errs, fmt.Errorf("unable to unseal data: %v", unsealErr))
+	unsealedData, err, otherErrs := unseal(rwc, pcr, objectPassword, objectHandle)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("unable to unseal data: %v", err))
 	}
 	for otherErr := range otherErrs {
 		errs = append(errs, fmt.Errorf("error while unsealing data: %v", otherErr))
@@ -152,8 +152,8 @@ func run(pcr int, tpmPath string) (errs []error) {
 	fmt.Printf("Unsealed data: 0x%x\n", unsealedData)
 
 	// Try to unseal the data with the wrong password
-	_, unsealErr, otherErrs = unseal(rwc, pcr, "wrong-password", objectHandle)
-	if unsealErr == nil && len(otherErrs) == 0 {
+	_, err, otherErrs = unseal(rwc, pcr, "wrong-password", objectHandle)
+	if err == nil && len(otherErrs) == 0 {
 		errs = append(errs, fmt.Errorf("expected unsealing with wrong password to fail but it succeeded"))
 	}
 	for otherErr := range otherErrs {
@@ -164,7 +164,7 @@ func run(pcr int, tpmPath string) (errs []error) {
 	}
 	// Note that this can be easily fooled since we don't verify that the error was
 	// due specifically to policy.
-	fmt.Printf("As expected, unsealing with the wrong password failed with an error. Error was: %v\n", unsealErr)
+	fmt.Printf("As expected, unsealing with the wrong password failed with an error. Error was: %v\n", err)
 
 	// Extend the PCR
 	if err = tpm2.PCREvent(rwc, tpmutil.Handle(pcr), []byte{1}); err != nil {
@@ -173,15 +173,15 @@ func run(pcr int, tpmPath string) (errs []error) {
 	fmt.Printf("Extended PCR %d\n", pcr)
 
 	// Note the new value of the pcr
-	pcrVal, err = readPCR(rwc, pcr)
+	pcrVal, err = tpm2.ReadPCR(rwc, pcr, tpm2.AlgSHA256)
 	if err != nil {
 		return append(errs, fmt.Errorf("unable to read PCR: %v", err))
 	}
 	fmt.Printf("PCR %d value: 0x%x\n", pcr, pcrVal)
 
 	// Try to unseal the data with the PCR in the wrong state
-	_, unsealErr, otherErrs = unseal(rwc, pcr, objectPassword, objectHandle)
-	if unsealErr == nil && len(otherErrs) == 0 {
+	_, err, otherErrs = unseal(rwc, pcr, objectPassword, objectHandle)
+	if err == nil && len(otherErrs) == 0 {
 		errs = append(errs, fmt.Errorf("expected unsealing with wrong PCR state to fail but it succeeded"))
 	}
 	for otherErr := range otherErrs {
@@ -192,7 +192,7 @@ func run(pcr int, tpmPath string) (errs []error) {
 	}
 	// Note that this can be easily fooled since we don't verify that the error was
 	// due specifically to policy.
-	fmt.Printf("As expected, unsealing after extending the PCR failed with an error. Error was: %v\n", unsealErr)
+	fmt.Printf("As expected, unsealing after extending the PCR failed with an error. Error was: %v\n", err)
 
 	return
 }
@@ -230,10 +230,10 @@ func policyPCRPasswordSession(rwc io.ReadWriteCloser, pcr int, password string) 
 	// FYI, this is not a very secure session.
 	sessHandle, _, err := tpm2.StartAuthSession(
 		rwc,
-		tpm2.HandleNull,                                        /*tpmKey*/
-		tpm2.HandleNull,                                        /*bindKey*/
-		[]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, /*nonceCaller*/
-		nil, /*secret*/
+		tpm2.HandleNull,  /*tpmKey*/
+		tpm2.HandleNull,  /*bindKey*/
+		make([]byte, 16), /*nonceCaller*/
+		nil,              /*secret*/
 		tpm2.SessionPolicy,
 		tpm2.AlgNull,
 		tpm2.AlgSHA256)
@@ -247,13 +247,11 @@ func policyPCRPasswordSession(rwc io.ReadWriteCloser, pcr int, password string) 
 	}
 
 	// An empty expected digest means that digest verification is skipped.
-	err = tpm2.PolicyPCR(rwc, sessHandle, nil /*expectedDigest*/, pcrSelection)
-	if err != nil {
+	if err = tpm2.PolicyPCR(rwc, sessHandle, nil /*expectedDigest*/, pcrSelection); err != nil {
 		return sessHandle, nil, fmt.Errorf("unable to bind PCRs to auth policy: %v", err)
 	}
 
-	err = tpm2.PolicyPassword(rwc, sessHandle)
-	if err != nil {
+	if err = tpm2.PolicyPassword(rwc, sessHandle); err != nil {
 		return sessHandle, nil, fmt.Errorf("unable to require password for auth policy: %v", err)
 	}
 
@@ -262,20 +260,4 @@ func policyPCRPasswordSession(rwc io.ReadWriteCloser, pcr int, password string) 
 		return sessHandle, nil, fmt.Errorf("unable to get policy digest: %v", err)
 	}
 	return sessHandle, policy, nil
-}
-
-func readPCR(rwc io.ReadWriteCloser, pcr int) ([]byte, error) {
-	pcrSelection := tpm2.PCRSelection{
-		Hash: tpm2.AlgSHA256,
-		PCRs: []int{pcr},
-	}
-	pcrVals, err := tpm2.ReadPCRs(rwc, pcrSelection)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read PCRs from TPM: %v", err)
-	}
-	pcrVal, present := pcrVals[pcr]
-	if !present {
-		return nil, fmt.Errorf("PCR %d value missing from response", pcr)
-	}
-	return pcrVal, nil
 }
