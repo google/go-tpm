@@ -46,36 +46,34 @@ var (
 			ModulusRaw: make([]byte, 256),
 		},
 	}
+	tpmPath = flag.String("tpm-path", "/dev/tpm0", "Path to the TPM device (character device or a Unix socket).")
+	pcr     = flag.Int("pcr", -1, "PCR to seal data to. Must be within [0, 23].")
 )
 
 func main() {
-	tpmPathFlag := flag.String("tpm-path", "/dev/tpm0", "Path to the TPM device (character device or a Unix socket).")
-	pcrFlag := flag.Int("pcr", -1, "PCR to seal data to. Must be within [0, 23].")
 	flag.Parse()
 
-	if *pcrFlag < 0 || *pcrFlag > 23 {
-		fmt.Fprintf(os.Stderr, "Invalid flag 'pcr': value %d is out of range", *pcrFlag)
+	if *pcr < 0 || *pcr > 23 {
+		fmt.Fprintf(os.Stderr, "Invalid flag 'pcr': value %d is out of range", *pcr)
 		os.Exit(1)
 	}
 
-	errs := run(*pcrFlag, *tpmPathFlag)
-	for _, err := range errs {
+	err := run(*pcr, *tpmPath)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-	}
-	if len(errs) > 0 {
 		os.Exit(1)
 	}
 }
 
-func run(pcr int, tpmPath string) (errs []error) {
+func run(pcr int, tpmPath string) (retErr error) {
 	// Open the TPM
 	rwc, err := tpm2.OpenTPM(tpmPath)
 	if err != nil {
-		return append(errs, fmt.Errorf("can't open TPM %q: %v", tpmPath, err))
+		return fmt.Errorf("can't open TPM %q: %v", tpmPath, err)
 	}
 	defer func() {
 		if err := rwc.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("can't close TPM %q: %v", tpmPath, err))
+			retErr = fmt.Errorf("%v\ncan't close TPM %q: %v", retErr, tpmPath, err)
 		}
 	}()
 
@@ -83,11 +81,11 @@ func run(pcr int, tpmPath string) (errs []error) {
 	srkPassword := ""
 	srkHandle, _, err := tpm2.CreatePrimary(rwc, tpm2.HandleOwner, tpm2.PCRSelection{}, "", srkPassword, srkTemplate)
 	if err != nil {
-		return append(errs, fmt.Errorf("can't create primary key: %v", err))
+		return fmt.Errorf("can't create primary key: %v", err)
 	}
 	defer func() {
 		if err := tpm2.FlushContext(rwc, srkHandle); err != nil {
-			errs = append(errs, fmt.Errorf("unable to flush SRK handle %q: %v", srkHandle, err))
+			retErr = fmt.Errorf("%v\nunable to flush SRK handle %q: %v", retErr, srkHandle, err)
 		}
 	}()
 	fmt.Printf("Created parent key with handle: 0x%x\n", srkHandle)
@@ -95,7 +93,7 @@ func run(pcr int, tpmPath string) (errs []error) {
 	// Note the value of the pcr against which we will seal the data
 	pcrVal, err := tpm2.ReadPCR(rwc, pcr, tpm2.AlgSHA256)
 	if err != nil {
-		return append(errs, fmt.Errorf("unable to read PCR: %v", err))
+		return fmt.Errorf("unable to read PCR: %v", err)
 	}
 	fmt.Printf("PCR %v value: 0x%x\n", pcr, pcrVal)
 
@@ -103,17 +101,10 @@ func run(pcr int, tpmPath string) (errs []error) {
 	objectPassword := "objectPassword"
 	sessHandle, policy, err := policyPCRPasswordSession(rwc, pcr, objectPassword)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("unable to get policy: %v", err))
+		return fmt.Errorf("unable to get policy: %v", err)
 	}
-	if sessHandle != tpm2.HandleNull {
-		if flushErr := tpm2.FlushContext(rwc, sessHandle); flushErr != nil {
-			errs = append(errs, fmt.Errorf("unable to flush session: %v", flushErr))
-		} else {
-			sessHandle = tpm2.HandleNull
-		}
-	}
-	if len(errs) > 0 {
-		return
+	if err := tpm2.FlushContext(rwc, sessHandle); err != nil {
+		return fmt.Errorf("unable to flush session: %v", err)
 	}
 	fmt.Printf("Created authorization policy: 0x%x\n", policy)
 
@@ -122,111 +113,76 @@ func run(pcr int, tpmPath string) (errs []error) {
 	fmt.Printf("Data to be sealed: 0x%x\n", dataToSeal)
 	privateArea, publicArea, err := tpm2.Seal(rwc, srkHandle, srkPassword, objectPassword, policy, dataToSeal)
 	if err != nil {
-		return append(errs, fmt.Errorf("unable to seal data: %v", err))
+		return fmt.Errorf("unable to seal data: %v", err)
 	}
 	fmt.Printf("Sealed data: 0x%x\n", privateArea)
 
 	// Load the sealed data into the TPM.
 	objectHandle, _, err := tpm2.Load(rwc, srkHandle, srkPassword, publicArea, privateArea)
 	if err != nil {
-		return append(errs, fmt.Errorf("unable to load data: %v", err))
+		return fmt.Errorf("unable to load data: %v", err)
 	}
 	defer func() {
 		if err := tpm2.FlushContext(rwc, objectHandle); err != nil {
-			errs = append(errs, fmt.Errorf("unable to flush object handle %q: %v", objectHandle, err))
+			retErr = fmt.Errorf("%v\nunable to flush object handle %q: %v", retErr, objectHandle, err)
 		}
 	}()
 	fmt.Printf("Loaded sealed data with handle: 0x%x\n", objectHandle)
 
 	// Unseal the data
-	unsealedData, err, otherErrs := unseal(rwc, pcr, objectPassword, objectHandle)
+	unsealedData, err := unseal(rwc, pcr, objectPassword, objectHandle)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("unable to unseal data: %v", err))
-	}
-	for otherErr := range otherErrs {
-		errs = append(errs, fmt.Errorf("error while unsealing data: %v", otherErr))
-	}
-	if len(errs) > 0 {
-		return
+		return fmt.Errorf("unable to unseal data: %v", err)
 	}
 	fmt.Printf("Unsealed data: 0x%x\n", unsealedData)
 
 	// Try to unseal the data with the wrong password
-	_, err, otherErrs = unseal(rwc, pcr, "wrong-password", objectHandle)
-	if err == nil && len(otherErrs) == 0 {
-		errs = append(errs, fmt.Errorf("expected unsealing with wrong password to fail but it succeeded"))
-	}
-	for otherErr := range otherErrs {
-		errs = append(errs, fmt.Errorf("error while unsealing data: %v", otherErr))
-	}
-	if len(errs) > 0 {
-		return
-	}
-	// Note that this can be easily fooled since we don't verify that the error was
-	// due specifically to policy.
-	fmt.Printf("As expected, unsealing with the wrong password failed with an error. Error was: %v\n", err)
+	_, err = unseal(rwc, pcr, "wrong-password", objectHandle)
+	fmt.Printf("Trying to unseal with wrong password resulted in: %v\n", err)
 
 	// Extend the PCR
 	if err = tpm2.PCREvent(rwc, tpmutil.Handle(pcr), []byte{1}); err != nil {
-		return append(errs, fmt.Errorf("unable to extend PCR: %v", err))
+		return fmt.Errorf("unable to extend PCR: %v", err)
 	}
 	fmt.Printf("Extended PCR %d\n", pcr)
 
 	// Note the new value of the pcr
 	pcrVal, err = tpm2.ReadPCR(rwc, pcr, tpm2.AlgSHA256)
 	if err != nil {
-		return append(errs, fmt.Errorf("unable to read PCR: %v", err))
+		return fmt.Errorf("unable to read PCR: %v", err)
 	}
 	fmt.Printf("PCR %d value: 0x%x\n", pcr, pcrVal)
 
 	// Try to unseal the data with the PCR in the wrong state
-	_, err, otherErrs = unseal(rwc, pcr, objectPassword, objectHandle)
-	if err == nil && len(otherErrs) == 0 {
-		errs = append(errs, fmt.Errorf("expected unsealing with wrong PCR state to fail but it succeeded"))
-	}
-	for otherErr := range otherErrs {
-		errs = append(errs, fmt.Errorf("error while unsealing data: %v", otherErr))
-	}
-	if len(errs) > 0 {
-		return
-	}
-	// Note that this can be easily fooled since we don't verify that the error was
-	// due specifically to policy.
-	fmt.Printf("As expected, unsealing after extending the PCR failed with an error. Error was: %v\n", err)
+	_, err = unseal(rwc, pcr, objectPassword, objectHandle)
+	fmt.Printf("Trying to unseal with wrong PCR state resulted in: %v\n", err)
 
 	return
 }
 
-// Returns the unsealed data, any error due to the Unseal command, and any other errors
-func unseal(rwc io.ReadWriteCloser, pcr int, objectPassword string, objectHandle tpmutil.Handle) (data []byte, unsealErr error, otherErrs []error) {
+// Returns the unsealed data
+func unseal(rwc io.ReadWriteCloser, pcr int, objectPassword string, objectHandle tpmutil.Handle) (data []byte, retErr error) {
 	// Create the authorization session
 	sessHandle, _, err := policyPCRPasswordSession(rwc, pcr, objectPassword)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get auth session: %v", err)
+	}
 	defer func() {
-		if sessHandle != tpm2.HandleNull {
-			if flushErr := tpm2.FlushContext(rwc, sessHandle); flushErr != nil {
-				otherErrs = append(otherErrs, fmt.Errorf("unable to flush session: %v", flushErr))
-			}
+		if err := tpm2.FlushContext(rwc, sessHandle); err != nil {
+			retErr = fmt.Errorf("%v\nunable to flush session: %v", retErr, err)
 		}
 	}()
-	if err != nil {
-		otherErrs = append(otherErrs, fmt.Errorf("unable to get auth session: %v", err))
-		return
-	}
 
 	// Unseal the data
 	unsealedData, err := tpm2.UnsealWithSession(rwc, sessHandle, objectHandle, objectPassword)
 	if err != nil {
-		unsealErr = fmt.Errorf("unable to unseal data: %v", err)
-		return
+		return nil, fmt.Errorf("unable to unseal data: %v", err)
 	}
-	data = unsealedData
-	return
+	return unsealedData, err
 }
 
-// Note that the handle may be returned even if an error is returned as well, in which
-// case it still needs to be flushed.
 // Returns session handle and policy digest.
-func policyPCRPasswordSession(rwc io.ReadWriteCloser, pcr int, password string) (tpmutil.Handle, []byte, error) {
+func policyPCRPasswordSession(rwc io.ReadWriteCloser, pcr int, password string) (sessHandle tpmutil.Handle, policy []byte, retErr error) {
 	// FYI, this is not a very secure session.
 	sessHandle, _, err := tpm2.StartAuthSession(
 		rwc,
@@ -240,6 +196,13 @@ func policyPCRPasswordSession(rwc io.ReadWriteCloser, pcr int, password string) 
 	if err != nil {
 		return tpm2.HandleNull, nil, fmt.Errorf("unable to start session: %v", err)
 	}
+	defer func() {
+		if sessHandle != tpm2.HandleNull && err != nil {
+			if err := tpm2.FlushContext(rwc, sessHandle); err != nil {
+				retErr = fmt.Errorf("%v\nunable to flush session: %v", retErr, err)
+			}
+		}
+	}()
 
 	pcrSelection := tpm2.PCRSelection{
 		Hash: tpm2.AlgSHA256,
@@ -255,7 +218,7 @@ func policyPCRPasswordSession(rwc io.ReadWriteCloser, pcr int, password string) 
 		return sessHandle, nil, fmt.Errorf("unable to require password for auth policy: %v", err)
 	}
 
-	policy, err := tpm2.PolicyGetDigest(rwc, sessHandle)
+	policy, err = tpm2.PolicyGetDigest(rwc, sessHandle)
 	if err != nil {
 		return sessHandle, nil, fmt.Errorf("unable to get policy digest: %v", err)
 	}
