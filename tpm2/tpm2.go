@@ -1114,3 +1114,20 @@ func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...in
 func concat(chunks ...[]byte) ([]byte, error) {
 	return bytes.Join(chunks, nil), nil
 }
+
+// ReadPCR reads the value of the given PCR.
+func ReadPCR(rw io.ReadWriteCloser, pcr int, hashAlg Algorithm) ([]byte, error) {
+	pcrSelection := PCRSelection{
+		Hash: hashAlg,
+		PCRs: []int{pcr},
+	}
+	pcrVals, err := ReadPCRs(rw, pcrSelection)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read PCRs from TPM: %v", err)
+	}
+	pcrVal, present := pcrVals[pcr]
+	if !present {
+		return nil, fmt.Errorf("PCR %d value missing from response", pcr)
+	}
+	return pcrVal, nil
+}
