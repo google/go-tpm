@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package tbs provides an low-level interface directly mapping to Windows
+// Tbs.dll system library commands:
+// https://docs.microsoft.com/en-us/windows/desktop/TBS/tpm-base-services-portal
+// Public field descriptions contain links to the high-level Windows documentation.
 package tbs
 
 import (
