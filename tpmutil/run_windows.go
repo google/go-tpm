@@ -54,8 +54,8 @@ func (rwc *winTPMBuffer) Read(responseBuffer []byte) (int, error) {
 		return 0, io.EOF
 	}
 	lenCopied := copy(responseBuffer, rwc.outBuffer)
-	// Implements same behavior as linux "/dev/tpm0": discard unread components after read.
-	rwc.outBuffer = rwc.outBuffer[:0]
+	// Cut out the piece of slice which was just read out, maintaining original slice capacity.
+	rwc.outBuffer = append(rwc.outBuffer[:0], rwc.outBuffer[lenCopied:]...)
 	return lenCopied, nil
 }
 
