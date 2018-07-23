@@ -226,6 +226,34 @@ func TestSeal(t *testing.T) {
 	}
 }
 
+func TestReseal(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	data := make([]byte, 64)
+	data[0] = 137
+	data[1] = 138
+	data[2] = 139
+
+	pcrMap := make(map[int][]byte)
+	pcrMap[23] = make([]byte, 20)
+	pcrMap[16] = make([]byte, 20)
+	srkAuth := getAuth(srkAuthEnvVar)
+	sealed, err := Reseal(rwc, 0 /* locality 0 */, pcrMap, data, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't seal the data:", err)
+	}
+
+	data2, err := Unseal(rwc, sealed, srkAuth[:])
+	if err != nil {
+		t.Fatal("Couldn't unseal the data:", err)
+	}
+
+	if !bytes.Equal(data2, data) {
+		t.Fatal("Unsealed data doesn't match original data")
+	}
+}
+
 func TestLoadKey2(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
@@ -480,5 +508,18 @@ func TestTakeOwnership(t *testing.T) {
 
 	if err := TakeOwnership(rwc, ownerAuth, srkAuth, pubek); err != nil {
 		t.Fatal("Couldn't take ownership of the TPM:", err)
+	}
+}
+
+func TestForceClear(t *testing.T) {
+	// Only enable this if you know what you're doing.
+	// TPM force clear clears the ownership of the TPM.
+	// Beware of running this test on a production system.
+	t.Skip()
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	if err := ForceClear(rwc); err != nil {
+		t.Fatal("Couldn't clear the TPM without owner auth in physical presence mode:", err)
 	}
 }
