@@ -59,9 +59,9 @@ type Error uint32
 
 func (err Error) Error() string {
 	if description, ok := errorDescriptions[err]; ok {
-		return fmt.Sprintf("TBS Error %X: %s", uint32(err), description)
+		return fmt.Sprintf("TBS Error 0x%X: %s", uint32(err), description)
 	}
-	return fmt.Sprintf("Unrecognized TBS Error %X", uint32(err))
+	return fmt.Sprintf("Unrecognized TBS Error 0x%X", uint32(err))
 }
 
 func getError(err uintptr) error {
