@@ -66,10 +66,10 @@ func (rwc *winTPMBuffer) Close() error {
 // OpenTPM creates a new instance of a ReadWriteCloser which can interact with a
 // Windows TPM.
 func OpenTPM() (io.ReadWriteCloser, error) {
-	rwc := winTPMBuffer{
+	tpmContext, err := tbs.CreateContext(tbs.TPMVersion20, tbs.IncludeTPM12|tbs.IncludeTPM20)
+	rwc := &winTPMBuffer{
+		context:   tpmContext,
 		outBuffer: make([]byte, 0, maxTPMResponse),
 	}
-	var err error
-	rwc.context, err = tbs.CreateContext(tbs.TPMVersion20, tbs.IncludeTPM12|tbs.IncludeTPM20)
-	return &rwc, err
+	return rwc, err
 }
