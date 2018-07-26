@@ -573,3 +573,47 @@ func TestReadPCR(t *testing.T) {
 		t.Fatalf("Expected a 32 byte PCR value but got: %v", pcrVal)
 	}
 }
+
+func TestEncodeDecodeAttestationData(t *testing.T) {
+	signer := tpmutil.Handle(100)
+	ciQualifiedName := tpmutil.Handle(101)
+	ad := AttestationData{
+		Magic: 1,
+		Type:  TagAttestCertify,
+		QualifiedSigner: Name{
+			Handle: &signer,
+		},
+		ExtraData: []byte("foo"),
+		ClockInfo: ClockInfo{
+			Clock:        3,
+			ResetCount:   4,
+			RestartCount: 5,
+			Safe:         6,
+		},
+		FirmwareVersion: 7,
+		AttestedCertifyInfo: &CertifyInfo{
+			Name: Name{
+				Digest: &HashValue{
+					Alg:   AlgSHA1,
+					Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+				},
+			},
+			QualifiedName: Name{
+				Handle: &ciQualifiedName,
+			},
+		},
+	}
+
+	encoded, err := ad.Encode()
+	if err != nil {
+		t.Fatalf("error encoding: %v", err)
+	}
+	decoded, err := DecodeAttestationData(encoded)
+	if err != nil {
+		t.Fatalf("error decoding: %v", err)
+	}
+
+	if !reflect.DeepEqual(*decoded, ad) {
+		t.Errorf("got decoded value:\n%#v\nwant:\n%#v", decoded, ad)
+	}
+}

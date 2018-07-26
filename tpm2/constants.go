@@ -148,12 +148,13 @@ const (
 	CapabilityAuthPolicies
 )
 
+// TPM Tags.
 const (
-	tagNull          tpmutil.Tag = 0x8000
-	tagNoSessions    tpmutil.Tag = 0x8001
-	tagSessions      tpmutil.Tag = 0x8002
-	tagAttestCertify tpmutil.Tag = 0x8017
-	tagHashCheck     tpmutil.Tag = 0x8024
+	TagNull          tpmutil.Tag = 0x8000
+	TagNoSessions    tpmutil.Tag = 0x8001
+	TagSessions      tpmutil.Tag = 0x8002
+	TagAttestCertify tpmutil.Tag = 0x8017
+	TagHashCheck     tpmutil.Tag = 0x8024
 )
 
 // StartupType instructs the TPM on how to handle its state during Shutdown or
