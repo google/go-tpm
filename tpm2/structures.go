@@ -64,7 +64,8 @@ type Public struct {
 	ECCParameters *ECCParams
 }
 
-func (p Public) encode() ([]byte, error) {
+// Encode serializes a Public structure in TPM wire format.
+func (p Public) Encode() ([]byte, error) {
 	head, err := tpmutil.Pack(p.Type, p.NameAlg, p.Attributes, p.AuthPolicy)
 	if err != nil {
 		return nil, err
@@ -392,7 +393,8 @@ type Private struct {
 	Sensitive []byte
 }
 
-func (p Private) encode() ([]byte, error) {
+// Encode serializes a Private structure in TPM wire format.
+func (p Private) Encode() ([]byte, error) {
 	if p.Type.IsNull() {
 		return nil, nil
 	}
@@ -436,13 +438,37 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 	// The spec specifies several other types of attestation data. We only need
 	// parsing of Certify attestation data for now. If you need support for
 	// other attestation types, add them here.
-	if ad.Type != tagAttestCertify {
+	if ad.Type != TagAttestCertify {
 		return nil, fmt.Errorf("only Certify attestation structure is supported, got type 0x%x", ad.Type)
 	}
 	if ad.AttestedCertifyInfo, err = decodeCertifyInfo(buf); err != nil {
 		return nil, fmt.Errorf("decoding AttestedCertifyInfo: %v", err)
 	}
 	return &ad, nil
+}
+
+// Encode serializes an AttestationData structure in TPM wire format.
+func (ad AttestationData) Encode() ([]byte, error) {
+	if ad.Type != TagAttestCertify {
+		return nil, fmt.Errorf("only Certify attestation structure is supported, got type 0x%x", ad.Type)
+	}
+	head, err := tpmutil.Pack(ad.Magic, ad.Type)
+	if err != nil {
+		return nil, err
+	}
+	signer, err := ad.QualifiedSigner.encode()
+	if err != nil {
+		return nil, err
+	}
+	tail, err := tpmutil.Pack(ad.ExtraData, ad.ClockInfo, ad.FirmwareVersion)
+	if err != nil {
+		return nil, err
+	}
+	info, err := ad.AttestedCertifyInfo.encode()
+	if err != nil {
+		return nil, err
+	}
+	return concat(head, signer, tail, info)
 }
 
 // CertifyInfo contains Certify-specific data for TPMS_ATTEST.
@@ -467,6 +493,18 @@ func decodeCertifyInfo(in *bytes.Buffer) (*CertifyInfo, error) {
 	ci.QualifiedName = *n
 
 	return &ci, nil
+}
+
+func (ci CertifyInfo) encode() ([]byte, error) {
+	n, err := ci.Name.encode()
+	if err != nil {
+		return nil, fmt.Errorf("encoding Name: %v", err)
+	}
+	qn, err := ci.QualifiedName.encode()
+	if err != nil {
+		return nil, fmt.Errorf("encoding QualifiedName: %v", err)
+	}
+	return concat(n, qn)
 }
 
 // Name contains a name for TPM entities. Only one of Handle/Digest should be
@@ -501,10 +539,28 @@ func decodeName(in *bytes.Buffer) (*Name, error) {
 	return name, nil
 }
 
+func (n Name) encode() ([]byte, error) {
+	var buf []byte
+	var err error
+	switch {
+	case n.Handle != nil:
+		if buf, err = tpmutil.Pack(*n.Handle); err != nil {
+			return nil, fmt.Errorf("encoding Handle: %v", err)
+		}
+	case n.Digest != nil:
+		if buf, err = n.Digest.encode(); err != nil {
+			return nil, fmt.Errorf("encoding Digest: %v", err)
+		}
+	default:
+		// Name is empty, which is valid.
+	}
+	return tpmutil.Pack(buf)
+}
+
 // MatchesPublic compares Digest in Name against given Public structure. Note:
 // this only works for regular Names, not Qualified Names.
 func (n Name) MatchesPublic(p Public) (bool, error) {
-	buf, err := p.encode()
+	buf, err := p.Encode()
 	if err != nil {
 		return false, err
 	}
@@ -543,6 +599,10 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 		return nil, fmt.Errorf("decoding Value: %v", err)
 	}
 	return &hv, nil
+}
+
+func (hv HashValue) encode() ([]byte, error) {
+	return tpmutil.Pack(hv.Alg, tpmutil.RawBytes(hv.Value))
 }
 
 // ClockInfo contains TPM state info included in AttestationData.
