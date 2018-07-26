@@ -68,7 +68,7 @@ type Public struct {
 func (p Public) Encode() ([]byte, error) {
 	head, err := tpmutil.Pack(p.Type, p.NameAlg, p.Attributes, p.AuthPolicy)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Type, NameAlg, Attributes, AuthPolicy: %v", err)
 	}
 	var params []byte
 	switch p.Type {
@@ -85,7 +85,7 @@ func (p Public) Encode() ([]byte, error) {
 		err = fmt.Errorf("unsupported type in TPMT_PUBLIC: %v", p.Type)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding RSAParameters, ECCParameters or KeyedHash: %v", err)
 	}
 	return concat(head, params)
 }
@@ -130,15 +130,15 @@ func (p *RSAParams) encode() ([]byte, error) {
 	}
 	sym, err := p.Symmetric.encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Symmetric: %v", err)
 	}
 	sig, err := p.Sign.encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Sign: %v", err)
 	}
 	rest, err := tpmutil.Pack(p.KeyBits, p.Exponent)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding KeyBits, Exponent: %v", err)
 	}
 
 	if p.Modulus == nil && len(p.ModulusRaw) == 0 {
@@ -153,7 +153,7 @@ func (p *RSAParams) encode() ([]byte, error) {
 	}
 	unique, err := tpmutil.Pack(mod)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Modulus: %v", err)
 	}
 
 	return concat(sym, sig, rest, unique)
@@ -164,14 +164,14 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	var err error
 
 	if params.Symmetric, err = decodeSymScheme(in); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Symmetric: %v", err)
 	}
 	if params.Sign, err = decodeSigScheme(in); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Sign: %v", err)
 	}
 	var modBytes []byte
 	if err := tpmutil.UnpackBuf(in, &params.KeyBits, &params.Exponent, &modBytes); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding KeyBits, Exponent, Modulus: %v", err)
 	}
 	if params.Exponent == 0 {
 		params.Exponent = defaultRSAExponent
@@ -202,23 +202,23 @@ func (p *ECCParams) encode() ([]byte, error) {
 	}
 	sym, err := p.Symmetric.encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Symmetric: %v", err)
 	}
 	sig, err := p.Sign.encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Sign: %v", err)
 	}
 	curve, err := tpmutil.Pack(p.CurveID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding CurveID: %v", err)
 	}
 	kdf, err := p.KDF.encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
 	point, err := tpmutil.Pack(p.Point.X.Bytes(), p.Point.Y.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Point: %v", err)
 	}
 	return concat(sym, sig, curve, kdf, point)
 }
@@ -228,20 +228,20 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 	var err error
 
 	if params.Symmetric, err = decodeSymScheme(in); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Symmetric: %v", err)
 	}
 	if params.Sign, err = decodeSigScheme(in); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Sign: %v", err)
 	}
 	if err := tpmutil.UnpackBuf(in, &params.CurveID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding CurveID: %v", err)
 	}
 	if params.KDF, err = decodeKDFScheme(in); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding KDF: %v", err)
 	}
 	var x, y []byte
 	if err := tpmutil.UnpackBuf(in, &x, &y); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Point: %v", err)
 	}
 	params.Point.X = new(big.Int).SetBytes(x)
 	params.Point.Y = new(big.Int).SetBytes(y)
@@ -265,13 +265,13 @@ func (s *SymScheme) encode() ([]byte, error) {
 func decodeSymScheme(in *bytes.Buffer) (*SymScheme, error) {
 	var scheme SymScheme
 	if err := tpmutil.UnpackBuf(in, &scheme.Alg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
 	if scheme.Alg == AlgNull {
 		return nil, nil
 	}
 	if err := tpmutil.UnpackBuf(in, &scheme.KeyBits, &scheme.Mode); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding KeyBits, Mode: %v", err)
 	}
 	return &scheme, nil
 }
@@ -296,17 +296,17 @@ func (s *SigScheme) encode() ([]byte, error) {
 func decodeSigScheme(in *bytes.Buffer) (*SigScheme, error) {
 	var scheme SigScheme
 	if err := tpmutil.UnpackBuf(in, &scheme.Alg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
 	if scheme.Alg == AlgNull {
 		return nil, nil
 	}
 	if err := tpmutil.UnpackBuf(in, &scheme.Hash); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Hash: %v", err)
 	}
 	if scheme.Alg.UsesCount() {
 		if err := tpmutil.UnpackBuf(in, &scheme.Count); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decoding Count: %v", err)
 		}
 	}
 	return &scheme, nil
@@ -328,13 +328,13 @@ func (s *KDFScheme) encode() ([]byte, error) {
 func decodeKDFScheme(in *bytes.Buffer) (*KDFScheme, error) {
 	var scheme KDFScheme
 	if err := tpmutil.UnpackBuf(in, &scheme.Alg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
 	if scheme.Alg == AlgNull {
 		return nil, nil
 	}
 	if err := tpmutil.UnpackBuf(in, &scheme.Hash); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Hash: %v", err)
 	}
 	return &scheme, nil
 }
@@ -350,19 +350,19 @@ type Signature struct {
 func decodeSignature(in *bytes.Buffer) (*Signature, error) {
 	var sig Signature
 	if err := tpmutil.UnpackBuf(in, &sig.Alg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
 	switch sig.Alg {
 	case AlgRSASSA:
 		sig.RSA = new(SignatureRSA)
 		if err := tpmutil.UnpackBuf(in, sig.RSA); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decoding RSA: %v", err)
 		}
 	case AlgECDSA:
 		sig.ECC = new(SignatureECC)
 		var r, s []byte
 		if err := tpmutil.UnpackBuf(in, &sig.ECC.HashAlg, &r, &s); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decoding ECC: %v", err)
 		}
 		sig.ECC.R = big.NewInt(0).SetBytes(r)
 		sig.ECC.S = big.NewInt(0).SetBytes(s)
@@ -454,19 +454,19 @@ func (ad AttestationData) Encode() ([]byte, error) {
 	}
 	head, err := tpmutil.Pack(ad.Magic, ad.Type)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding Magic, Type: %v", err)
 	}
 	signer, err := ad.QualifiedSigner.encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding QualifiedSigner: %v", err)
 	}
 	tail, err := tpmutil.Pack(ad.ExtraData, ad.ClockInfo, ad.FirmwareVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding ExtraData, ClockInfo, FirmwareVersion: %v", err)
 	}
 	info, err := ad.AttestedCertifyInfo.encode()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding AttestedCertifyInfo: %v", err)
 	}
 	return concat(head, signer, tail, info)
 }
