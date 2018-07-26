@@ -606,14 +606,14 @@ func TestEncodeDecodeAttestationData(t *testing.T) {
 
 	encoded, err := ad.Encode()
 	if err != nil {
-		t.Fatalf("error encoding: %v", err)
+		t.Fatalf("error encoding AttestationData: %v", err)
 	}
 	decoded, err := DecodeAttestationData(encoded)
 	if err != nil {
-		t.Fatalf("error decoding: %v", err)
+		t.Fatalf("error decoding AttestationData: %v", err)
 	}
 
 	if !reflect.DeepEqual(*decoded, ad) {
-		t.Errorf("got decoded value:\n%#v\nwant:\n%#v", decoded, ad)
+		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, ad)
 	}
 }

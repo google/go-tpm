@@ -148,7 +148,8 @@ const (
 	CapabilityAuthPolicies
 )
 
-// TPM Tags.
+// TPM Structure Tags. Tags are used to disambiguate structures, similar to Alg
+// values: tag value defines what kind of data lives in a nested field.
 const (
 	TagNull          tpmutil.Tag = 0x8000
 	TagNoSessions    tpmutil.Tag = 0x8001

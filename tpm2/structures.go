@@ -64,7 +64,7 @@ type Public struct {
 	ECCParameters *ECCParams
 }
 
-// Encode returns Public serialized to TPM wire format.
+// Encode serializes a Public structure in TPM wire format.
 func (p Public) Encode() ([]byte, error) {
 	head, err := tpmutil.Pack(p.Type, p.NameAlg, p.Attributes, p.AuthPolicy)
 	if err != nil {
@@ -393,7 +393,7 @@ type Private struct {
 	Sensitive []byte
 }
 
-// Encode returns Private serialized to TPM wire format.
+// Encode serializes a Private structure in TPM wire format.
 func (p Private) Encode() ([]byte, error) {
 	if p.Type.IsNull() {
 		return nil, nil
@@ -447,7 +447,7 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 	return &ad, nil
 }
 
-// Encode returns AttestationData serialized to TPM wire format.
+// Encode serializes an AttestationData structure in TPM wire format.
 func (ad AttestationData) Encode() ([]byte, error) {
 	if ad.Type != TagAttestCertify {
 		return nil, fmt.Errorf("only Certify attestation structure is supported, got type 0x%x", ad.Type)
@@ -544,13 +544,11 @@ func (n Name) encode() ([]byte, error) {
 	var err error
 	switch {
 	case n.Handle != nil:
-		buf, err = tpmutil.Pack(*n.Handle)
-		if err != nil {
+		if buf, err = tpmutil.Pack(*n.Handle); err != nil {
 			return nil, fmt.Errorf("encoding Handle: %v", err)
 		}
 	case n.Digest != nil:
-		buf, err = n.Digest.encode()
-		if err != nil {
+		if buf, err = n.Digest.encode(); err != nil {
 			return nil, fmt.Errorf("encoding Digest: %v", err)
 		}
 	default:
