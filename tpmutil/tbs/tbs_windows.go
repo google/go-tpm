@@ -173,9 +173,10 @@ func (context Context) Close() error {
 	return getError(result)
 }
 
-// SubmitCommand sends commandBuffer to the TPM, returning the number of bytes written
-// to responseBuffer. If responseBuffer is too small (ErrInsufficientBuffer), the required
-// size is returned.
+// SubmitCommand sends commandBuffer to the TPM, returning the number of bytes
+// written to responseBuffer. ErrInsufficientBuffer is returned if the
+// responseBuffer is too short. ErrInvalidOutputPointer is returned if the
+// responseBuffer is nil. On failure, the returned length is unspecified.
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/nf-tbs-tbsip_submit_command
 func (context Context) SubmitCommand(
 	priority CommandPriority,
@@ -206,8 +207,9 @@ func (context Context) SubmitCommand(
 }
 
 // GetTCGLog gets the system event log, returning the number of bytes written
-// to responseBuffer. If logBuffer is nil, the required size and
-// ErrInsufficientBuffer are returned.
+// to logBuffer. If logBuffer is nil, the size of the TCG log is returned.
+// ErrInsufficientBuffer is returned if the logBuffer is too short. On failure,
+// the returned length is unspecified.
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/nf-tbs-tbsi_get_tcg_log
 func (context Context) GetTCGLog(logBuffer []byte) (uint32, error) {
 	logBufferLen := uint32(len(logBuffer))
