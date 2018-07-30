@@ -136,6 +136,14 @@ var (
 	tbsGetTCGLog     = tbsDLL.NewProc("Tbsi_Get_TCG_Log")
 )
 
+// Returns the address of the beginning of a slice or 0 for a nil slice.
+func sliceAddress(s []byte) uintptr {
+	if len(s) == 0 {
+		return 0
+	}
+	return uintptr(unsafe.Pointer(&(s[0])))
+}
+
 // CreateContext creates a new TPM context:
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/nf-tbs-tbsi_context_create
 func CreateContext(version Version, flag Flag) (Context, error) {
@@ -165,9 +173,10 @@ func (context Context) Close() error {
 	return getError(result)
 }
 
-// SubmitCommand sends commandBuffer to the TPM, returning the number of bytes written
-// to responseBuffer. If responseBuffer is too small (ErrInsufficientBuffer), the required
-// size is returned.
+// SubmitCommand sends commandBuffer to the TPM, returning the number of bytes
+// written to responseBuffer. ErrInsufficientBuffer is returned if the
+// responseBuffer is too short. ErrInvalidOutputPointer is returned if the
+// responseBuffer is nil. On failure, the returned length is unspecified.
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/nf-tbs-tbsip_submit_command
 func (context Context) SubmitCommand(
 	priority CommandPriority,
@@ -189,17 +198,18 @@ func (context Context) SubmitCommand(
 		uintptr(context),
 		uintptr(commandLocalityZero),
 		uintptr(priority),
-		uintptr(unsafe.Pointer(&(commandBuffer[0]))),
+		sliceAddress(commandBuffer),
 		uintptr(len(commandBuffer)),
-		uintptr(unsafe.Pointer(&(responseBuffer[0]))),
+		sliceAddress(responseBuffer),
 		uintptr(unsafe.Pointer(&responseBufferLen)),
 	)
 	return responseBufferLen, getError(result)
 }
 
 // GetTCGLog gets the system event log, returning the number of bytes written
-// to responseBuffer. If responseBuffer is too small (ErrInsufficientBuffer), the required
-// size is returned.
+// to logBuffer. If logBuffer is nil, the size of the TCG log is returned.
+// ErrInsufficientBuffer is returned if the logBuffer is too short. On failure,
+// the returned length is unspecified.
 // https://docs.microsoft.com/en-us/windows/desktop/api/Tbs/nf-tbs-tbsi_get_tcg_log
 func (context Context) GetTCGLog(logBuffer []byte) (uint32, error) {
 	logBufferLen := uint32(len(logBuffer))
@@ -211,7 +221,7 @@ func (context Context) GetTCGLog(logBuffer []byte) (uint32, error) {
 	// );
 	result, _, _ := tbsGetTCGLog.Call(
 		uintptr(context),
-		uintptr(unsafe.Pointer(&(logBuffer[0]))),
+		sliceAddress(logBuffer),
 		uintptr(unsafe.Pointer(&logBufferLen)),
 	)
 	return logBufferLen, getError(result)
