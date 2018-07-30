@@ -6,13 +6,9 @@ import (
 	"testing"
 )
 
-var (
-	// Encodes a call to Getrandom() with a buffer of length zero, meaning
-	// this command effictivly does nothing.
-	encodedTestCommand = []byte{128, 1, 0, 0, 0, 12, 0, 0, 1, 123, 0, 0}
-	// Expected response buffer for the above command
-	expectedTestResponse = []byte{128, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0}
-)
+// Encodes a call to Getrandom() with a buffer of length zero, making this
+// command an effective no-op.
+var getRandomRawCommand = []byte{128, 1, 0, 0, 0, 12, 0, 0, 1, 123, 0, 0}
 
 func getContext(t *testing.T) Context {
 	ctx, err := CreateContext(TPMVersion20, IncludeTPM12|IncludeTPM20)
@@ -67,8 +63,8 @@ func TestSubmitCommandNilCommand(t *testing.T) {
 	ctx := getContext(t)
 	defer ctx.Close()
 
-	response := make([]byte, os.Getpagesize())
-	_, err := ctx.SubmitCommand(NormalPriority, nil, response)
+	rawResponse := make([]byte, os.Getpagesize())
+	_, err := ctx.SubmitCommand(NormalPriority, nil, rawResponse)
 	if err != ErrBadParameter {
 		t.Fatalf("SubmitCommand failed with %v: expected ErrBadParameter", err)
 	}
@@ -79,7 +75,7 @@ func TestSubmitCommandNilResponse(t *testing.T) {
 	ctx := getContext(t)
 	defer ctx.Close()
 
-	_, err := ctx.SubmitCommand(NormalPriority, encodedTestCommand, nil)
+	_, err := ctx.SubmitCommand(NormalPriority, getRandomRawCommand, nil)
 	if err != ErrInvalidOutputPointer {
 		t.Fatalf("SubmitCommand failed with %v: expected ErrInvalidOutputPointer", err)
 	}
@@ -90,8 +86,8 @@ func TestSubmitCommandShortResponse(t *testing.T) {
 	ctx := getContext(t)
 	defer ctx.Close()
 
-	response := make([]byte, 1)
-	_, err := ctx.SubmitCommand(NormalPriority, encodedTestCommand, response)
+	rawResponse := make([]byte, 1)
+	_, err := ctx.SubmitCommand(NormalPriority, getRandomRawCommand, rawResponse)
 	if err != ErrInsufficientBuffer {
 		t.Fatalf("SubmitCommand failed with %v: expected ErrInsufficientBuffer", err)
 	}
@@ -102,13 +98,16 @@ func TestSubmitCommandLongResponse(t *testing.T) {
 	ctx := getContext(t)
 	defer ctx.Close()
 
-	response := make([]byte, 100)
-	responseLen, err := ctx.SubmitCommand(NormalPriority, encodedTestCommand, response)
+	rawResponse := make([]byte, os.Getpagesize())
+	responseLen, err := ctx.SubmitCommand(NormalPriority, getRandomRawCommand, rawResponse)
 	if err != nil {
 		t.Fatalf("SubmitCommand failed: %v", err)
 	}
-	response = response[:responseLen]
-	if !bytes.Equal(response, expectedTestResponse) {
-		t.Fatalf("Got response of %v, expected %v", response, expectedTestResponse)
+	rawResponse = rawResponse[:responseLen]
+
+	// Expected response buffer for getRandomRawCommand
+	expectedGetRandomRawResponse := []byte{128, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0}
+	if !bytes.Equal(rawResponse, expectedGetRandomRawResponse) {
+		t.Fatalf("Got response of %v, expected %v", rawResponse, expectedGetRandomRawResponse)
 	}
 }
