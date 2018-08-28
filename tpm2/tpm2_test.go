@@ -23,13 +23,40 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"flag"
+	"io"
 	"math/big"
 	"os"
 	"reflect"
 	"testing"
 
 	"github.com/google/go-tpm/tpmutil"
+	"github.com/google/go-tpm/tpmutil/mssim"
 )
+
+var (
+	mssimRun          = flag.Bool("mssim", false, "If supplied, run integration tests against a Microsoft simulator.")
+	mssimCommandAddr  = flag.String("mssim_command_addr", "localhost:2321", "Host and port of the simulator's command listener")
+	mssimPlatformAddr = flag.String("mssim_platform_addr", "localhost:2322", "Host and port of the simulator's platform listener")
+)
+
+func openTPM(t *testing.T) io.ReadWriteCloser {
+	if !*mssimRun {
+		return openDeviceTPM(t)
+	}
+
+	conn, err := mssim.Open(mssim.Config{
+		CommandAddress:  *mssimCommandAddr,
+		PlatformAddress: *mssimPlatformAddr,
+	})
+	if err != nil {
+		t.Fatalf("Open TPM failed %v", err)
+	}
+	if err := Startup(conn, StartupClear); err != nil {
+		conn.Close()
+		t.Fatalf("Startup TPM failed: %v", err)
+	}
+	return conn
+}
 
 func TestMain(m *testing.M) {
 	flag.Parse()

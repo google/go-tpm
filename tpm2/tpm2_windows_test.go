@@ -22,7 +22,7 @@ import (
 
 var runTPMTests = flag.Bool("run_tpm_tests", false, "Run the Windows TPM integration tests. Defaults to false.")
 
-func openTPM(t *testing.T) io.ReadWriteCloser {
+func openDeviceTPM(t *testing.T) io.ReadWriteCloser {
 	if *runTPMTests == false {
 		t.SkipNow()
 	}
