@@ -601,12 +601,10 @@ func TestReadPCR(t *testing.T) {
 	}
 }
 
-func TestEncodeDecodeAttestationData(t *testing.T) {
+func makeAttestationData() AttestationData {
 	signer := tpmutil.Handle(100)
-	ciQualifiedName := tpmutil.Handle(101)
-	ad := AttestationData{
+	return AttestationData{
 		Magic: 1,
-		Type:  TagAttestCertify,
 		QualifiedSigner: Name{
 			Handle: &signer,
 		},
@@ -618,17 +616,50 @@ func TestEncodeDecodeAttestationData(t *testing.T) {
 			Safe:         6,
 		},
 		FirmwareVersion: 7,
-		AttestedCertifyInfo: &CertifyInfo{
-			Name: Name{
-				Digest: &HashValue{
-					Alg:   AlgSHA1,
-					Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
-				},
-			},
-			QualifiedName: Name{
-				Handle: &ciQualifiedName,
+	}
+}
+
+func TestEncodeDecodeCertifyAttestationData(t *testing.T) {
+	ciQualifiedName := tpmutil.Handle(101)
+	ad := makeAttestationData()
+	ad.Type = TagAttestCertify
+	ad.AttestedCertifyInfo = &CertifyInfo{
+		Name: Name{
+			Digest: &HashValue{
+				Alg:   AlgSHA1,
+				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
 			},
 		},
+		QualifiedName: Name{
+			Handle: &ciQualifiedName,
+		},
+	}
+
+	encoded, err := ad.Encode()
+	if err != nil {
+		t.Fatalf("error encoding AttestationData: %v", err)
+	}
+	decoded, err := DecodeAttestationData(encoded)
+	if err != nil {
+		t.Fatalf("error decoding AttestationData: %v", err)
+	}
+
+	if !reflect.DeepEqual(*decoded, ad) {
+		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, ad)
+	}
+}
+
+func TestEncodeDecodeCreationAttestationData(t *testing.T) {
+	ad := makeAttestationData()
+	ad.Type = TagAttestCreation
+	ad.AttestedCreationInfo = &CreationInfo{
+		Name: Name{
+			Digest: &HashValue{
+				Alg:   AlgSHA1,
+				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+			},
+		},
+		OpaqueDigest: []byte{7, 8, 9},
 	}
 
 	encoded, err := ad.Encode()

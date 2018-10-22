@@ -90,7 +90,10 @@ func (p Public) Encode() ([]byte, error) {
 	return concat(head, params)
 }
 
-func decodePublic(in *bytes.Buffer) (Public, error) {
+// DecodePublic decodes a TPMT_PUBLIC message. No error is returned if
+// the input has extra trailing data.
+func DecodePublic(buf []byte) (Public, error) {
+	in := bytes.NewBuffer(buf)
 	var pub Public
 	var err error
 	if err = tpmutil.UnpackBuf(in, &pub.Type, &pub.NameAlg, &pub.Attributes, &pub.AuthPolicy); err != nil {
@@ -408,13 +411,14 @@ type tpmtSigScheme struct {
 
 // AttestationData contains data attested by TPM commands (like Certify).
 type AttestationData struct {
-	Magic               uint32
-	Type                tpmutil.Tag
-	QualifiedSigner     Name
-	ExtraData           []byte
-	ClockInfo           ClockInfo
-	FirmwareVersion     uint64
-	AttestedCertifyInfo *CertifyInfo
+	Magic                uint32
+	Type                 tpmutil.Tag
+	QualifiedSigner      Name
+	ExtraData            []byte
+	ClockInfo            ClockInfo
+	FirmwareVersion      uint64
+	AttestedCertifyInfo  *CertifyInfo
+	AttestedCreationInfo *CreationInfo
 }
 
 // DecodeAttestationData decode a TPMS_ATTEST message. No error is returned if
@@ -436,22 +440,26 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 	}
 
 	// The spec specifies several other types of attestation data. We only need
-	// parsing of Certify attestation data for now. If you need support for
-	// other attestation types, add them here.
-	if ad.Type != TagAttestCertify {
-		return nil, fmt.Errorf("only Certify attestation structure is supported, got type 0x%x", ad.Type)
+	// parsing of Certify & Creation attestation data for now. If you need
+	// support for other attestation types, add them here.
+	switch ad.Type {
+	case TagAttestCertify:
+		if ad.AttestedCertifyInfo, err = decodeCertifyInfo(buf); err != nil {
+			return nil, fmt.Errorf("decoding AttestedCertifyInfo: %v", err)
+		}
+	case TagAttestCreation:
+		if ad.AttestedCreationInfo, err = decodeCreationInfo(buf); err != nil {
+			return nil, fmt.Errorf("decoding AttestedCreationInfo: %v", err)
+		}
+	default:
+		return nil, fmt.Errorf("only Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
 	}
-	if ad.AttestedCertifyInfo, err = decodeCertifyInfo(buf); err != nil {
-		return nil, fmt.Errorf("decoding AttestedCertifyInfo: %v", err)
-	}
+
 	return &ad, nil
 }
 
 // Encode serializes an AttestationData structure in TPM wire format.
 func (ad AttestationData) Encode() ([]byte, error) {
-	if ad.Type != TagAttestCertify {
-		return nil, fmt.Errorf("only Certify attestation structure is supported, got type 0x%x", ad.Type)
-	}
 	head, err := tpmutil.Pack(ad.Magic, ad.Type)
 	if err != nil {
 		return nil, fmt.Errorf("encoding Magic, Type: %v", err)
@@ -464,11 +472,61 @@ func (ad AttestationData) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding ExtraData, ClockInfo, FirmwareVersion: %v", err)
 	}
-	info, err := ad.AttestedCertifyInfo.encode()
-	if err != nil {
-		return nil, fmt.Errorf("encoding AttestedCertifyInfo: %v", err)
+
+	var info []byte
+	switch ad.Type {
+	case TagAttestCertify:
+		if info, err = ad.AttestedCertifyInfo.encode(); err != nil {
+			return nil, fmt.Errorf("encoding AttestedCertifyInfo: %v", err)
+		}
+	case TagAttestCreation:
+		if info, err = ad.AttestedCreationInfo.encode(); err != nil {
+			return nil, fmt.Errorf("encoding AttestedCreationInfo: %v", err)
+		}
+	default:
+		return nil, fmt.Errorf("only Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
 	}
+
 	return concat(head, signer, tail, info)
+}
+
+// CreationInfo contains Creation-specific data for TPMS_ATTEST.
+type CreationInfo struct {
+	Name Name
+	// Most TPM2B_Digest structures contain a TPMU_HA structure
+	// and get parsed to HashValue. This is never the case for the
+	// digest in TPMS_CREATION_INFO.
+	OpaqueDigest []byte
+}
+
+func decodeCreationInfo(in *bytes.Buffer) (*CreationInfo, error) {
+	var ci CreationInfo
+
+	n, err := decodeName(in)
+	if err != nil {
+		return nil, fmt.Errorf("decoding Name: %v", err)
+	}
+	ci.Name = *n
+
+	if err := tpmutil.UnpackBuf(in, &ci.OpaqueDigest); err != nil {
+		return nil, fmt.Errorf("decoding Digest: %v", err)
+	}
+
+	return &ci, nil
+}
+
+func (ci CreationInfo) encode() ([]byte, error) {
+	n, err := ci.Name.encode()
+	if err != nil {
+		return nil, fmt.Errorf("encoding Name: %v", err)
+	}
+
+	d, err := tpmutil.Pack(ci.OpaqueDigest)
+	if err != nil {
+		return nil, fmt.Errorf("encoding Digest: %v", err)
+	}
+
+	return concat(n, d)
 }
 
 // CertifyInfo contains Certify-specific data for TPMS_ATTEST.
