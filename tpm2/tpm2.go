@@ -87,7 +87,12 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
 	if err := tpmutil.UnpackBuf(buf, &count); err != nil {
 		return sel, err
 	}
-	if count != 1 {
+	switch count {
+	case 0:
+		sel.Hash = AlgUnknown
+		return sel, nil
+	case 1:
+	default:
 		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
 	}
 

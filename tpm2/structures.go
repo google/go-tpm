@@ -507,6 +507,75 @@ func (ci CertifyInfo) encode() ([]byte, error) {
 	return concat(n, qn)
 }
 
+// CreationData describes the attributes and environment for an object created
+// on the TPM. This structure encodes/decodes to/from TPMS_CREATION_DATA.
+type CreationData struct {
+	PCRSelection        PCRSelection
+	PCRDigest           []byte
+	Locality            byte
+	ParentNameAlg       Algorithm
+	ParentName          Name
+	ParentQualifiedName Name
+	OutsideInfo         []byte
+}
+
+func (cd *CreationData) encode() ([]byte, error) {
+	sel, err := encodeTPMLPCRSelection(cd.PCRSelection)
+	if err != nil {
+		return nil, fmt.Errorf("encoding PCRSelection: %v", err)
+	}
+	d, err := tpmutil.Pack(cd.PCRDigest, cd.Locality, cd.ParentNameAlg)
+	if err != nil {
+		return nil, fmt.Errorf("encoding PCRDigest, Locality, ParentNameAlg: %v", err)
+	}
+	pn, err := cd.ParentName.encode()
+	if err != nil {
+		return nil, fmt.Errorf("encoding ParentName: %v", err)
+	}
+	pqn, err := cd.ParentQualifiedName.encode()
+	if err != nil {
+		return nil, fmt.Errorf("encoding ParentQualifiedName: %v", err)
+	}
+	o, err := tpmutil.Pack(cd.OutsideInfo)
+	if err != nil {
+		return nil, fmt.Errorf("encoding OutsideInfo: %v", err)
+	}
+	return concat(sel, d, pn, pqn, o)
+}
+
+// DecodeCreationData decodes a TPMS_CREATION_DATA message. No error is
+// returned if the input has extra trailing data.
+func DecodeCreationData(in []byte) (*CreationData, error) {
+	buf := bytes.NewBuffer(in)
+	var out CreationData
+
+	sel, err := decodeTPMLPCRSelection(buf)
+	if err != nil {
+		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
+	}
+	out.PCRSelection = sel
+
+	if err := tpmutil.UnpackBuf(buf, &out.PCRDigest, &out.Locality, &out.ParentNameAlg); err != nil {
+		return nil, fmt.Errorf("decoding PCRDigest, Locality, ParentNameAlg: %v", err)
+	}
+
+	n, err := decodeName(buf)
+	if err != nil {
+		return nil, fmt.Errorf("decoding ParentName: %v", err)
+	}
+	out.ParentName = *n
+	if n, err = decodeName(buf); err != nil {
+		return nil, fmt.Errorf("decoding ParentQualifiedName: %v", err)
+	}
+	out.ParentQualifiedName = *n
+
+	if err := tpmutil.UnpackBuf(buf, &out.OutsideInfo); err != nil {
+		return nil, fmt.Errorf("decoding OutsideInfo: %v", err)
+	}
+
+	return &out, nil
+}
+
 // Name contains a name for TPM entities. Only one of Handle/Digest should be
 // set.
 type Name struct {
