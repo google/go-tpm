@@ -12,6 +12,8 @@ import (
 
 // KDFa implements TPM 2.0's default key derivation function, as defined in
 // section 11.4.9.2 of the TPM revision 2 specification part 1.
+// The key & label parameters must not be zero length, but contextU &
+// contextV may be.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
 	var counter uint32
 	remaining := (bits + 7) / 8 // As per note at the bottom of page 44.
