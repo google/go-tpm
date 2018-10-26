@@ -1115,6 +1115,33 @@ func concat(chunks ...[]byte) ([]byte, error) {
 	return bytes.Join(chunks, nil), nil
 }
 
+func encodePCRExtend(pcr uint32, hashAlg Algorithm, hash tpmutil.RawBytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(pcr)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(HandlePasswordSession, "")
+	if err != nil {
+		return nil, err
+	}
+	var pcrCount uint32 = 1
+	extend, err := tpmutil.Pack(pcrCount, hashAlg, hash)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, extend)
+}
+
+// PcrExtend extends a value into the selected PCR
+func PCRExtend(rw io.ReadWriter, pcr uint32, hashAlg Algorithm, hash []byte) error {
+	cmd, err := encodePCRExtend(pcr, hashAlg, hash)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdPCRExtend, tpmutil.RawBytes(cmd))
+	return err
+}
+
 // ReadPCR reads the value of the given PCR.
 func ReadPCR(rw io.ReadWriteCloser, pcr int, hashAlg Algorithm) ([]byte, error) {
 	pcrSelection := PCRSelection{

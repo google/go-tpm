@@ -21,6 +21,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
 	"io"
@@ -586,6 +587,66 @@ func TestPCREvent(t *testing.T) {
 	arbitraryBytes := []byte{1}
 	if err := PCREvent(rw, tpmutil.Handle(debugPCR), arbitraryBytes); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPCRExtendSha1(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	var pcrValue = make([]byte, 20)
+	var value = "FFFFFFFFFFFFFFFFFFFF"
+	copy(pcrValue[:], value)
+
+	oldPcrValue, err := ReadPCR(rw, 16, AlgSHA1)
+	if err != nil {
+		t.Fatal("Can't read PCR 16 from the TPM: ", err)
+	}
+
+	err = PCRExtend(rw, 16, AlgSHA1, pcrValue)
+	if err != nil {
+		t.Fatal("Failed to extend PCR 16: ", err)
+	}
+
+	newPcrValue, err := ReadPCR(rw, 16, AlgSHA1)
+	if err != nil {
+		t.Fatal("Can't read PCR 16 from the TPM: ", err)
+	}
+
+	finalPcr := sha1.Sum(append(oldPcrValue, pcrValue[:]...))
+
+	if !bytes.Equal(finalPcr[:], newPcrValue) {
+		t.Fatal("PCRs not equal!")
+	}
+}
+
+func TestPCRExtendSha256(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	var pcrValue = make([]byte, 32)
+	var value = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+	copy(pcrValue[:], value)
+
+	oldPcrValue, err := ReadPCR(rw, 16, AlgSHA256)
+	if err != nil {
+		t.Fatal("Can't read PCR 16 from the TPM: ", err)
+	}
+
+	err = PCRExtend(rw, 16, AlgSHA256, pcrValue)
+	if err != nil {
+		t.Fatal("Failed to extend PCR 16: ", err)
+	}
+
+	newPcrValue, err := ReadPCR(rw, 16, AlgSHA256)
+	if err != nil {
+		t.Fatal("Can't read PCR 16 from the TPM: ", err)
+	}
+
+	finalPcr := sha256.Sum256(append(oldPcrValue, pcrValue[:]...))
+
+	if !bytes.Equal(finalPcr[:], newPcrValue) {
+		t.Fatal("PCRs not equal!")
 	}
 }
 
