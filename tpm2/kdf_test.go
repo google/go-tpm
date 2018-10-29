@@ -7,11 +7,13 @@ import (
 
 func TestKDFa(t *testing.T) {
 	tcs := []struct {
-		hashAlg                 Algorithm
-		key, contextU, contextV []byte
-		label                   string
-		bits                    int
-		expected                []byte
+		hashAlg  Algorithm
+		key      []byte
+		contextU []byte
+		contextV []byte
+		label    string
+		bits     int
+		expected []byte
 	}{
 		{
 			hashAlg:  AlgSHA256,
