@@ -91,7 +91,7 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
 	case 0:
 		sel.Hash = AlgUnknown
 		return sel, nil
-	case 1:
+	case 1: // We only support decoding of a single PCRSelection.
 	default:
 		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
 	}
