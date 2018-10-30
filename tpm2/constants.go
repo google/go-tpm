@@ -151,11 +151,12 @@ const (
 // TPM Structure Tags. Tags are used to disambiguate structures, similar to Alg
 // values: tag value defines what kind of data lives in a nested field.
 const (
-	TagNull          tpmutil.Tag = 0x8000
-	TagNoSessions    tpmutil.Tag = 0x8001
-	TagSessions      tpmutil.Tag = 0x8002
-	TagAttestCertify tpmutil.Tag = 0x8017
-	TagHashCheck     tpmutil.Tag = 0x8024
+	TagNull           tpmutil.Tag = 0x8000
+	TagNoSessions     tpmutil.Tag = 0x8001
+	TagSessions       tpmutil.Tag = 0x8002
+	TagAttestCertify  tpmutil.Tag = 0x8017
+	TagAttestCreation tpmutil.Tag = 0x801a
+	TagHashCheck      tpmutil.Tag = 0x8024
 )
 
 // StartupType instructs the TPM on how to handle its state during Shutdown or

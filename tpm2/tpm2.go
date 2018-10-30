@@ -346,7 +346,7 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, crypto.PublicKey, error) {
 		return 0, nil, fmt.Errorf("decoding TPM2B_PUBLIC: %v", err)
 	}
 
-	pub, err := decodePublic(bytes.NewBuffer(public))
+	pub, err := DecodePublic(public)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -412,7 +412,7 @@ func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
 	if _, err := tpmutil.Unpack(in, &resp); err != nil {
 		return Public{}, nil, nil, err
 	}
-	pub, err := decodePublic(bytes.NewBuffer(resp.Public))
+	pub, err := DecodePublic(resp.Public)
 	if err != nil {
 		return Public{}, nil, nil, err
 	}
