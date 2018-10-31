@@ -47,7 +47,7 @@ func TestKDFa(t *testing.T) {
 		if err != nil {
 			t.Fatalf("KDFa(%v, %v, %q, %v, %v, %v) returned error: %v", tc.hashAlg, tc.key, tc.label, tc.contextU, tc.contextV, tc.bits, err)
 		}
-		if bytes.Compare(tc.expected, o) != 0 {
+		if !bytes.Equal(tc.expected, o) {
 			t.Errorf("Test with KDFa(%v, %v, %q, %v, %v, %v) returned incorrect result", tc.hashAlg, tc.key, tc.label, tc.contextU, tc.contextV, tc.bits)
 			t.Logf("  Got:  %v", o)
 			t.Logf("  Want: %v", tc.expected)

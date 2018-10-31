@@ -1,7 +1,6 @@
 package tpm2
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -12,8 +11,10 @@ import (
 
 // KDFa implements TPM 2.0's default key derivation function, as defined in
 // section 11.4.9.2 of the TPM revision 2 specification part 1.
+// See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 // The key & label parameters must not be zero length, but contextU &
 // contextV may be.
+// Only SHA1 & SHA256 hash algorithms are implemented at this time.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
 	var counter uint32
 	remaining := (bits + 7) / 8 // As per note at the bottom of page 44.
@@ -31,20 +32,17 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 
 	for remaining > 0 {
 		counter++
-		var d bytes.Buffer
-
-		if err := binary.Write(&d, binary.BigEndian, counter); err != nil {
+		if err := binary.Write(mac, binary.BigEndian, counter); err != nil {
 			return nil, fmt.Errorf("pack counter: %v", err)
 		}
-		d.WriteString(label)
-		d.WriteByte(0) // Terminating null chacter for C-string.
-		d.Write(contextU)
-		d.Write(contextV)
-		if err := binary.Write(&d, binary.BigEndian, uint32(bits)); err != nil {
+		mac.Write([]byte(label))
+		mac.Write([]byte{0}) // Terminating null chacter for C-string.
+		mac.Write(contextU)
+		mac.Write(contextV)
+		if err := binary.Write(mac, binary.BigEndian, uint32(bits)); err != nil {
 			return nil, fmt.Errorf("pack bits: %v", err)
 		}
 
-		mac.Write(d.Bytes())
 		out = mac.Sum(out)
 		remaining -= mac.Size()
 		mac.Reset()
