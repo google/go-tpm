@@ -590,63 +590,56 @@ func TestPCREvent(t *testing.T) {
 	}
 }
 
-func TestPCRExtendSha1(t *testing.T) {
+func TestPCRExtend(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	var pcrValue = make([]byte, 20)
-	var value = "FFFFFFFFFFFFFFFFFFFF"
-	copy(pcrValue[:], value)
+    const pcr = int(16)
 
-	oldPcrValue, err := ReadPCR(rw, 16, AlgSHA1)
+    // testing SHA1
+	pcrValue := bytes.Repeat([]byte{0xF}, sha1.Size)
+
+	oldPCRValue, err := ReadPCR(rw, pcr, AlgSHA1)
 	if err != nil {
-		t.Fatal("Can't read PCR 16 from the TPM: ", err)
+		t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
 	}
 
-	err = PCRExtend(rw, 16, AlgSHA1, pcrValue)
+	if err = PCRExtend(rw, tpmutil.Handle(pcr), AlgSHA1, pcrValue, ""); err != nil {
+		t.Fatalf("Failed to extend PCR %d: %s", pcr, err)
+	}
+
+	newPCRValue, err := ReadPCR(rw, pcr, AlgSHA1)
 	if err != nil {
-		t.Fatal("Failed to extend PCR 16: ", err)
+		t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
 	}
 
-	newPcrValue, err := ReadPCR(rw, 16, AlgSHA1)
+	finalPCRSha1 := sha1.Sum(append(oldPCRValue, pcrValue[:]...))
+
+	if !bytes.Equal(finalPCRSha1[:], newPCRValue) {
+		t.Fatalf("PCRs not equal, got %x, want %x", finalPCRSha1, newPCRValue)
+	}
+
+    // testing SHA256
+    pcrValue = bytes.Repeat([]byte{0xF}, sha256.Size)
+
+	oldPCRValue, err = ReadPCR(rw, pcr, AlgSHA256)
 	if err != nil {
-		t.Fatal("Can't read PCR 16 from the TPM: ", err)
+		t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
 	}
 
-	finalPcr := sha1.Sum(append(oldPcrValue, pcrValue[:]...))
-
-	if !bytes.Equal(finalPcr[:], newPcrValue) {
-		t.Fatal("PCRs not equal!")
+	if err = PCRExtend(rw, tpmutil.Handle(pcr), AlgSHA256, pcrValue, ""); err != nil {
+		t.Fatalf("Failed to extend PCR %d: %s", pcr, err)
 	}
-}
 
-func TestPCRExtendSha256(t *testing.T) {
-	rw := openTPM(t)
-	defer rw.Close()
-
-	var pcrValue = make([]byte, 32)
-	var value = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
-	copy(pcrValue[:], value)
-
-	oldPcrValue, err := ReadPCR(rw, 16, AlgSHA256)
+	newPCRValue, err = ReadPCR(rw, pcr, AlgSHA256)
 	if err != nil {
-		t.Fatal("Can't read PCR 16 from the TPM: ", err)
+		t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
 	}
 
-	err = PCRExtend(rw, 16, AlgSHA256, pcrValue)
-	if err != nil {
-		t.Fatal("Failed to extend PCR 16: ", err)
-	}
+	finalPCRSha256 := sha256.Sum256(append(oldPCRValue, pcrValue[:]...))
 
-	newPcrValue, err := ReadPCR(rw, 16, AlgSHA256)
-	if err != nil {
-		t.Fatal("Can't read PCR 16 from the TPM: ", err)
-	}
-
-	finalPcr := sha256.Sum256(append(oldPcrValue, pcrValue[:]...))
-
-	if !bytes.Equal(finalPcr[:], newPcrValue) {
-		t.Fatal("PCRs not equal!")
+	if !bytes.Equal(finalPCRSha256[:], newPCRValue) {
+		t.Fatalf("PCRs not equal, got %x, want %x", finalPCRSha256, newPCRValue)
 	}
 }
 

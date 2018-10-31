@@ -1115,16 +1115,16 @@ func concat(chunks ...[]byte) ([]byte, error) {
 	return bytes.Join(chunks, nil), nil
 }
 
-func encodePCRExtend(pcr uint32, hashAlg Algorithm, hash tpmutil.RawBytes) ([]byte, error) {
+func encodePCRExtend(pcr tpmutil.Handle, hashAlg Algorithm, hash tpmutil.RawBytes, password string) ([]byte, error) {
 	ha, err := tpmutil.Pack(pcr)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(HandlePasswordSession, "")
+	auth, err := encodeAuthArea(HandlePasswordSession, password)
 	if err != nil {
 		return nil, err
 	}
-	var pcrCount uint32 = 1
+	pcrCount := uint32(1)
 	extend, err := tpmutil.Pack(pcrCount, hashAlg, hash)
 	if err != nil {
 		return nil, err
@@ -1132,9 +1132,9 @@ func encodePCRExtend(pcr uint32, hashAlg Algorithm, hash tpmutil.RawBytes) ([]by
 	return concat(ha, auth, extend)
 }
 
-// PcrExtend extends a value into the selected PCR
-func PCRExtend(rw io.ReadWriter, pcr uint32, hashAlg Algorithm, hash []byte) error {
-	cmd, err := encodePCRExtend(pcr, hashAlg, hash)
+// PCRExtend extends a value into the selected PCR
+func PCRExtend(rw io.ReadWriter, pcr tpmutil.Handle, hashAlg Algorithm, hash []byte, password string) error {
+	cmd, err := encodePCRExtend(pcr, hashAlg, hash, password)
 	if err != nil {
 		return err
 	}
