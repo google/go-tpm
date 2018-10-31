@@ -42,13 +42,15 @@ func TestKDFa(t *testing.T) {
 		},
 	}
 
-	for i, tc := range tcs {
+	for _, tc := range tcs {
 		o, err := KDFa(tc.hashAlg, tc.key, tc.label, tc.contextU, tc.contextV, tc.bits)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("KDFa(%v, %v, %q, %v, %v, %v) returned error: %v", tc.hashAlg, tc.key, tc.label, tc.contextU, tc.contextV, tc.bits, err)
 		}
 		if bytes.Compare(tc.expected, o) != 0 {
-			t.Errorf("Test %d got %v, want %v", i, o, tc.expected)
+			t.Errorf("Test with KDFa(%v, %v, %q, %v, %v, %v) returned incorrect result", tc.hashAlg, tc.key, tc.label, tc.contextU, tc.contextV, tc.bits)
+			t.Logf("  Got:  %v", o)
+			t.Logf("  Want: %v", tc.expected)
 		}
 	}
 }
