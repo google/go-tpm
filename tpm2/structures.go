@@ -545,31 +545,31 @@ func (cd *CreationData) encode() ([]byte, error) {
 
 // DecodeCreationData decodes a TPMS_CREATION_DATA message. No error is
 // returned if the input has extra trailing data.
-func DecodeCreationData(in []byte) (*CreationData, error) {
-	buf := bytes.NewBuffer(in)
+func DecodeCreationData(buf []byte) (*CreationData, error) {
+	in := bytes.NewBuffer(buf)
 	var out CreationData
 
-	sel, err := decodeTPMLPCRSelection(buf)
+	sel, err := decodeTPMLPCRSelection(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
 	}
 	out.PCRSelection = sel
 
-	if err := tpmutil.UnpackBuf(buf, &out.PCRDigest, &out.Locality, &out.ParentNameAlg); err != nil {
+	if err := tpmutil.UnpackBuf(in, &out.PCRDigest, &out.Locality, &out.ParentNameAlg); err != nil {
 		return nil, fmt.Errorf("decoding PCRDigest, Locality, ParentNameAlg: %v", err)
 	}
 
-	n, err := decodeName(buf)
+	n, err := decodeName(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ParentName: %v", err)
 	}
 	out.ParentName = *n
-	if n, err = decodeName(buf); err != nil {
+	if n, err = decodeName(in); err != nil {
 		return nil, fmt.Errorf("decoding ParentQualifiedName: %v", err)
 	}
 	out.ParentQualifiedName = *n
 
-	if err := tpmutil.UnpackBuf(buf, &out.OutsideInfo); err != nil {
+	if err := tpmutil.UnpackBuf(in, &out.OutsideInfo); err != nil {
 		return nil, fmt.Errorf("decoding OutsideInfo: %v", err)
 	}
 
