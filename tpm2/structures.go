@@ -125,7 +125,7 @@ type RSAParams struct {
 	// The default Exponent (65537) has two representations; the
 	// zero value, and the value 65537.
 	// If EncodeDefaultExponent is set, an exponent of 65537 will be
-	// encoded as zero. This is necessary to produce ann identical
+	// encoded as zero. This is necessary to produce an identical
 	// encoded bitstream, so Name digest calculations will be correct.
 	EncodeDefaultExponent bool
 	Exponent              uint32
