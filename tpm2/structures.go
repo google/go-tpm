@@ -176,9 +176,6 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	if err := tpmutil.UnpackBuf(in, &params.KeyBits, &params.Exponent, &modBytes); err != nil {
 		return nil, fmt.Errorf("decoding KeyBits, Exponent, Modulus: %v", err)
 	}
-	if params.Exponent == 0 {
-		params.Exponent = defaultRSAExponent
-	}
 	params.Modulus = new(big.Int).SetBytes(modBytes)
 	return &params, nil
 }
