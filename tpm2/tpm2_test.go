@@ -620,29 +620,31 @@ func TestPCRExtend(t *testing.T) {
 		},
 	}
 
+	const pcr = int(16)
+
 	for _, tt := range tests {
-		const pcr = int(16)
-		pcrValue := bytes.Repeat([]byte{0xF}, tt.hashSize)
+		t.Run(tt.desc, func(t *testing.T) {
+			pcrValue := bytes.Repeat([]byte{0xF}, tt.hashSize)
+			oldPCRValue, err := ReadPCR(rw, pcr, tt.hashAlg)
+			if err != nil {
+				t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
+			}
 
-		oldPCRValue, err := ReadPCR(rw, pcr, tt.hashAlg)
-		if err != nil {
-			t.Fatalf("%s: Can't read PCR %d from the TPM: %s", tt.desc, pcr, err)
-		}
+			if err = PCRExtend(rw, tpmutil.Handle(pcr), tt.hashAlg, pcrValue, ""); err != nil {
+				t.Fatalf("Failed to extend PCR %d: %s", pcr, err)
+			}
 
-		if err = PCRExtend(rw, tpmutil.Handle(pcr), tt.hashAlg, pcrValue, ""); err != nil {
-			t.Fatalf("%s: Failed to extend PCR %d: %s", tt.desc, pcr, err)
-		}
+			newPCRValue, err := ReadPCR(rw, pcr, tt.hashAlg)
+			if err != nil {
+				t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
+			}
 
-		newPCRValue, err := ReadPCR(rw, pcr, tt.hashAlg)
-		if err != nil {
-			t.Fatalf("%s: Can't read PCR %d from the TPM: %s", tt.desc, pcr, err)
-		}
+			finalPCR := tt.hashSum(append(oldPCRValue, pcrValue...))
 
-		finalPCR := tt.hashSum(append(oldPCRValue, pcrValue[:]...))
-
-		if !bytes.Equal(finalPCR[:], newPCRValue) {
-			t.Fatalf("%s: PCRs not equal, got %x, want %x", tt.desc, finalPCR, newPCRValue)
-		}
+			if !bytes.Equal(finalPCR, newPCRValue) {
+				t.Fatalf("PCRs not equal, got %x, want %x", finalPCR, newPCRValue)
+			}
+		})
 	}
 }
 
