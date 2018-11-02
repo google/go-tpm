@@ -3,6 +3,7 @@ package tpm2
 import (
 	"bytes"
 	"crypto/rsa"
+	"encoding/base64"
 	"math/big"
 	insecureRand "math/rand"
 	"testing"
@@ -11,22 +12,31 @@ import (
 func TestCredentialActivation(t *testing.T) {
 	// These values were independently tested/derived-from from TCG 2.0.38-compliant hardware.
 	n, ok := new(big.Int).SetString("21781359931719875035142348126986833104406251147281912291128410183893060751686286557235105177011038982931176491091366273712008774268043339103634631078508025847736699362996617038459342869130285665581223736549299195932345592253444537445668838861984376176364138265105552997914795970576284975601851753797509031880704132484924873723738272046545068767315124876824011679223652746414206246649323781826144832659865886735865286033208505363212876011411861316385696414905053502571926429826843117374014575605550176234010475825493066764152314323863950174296024693364113127191375694561947145403061250952175062770094723660429657392597", 10)
-	if ok != true {
+	if !ok {
 		t.Fatalf("Failed to parse publicN string.")
 	}
 	public := rsa.PublicKey{
 		N: n,
-		E: 65537,
+		E: defaultRSAExponent,
 	}
 
-	aikName := &Name{
-		Digest: &HashValue{
-			Alg:   AlgSHA256,
-			Value: []byte{230, 201, 233, 127, 218, 145, 124, 160, 246, 77, 190, 246, 120, 176, 25, 168, 47, 218, 252, 204, 148, 134, 15, 136, 189, 220, 3, 102, 68, 201, 43, 220},
-		},
+	aikDigest, err := base64.StdEncoding.DecodeString("5snpf9qRfKD2Tb72eLAZqC/a/MyUhg+IvdwDZkTJK9w=")
+	if err != nil {
+		t.Fatalf("Failed to decode AIK digest base64: %v", err)
 	}
-	expected := []byte{0, 68, 0, 32, 132, 13, 66, 237, 81, 145, 6, 160, 111, 35, 126, 236, 153, 66, 41, 71, 240, 4, 156, 72, 176, 227, 89, 219, 254, 1, 15, 180, 56, 3, 94, 126, 5, 192, 242, 149, 57, 92, 189, 48, 224, 151, 80, 157, 78, 232, 153, 147, 114, 92, 121, 200, 103, 174, 150, 223, 116, 53, 242, 157, 159, 82, 167, 75, 142, 3, 1, 0, 164, 49, 251, 206, 28, 203, 2, 171, 13, 49, 40, 132, 118, 253, 49, 160, 106, 198, 127, 251, 14, 9, 140, 210, 113, 198, 117, 164, 50, 47, 238, 225, 206, 55, 124, 140, 50, 181, 252, 109, 227, 139, 180, 38, 125, 188, 68, 55, 189, 110, 34, 232, 215, 86, 80, 145, 29, 253, 71, 140, 98, 231, 53, 249, 71, 46, 224, 128, 121, 181, 229, 45, 19, 24, 77, 202, 251, 78, 92, 67, 59, 20, 213, 231, 42, 138, 18, 218, 91, 75, 3, 66, 251, 142, 89, 50, 171, 1, 140, 236, 33, 52, 48, 174, 35, 120, 91, 242, 215, 116, 69, 53, 233, 58, 75, 148, 93, 228, 193, 247, 70, 144, 110, 170, 146, 249, 54, 53, 255, 202, 190, 32, 239, 16, 178, 19, 100, 102, 94, 176, 146, 15, 96, 226, 78, 110, 176, 83, 243, 237, 59, 22, 23, 81, 87, 87, 122, 226, 218, 44, 62, 189, 131, 154, 103, 16, 5, 161, 1, 27, 152, 107, 212, 168, 152, 18, 60, 19, 11, 220, 198, 111, 172, 149, 242, 105, 76, 175, 212, 158, 184, 62, 20, 223, 221, 254, 125, 36, 208, 134, 163, 146, 83, 101, 139, 248, 209, 134, 228, 33, 230, 120, 107, 77, 149, 224, 243, 73, 15, 176, 65, 171, 105, 35, 252, 120, 154, 31, 227, 219, 209, 235, 141, 196, 182, 131, 188, 242, 60, 233, 76, 47, 191, 245, 59, 183, 202, 33, 130, 11, 17, 12, 169, 29, 172, 204}
-	secret := []byte{1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8}
+	expected, err := base64.StdEncoding.DecodeString("AEQAIIQNQu1RkQagbyN+7JlCKUfwBJxIsONZ2/4BD7Q4A15+BcDylTlcvTDgl1CdTuiZk3JcechnrpbfdDXynZ9Sp0uOAwEApDH7zhzLAqsNMSiEdv0xoGrGf/sOCYzSccZ1pDIv7uHON3yMMrX8beOLtCZ9vEQ3vW4i6NdWUJEd/UeMYuc1+Ucu4IB5teUtExhNyvtOXEM7FNXnKooS2ltLA0L7jlkyqwGM7CE0MK4jeFvy13RFNek6S5Rd5MH3RpBuqpL5NjX/yr4g7xCyE2RmXrCSD2DiTm6wU/PtOxYXUVdXeuLaLD69g5pnEAWhARuYa9SomBI8Ewvcxm+slfJpTK/Unrg+FN/d/n0k0IajklNli/jRhuQh5nhrTZXg80kPsEGraSP8eJof49vR643EtoO88jzpTC+/9Tu3yiGCCxEMqR2szA==")
+	if err != nil {
+		t.Fatalf("Failed to decode expected output base64: %v", err)
+	}
+	secret, err := base64.StdEncoding.DecodeString("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg=")
+	if err != nil {
+		t.Fatalf("Failed to decode secret base64: %v", err)
+	}
+
+	aikName := &HashValue{
+		Alg:   AlgSHA256,
+		Value: aikDigest,
+	}
 
 	wrappedCredential, err := generateCredentialActivation(aikName, &public, secret, insecureRand.New(insecureRand.NewSource(99)))
 	if err != nil {

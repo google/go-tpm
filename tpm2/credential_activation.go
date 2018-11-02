@@ -18,9 +18,8 @@ import (
 // GenerateCredentialActivation creates a wrapped secret for use in credential activation.
 // This function implements the minimum necessary to compute activations for RSA EKs
 // compliant with TCG 2.0 EK Credential Profile specification, revision 14.
-// This should be all windows8+ cerified hardware implementing a TPM 2.0.
 // Specifically, the constraints are:
-// - aik must be a digest rather than a handle, computed using SHA256.
+// - aik must be computed using SHA256.
 // - pub must be a 2048 bit RSA key, representing a compliant EK. That means using
 //   SHA256 for digests, and a 128 bit AES symmetric cipher.
 // - symBlockSize should represent the block size of the symmetric cipher. The only
@@ -31,14 +30,11 @@ import (
 // This function implements Credential Protection as defined in section 24 of the TPM
 // specification revision 2 part 1, with the additional restrictions listed above.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
-func GenerateCredentialActivation(aik *Name, pub crypto.PublicKey, symBlockSize int, secret []byte) ([]byte, error) {
+func GenerateCredentialActivation(aik *HashValue, pub crypto.PublicKey, symBlockSize int, secret []byte) ([]byte, error) {
 	if symBlockSize != 16 {
 		return nil, errors.New("only 16 byte symmetric block sizes are supported")
 	}
-	if aik.Digest == nil {
-		return nil, errors.New("aik for credential activation must be a Digest")
-	}
-	if aik.Digest.Alg != AlgSHA256 {
+	if aik.Alg != AlgSHA256 {
 		return nil, errors.New("aik for credential activation must use SHA256 name algorithm")
 	}
 	rsaPub, ok := pub.(*rsa.PublicKey)
@@ -52,7 +48,7 @@ func GenerateCredentialActivation(aik *Name, pub crypto.PublicKey, symBlockSize 
 // generateCredentialActivation only supports RSA 2048 public keys, with a SHA256 nameAlg,
 // and using 128bit AES as the symmetric cipher.
 // The provided AIK must be a digest, computed using SHA256.
-func generateCredentialActivation(aik *Name, pub *rsa.PublicKey, secret []byte, rnd io.Reader) ([]byte, error) {
+func generateCredentialActivation(aik *HashValue, pub *rsa.PublicKey, secret []byte, rnd io.Reader) ([]byte, error) {
 	// The seed length should match the keysize used by the EKs symmetric cipher.
 	// For TCG/Windows-compliant RSA EKs, this will be 128 bits (16 bytes).
 	// Spec: TCG 2.0 EK Credential Profile revision 14, section 2.1.5.1.
@@ -63,7 +59,7 @@ func generateCredentialActivation(aik *Name, pub *rsa.PublicKey, secret []byte, 
 
 	// Encrypt the seed value using the provided public key.
 	// See annex B, section 10.4 of the TPM specification revision 2 part 1.
-	label := []byte{'I', 'D', 'E', 'N', 'T', 'I', 'T', 'Y', 0}
+	label := append([]byte(labelIdentity), 0)
 	encSecret, err := rsa.EncryptOAEP(sha256.New(), rnd, pub, seed, label)
 	if err != nil {
 		return nil, fmt.Errorf("generating encrypted seed: %v", err)
@@ -72,11 +68,11 @@ func generateCredentialActivation(aik *Name, pub *rsa.PublicKey, secret []byte, 
 	// Generate the encrypted credential by convolving the seed with the digest of
 	// the AIK, and using the result as the key to encrypt the secret.
 	// See section 24.4 of TPM 2.0 specification, part 1.
-	aikNameEncoded, err := aik.Digest.encode()
+	aikNameEncoded, err := aik.encode()
 	if err != nil {
 		return nil, fmt.Errorf("encoding aikName: %v", err)
 	}
-	symmetricKey, err := KDFa(aik.Digest.Alg, seed, "STORAGE", aikNameEncoded, nil, len(seed)*8)
+	symmetricKey, err := KDFa(aik.Alg, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
 	if err != nil {
 		return nil, fmt.Errorf("generating symmetric key: %v", err)
 	}
@@ -96,7 +92,7 @@ func generateCredentialActivation(aik *Name, pub *rsa.PublicKey, secret []byte, 
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
 	// See section 24.5 of the TPM specification revision 2 part 1.
-	HMACKey, err := KDFa(aik.Digest.Alg, seed, "INTEGRITY", nil, nil, digestSize(aik.Digest.Alg)*8)
+	macKey, err := KDFa(aik.Alg, seed, labelIntegrity, nil, nil, digestSize(aik.Alg)*8)
 	if err != nil {
 		return nil, fmt.Errorf("generating HMAC key: %v", err)
 	}
@@ -104,10 +100,10 @@ func generateCredentialActivation(aik *Name, pub *rsa.PublicKey, secret []byte, 
 	// Algorithm sha256 is hardcoded when generating the HMAC, as we only support
 	// Names using a digest of sha256 for now. In a future where we support more
 	// algorithms, the HMAC algorithm should match aik.Digest.Alg.
-	HMAC := hmac.New(sha256.New, HMACKey)
-	HMAC.Write(encIdentity)
-	HMAC.Write(aikNameEncoded)
-	integrityHMAC := HMAC.Sum(nil)
+	mac := hmac.New(sha256.New, macKey)
+	mac.Write(encIdentity)
+	mac.Write(aikNameEncoded)
+	integrityHMAC := mac.Sum(nil)
 
 	// Finally, we generate the activation structure, which is
 	// a TPM2B_ID_OBJECT with a TPM2B_ENCRYPTED_SECRET.

@@ -260,3 +260,10 @@ var hashConstructors = map[Algorithm]func() hash.Hash{
 	AlgSHA384: sha512.New384,
 	AlgSHA512: sha512.New,
 }
+
+// Labels for use in key derivation or OAEP encryption.
+const (
+	labelIdentity  = "IDENTITY"
+	labelStorage   = "STORAGE"
+	labelIntegrity = "INTEGRITY"
+)
