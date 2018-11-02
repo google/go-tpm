@@ -87,7 +87,12 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
 	if err := tpmutil.UnpackBuf(buf, &count); err != nil {
 		return sel, err
 	}
-	if count != 1 {
+	switch count {
+	case 0:
+		sel.Hash = AlgUnknown
+		return sel, nil
+	case 1: // We only support decoding of a single PCRSelection.
+	default:
 		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
 	}
 
@@ -369,6 +374,15 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, crypto.PublicKey, error) {
 	default:
 		return 0, nil, fmt.Errorf("unsupported primary key type 0x%x", pub.Type)
 	}
+
+	var creationData []byte
+	if err := tpmutil.UnpackBuf(buf, &creationData); err != nil {
+		return 0, nil, fmt.Errorf("decoding TPM2B_CREATION_DATA: %v", err)
+	}
+	if _, err := DecodeCreationData(creationData); err != nil {
+		return 0, nil, fmt.Errorf("decoding CreationData: %v", err)
+	}
+
 	return handle, pubKey, nil
 }
 
@@ -432,13 +446,17 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte
 
 func decodeCreate(in []byte) ([]byte, []byte, error) {
 	var resp struct {
-		Handle  tpmutil.Handle
-		Private []byte
-		Public  []byte
+		Handle       tpmutil.Handle
+		Private      []byte
+		Public       []byte
+		CreationData []byte
 	}
 
 	if _, err := tpmutil.Unpack(in, &resp); err != nil {
 		return nil, nil, err
+	}
+	if _, err := DecodeCreationData(resp.CreationData); err != nil {
+		return nil, nil, fmt.Errorf("decoding CreationData: %v", err)
 	}
 	return resp.Private, resp.Public, nil
 }

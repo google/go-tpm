@@ -734,3 +734,36 @@ func TestEncodeDecodeCreationAttestationData(t *testing.T) {
 		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, ad)
 	}
 }
+
+func TestEncodeDecodeCreationData(t *testing.T) {
+	parentQualified := tpmutil.Handle(101)
+	cd := CreationData{
+		PCRSelection:  PCRSelection{Hash: AlgSHA1, PCRs: []int{7}},
+		PCRDigest:     []byte{1, 2, 3},
+		Locality:      32,
+		ParentNameAlg: AlgSHA1,
+		ParentName: Name{
+			Digest: &HashValue{
+				Alg:   AlgSHA1,
+				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+			},
+		},
+		ParentQualifiedName: Name{
+			Handle: &parentQualified,
+		},
+		OutsideInfo: []byte{7, 8, 9},
+	}
+
+	encoded, err := cd.encode()
+	if err != nil {
+		t.Fatalf("error encoding CreationData: %v", err)
+	}
+	decoded, err := DecodeCreationData(encoded)
+	if err != nil {
+		t.Fatalf("error decoding CreationData: %v", err)
+	}
+
+	if !reflect.DeepEqual(*decoded, cd) {
+		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, cd)
+	}
+}
