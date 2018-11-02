@@ -124,7 +124,7 @@ type RSAParams struct {
 	KeyBits   uint16
 	// The default Exponent (65537) has two representations; the
 	// 0 value, and the value 65537.
-	// If EncodeDefaultExponentAsZero is set, an exponent of 65537
+	// If encodeDefaultExponentAsZero is set, an exponent of 65537
 	// will be encoded as zero. This is necessary to produce an identical
 	// encoded bitstream, so Name digest calculations will be correct.
 	encodeDefaultExponentAsZero bool

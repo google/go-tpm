@@ -24,6 +24,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
+	"fmt"
 	"io"
 	"math/big"
 	"os"
@@ -745,39 +746,29 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 				Alg:  AlgRSASSA,
 				Hash: AlgSHA1,
 			},
-			KeyBits:                     2048,
-			encodeDefaultExponentAsZero: true,
-			Exponent:                    defaultRSAExponent,
-			Modulus:                     new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
+			KeyBits:  2048,
+			Exponent: defaultRSAExponent,
+			Modulus:  new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
 		},
 	}
-	e, err := p.Encode()
-	if err != nil {
-		t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
-	}
-	d, err := DecodePublic(e)
-	if err != nil {
-		t.Fatalf("DecodePublic(%v) returned error: %v", e, err)
-	}
-	if !reflect.DeepEqual(p, d) {
-		t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
-		t.Logf("\tGot:  %+v", d)
-		t.Logf("\tWant: %+v", p)
-	}
 
-	p.RSAParameters.encodeDefaultExponentAsZero = false
-	eNonDefaultExponent, err := p.Encode()
-	if err != nil {
-		t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
-	}
-	dNonDefaultExponent, err := DecodePublic(eNonDefaultExponent)
-	if err != nil {
-		t.Fatalf("DecodePublic(%v) returned error: %v", eNonDefaultExponent, err)
-	}
-	if !reflect.DeepEqual(p, dNonDefaultExponent) {
-		t.Errorf("RSA TPMT_PUBLIC with default exponent & !EncodeDefaultExponentAsZero changed after being encoded+decoded")
-		t.Logf("\tGot:  %+v", dNonDefaultExponent)
-		t.Logf("\tWant: %+v", p)
+	for _, encodeAsZero := range []bool{true, false} {
+		t.Run(fmt.Sprintf("encodeDefaultExponentAsZero = %v", encodeAsZero), func(t *testing.T) {
+			p.RSAParameters.encodeDefaultExponentAsZero = encodeAsZero
+			e, err := p.Encode()
+			if err != nil {
+				t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
+			}
+			d, err := DecodePublic(e)
+			if err != nil {
+				t.Fatalf("DecodePublic(%v) returned error: %v", e, err)
+			}
+			if !reflect.DeepEqual(p, d) {
+				t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
+				t.Logf("\tGot:  %+v", d)
+				t.Logf("\tWant: %+v", p)
+			}
+		})
 	}
 }
 
