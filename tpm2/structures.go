@@ -124,13 +124,13 @@ type RSAParams struct {
 	KeyBits   uint16
 	// The default Exponent (65537) has two representations; the
 	// zero value, and the value 65537.
-	// If EncodeDefaultExponent is set, an exponent of 65537 will be
-	// encoded as zero. This is necessary to produce an identical
+	// If EncodeDefaultExponentAsZero is set, an exponent of 65537
+	// will be encoded as zero. This is necessary to produce an identical
 	// encoded bitstream, so Name digest calculations will be correct.
-	EncodeDefaultExponent bool
-	Exponent              uint32
-	ModulusRaw            []byte
-	Modulus               *big.Int
+	EncodeDefaultExponentAsZero bool
+	Exponent                    uint32
+	ModulusRaw                  []byte
+	Modulus                     *big.Int
 }
 
 func (p *RSAParams) encode() ([]byte, error) {
@@ -146,7 +146,7 @@ func (p *RSAParams) encode() ([]byte, error) {
 		return nil, fmt.Errorf("encoding Sign: %v", err)
 	}
 	exp := p.Exponent
-	if p.EncodeDefaultExponent && exp == defaultRSAExponent {
+	if p.EncodeDefaultExponentAsZero && exp == defaultRSAExponent {
 		exp = 0
 	}
 	rest, err := tpmutil.Pack(p.KeyBits, exp)
@@ -187,7 +187,7 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 		return nil, fmt.Errorf("decoding KeyBits, Exponent, Modulus: %v", err)
 	}
 	if params.Exponent == 0 {
-		params.EncodeDefaultExponent = true
+		params.EncodeDefaultExponentAsZero = true
 		params.Exponent = defaultRSAExponent
 	}
 	params.Modulus = new(big.Int).SetBytes(modBytes)

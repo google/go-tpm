@@ -686,10 +686,10 @@ func TestEncodeDecodeIdenticalRSADefaultExponent(t *testing.T) {
 				Alg:  AlgRSASSA,
 				Hash: AlgSHA1,
 			},
-			KeyBits:               2048,
-			EncodeDefaultExponent: true,
-			Exponent:              defaultRSAExponent,
-			Modulus:               new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
+			KeyBits:                     2048,
+			EncodeDefaultExponentAsZero: true,
+			Exponent:                    defaultRSAExponent,
+			Modulus:                     new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
 		},
 	}
 	e, err := p.Encode()
