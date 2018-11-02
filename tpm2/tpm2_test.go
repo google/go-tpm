@@ -746,7 +746,7 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 				Hash: AlgSHA1,
 			},
 			KeyBits:                     2048,
-			EncodeDefaultExponentAsZero: true,
+			encodeDefaultExponentAsZero: true,
 			Exponent:                    defaultRSAExponent,
 			Modulus:                     new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
 		},
@@ -765,7 +765,7 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 		t.Logf("\tWant: %+v", p)
 	}
 
-	p.RSAParameters.EncodeDefaultExponentAsZero = false
+	p.RSAParameters.encodeDefaultExponentAsZero = false
 	eNonDefaultExponent, err := p.Encode()
 	if err != nil {
 		t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
