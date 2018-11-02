@@ -735,7 +735,7 @@ func TestEncodeDecodeCreationAttestationData(t *testing.T) {
 	}
 }
 
-func TestEncodeDecodeIdenticalRSADefaultExponent(t *testing.T) {
+func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 	p := Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
@@ -762,6 +762,21 @@ func TestEncodeDecodeIdenticalRSADefaultExponent(t *testing.T) {
 	if !reflect.DeepEqual(p, d) {
 		t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
 		t.Logf("\tGot:  %+v", d)
+		t.Logf("\tWant: %+v", p)
+	}
+
+	p.RSAParameters.EncodeDefaultExponentAsZero = false
+	eNonDefaultExponent, err := p.Encode()
+	if err != nil {
+		t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
+	}
+	dNonDefaultExponent, err := DecodePublic(eNonDefaultExponent)
+	if err != nil {
+		t.Fatalf("DecodePublic(%v) returned error: %v", eNonDefaultExponent, err)
+	}
+	if !reflect.DeepEqual(p, dNonDefaultExponent) {
+		t.Errorf("RSA TPMT_PUBLIC with default exponent & !EncodeDefaultExponentAsZero changed after being encoded+decoded")
+		t.Logf("\tGot:  %+v", dNonDefaultExponent)
 		t.Logf("\tWant: %+v", p)
 	}
 }
