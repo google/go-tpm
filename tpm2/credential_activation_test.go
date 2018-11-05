@@ -38,7 +38,7 @@ func TestCredentialActivation(t *testing.T) {
 		Value: aikDigest,
 	}
 
-	wrappedCredential, err := generateCredentialActivation(aikName, &public, secret, insecureRand.New(insecureRand.NewSource(99)))
+	wrappedCredential, err := generateCredentialActivation(aikName, &public, 16, secret, insecureRand.New(insecureRand.NewSource(99)))
 	if err != nil {
 		t.Fatal(err)
 	}

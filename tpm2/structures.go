@@ -565,6 +565,28 @@ func (ci CertifyInfo) encode() ([]byte, error) {
 	return concat(n, qn)
 }
 
+// IDObject represents an encrypted credential bound to a TPM object.
+type IDObject struct {
+	IntegrityHMAC []byte
+	EncIdentity   []byte
+}
+
+// Encode packs the IDObject into a byte stream representing
+// a TPM2B_ID_OBJECT.
+func (o *IDObject) Encode() ([]byte, error) {
+	packedIntegrity, err := tpmutil.Pack(o.IntegrityHMAC)
+	if err != nil {
+		return nil, fmt.Errorf("encoding IntegrityHMAC: %v", err)
+	}
+	// encIdentity is not packed as the size field is contained within
+	// the encrypted blob.
+	d, err := concat(packedIntegrity, o.EncIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("concat idObject: %v", err)
+	}
+	return tpmutil.Pack(d)
+}
+
 // Name contains a name for TPM entities. Only one of Handle/Digest should be
 // set.
 type Name struct {
