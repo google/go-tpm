@@ -38,13 +38,15 @@ func TestCredentialActivation(t *testing.T) {
 		Value: aikDigest,
 	}
 
-	wrappedCredential, err := generateCredentialActivation(aikName, &public, 16, secret, insecureRand.New(insecureRand.NewSource(99)))
+	idObject, wrappedCredential, err := generateCredentialActivation(aikName, &public, 16, secret, insecureRand.New(insecureRand.NewSource(99)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(expected, wrappedCredential) {
+	activationBlob := append(idObject, wrappedCredential...)
+
+	if !bytes.Equal(expected, activationBlob) {
 		t.Errorf("GenerateCredentialActivation(%v, %v, %v) returned incorrect result", aikName, public, secret)
-		t.Logf("  Got:  %v", wrappedCredential)
+		t.Logf("  Got:  %v", activationBlob)
 		t.Logf("  Want: %v", expected)
 	}
 }
