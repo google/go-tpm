@@ -119,12 +119,18 @@ func DecodePublic(buf []byte) (Public, error) {
 // precedence. ModulusRaw is used for key templates where the field named
 // "unique" must be a byte array of all zeroes.
 type RSAParams struct {
-	Symmetric  *SymScheme
-	Sign       *SigScheme
-	KeyBits    uint16
-	Exponent   uint32
-	ModulusRaw []byte
-	Modulus    *big.Int
+	Symmetric *SymScheme
+	Sign      *SigScheme
+	KeyBits   uint16
+	// The default Exponent (65537) has two representations; the
+	// 0 value, and the value 65537.
+	// If encodeDefaultExponentAsZero is set, an exponent of 65537
+	// will be encoded as zero. This is necessary to produce an identical
+	// encoded bitstream, so Name digest calculations will be correct.
+	encodeDefaultExponentAsZero bool
+	Exponent                    uint32
+	ModulusRaw                  []byte
+	Modulus                     *big.Int
 }
 
 func (p *RSAParams) encode() ([]byte, error) {
@@ -139,7 +145,11 @@ func (p *RSAParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding Sign: %v", err)
 	}
-	rest, err := tpmutil.Pack(p.KeyBits, p.Exponent)
+	exp := p.Exponent
+	if p.encodeDefaultExponentAsZero && exp == defaultRSAExponent {
+		exp = 0
+	}
+	rest, err := tpmutil.Pack(p.KeyBits, exp)
 	if err != nil {
 		return nil, fmt.Errorf("encoding KeyBits, Exponent: %v", err)
 	}
@@ -177,6 +187,7 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 		return nil, fmt.Errorf("decoding KeyBits, Exponent, Modulus: %v", err)
 	}
 	if params.Exponent == 0 {
+		params.encodeDefaultExponentAsZero = true
 		params.Exponent = defaultRSAExponent
 	}
 	params.Modulus = new(big.Int).SetBytes(modBytes)
