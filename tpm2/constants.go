@@ -68,6 +68,15 @@ const (
 	AlgECB       Algorithm = 0x0044
 )
 
+// AlgorithmAttributes represents a TPMA_ALGORITHM value.
+type AlgorithmAttributes uint32
+
+// AlgorithmDescription represents a TPMS_ALGORITHM_DESCRIPTION structure.
+type AlgorithmDescription struct {
+	ID         Algorithm
+	Attributes AlgorithmAttributes
+}
+
 // SessionType defines the type of session created in StartAuthSession.
 type SessionType uint8
 

@@ -69,12 +69,12 @@ func TestDecodeGetCapability(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	capReported, handles, err := decodeGetCapability(testRespBytes[10:])
+	capReported, handles, moreData, err := decodeGetCapability(testRespBytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
-	if capReported != CapabilityHandles || len(handles) != 0 {
-		t.Fatalf("got: (%v, %v), want: (%v, %v)", capReported, handles, CapabilityHandles, 0)
+	if capReported != CapabilityHandles || len(handles) != 0 || moreData {
+		t.Fatalf("got: (%v, %v, %v), want: (%v, %v, %v)", capReported, handles, moreData, CapabilityHandles, 0, false)
 	}
 }
 

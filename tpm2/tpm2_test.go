@@ -125,8 +125,17 @@ func TestGetCapability(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	if _, err := GetCapability(rw, CapabilityHandles, 1, 0x80000000); err != nil {
-		t.Fatalf("GetCapability failed: %s", err)
+	for _, tt := range []struct {
+		capa     Capability
+		count    uint32
+		property uint32
+	}{
+		{CapabilityHandles, 1, 0x80000000},
+		{CapabilityAlgs, 1, 0},
+	} {
+		if _, _, err := GetCapability(rw, tt.capa, tt.count, tt.property); err != nil {
+			t.Fatalf("GetCapability(%v, %d, %d) = _, %v; want _, nil", tt.capa, tt.count, tt.property, err)
+		}
 	}
 }
 
