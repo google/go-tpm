@@ -294,6 +294,33 @@ func TestHash(t *testing.T) {
 	}
 }
 
+func supportsECC(rw io.ReadWriter) (bool, error) {
+	var err error
+	moreData := true
+	var algorithms []AlgorithmDescription
+	i := uint32(0)
+	for moreData {
+		var descs []interface{}
+		descs, moreData, err = GetCapability(rw, CapabilityAlgs, 1, i)
+		if err != nil {
+			return false, err
+		}
+		for _, desc := range descs {
+			algorithms = append(algorithms, desc.(AlgorithmDescription))
+		}
+		if !moreData {
+			break
+		}
+		i++
+	}
+	for _, alg := range algorithms {
+		if alg.ID == AlgECC {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func TestLoadExternalPublicKey(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -334,6 +361,11 @@ func TestLoadExternalPublicKey(t *testing.T) {
 		run(t, rp, private)
 	})
 	t.Run("ECC", func(t *testing.T) {
+		if ok, err := supportsECC(rw); !ok && err == nil {
+			t.Skip("ECC is not supported by the TPM")
+		} else if err != nil {
+			t.Fatalf("TPM algorithms could not be queried: %v", err)
+		}
 		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			t.Fatal(err)
@@ -497,6 +529,11 @@ func TestCertifyExternalKey(t *testing.T) {
 		run(t, public, private)
 	})
 	t.Run("ECC", func(t *testing.T) {
+		if ok, err := supportsECC(rw); !ok && err == nil {
+			t.Skip("ECC is not supported by the TPM")
+		} else if err != nil {
+			t.Fatalf("TPM algorithms could not be queried: %v", err)
+		}
 		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			t.Fatal(err)
@@ -574,6 +611,11 @@ func TestSign(t *testing.T) {
 		})
 	})
 	t.Run("ECC", func(t *testing.T) {
+		if ok, err := supportsECC(rw); !ok && err == nil {
+			t.Skip("ECC is not supported by the TPM")
+		} else if err != nil {
+			t.Fatalf("TPM algorithms could not be queried: %v", err)
+		}
 		run(t, Public{
 			Type:       AlgECC,
 			NameAlg:    AlgSHA256,
