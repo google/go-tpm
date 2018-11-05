@@ -87,7 +87,12 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
 	if err := tpmutil.UnpackBuf(buf, &count); err != nil {
 		return sel, err
 	}
-	if count != 1 {
+	switch count {
+	case 0:
+		sel.Hash = AlgUnknown
+		return sel, nil
+	case 1: // We only support decoding of a single PCRSelection.
+	default:
 		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
 	}
 
@@ -369,6 +374,15 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, crypto.PublicKey, error) {
 	default:
 		return 0, nil, fmt.Errorf("unsupported primary key type 0x%x", pub.Type)
 	}
+
+	var creationData []byte
+	if err := tpmutil.UnpackBuf(buf, &creationData); err != nil {
+		return 0, nil, fmt.Errorf("decoding TPM2B_CREATION_DATA: %v", err)
+	}
+	if _, err := DecodeCreationData(creationData); err != nil {
+		return 0, nil, fmt.Errorf("decoding CreationData: %v", err)
+	}
+
 	return handle, pubKey, nil
 }
 
@@ -432,13 +446,17 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte
 
 func decodeCreate(in []byte) ([]byte, []byte, error) {
 	var resp struct {
-		Handle  tpmutil.Handle
-		Private []byte
-		Public  []byte
+		Handle       tpmutil.Handle
+		Private      []byte
+		Public       []byte
+		CreationData []byte
 	}
 
 	if _, err := tpmutil.Unpack(in, &resp); err != nil {
 		return nil, nil, err
+	}
+	if _, err := DecodeCreationData(resp.CreationData); err != nil {
+		return nil, nil, fmt.Errorf("decoding CreationData: %v", err)
 	}
 	return resp.Private, resp.Public, nil
 }
@@ -1113,6 +1131,33 @@ func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...in
 // simply return concat(a, b, c).
 func concat(chunks ...[]byte) ([]byte, error) {
 	return bytes.Join(chunks, nil), nil
+}
+
+func encodePCRExtend(pcr tpmutil.Handle, hashAlg Algorithm, hash tpmutil.RawBytes, password string) ([]byte, error) {
+	ha, err := tpmutil.Pack(pcr)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(HandlePasswordSession, password)
+	if err != nil {
+		return nil, err
+	}
+	pcrCount := uint32(1)
+	extend, err := tpmutil.Pack(pcrCount, hashAlg, hash)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, extend)
+}
+
+// PCRExtend extends a value into the selected PCR
+func PCRExtend(rw io.ReadWriter, pcr tpmutil.Handle, hashAlg Algorithm, hash []byte, password string) error {
+	cmd, err := encodePCRExtend(pcr, hashAlg, hash, password)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdPCRExtend, tpmutil.RawBytes(cmd))
+	return err
 }
 
 // ReadPCR reads the value of the given PCR.

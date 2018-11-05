@@ -21,8 +21,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
+	"fmt"
 	"io"
 	"math/big"
 	"os"
@@ -589,6 +591,64 @@ func TestPCREvent(t *testing.T) {
 	}
 }
 
+func TestPCRExtend(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	tests := []struct {
+		desc     string
+		hashAlg  Algorithm
+		hashSize int
+		hashSum  func([]byte) []byte
+	}{
+		{
+			desc:     "SHA1",
+			hashAlg:  AlgSHA1,
+			hashSize: sha1.Size,
+			hashSum: func(in []byte) []byte {
+				s := sha1.Sum(in)
+				return s[:]
+			},
+		},
+		{
+			desc:     "SHA256",
+			hashAlg:  AlgSHA256,
+			hashSize: sha256.Size,
+			hashSum: func(in []byte) []byte {
+				s := sha256.Sum256(in)
+				return s[:]
+			},
+		},
+	}
+
+	const pcr = int(16)
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			pcrValue := bytes.Repeat([]byte{0xF}, tt.hashSize)
+			oldPCRValue, err := ReadPCR(rw, pcr, tt.hashAlg)
+			if err != nil {
+				t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
+			}
+
+			if err = PCRExtend(rw, tpmutil.Handle(pcr), tt.hashAlg, pcrValue, ""); err != nil {
+				t.Fatalf("Failed to extend PCR %d: %s", pcr, err)
+			}
+
+			newPCRValue, err := ReadPCR(rw, pcr, tt.hashAlg)
+			if err != nil {
+				t.Fatalf("Can't read PCR %d from the TPM: %s", pcr, err)
+			}
+
+			finalPCR := tt.hashSum(append(oldPCRValue, pcrValue...))
+
+			if !bytes.Equal(finalPCR, newPCRValue) {
+				t.Fatalf("PCRs not equal, got %x, want %x", finalPCR, newPCRValue)
+			}
+		})
+	}
+}
+
 func TestReadPCR(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -673,5 +733,74 @@ func TestEncodeDecodeCreationAttestationData(t *testing.T) {
 
 	if !reflect.DeepEqual(*decoded, ad) {
 		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, ad)
+	}
+}
+
+func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
+	p := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA1,
+		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA1,
+			},
+			KeyBits:  2048,
+			Exponent: defaultRSAExponent,
+			Modulus:  new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
+		},
+	}
+
+	for _, encodeAsZero := range []bool{true, false} {
+		t.Run(fmt.Sprintf("encodeDefaultExponentAsZero = %v", encodeAsZero), func(t *testing.T) {
+			p.RSAParameters.encodeDefaultExponentAsZero = encodeAsZero
+			e, err := p.Encode()
+			if err != nil {
+				t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
+			}
+			d, err := DecodePublic(e)
+			if err != nil {
+				t.Fatalf("DecodePublic(%v) returned error: %v", e, err)
+			}
+			if !reflect.DeepEqual(p, d) {
+				t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
+				t.Logf("\tGot:  %+v", d)
+				t.Logf("\tWant: %+v", p)
+			}
+		})
+	}
+}
+
+func TestEncodeDecodeCreationData(t *testing.T) {
+	parentQualified := tpmutil.Handle(101)
+	cd := CreationData{
+		PCRSelection:  PCRSelection{Hash: AlgSHA1, PCRs: []int{7}},
+		PCRDigest:     []byte{1, 2, 3},
+		Locality:      32,
+		ParentNameAlg: AlgSHA1,
+		ParentName: Name{
+			Digest: &HashValue{
+				Alg:   AlgSHA1,
+				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+			},
+		},
+		ParentQualifiedName: Name{
+			Handle: &parentQualified,
+		},
+		OutsideInfo: []byte{7, 8, 9},
+	}
+
+	encoded, err := cd.encode()
+	if err != nil {
+		t.Fatalf("error encoding CreationData: %v", err)
+	}
+	decoded, err := DecodeCreationData(encoded)
+	if err != nil {
+		t.Fatalf("error decoding CreationData: %v", err)
+	}
+
+	if !reflect.DeepEqual(*decoded, cd) {
+		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, cd)
 	}
 }
