@@ -125,8 +125,24 @@ func TestGetCapability(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	if _, err := GetCapability(rw, CapabilityHandles, 1, 0x80000000); err != nil {
-		t.Fatalf("GetCapability failed: %s", err)
+	for _, tt := range []struct {
+		capa     Capability
+		count    uint32
+		property uint32
+		typ      interface{}
+	}{
+		{CapabilityHandles, 1, 0x80000000, tpmutil.Handle(0)},
+		{CapabilityAlgs, 1, 0, AlgorithmDescription{}},
+	} {
+		l, _, err := GetCapability(rw, tt.capa, tt.count, tt.property)
+		if err != nil {
+			t.Fatalf("GetCapability(%v, %d, %d) = _, %v; want _, nil", tt.capa, tt.count, tt.property, err)
+		}
+		for _, i := range l {
+			if reflect.TypeOf(i) != reflect.TypeOf(tt.typ) {
+				t.Fatalf("GetCapability(%v, %d, %d) returned an element with the wrong type: %v; want %v", tt.capa, tt.count, tt.property, reflect.TypeOf(i), reflect.TypeOf(tt.typ))
+			}
+		}
 	}
 }
 
@@ -285,6 +301,27 @@ func TestHash(t *testing.T) {
 	}
 }
 
+func skipOnUnsupportedAlg(t *testing.T, rw io.ReadWriter, alg Algorithm) {
+	moreData := true
+	for i := uint32(0); moreData; i++ {
+		var err error
+		var descs []interface{}
+		descs, moreData, err = GetCapability(rw, CapabilityAlgs, 1, i)
+		if err != nil {
+			t.Fatalf("Could not get TPM algorithm capability: %v", err)
+		}
+		for _, desc := range descs {
+			if desc.(AlgorithmDescription).ID == alg {
+				return
+			}
+		}
+		if !moreData {
+			break
+		}
+	}
+	t.Skipf("Algorithm %v is not supported by the TPM", alg)
+}
+
 func TestLoadExternalPublicKey(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -325,6 +362,7 @@ func TestLoadExternalPublicKey(t *testing.T) {
 		run(t, rp, private)
 	})
 	t.Run("ECC", func(t *testing.T) {
+		skipOnUnsupportedAlg(t, rw, AlgECC)
 		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			t.Fatal(err)
@@ -488,6 +526,7 @@ func TestCertifyExternalKey(t *testing.T) {
 		run(t, public, private)
 	})
 	t.Run("ECC", func(t *testing.T) {
+		skipOnUnsupportedAlg(t, rw, AlgECC)
 		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			t.Fatal(err)
@@ -565,6 +604,7 @@ func TestSign(t *testing.T) {
 		})
 	})
 	t.Run("ECC", func(t *testing.T) {
+		skipOnUnsupportedAlg(t, rw, AlgECC)
 		run(t, Public{
 			Type:       AlgECC,
 			NameAlg:    AlgSHA256,
