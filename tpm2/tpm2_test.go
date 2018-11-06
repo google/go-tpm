@@ -129,12 +129,19 @@ func TestGetCapability(t *testing.T) {
 		capa     Capability
 		count    uint32
 		property uint32
+		typ      interface{}
 	}{
-		{CapabilityHandles, 1, 0x80000000},
-		{CapabilityAlgs, 1, 0},
+		{CapabilityHandles, 1, 0x80000000, tpmutil.Handle(0)},
+		{CapabilityAlgs, 1, 0, AlgorithmDescription{}},
 	} {
-		if _, _, err := GetCapability(rw, tt.capa, tt.count, tt.property); err != nil {
+		l, _, err := GetCapability(rw, tt.capa, tt.count, tt.property)
+		if err != nil {
 			t.Fatalf("GetCapability(%v, %d, %d) = _, %v; want _, nil", tt.capa, tt.count, tt.property, err)
+		}
+		for _, i := range l {
+			if reflect.TypeOf(i) != reflect.TypeOf(tt.typ) {
+				t.Fatalf("GetCapability(%v, %d, %d) returned an element with the wrong type: %v; want %v", tt.capa, tt.count, tt.property, reflect.TypeOf(i), reflect.TypeOf(tt.typ))
+			}
 		}
 	}
 }
@@ -294,31 +301,25 @@ func TestHash(t *testing.T) {
 	}
 }
 
-func supportsECC(rw io.ReadWriter) (bool, error) {
+func skipOnUnsupportedAlg(t *testing.T, rw io.ReadWriter, alg Algorithm) {
 	var err error
 	moreData := true
-	var algorithms []AlgorithmDescription
-	i := uint32(0)
-	for moreData {
+	for i := uint32(0); moreData; i++ {
 		var descs []interface{}
 		descs, moreData, err = GetCapability(rw, CapabilityAlgs, 1, i)
 		if err != nil {
-			return false, err
+			t.Fatalf("Could not get TPM algorithm capability: %v", err)
 		}
 		for _, desc := range descs {
-			algorithms = append(algorithms, desc.(AlgorithmDescription))
+			if desc.(AlgorithmDescription).ID == alg {
+				return
+			}
 		}
 		if !moreData {
 			break
 		}
-		i++
 	}
-	for _, alg := range algorithms {
-		if alg.ID == AlgECC {
-			return true, nil
-		}
-	}
-	return false, nil
+	t.Skipf("Algorithm %v is not supported by the TPM", alg)
 }
 
 func TestLoadExternalPublicKey(t *testing.T) {
@@ -361,11 +362,7 @@ func TestLoadExternalPublicKey(t *testing.T) {
 		run(t, rp, private)
 	})
 	t.Run("ECC", func(t *testing.T) {
-		if ok, err := supportsECC(rw); !ok && err == nil {
-			t.Skip("ECC is not supported by the TPM")
-		} else if err != nil {
-			t.Fatalf("TPM algorithms could not be queried: %v", err)
-		}
+		skipOnUnsupportedAlg(t, rw, AlgECC)
 		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			t.Fatal(err)
@@ -529,11 +526,7 @@ func TestCertifyExternalKey(t *testing.T) {
 		run(t, public, private)
 	})
 	t.Run("ECC", func(t *testing.T) {
-		if ok, err := supportsECC(rw); !ok && err == nil {
-			t.Skip("ECC is not supported by the TPM")
-		} else if err != nil {
-			t.Fatalf("TPM algorithms could not be queried: %v", err)
-		}
+		skipOnUnsupportedAlg(t, rw, AlgECC)
 		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			t.Fatal(err)
@@ -611,11 +604,7 @@ func TestSign(t *testing.T) {
 		})
 	})
 	t.Run("ECC", func(t *testing.T) {
-		if ok, err := supportsECC(rw); !ok && err == nil {
-			t.Skip("ECC is not supported by the TPM")
-		} else if err != nil {
-			t.Fatalf("TPM algorithms could not be queried: %v", err)
-		}
+		skipOnUnsupportedAlg(t, rw, AlgECC)
 		run(t, Public{
 			Type:       AlgECC,
 			NameAlg:    AlgSHA256,
