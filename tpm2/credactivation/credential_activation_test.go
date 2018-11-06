@@ -1,4 +1,4 @@
-package tpm2
+package credactivation
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"math/big"
 	insecureRand "math/rand"
 	"testing"
+
+	"github.com/google/go-tpm/tpm2"
 )
 
 func TestCredentialActivation(t *testing.T) {
@@ -17,7 +19,7 @@ func TestCredentialActivation(t *testing.T) {
 	}
 	public := rsa.PublicKey{
 		N: n,
-		E: defaultRSAExponent,
+		E: 65537,
 	}
 
 	aikDigest, err := base64.StdEncoding.DecodeString("5snpf9qRfKD2Tb72eLAZqC/a/MyUhg+IvdwDZkTJK9w=")
@@ -33,12 +35,12 @@ func TestCredentialActivation(t *testing.T) {
 		t.Fatalf("Failed to decode secret base64: %v", err)
 	}
 
-	aikName := &HashValue{
-		Alg:   AlgSHA256,
+	aikName := &tpm2.HashValue{
+		Alg:   tpm2.AlgSHA256,
 		Value: aikDigest,
 	}
 
-	idObject, wrappedCredential, err := generateCredentialActivation(aikName, &public, 16, secret, insecureRand.New(insecureRand.NewSource(99)))
+	idObject, wrappedCredential, err := generate(aikName, &public, 16, secret, insecureRand.New(insecureRand.NewSource(99)))
 	if err != nil {
 		t.Fatal(err)
 	}

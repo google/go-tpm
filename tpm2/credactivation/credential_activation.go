@@ -1,4 +1,4 @@
-package tpm2
+package credactivation
 
 import (
 	"crypto"
@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
 
-// GenerateCredentialActivation returns an idObject & wrapped secret
-// for use in credential activation.
+// Generate returns an idObject & wrapped secret for use in credential activation.
 // This has been tested on EKs compliant with TCG 2.0 EK Credential Profile
 // specification, revision 14.
 // The pub parameter must be a pointer to rsa.PublicKey.
@@ -25,19 +25,19 @@ import (
 // This function implements Credential Protection as defined in section 24 of the TPM
 // specification revision 2 part 1, with the additional caveat of not supporting ECC EKs.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
-func GenerateCredentialActivation(aik *HashValue, pub crypto.PublicKey, symBlockSize int, secret []byte) ([]byte, []byte, error) {
+func Generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secret []byte) ([]byte, []byte, error) {
 	rsaPub, ok := pub.(*rsa.PublicKey)
 	if !ok {
 		return nil, nil, errors.New("only RSA public keys are supported for credential activation")
 	}
 
-	return generateCredentialActivation(aik, rsaPub, symBlockSize, secret, rand.Reader)
+	return generate(aik, rsaPub, symBlockSize, secret, rand.Reader)
 }
 
-func generateCredentialActivation(aik *HashValue, pub *rsa.PublicKey, symBlockSize int, secret []byte, rnd io.Reader) ([]byte, []byte, error) {
-	hashNew, ok := hashConstructors[aik.Alg]
-	if !ok {
-		return nil, nil, fmt.Errorf("hash algorithm unsupported: 0x%x", aik.Alg)
+func generate(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret []byte, rnd io.Reader) ([]byte, []byte, error) {
+	hashNew, err := aik.Alg.Constructor()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// The seed length should match the keysize used by the EKs symmetric cipher.
@@ -50,7 +50,7 @@ func generateCredentialActivation(aik *HashValue, pub *rsa.PublicKey, symBlockSi
 
 	// Encrypt the seed value using the provided public key.
 	// See annex B, section 10.4 of the TPM specification revision 2 part 1.
-	label := append([]byte(labelIdentity), 0)
+	label := append([]byte(tpm2.LabelIdentity), 0)
 	encSecret, err := rsa.EncryptOAEP(hashNew(), rnd, pub, seed, label)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating encrypted seed: %v", err)
@@ -59,11 +59,11 @@ func generateCredentialActivation(aik *HashValue, pub *rsa.PublicKey, symBlockSi
 	// Generate the encrypted credential by convolving the seed with the digest of
 	// the AIK, and using the result as the key to encrypt the secret.
 	// See section 24.4 of TPM 2.0 specification, part 1.
-	aikNameEncoded, err := aik.encode()
+	aikNameEncoded, err := aik.Encode()
 	if err != nil {
 		return nil, nil, fmt.Errorf("encoding aikName: %v", err)
 	}
-	symmetricKey, err := KDFa(aik.Alg, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
+	symmetricKey, err := tpm2.KDFa(aik.Alg, seed, tpm2.LabelStorage, aikNameEncoded, nil, len(seed)*8)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating symmetric key: %v", err)
 	}
@@ -83,7 +83,7 @@ func generateCredentialActivation(aik *HashValue, pub *rsa.PublicKey, symBlockSi
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
 	// See section 24.5 of the TPM specification revision 2 part 1.
-	macKey, err := KDFa(aik.Alg, seed, labelIntegrity, nil, nil, digestSize(aik.Alg)*8)
+	macKey, err := tpm2.KDFa(aik.Alg, seed, tpm2.LabelIntegrity, nil, nil, aik.Alg.DigestSize()*8)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating HMAC key: %v", err)
 	}
@@ -93,7 +93,7 @@ func generateCredentialActivation(aik *HashValue, pub *rsa.PublicKey, symBlockSi
 	mac.Write(aikNameEncoded)
 	integrityHMAC := mac.Sum(nil)
 
-	idObject := &IDObject{
+	idObject := &tpm2.IDObject{
 		IntegrityHMAC: integrityHMAC,
 		EncIdentity:   encIdentity,
 	}

@@ -708,7 +708,7 @@ func (n Name) encode() ([]byte, error) {
 			return nil, fmt.Errorf("encoding Handle: %v", err)
 		}
 	case n.Digest != nil:
-		if buf, err = n.Digest.encode(); err != nil {
+		if buf, err = n.Digest.Encode(); err != nil {
 			return nil, fmt.Errorf("encoding Digest: %v", err)
 		}
 	default:
@@ -761,7 +761,8 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 	return &hv, nil
 }
 
-func (hv HashValue) encode() ([]byte, error) {
+// Encode represents the given hash value as a TPMT_HA structure.
+func (hv HashValue) Encode() ([]byte, error) {
 	return tpmutil.Pack(hv.Alg, tpmutil.RawBytes(hv.Value))
 }
 
