@@ -73,3 +73,12 @@ func OpenTPM() (io.ReadWriteCloser, error) {
 	}
 	return rwc, err
 }
+
+// UseContext creates a new instance of a ReadWriteCloser which can
+// interact with a Windows TPM, using the specified TBS handle.
+func UseContext(tpmContext tbs.Context) io.ReadWriteCloser {
+	return &winTPMBuffer{
+		context:   tpmContext,
+		outBuffer: make([]byte, 0, maxTPMResponse),
+	}
+}
