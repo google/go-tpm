@@ -302,9 +302,9 @@ func TestHash(t *testing.T) {
 }
 
 func skipOnUnsupportedAlg(t *testing.T, rw io.ReadWriter, alg Algorithm) {
-	var err error
 	moreData := true
 	for i := uint32(0); moreData; i++ {
+		var err error
 		var descs []interface{}
 		descs, moreData, err = GetCapability(rw, CapabilityAlgs, 1, i)
 		if err != nil {
