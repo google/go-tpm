@@ -47,7 +47,7 @@ func TestCredentialActivation(t *testing.T) {
 	activationBlob := append(idObject, wrappedCredential...)
 
 	if !bytes.Equal(expected, activationBlob) {
-		t.Errorf("GenerateCredentialActivation(%v, %v, %v) returned incorrect result", aikName, public, secret)
+		t.Errorf("generate(%v, %v, %v) returned incorrect result", aikName, public, secret)
 		t.Logf("  Got:  %v", activationBlob)
 		t.Logf("  Want: %v", expected)
 	}
