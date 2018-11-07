@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"fmt"
 	"hash"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -39,6 +40,17 @@ func (a Algorithm) IsNull() bool {
 // UsesCount returns true if a signature algorithm uses count value.
 func (a Algorithm) UsesCount() bool {
 	return a == AlgECDAA
+}
+
+// HashConstructor returns a function that can be used to make a
+// hash.Hash using the specified algorithm. An error is returned
+// if the algorithm is not a hash algorithm.
+func (a Algorithm) HashConstructor() (func() hash.Hash, error) {
+	c, ok := hashConstructors[a]
+	if !ok {
+		return nil, fmt.Errorf("algorithm not supported: 0x%x", a)
+	}
+	return c, nil
 }
 
 // Supported Algorithms.

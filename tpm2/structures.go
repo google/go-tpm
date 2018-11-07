@@ -210,6 +210,20 @@ type ECPoint struct {
 	X, Y *big.Int
 }
 
+func (p *ECPoint) x() *big.Int {
+	if p == nil || p.X == nil {
+		return big.NewInt(0)
+	}
+	return p.X
+}
+
+func (p *ECPoint) y() *big.Int {
+	if p == nil || p.Y == nil {
+		return big.NewInt(0)
+	}
+	return p.Y
+}
+
 func (p *ECCParams) encode() ([]byte, error) {
 	if p == nil {
 		return nil, nil
@@ -230,7 +244,7 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
-	point, err := tpmutil.Pack(p.Point.X.Bytes(), p.Point.Y.Bytes())
+	point, err := tpmutil.Pack(p.Point.x().Bytes(), p.Point.y().Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("encoding Point: %v", err)
 	}
@@ -576,6 +590,24 @@ func (ci CertifyInfo) encode() ([]byte, error) {
 	return concat(n, qn)
 }
 
+// IDObject represents an encrypted credential bound to a TPM object.
+type IDObject struct {
+	IntegrityHMAC []byte
+	EncIdentity   []byte
+}
+
+// Encode packs the IDObject into a byte stream representing
+// a TPM2B_ID_OBJECT.
+func (o *IDObject) Encode() ([]byte, error) {
+	// encIdentity is packed raw, as the bytes representing the size
+	// of the credential value are present within the encrypted blob.
+	d, err := tpmutil.Pack(o.IntegrityHMAC, tpmutil.RawBytes(o.EncIdentity))
+	if err != nil {
+		return nil, fmt.Errorf("encoding IntegrityHMAC, EncIdentity: %v", err)
+	}
+	return tpmutil.Pack(d)
+}
+
 // CreationData describes the attributes and environment for an object created
 // on the TPM. This structure encodes/decodes to/from TPMS_CREATION_DATA.
 type CreationData struct {
@@ -686,7 +718,7 @@ func (n Name) encode() ([]byte, error) {
 			return nil, fmt.Errorf("encoding Handle: %v", err)
 		}
 	case n.Digest != nil:
-		if buf, err = n.Digest.encode(); err != nil {
+		if buf, err = n.Digest.Encode(); err != nil {
 			return nil, fmt.Errorf("encoding Digest: %v", err)
 		}
 	default:
@@ -739,7 +771,8 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 	return &hv, nil
 }
 
-func (hv HashValue) encode() ([]byte, error) {
+// Encode represents the given hash value as a TPMT_HA structure.
+func (hv HashValue) Encode() ([]byte, error) {
 	return tpmutil.Pack(hv.Alg, tpmutil.RawBytes(hv.Value))
 }
 
@@ -749,4 +782,13 @@ type ClockInfo struct {
 	ResetCount   uint32
 	RestartCount uint32
 	Safe         byte
+}
+
+// AlgorithmAttributes represents a TPMA_ALGORITHM value.
+type AlgorithmAttributes uint32
+
+// AlgorithmDescription represents a TPMS_ALGORITHM_DESCRIPTION structure.
+type AlgorithmDescription struct {
+	ID         Algorithm
+	Attributes AlgorithmAttributes
 }

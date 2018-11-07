@@ -188,49 +188,66 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	return decodeReadClock(resp)
 }
 
-func decodeGetCapability(in []byte) (Capability, []tpmutil.Handle, error) {
+func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 	var moreData byte
 	var capReported Capability
 
 	buf := bytes.NewBuffer(in)
 	if err := tpmutil.UnpackBuf(buf, &moreData, &capReported); err != nil {
-		return 0, nil, err
-	}
-	// Only TPM_CAP_HANDLES handled.
-	if capReported != CapabilityHandles {
-		return 0, nil, fmt.Errorf("Only TPM_CAP_HANDLES supported, got %v", capReported)
+		return nil, false, err
 	}
 
-	var numHandles uint32
-	if err := tpmutil.UnpackBuf(buf, &numHandles); err != nil {
-		return 0, nil, err
-	}
-
-	var handles []tpmutil.Handle
-	for i := 0; i < int(numHandles); i++ {
-		var handle tpmutil.Handle
-		if err := tpmutil.UnpackBuf(buf, &handle); err != nil {
-			return 0, nil, err
+	switch capReported {
+	case CapabilityHandles:
+		var numHandles uint32
+		if err := tpmutil.UnpackBuf(buf, &numHandles); err != nil {
+			return nil, false, fmt.Errorf("could not unpack handle count: %v", err)
 		}
-		handles = append(handles, handle)
-	}
 
-	return capReported, handles, nil
+		var handles []interface{}
+		for i := 0; i < int(numHandles); i++ {
+			var handle tpmutil.Handle
+			if err := tpmutil.UnpackBuf(buf, &handle); err != nil {
+				return nil, false, fmt.Errorf("could not unpack handle: %v", err)
+			}
+			handles = append(handles, handle)
+		}
+		return handles, moreData > 0, nil
+	case CapabilityAlgs:
+		var numAlgs uint32
+		if err := tpmutil.UnpackBuf(buf, &numAlgs); err != nil {
+			return nil, false, fmt.Errorf("could not unpack algorithm count: %v", err)
+		}
+
+		var algs []interface{}
+		for i := 0; i < int(numAlgs); i++ {
+			var alg AlgorithmDescription
+			if err := tpmutil.UnpackBuf(buf, &alg); err != nil {
+				return nil, false, fmt.Errorf("could not unpack algorithm description: %v", err)
+			}
+			algs = append(algs, alg)
+		}
+		return algs, moreData > 0, nil
+	default:
+		return nil, false, fmt.Errorf("unsupported capability %v", capReported)
+	}
 }
 
 // GetCapability returns various information about the TPM state.
 //
-// Currently only CapabilityHandles is supported (list active handles).
-func GetCapability(rw io.ReadWriter, cap Capability, count uint32, property uint32) ([]tpmutil.Handle, error) {
-	resp, err := runCommand(rw, TagNoSessions, cmdGetCapability, cap, property, count)
+// Currently only CapabilityHandles (list active handles) and CapabilityAlgs
+// (list supported algorithms) are supported. CapabilityHandles will return
+// a []tpmutil.Handle for vals, CapabilityAlgs will return
+// []AlgorithmDescription.
+//
+// moreData is true if the TPM indicated that more data is available. Follow
+// the spec for the capability in question on how to query for more data.
+func GetCapability(rw io.ReadWriter, capa Capability, count, property uint32) (vals []interface{}, moreData bool, err error) {
+	resp, err := runCommand(rw, TagNoSessions, cmdGetCapability, capa, property, count)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	_, handles, err := decodeGetCapability(resp)
-	if err != nil {
-		return nil, err
-	}
-	return handles, nil
+	return decodeGetCapability(resp)
 }
 
 func encodeAuthArea(sessionHandle tpmutil.Handle, passwords ...string) ([]byte, error) {

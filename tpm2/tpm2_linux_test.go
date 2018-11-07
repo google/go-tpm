@@ -22,7 +22,7 @@ import (
 
 var tpmPath = flag.String("tpm_path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
 
-func openDeviceTPM(t *testing.T) io.ReadWriteCloser {
+func openDeviceTPM(t testing.TB) io.ReadWriteCloser {
 	if *tpmPath == "" {
 		t.SkipNow()
 	}
