@@ -210,6 +210,20 @@ type ECPoint struct {
 	X, Y *big.Int
 }
 
+func (p *ECPoint) x() *big.Int {
+	if p == nil || p.Y == nil {
+		return big.NewInt(0)
+	}
+	return p.X
+}
+
+func (p *ECPoint) y() *big.Int {
+	if p == nil || p.Y == nil {
+		return big.NewInt(0)
+	}
+	return p.Y
+}
+
 func (p *ECCParams) encode() ([]byte, error) {
 	if p == nil {
 		return nil, nil
@@ -230,7 +244,7 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
-	point, err := tpmutil.Pack(p.Point.X.Bytes(), p.Point.Y.Bytes())
+	point, err := tpmutil.Pack(p.Point.x().Bytes(), p.Point.y().Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("encoding Point: %v", err)
 	}
