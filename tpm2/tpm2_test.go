@@ -41,7 +41,12 @@ var (
 	mssimPlatformAddr = flag.String("mssim_platform_addr", "localhost:2322", "Host and port of the simulator's platform listener")
 )
 
-func openTPM(t *testing.T) io.ReadWriteCloser {
+type T interface {
+	Fatalf(format string, args ...interface{})
+	SkipNow()
+}
+
+func openTPM(t T) io.ReadWriteCloser {
 	if !*mssimRun {
 		return openDeviceTPM(t)
 	}
