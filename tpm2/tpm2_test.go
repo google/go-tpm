@@ -41,12 +41,7 @@ var (
 	mssimPlatformAddr = flag.String("mssim_platform_addr", "localhost:2322", "Host and port of the simulator's platform listener")
 )
 
-type T interface {
-	Fatalf(format string, args ...interface{})
-	SkipNow()
-}
-
-func openTPM(t T) io.ReadWriteCloser {
+func openTPM(t testing.TB) io.ReadWriteCloser {
 	if !*mssimRun {
 		return openDeviceTPM(t)
 	}
@@ -306,7 +301,7 @@ func TestHash(t *testing.T) {
 	}
 }
 
-func skipOnUnsupportedAlg(t *testing.T, rw io.ReadWriter, alg Algorithm) {
+func skipOnUnsupportedAlg(t testing.TB, rw io.ReadWriter, alg Algorithm) {
 	moreData := true
 	for i := uint32(0); moreData; i++ {
 		var err error

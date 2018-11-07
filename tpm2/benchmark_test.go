@@ -35,8 +35,7 @@ func BenchmarkRSA2048Signing(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Sign(rw, signerHandle, defaultPassword, digest[:], pub.RSAParameters.Sign)
-		if err != nil {
+		if _, err := Sign(rw, signerHandle, defaultPassword, digest[:], pub.RSAParameters.Sign); err != nil {
 			b.Fatalf("Signing failed: %v", err)
 		}
 	}
@@ -46,6 +45,7 @@ func BenchmarkECCNISTP256Signing(b *testing.B) {
 	b.StopTimer()
 	rw := openTPM(b)
 	defer rw.Close()
+	skipOnUnsupportedAlg(b, rw, AlgECC)
 
 	pub := Public{
 		Type:       AlgECC,
@@ -70,8 +70,7 @@ func BenchmarkECCNISTP256Signing(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Sign(rw, signerHandle, defaultPassword, digest[:], pub.ECCParameters.Sign)
-		if err != nil {
+		if _, err := Sign(rw, signerHandle, defaultPassword, digest[:], pub.ECCParameters.Sign); err != nil {
 			b.Fatalf("Signing failed: %v", err)
 		}
 	}

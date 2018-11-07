@@ -211,7 +211,7 @@ type ECPoint struct {
 }
 
 func (p *ECPoint) x() *big.Int {
-	if p == nil || p.Y == nil {
+	if p == nil || p.X == nil {
 		return big.NewInt(0)
 	}
 	return p.X
