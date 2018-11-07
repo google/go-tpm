@@ -585,15 +585,11 @@ type IDObject struct {
 // Encode packs the IDObject into a byte stream representing
 // a TPM2B_ID_OBJECT.
 func (o *IDObject) Encode() ([]byte, error) {
-	packedIntegrity, err := tpmutil.Pack(o.IntegrityHMAC)
+	// encIdentity is packed raw, as the bytes representing the size
+	// of the credential value are present within the encrypted blob.
+	d, err := tpmutil.Pack(o.IntegrityHMAC, tpmutil.RawBytes(o.EncIdentity))
 	if err != nil {
-		return nil, fmt.Errorf("encoding IntegrityHMAC: %v", err)
-	}
-	// encIdentity is not packed as the size field is contained within
-	// the encrypted blob.
-	d, err := concat(packedIntegrity, o.EncIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("concat idObject: %v", err)
+		return nil, fmt.Errorf("encoding IntegrityHMAC, EncIdentity: %v", err)
 	}
 	return tpmutil.Pack(d)
 }

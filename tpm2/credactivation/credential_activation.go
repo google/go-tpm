@@ -17,7 +17,15 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-// Generate returns an idObject & wrapped secret for use in credential activation.
+// Labels for use in key derivation or OAEP encryption.
+const (
+	labelIdentity  = "IDENTITY"
+	labelStorage   = "STORAGE"
+	labelIntegrity = "INTEGRITY"
+)
+
+// Generate returns a TPM2B_ID_OBJECT & TPM2B_ENCRYPTED_SECRET for use in
+// credential activation.
 // This has been tested on EKs compliant with TCG 2.0 EK Credential Profile
 // specification, revision 14.
 // The pub parameter must be a pointer to rsa.PublicKey.
@@ -33,11 +41,11 @@ func Generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secre
 		return nil, nil, errors.New("only RSA public keys are supported for credential activation")
 	}
 
-	return generate(aik, rsaPub, symBlockSize, secret, rand.Reader)
+	return generateRSA(aik, rsaPub, symBlockSize, secret, rand.Reader)
 }
 
-func generate(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret []byte, rnd io.Reader) ([]byte, []byte, error) {
-	hashNew, err := aik.Alg.Constructor()
+func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret []byte, rnd io.Reader) ([]byte, []byte, error) {
+	hashNew, err := aik.Alg.HashConstructor()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,13 +54,13 @@ func generate(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret 
 	// For typical RSA EKs, this will be 128 bits (16 bytes).
 	// Spec: TCG 2.0 EK Credential Profile revision 14, section 2.1.5.1.
 	seed := make([]byte, symBlockSize)
-	if _, err := rnd.Read(seed); err != nil {
+	if _, err := io.ReadFull(rnd, seed); err != nil {
 		return nil, nil, fmt.Errorf("generating seed: %v", err)
 	}
 
 	// Encrypt the seed value using the provided public key.
 	// See annex B, section 10.4 of the TPM specification revision 2 part 1.
-	label := append([]byte(tpm2.LabelIdentity), 0)
+	label := append([]byte(labelIdentity), 0)
 	encSecret, err := rsa.EncryptOAEP(hashNew(), rnd, pub, seed, label)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating encrypted seed: %v", err)
@@ -65,7 +73,7 @@ func generate(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret 
 	if err != nil {
 		return nil, nil, fmt.Errorf("encoding aikName: %v", err)
 	}
-	symmetricKey, err := tpm2.KDFa(aik.Alg, seed, tpm2.LabelStorage, aikNameEncoded, nil, len(seed)*8)
+	symmetricKey, err := tpm2.KDFa(aik.Alg, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating symmetric key: %v", err)
 	}
@@ -85,7 +93,7 @@ func generate(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret 
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
 	// See section 24.5 of the TPM specification revision 2 part 1.
-	macKey, err := tpm2.KDFa(aik.Alg, seed, tpm2.LabelIntegrity, nil, nil, aik.Alg.DigestSize()*8)
+	macKey, err := tpm2.KDFa(aik.Alg, seed, labelIntegrity, nil, nil, hashNew().Size()*8)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating HMAC key: %v", err)
 	}

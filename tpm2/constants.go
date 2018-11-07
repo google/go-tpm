@@ -42,20 +42,15 @@ func (a Algorithm) UsesCount() bool {
 	return a == AlgECDAA
 }
 
-// Constructor returns a function that can be used to make a
-// hash.Hash using the specified algorithm.
-func (a Algorithm) Constructor() (func() hash.Hash, error) {
+// HashConstructor returns a function that can be used to make a
+// hash.Hash using the specified algorithm. An error is returned
+// if the algorithm is not a hash algorithm.
+func (a Algorithm) HashConstructor() (func() hash.Hash, error) {
 	c, ok := hashConstructors[a]
 	if !ok {
 		return nil, fmt.Errorf("algorithm not supported: 0x%x", a)
 	}
 	return c, nil
-}
-
-// DigestSize returns the size of a digest for the given algorithm,
-// or 0 if it's not recognized.
-func (a Algorithm) DigestSize() int {
-	return digestSize(a)
 }
 
 // Supported Algorithms.
@@ -277,10 +272,3 @@ var hashConstructors = map[Algorithm]func() hash.Hash{
 	AlgSHA384: sha512.New384,
 	AlgSHA512: sha512.New,
 }
-
-// Labels for use in key derivation or OAEP encryption.
-const (
-	LabelIdentity  = "IDENTITY"
-	LabelStorage   = "STORAGE"
-	LabelIntegrity = "INTEGRITY"
-)
