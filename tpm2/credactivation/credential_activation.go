@@ -1,3 +1,5 @@
+// Package credactivation implements generation of data blobs to be used
+// when invoking the ActivateCredential command, on a TPM.
 package credactivation
 
 import (
