@@ -11,10 +11,10 @@ import (
 	"github.com/google/go-tpm/tpm2"
 )
 
-func mustDecodeBase64(in string) []byte {
+func mustDecodeBase64(in string, t *testing.T) []byte {
 	d, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	return d
 }
@@ -30,9 +30,9 @@ func TestCredentialActivation(t *testing.T) {
 		E: 65537,
 	}
 
-	aikDigest := mustDecodeBase64("5snpf9qRfKD2Tb72eLAZqC/a/MyUhg+IvdwDZkTJK9w=")
-	expected := mustDecodeBase64("AEQAIIQNQu1RkQagbyN+7JlCKUfwBJxIsONZ2/4BD7Q4A15+BcDylTlcvTDgl1CdTuiZk3JcechnrpbfdDXynZ9Sp0uOAwEApDH7zhzLAqsNMSiEdv0xoGrGf/sOCYzSccZ1pDIv7uHON3yMMrX8beOLtCZ9vEQ3vW4i6NdWUJEd/UeMYuc1+Ucu4IB5teUtExhNyvtOXEM7FNXnKooS2ltLA0L7jlkyqwGM7CE0MK4jeFvy13RFNek6S5Rd5MH3RpBuqpL5NjX/yr4g7xCyE2RmXrCSD2DiTm6wU/PtOxYXUVdXeuLaLD69g5pnEAWhARuYa9SomBI8Ewvcxm+slfJpTK/Unrg+FN/d/n0k0IajklNli/jRhuQh5nhrTZXg80kPsEGraSP8eJof49vR643EtoO88jzpTC+/9Tu3yiGCCxEMqR2szA==")
-	secret := mustDecodeBase64("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg=")
+	aikDigest := mustDecodeBase64("5snpf9qRfKD2Tb72eLAZqC/a/MyUhg+IvdwDZkTJK9w=", t)
+	expected := mustDecodeBase64("AEQAIIQNQu1RkQagbyN+7JlCKUfwBJxIsONZ2/4BD7Q4A15+BcDylTlcvTDgl1CdTuiZk3JcechnrpbfdDXynZ9Sp0uOAwEApDH7zhzLAqsNMSiEdv0xoGrGf/sOCYzSccZ1pDIv7uHON3yMMrX8beOLtCZ9vEQ3vW4i6NdWUJEd/UeMYuc1+Ucu4IB5teUtExhNyvtOXEM7FNXnKooS2ltLA0L7jlkyqwGM7CE0MK4jeFvy13RFNek6S5Rd5MH3RpBuqpL5NjX/yr4g7xCyE2RmXrCSD2DiTm6wU/PtOxYXUVdXeuLaLD69g5pnEAWhARuYa9SomBI8Ewvcxm+slfJpTK/Unrg+FN/d/n0k0IajklNli/jRhuQh5nhrTZXg80kPsEGraSP8eJof49vR643EtoO88jzpTC+/9Tu3yiGCCxEMqR2szA==", t)
+	secret := mustDecodeBase64("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg=", t)
 
 	aikName := &tpm2.HashValue{
 		Alg:   tpm2.AlgSHA256,
