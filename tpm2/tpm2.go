@@ -551,17 +551,6 @@ func doCreate(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, obj
 	return decodeCreate(resp)
 }
 
-// Create creates a new key pair under the owner handle.
-// Unlike CreateKey(), all information recieved back from the
-// TPM is returned.
-func Create(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, []byte, []byte, Ticket, error) {
-	resp, err := doCreate(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
-	if err != nil {
-		return nil, nil, nil, nil, Ticket{}, err
-	}
-	return resp.Private, resp.Public, resp.CreationData, resp.CreationHash, resp.CreationTicket, nil
-}
-
 // CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs.
 func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
