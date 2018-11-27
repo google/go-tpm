@@ -404,7 +404,7 @@ func decodeCreatePrimary(in []byte) (tpmutil.Handle, crypto.PublicKey, error) {
 }
 
 // CreatePrimary initializes the primary key in a given hierarchy.
-// Second return value is the public part of the generated key.
+// The second return value is the public part of the generated key.
 func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (tpmutil.Handle, crypto.PublicKey, error) {
 	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, nil /*inSensitive*/, pub)
 	if err != nil {
@@ -416,6 +416,57 @@ func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, par
 	}
 
 	return decodeCreatePrimary(resp)
+}
+
+// CreatePrimaryEx initializes the primary key in a given hierarchy.
+// This function differs from CreatePrimary in that all response elements
+// are returned, and they are returned in relatively raw form.
+//
+// The first return value is a transient handle to the loaded key.
+// The second return value is the public part of the generated key.
+// The third return value is the creation data of the key.
+// The fourth return value is the digest of the creation data.
+// The fifith return value is the creation ticket.
+// The sixth return value is the creation name.
+func CreatePrimaryEx(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (tpmutil.Handle, []byte, []byte, []byte, Ticket, []byte, error) {
+	cmd, err := encodeCreate(owner, sel, parentPassword, ownerPassword, nil /*inSensitive*/, pub)
+	if err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, cmdCreatePrimary, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, err
+	}
+
+	var out struct {
+		Handle         tpmutil.Handle
+		Public         []byte
+		CreationData   []byte
+		CreationHash   []byte
+		CreationTicket Ticket
+		CreationName   []byte
+	}
+	var paramSize uint32
+
+	offset, err := tpmutil.Unpack(resp, &out.Handle, &paramSize, &out.Public, &out.CreationData, &out.CreationHash)
+	if err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding Handle, Public, CreationData, CreationHash: %v", err)
+	}
+
+	cr, err := decodeTicket(resp[offset:])
+	if err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding CreationTicket: %v", err)
+	}
+	out.CreationTicket = *cr
+	if _, err := DecodeCreationData(out.CreationData); err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding CreationData: %v", err)
+	}
+
+	if _, err = tpmutil.Unpack(resp[offset+cr.packedSize():], &out.CreationName); err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding CreationName: %v", err)
+	}
+
+	return out.Handle, out.Public, out.CreationData, out.CreationHash, out.CreationTicket, out.CreationName, nil
 }
 
 // CreatePrimaryRawTemplate is CreatePrimary, but with the public template
@@ -461,40 +512,64 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte
 	return decodeReadPublic(resp)
 }
 
-func decodeCreate(in []byte) ([]byte, []byte, error) {
-	var resp struct {
-		Handle       tpmutil.Handle
-		Private      []byte
-		Public       []byte
-		CreationData []byte
-	}
-
-	if _, err := tpmutil.Unpack(in, &resp); err != nil {
-		return nil, nil, err
-	}
-	if _, err := DecodeCreationData(resp.CreationData); err != nil {
-		return nil, nil, fmt.Errorf("decoding CreationData: %v", err)
-	}
-	return resp.Private, resp.Public, nil
+type createResponse struct {
+	Handle         tpmutil.Handle
+	Private        []byte
+	Public         []byte
+	CreationData   []byte
+	CreationHash   []byte
+	CreationTicket Ticket
 }
 
-// Returns private key and public key blobs.
-func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, sensitiveData []byte, pub Public, pcrSelection PCRSelection) ([]byte, []byte, error) {
+func decodeCreate(in []byte) (*createResponse, error) {
+	var resp createResponse
+
+	offset, err := tpmutil.Unpack(in, &resp.Handle, &resp.Private, &resp.Public, &resp.CreationData, &resp.CreationHash)
+	if err != nil {
+		return nil, fmt.Errorf("decoding Handle, Private, Public, CreationData, CreationHash: %v", err)
+	}
+	cr, err := decodeTicket(in[offset:])
+	if err != nil {
+		return nil, fmt.Errorf("decoding CreationTicket: %v", err)
+	}
+	resp.CreationTicket = *cr
+	if _, err := DecodeCreationData(resp.CreationData); err != nil {
+		return nil, fmt.Errorf("decoding CreationData: %v", err)
+	}
+	return &resp, nil
+}
+
+func doCreate(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, sensitiveData []byte, pub Public, pcrSelection PCRSelection) (*createResponse, error) {
 	cmd, err := encodeCreate(parentHandle, pcrSelection, parentPassword, objectPassword, sensitiveData, pub)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	resp, err := runCommand(rw, TagSessions, cmdCreate, tpmutil.RawBytes(cmd))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	return decodeCreate(resp)
+}
+
+// Create creates a new key pair under the owner handle.
+// Unlike CreateKey(), all information recieved back from the
+// TPM is returned.
+func Create(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, []byte, []byte, Ticket, error) {
+	resp, err := doCreate(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
+	if err != nil {
+		return nil, nil, nil, nil, Ticket{}, err
+	}
+	return resp.Private, resp.Public, resp.CreationData, resp.CreationHash, resp.CreationTicket, nil
 }
 
 // CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs.
 func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
-	return create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
+	resp, err := doCreate(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
+	if err != nil {
+		return nil, nil, err
+	}
+	return resp.Private, resp.Public, nil
 }
 
 // Seal creates a data blob object that seals the sensitive data under a parent and with a
@@ -507,7 +582,11 @@ func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectP
 		Attributes: FlagFixedTPM | FlagFixedParent,
 		AuthPolicy: objectAuthPolicy,
 	}
-	return create(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic, PCRSelection{})
+	resp, err := doCreate(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic, PCRSelection{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return resp.Private, resp.Public, nil
 }
 
 func encodeLoad(parentHandle tpmutil.Handle, parentAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
@@ -1126,6 +1205,46 @@ func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmu
 		return nil, nil, err
 	}
 	resp, err := runCommand(rw, TagSessions, cmdCertify, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeCertify(resp)
+}
+
+func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, ticket Ticket) ([]byte, error) {
+	handles, err := tpmutil.Pack(signer, object)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := encodeAuthArea(HandlePasswordSession, objectAuth)
+	if err != nil {
+		return nil, err
+	}
+
+	scheme := tpmtSigScheme{AlgRSASSA, AlgSHA256}
+
+	tk, err := ticket.Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	params, err := tpmutil.Pack(qualifyingData, creationHash, scheme, tpmutil.RawBytes(tk))
+	if err != nil {
+		return nil, err
+	}
+	return concat(handles, auth, params)
+}
+
+// CertifyCreation generates a signature of a newly-created &
+// loaded TPM object with a signing key signer. Returned values
+// are: attestation data (TPMS_ATTEST), signature, and an error.
+func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, creationTicket Ticket) ([]byte, []byte, error) {
+	cmd, err := encodeCertifyCreation(objectAuth, object, signer, qualifyingData, creationHash, creationTicket)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, cmdCertifyCreation, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}

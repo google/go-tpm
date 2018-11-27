@@ -172,6 +172,65 @@ func TestCombinedKeyTest(t *testing.T) {
 	}
 }
 
+func TestCreateAndCertifyCreation(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	params := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin | FlagRestricted | FlagSign | FlagNoDA | FlagUserWithAuth,
+		AuthPolicy: nil,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA256,
+			},
+			KeyBits: 2048,
+			Modulus: big.NewInt(0),
+		},
+	}
+
+	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection, emptyPassword, emptyPassword, params)
+	if err != nil {
+		t.Fatalf("CreatePrimary 2 failed: %s", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, tix)
+	if err != nil {
+		t.Fatalf("CertifyCreation failed: %s", err)
+	}
+	att, err := DecodeAttestationData(attestation)
+	if err != nil {
+		t.Fatalf("DecodeAttestationData(%v) returned error: %v", attestation, err)
+	}
+	if att.Type != TagAttestCreation {
+		t.Errorf("Expected attestation structure to be of type TagAttestCreation, got %v", att.Type)
+	}
+
+	p, err := DecodePublic(pub)
+	if err != nil {
+		t.Fatalf("DecodePublic returned err: %v", err)
+	}
+	match, err := att.AttestedCreationInfo.Name.MatchesPublic(p)
+	if err != nil {
+		t.Fatalf("MatchesPublic returned err: %v", err)
+	}
+	if !match {
+		t.Error("Attested name does not match returned public key.")
+		t.Logf("Name: %v", att.AttestedCreationInfo.Name)
+		t.Logf("Public: %v", p)
+	}
+
+	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent), N: p.RSAParameters.Modulus}
+	hsh := crypto.SHA256.New()
+	hsh.Write(attestation)
+	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
+		t.Errorf("Signature failed to verify: %v", err)
+	}
+}
+
 func TestCombinedEndorsementTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -211,6 +270,36 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	}
 	if bytes.Compare(credential, recoveredCredential1) != 0 {
 		t.Fatalf("Credential and recovered credential differ: got %v, want %v", recoveredCredential1, credential)
+	}
+}
+
+func TestCreatePrimaryEx(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	keyHandle, pub1, creation, _, _, name, err := CreatePrimaryEx(rw, HandleOwner, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %v", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	pub, _, _, err := ReadPublic(rw, keyHandle)
+	if err != nil {
+		t.Fatalf("ReadPublic failed: %s", err)
+	}
+	pub2, _ := pub.Encode()
+
+	if !bytes.Equal(pub1, pub2) {
+		t.Error("Mismatch between public returned from CreatePrimaryEx() & ReadPublic()")
+		t.Logf("CreatePrimaryEx: %v", pub1)
+		t.Logf("ReadPublic:      %v", pub2)
+	}
+
+	if _, err := decodeName(bytes.NewBuffer(name)); err != nil {
+		t.Errorf("Failed to decode name: %v", err)
+	}
+	if _, err := DecodeCreationData(creation); err != nil {
+		t.Fatalf("DecodeCreationData() returned err: %v", err)
 	}
 }
 

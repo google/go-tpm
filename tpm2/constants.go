@@ -221,6 +221,7 @@ const (
 	cmdStirRandom         tpmutil.Command = 0x00000146
 	cmdActivateCredential tpmutil.Command = 0x00000147
 	cmdCertify            tpmutil.Command = 0x00000148
+	cmdCertifyCreation    tpmutil.Command = 0x0000014A
 	cmdReadNV             tpmutil.Command = 0x0000014E
 	cmdCreate             tpmutil.Command = 0x00000153
 	cmdLoad               tpmutil.Command = 0x00000157
