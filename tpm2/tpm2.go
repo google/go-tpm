@@ -378,7 +378,7 @@ func decodeCreatePrimary(in []byte) (handle tpmutil.Handle, public, creationData
 	if _, err := DecodeCreationData(creationData); err != nil {
 		return 0, nil, nil, nil, nil, nil, fmt.Errorf("parsing CreationData: %v", err)
 	}
-	return
+	return handle, public, creationData, creationHash, ticket, creationName, err
 }
 
 // CreatePrimary initializes the primary key in a given hierarchy.
@@ -477,41 +477,32 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte
 	return decodeReadPublic(resp)
 }
 
-type createResponse struct {
-	Handle         tpmutil.Handle
-	Private        []byte
-	Public         []byte
-	CreationData   []byte
-	CreationHash   []byte
-	CreationTicket Ticket
-}
 
-func decodeCreate(in []byte) (*createResponse, error) {
-	var resp createResponse
+func decodeCreate(in []byte) (handle tpmutil.Handle, private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
 	buf := bytes.NewBuffer(in)
 
-	if err := tpmutil.UnpackBuf(buf, &resp.Handle, &resp.Private, &resp.Public, &resp.CreationData, &resp.CreationHash); err != nil {
-		return nil, fmt.Errorf("decoding Handle, Private, Public, CreationData, CreationHash: %v", err)
+	if err := tpmutil.UnpackBuf(buf, &handle, &private, &public, &creationData, &creationHash); err != nil {
+		return 0, nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding Handle, Private, Public, CreationData, CreationHash: %v", err)
 	}
 	cr, err := decodeTicket(buf)
 	if err != nil {
-		return nil, fmt.Errorf("decoding CreationTicket: %v", err)
+		return 0, nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationTicket: %v", err)
 	}
-	resp.CreationTicket = *cr
-	if _, err := DecodeCreationData(resp.CreationData); err != nil {
-		return nil, fmt.Errorf("decoding CreationData: %v", err)
+	creationTicket = *cr
+	if _, err := DecodeCreationData(creationData); err != nil {
+		return 0, nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationData: %v", err)
 	}
-	return &resp, nil
+	return handle, private, public, creationData, creationHash, creationTicket, nil
 }
 
-func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, sensitiveData []byte, pub Public, pcrSelection PCRSelection) (*createResponse, error) {
+func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, sensitiveData []byte, pub Public, pcrSelection PCRSelection) (handle tpmutil.Handle, private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
 	cmd, err := encodeCreate(parentHandle, pcrSelection, parentPassword, objectPassword, sensitiveData, pub)
 	if err != nil {
-		return nil, err
+		return 0, nil, nil, nil, nil, Ticket{}, err
 	}
 	resp, err := runCommand(rw, TagSessions, cmdCreate, tpmutil.RawBytes(cmd))
 	if err != nil {
-		return nil, err
+		return 0, nil, nil, nil, nil, Ticket{}, err
 	}
 	return decodeCreate(resp)
 }
@@ -519,11 +510,11 @@ func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objec
 // CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs.
 func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
-	resp, err := create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
+	_, private, public, _, _, _, err := create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
 	if err != nil {
 		return nil, nil, err
 	}
-	return resp.Private, resp.Public, nil
+	return private, public, nil
 }
 
 // Seal creates a data blob object that seals the sensitive data under a parent and with a
@@ -536,11 +527,11 @@ func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectP
 		Attributes: FlagFixedTPM | FlagFixedParent,
 		AuthPolicy: objectAuthPolicy,
 	}
-	resp, err := create(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic, PCRSelection{})
+	_, private, public, _, _, _, err := create(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic, PCRSelection{})
 	if err != nil {
 		return nil, nil, err
 	}
-	return resp.Private, resp.Public, nil
+	return private, public, nil
 }
 
 func encodeLoad(parentHandle tpmutil.Handle, parentAuth string, publicBlob, privateBlob []byte) ([]byte, error) {
