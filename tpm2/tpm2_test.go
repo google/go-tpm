@@ -172,65 +172,6 @@ func TestCombinedKeyTest(t *testing.T) {
 	}
 }
 
-func TestCreateAndCertifyCreation(t *testing.T) {
-	rw := openTPM(t)
-	defer rw.Close()
-
-	params := Public{
-		Type:       AlgRSA,
-		NameAlg:    AlgSHA256,
-		Attributes: FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin | FlagRestricted | FlagSign | FlagNoDA | FlagUserWithAuth,
-		AuthPolicy: nil,
-		RSAParameters: &RSAParams{
-			Sign: &SigScheme{
-				Alg:  AlgRSASSA,
-				Hash: AlgSHA256,
-			},
-			KeyBits: 2048,
-			Modulus: big.NewInt(0),
-		},
-	}
-
-	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection, emptyPassword, emptyPassword, params)
-	if err != nil {
-		t.Fatalf("CreatePrimary 2 failed: %s", err)
-	}
-	defer FlushContext(rw, keyHandle)
-
-	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, tix)
-	if err != nil {
-		t.Fatalf("CertifyCreation failed: %s", err)
-	}
-	att, err := DecodeAttestationData(attestation)
-	if err != nil {
-		t.Fatalf("DecodeAttestationData(%v) returned error: %v", attestation, err)
-	}
-	if att.Type != TagAttestCreation {
-		t.Errorf("Expected attestation structure to be of type TagAttestCreation, got %v", att.Type)
-	}
-
-	p, err := DecodePublic(pub)
-	if err != nil {
-		t.Fatalf("DecodePublic returned err: %v", err)
-	}
-	match, err := att.AttestedCreationInfo.Name.MatchesPublic(p)
-	if err != nil {
-		t.Fatalf("MatchesPublic returned err: %v", err)
-	}
-	if !match {
-		t.Error("Attested name does not match returned public key.")
-		t.Logf("Name: %v", att.AttestedCreationInfo.Name)
-		t.Logf("Public: %v", p)
-	}
-
-	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent), N: p.RSAParameters.Modulus}
-	hsh := crypto.SHA256.New()
-	hsh.Write(attestation)
-	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
-		t.Errorf("Signature failed to verify: %v", err)
-	}
-}
-
 func TestCombinedEndorsementTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
