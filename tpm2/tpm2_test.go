@@ -214,6 +214,39 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	}
 }
 
+func TestCreatePrimaryEx(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	keyHandle, pub1, creation, _, _, name, err := CreatePrimaryEx(rw, HandleOwner, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %v", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	pub, _, _, err := ReadPublic(rw, keyHandle)
+	if err != nil {
+		t.Fatalf("ReadPublic failed: %s", err)
+	}
+	pub2, err := pub.Encode()
+	if err != nil {
+		t.Fatalf("Failed to encode public: %v", err)
+	}
+
+	if !bytes.Equal(pub1, pub2) {
+		t.Error("Mismatch between public returned from CreatePrimaryEx() & ReadPublic()")
+		t.Logf("CreatePrimaryEx: %v", pub1)
+		t.Logf("ReadPublic:      %v", pub2)
+	}
+
+	if _, err := decodeName(bytes.NewBuffer(name)); err != nil {
+		t.Errorf("Failed to decode name: %v", err)
+	}
+	if _, err := DecodeCreationData(creation); err != nil {
+		t.Fatalf("DecodeCreationData() returned err: %v", err)
+	}
+}
+
 func TestCombinedContextTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
