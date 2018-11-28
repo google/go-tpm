@@ -154,7 +154,7 @@ func TestDecodeCreatePrimary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, err = decodeCreatePrimary(testRespBytes[10:]); err != nil {
+	if _, _, _, _, _, _, err = decodeCreatePrimary(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
