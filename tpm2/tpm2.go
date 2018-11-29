@@ -1173,8 +1173,7 @@ func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qua
 
 // CertifyCreation generates a signature of a newly-created &
 // loaded TPM object, using signer as the signing key.
-func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, sigScheme tpmtSigScheme, creationTicket *Ticket) (
-	attestation, signature []byte, err error) {
+func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, sigScheme tpmtSigScheme, creationTicket *Ticket) (attestation, signature []byte, err error) {
 	cmd, err := encodeCertifyCreation(objectAuth, object, signer, qualifyingData, creationHash, sigScheme, creationTicket)
 	if err != nil {
 		return nil, nil, err
