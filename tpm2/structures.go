@@ -801,11 +801,6 @@ type Ticket struct {
 	Digest    []byte
 }
 
-// Encode represents the Ticket into TPM wire format.
-func (t Ticket) Encode() ([]byte, error) {
-	return tpmutil.Pack(t.Type, t.Hierarchy, t.Digest)
-}
-
 func decodeTicket(in *bytes.Buffer) (*Ticket, error) {
 	var t Ticket
 	if err := tpmutil.UnpackBuf(in, &t.Type, &t.Hierarchy, &t.Digest); err != nil {

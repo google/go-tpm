@@ -477,7 +477,6 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte
 	return decodeReadPublic(resp)
 }
 
-
 func decodeCreate(in []byte) (handle tpmutil.Handle, private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
 	buf := bytes.NewBuffer(in)
 
@@ -1150,6 +1149,40 @@ func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmu
 		return nil, nil, err
 	}
 	resp, err := runCommand(rw, TagSessions, cmdCertify, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeCertify(resp)
+}
+
+func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, scheme SigScheme, ticket *Ticket) ([]byte, error) {
+	handles, err := tpmutil.Pack(signer, object)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(HandlePasswordSession, objectAuth)
+	if err != nil {
+		return nil, err
+	}
+	s, err := scheme.encode()
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(qualifyingData, creationHash, tpmutil.RawBytes(s), ticket)
+	if err != nil {
+		return nil, err
+	}
+	return concat(handles, auth, params)
+}
+
+// CertifyCreation generates a signature of a newly-created &
+// loaded TPM object, using signer as the signing key.
+func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, sigScheme SigScheme, creationTicket *Ticket) (attestation, signature []byte, err error) {
+	cmd, err := encodeCertifyCreation(objectAuth, object, signer, qualifyingData, creationHash, sigScheme, creationTicket)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, cmdCertifyCreation, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}
