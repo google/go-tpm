@@ -1155,7 +1155,7 @@ func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmu
 	return decodeCertify(resp)
 }
 
-func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, ticket *Ticket) ([]byte, error) {
+func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, scheme tpmtSigScheme, ticket *Ticket) ([]byte, error) {
 	handles, err := tpmutil.Pack(signer, object)
 	if err != nil {
 		return nil, err
@@ -1164,12 +1164,7 @@ func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qua
 	if err != nil {
 		return nil, err
 	}
-	scheme := tpmtSigScheme{AlgRSASSA, AlgSHA256}
-	tk, err := ticket.Encode()
-	if err != nil {
-		return nil, err
-	}
-	params, err := tpmutil.Pack(qualifyingData, creationHash, scheme, tpmutil.RawBytes(tk))
+	params, err := tpmutil.Pack(qualifyingData, creationHash, scheme, ticket)
 	if err != nil {
 		return nil, err
 	}
@@ -1177,10 +1172,10 @@ func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qua
 }
 
 // CertifyCreation generates a signature of a newly-created &
-// loaded TPM object with a signing key signer. Returned values
-// are: attestation data (TPMS_ATTEST), signature, and an error.
-func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, creationTicket *Ticket) ([]byte, []byte, error) {
-	cmd, err := encodeCertifyCreation(objectAuth, object, signer, qualifyingData, creationHash, creationTicket)
+// loaded TPM object, using signer as the signing key.
+func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, sigScheme tpmtSigScheme, creationTicket *Ticket) (
+	attestation, signature []byte, err error) {
+	cmd, err := encodeCertifyCreation(objectAuth, object, signer, qualifyingData, creationHash, sigScheme, creationTicket)
 	if err != nil {
 		return nil, nil, err
 	}

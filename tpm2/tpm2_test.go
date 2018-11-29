@@ -884,8 +884,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	params := Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA256,
-		Attributes: FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin | FlagRestricted | FlagSign | FlagNoDA | FlagUserWithAuth,
-		AuthPolicy: nil,
+		Attributes: FlagSignerDefault | FlagNoDA,
 		RSAParameters: &RSAParams{
 			Sign: &SigScheme{
 				Alg:  AlgRSASSA,
@@ -897,27 +896,27 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection, emptyPassword, emptyPassword, params)
 	if err != nil {
-		t.Fatalf("CreatePrimary 2 failed: %s", err)
+		t.Fatalf("CreatePrimaryEx failed: %s", err)
 	}
 	defer FlushContext(rw, keyHandle)
-	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, tix)
+	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, tpmtSigScheme{AlgRSASSA, AlgSHA256}, tix)
 	if err != nil {
 		t.Fatalf("CertifyCreation failed: %s", err)
 	}
 	att, err := DecodeAttestationData(attestation)
 	if err != nil {
-		t.Fatalf("DecodeAttestationData(%v) returned error: %v", attestation, err)
+		t.Fatalf("DecodeAttestationData(%v) failed: %v", attestation, err)
 	}
 	if att.Type != TagAttestCreation {
-		t.Errorf("Expected attestation structure to be of type TagAttestCreation, got %v", att.Type)
+		t.Errorf("Got att.Type = %v, want TagAttestCreation", att.Type)
 	}
 	p, err := DecodePublic(pub)
 	if err != nil {
-		t.Fatalf("DecodePublic returned err: %v", err)
+		t.Fatalf("DecodePublic failed: %v", err)
 	}
 	match, err := att.AttestedCreationInfo.Name.MatchesPublic(p)
 	if err != nil {
-		t.Fatalf("MatchesPublic returned err: %v", err)
+		t.Fatalf("MatchesPublic failed: %v", err)
 	}
 	if !match {
 		t.Error("Attested name does not match returned public key.")
@@ -928,6 +927,6 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	hsh := crypto.SHA256.New()
 	hsh.Write(attestation)
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
-		t.Errorf("Signature failed to verify: %v", err)
+		t.Errorf("VerifyPKCS1v15 failed: %v", err)
 	}
 }
