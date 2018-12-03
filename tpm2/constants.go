@@ -273,39 +273,3 @@ var hashConstructors = map[Algorithm]func() hash.Hash{
 	AlgSHA384: sha512.New384,
 	AlgSHA512: sha512.New,
 }
-
-// NV attributes
-const (
-	NVAttrPPWrite = 1 << iota
-	NVAttrOwnerWrite
-	NVAttrAuthWrite
-	NVAttrPolicyWrite
-	_
-	_
-	_
-	_
-	_
-	_
-	NVAttrPolicyDelete
-	NVAttrWriteLocked
-	NVAttrWriteAll
-	NVAttrWriteDefine
-	NVAttrWriteSTClear
-	NVAttrGlobalLock
-	NVAttrPPRead
-	NVAttrOwnerRead
-	NVAttrAuthRead
-	NVAttrPolicyRead
-	_
-	_
-	_
-	_
-	_
-	NVAttrNoDA
-	NVAttrOrderly
-	NVAttrClearSTClear
-	NVAttrReadLocked
-	NVAttrWritten
-	NVAttrPlatformCreate
-	NVAttrReadSTClear
-)
