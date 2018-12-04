@@ -228,6 +228,22 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 			algs = append(algs, alg)
 		}
 		return algs, moreData > 0, nil
+	case CapabilityTPMProperties:
+		var numAlgs uint32
+		if err := tpmutil.UnpackBuf(buf, &numAlgs); err != nil {
+			return nil, false, fmt.Errorf("could not unpack fixed properties count: %v", err)
+		}
+
+		var props []interface{}
+		for i := 0; i < int(numAlgs); i++ {
+			var prop TaggedProperty
+			if err := tpmutil.UnpackBuf(buf, &prop); err != nil {
+				return nil, false, fmt.Errorf("could not unpack tagged property: %v", err)
+			}
+			props = append(props, prop)
+		}
+		return props, moreData > 0, nil
+
 	default:
 		return nil, false, fmt.Errorf("unsupported capability %v", capReported)
 	}
@@ -992,24 +1008,55 @@ func decodeNVRead(in []byte) ([]byte, error) {
 	return data, nil
 }
 
-func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uint16) ([]byte, error) {
-	ha, err := tpmutil.Pack(handle, handle)
+func encodeNVRead(nvIndex, authHandle tpmutil.Handle, password string, offset, dataSize uint16) ([]byte, error) {
+	// TPMI_RH_NV_AUTH value is set to the nvIndex value, when the access
+	// is not being authorized by the platform/owner handle.
+	if authHandle != HandleOwner && authHandle != HandlePlatform {
+		authHandle = nvIndex
+	}
+
+	handles, err := tpmutil.Pack(authHandle, nvIndex)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(HandlePasswordSession, authString)
+
+	auth, err := encodeAuthArea(HandlePasswordSession, password)
 	if err != nil {
 		return nil, err
 	}
+
 	params, err := tpmutil.Pack(dataSize, offset)
 	if err != nil {
 		return nil, err
 	}
-	return concat(ha, auth, params)
+
+	return concat(handles, auth, params)
 }
 
 // NVRead reads a full data blob from an NV index.
 func NVRead(rw io.ReadWriter, index tpmutil.Handle) ([]byte, error) {
+	return NVReadEx(rw, index, 0, "", 0)
+}
+
+// NVReadEx reads a full data blob from an NV index, using the given
+// authorization handle. NVRead commands are done in blocks of blockSize,
+// which defaults to TPM_PT_NV_BUFFER_MAX.
+func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password string, blockSize int) ([]byte, error) {
+	if blockSize == 0 {
+		readBuff, _, err := GetCapability(rw, CapabilityTPMProperties, 1, 0x100+44 /* TPM_PT_NV_BUFFER_MAX */)
+		if err != nil {
+			return nil, err
+		}
+		if len(readBuff) != 1 {
+			return nil, fmt.Errorf("could not determine NVRAM read/write buffer size")
+		}
+		rb, isTaggedProp := readBuff[0].(TaggedProperty)
+		if !isTaggedProp {
+			return nil, fmt.Errorf("GetCapability returned unexpected type: %t", readBuff[0])
+		}
+		blockSize = int(rb.Value)
+	}
+
 	// Read public area to determine data size.
 	resp, err := runCommand(rw, TagNoSessions, cmdReadPublicNV, index)
 	if err != nil {
@@ -1020,16 +1067,31 @@ func NVRead(rw io.ReadWriter, index tpmutil.Handle) ([]byte, error) {
 		return nil, fmt.Errorf("decoding NV_ReadPublic response: %v", err)
 	}
 
-	// Read pub.DataSize of actual data.
-	cmd, err := encodeNVRead(index, "", 0, pub.DataSize)
-	if err != nil {
-		return nil, fmt.Errorf("building NV_Read command: %v", err)
+	// Read the NVRAM area in blocks.
+	var cursor uint16
+	outBuff := make([]byte, int(pub.DataSize))
+	for cursor < pub.DataSize {
+		readSize := uint16(blockSize)
+		if readSize > (pub.DataSize - cursor) {
+			readSize = pub.DataSize - cursor
+		}
+
+		cmd, err := encodeNVRead(index, authHandle, password, cursor, readSize)
+		if err != nil {
+			return nil, fmt.Errorf("building NV_Read command: %v", err)
+		}
+		resp, err = runCommand(rw, TagSessions, cmdReadNV, tpmutil.RawBytes(cmd))
+		if err != nil {
+			return nil, fmt.Errorf("running NV_Read command (cursor=%d,size=%d): %v", cursor, readSize, err)
+		}
+		data, err := decodeNVRead(resp)
+		if err != nil {
+			return nil, fmt.Errorf("decoding NV_Read command: %v", err)
+		}
+		copy(outBuff[cursor:], data[:readSize])
+		cursor += readSize
 	}
-	resp, err = runCommand(rw, TagSessions, cmdReadNV, tpmutil.RawBytes(cmd))
-	if err != nil {
-		return nil, fmt.Errorf("running NV_Read command: %v", err)
-	}
-	return decodeNVRead(resp)
+	return outBuff, nil
 }
 
 // Hash computes a hash of data in buf using the TPM.

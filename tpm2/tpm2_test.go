@@ -133,6 +133,7 @@ func TestGetCapability(t *testing.T) {
 	}{
 		{CapabilityHandles, 1, 0x80000000, tpmutil.Handle(0)},
 		{CapabilityAlgs, 1, 0, AlgorithmDescription{}},
+		{CapabilityTPMProperties, 1, 0x100 + 44, TaggedProperty{}},
 	} {
 		l, _, err := GetCapability(rw, tt.capa, tt.count, tt.property)
 		if err != nil {
@@ -928,5 +929,16 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	hsh.Write(attestation)
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
 		t.Errorf("VerifyPKCS1v15 failed: %v", err)
+	}
+}
+
+func TestNVRead(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	// Read the NVCert, which should be present on any real TPM.
+	_, err := NVRead(rw, 0x1c00002)
+	if err != nil {
+		t.Fatalf("NVRead() failed: %v", err)
 	}
 }
