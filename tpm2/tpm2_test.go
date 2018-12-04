@@ -930,3 +930,33 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Errorf("VerifyPKCS1v15 failed: %v", err)
 	}
 }
+
+func TestNVWrite(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	var (
+		idx  tpmutil.Handle = 0x1500000
+		data                = []byte("testdata")
+		attr uint32         = 0x20002 // TODO: change to named attributes like NVAttrOwnerWrite|NVAttrOwnerRead
+	)
+
+	// Define space in NV storage and clean up afterwards or subsequent runs will fail.
+	if err := NVDefineSpace(rw,
+		HandleOwner,
+		idx,
+		emptyPassword,
+		emptyPassword,
+		nil,
+		attr,
+		uint16(len(data)),
+	); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer NVUndefineSpace(rw, emptyPassword, HandleOwner, idx)
+
+	// Write the data
+	if err := NVWrite(rw, HandleOwner, idx, emptyPassword, data, 0); err != nil {
+		t.Fatalf("NVWrite failed: %v", err)
+	}
+}

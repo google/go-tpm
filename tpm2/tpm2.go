@@ -973,6 +973,32 @@ func NVDefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle, ownerAuth, au
 	return err
 }
 
+func encodeWriteNV(owner, handle tpmutil.Handle, authString string, data []byte, offset uint16) ([]byte, error) {
+	auth, err := encodeAuthArea(HandlePasswordSession, authString)
+	if err != nil {
+		return nil, err
+	}
+	out, err := tpmutil.Pack(owner, handle)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := tpmutil.Pack(data, offset)
+	if err != nil {
+		return nil, err
+	}
+	return concat(out, auth, buf)
+}
+
+// NVWrite writes data into the TPM's NV storage.
+func NVWrite(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string, data []byte, offset uint16) error {
+	cmd, err := encodeWriteNV(owner, handle, authString, data, offset)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdWriteNV, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func decodeNVReadPublic(in []byte) (NVPublic, error) {
 	var pub NVPublic
 	var buf []byte
