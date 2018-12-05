@@ -943,7 +943,7 @@ func NVUndefineSpace(rw io.ReadWriter, ownerAuth string, owner, index tpmutil.Ha
 	return err
 }
 
-func encodeDefineSpace(owner, handle tpmutil.Handle, ownerAuth, authVal string, attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
+func encodeDefineSpace(owner, handle tpmutil.Handle, ownerAuth, authVal string, attributes NVAttr, policy []byte, dataSize uint16) ([]byte, error) {
 	ha, err := tpmutil.Pack(owner)
 	if err != nil {
 		return nil, err
@@ -964,7 +964,7 @@ func encodeDefineSpace(owner, handle tpmutil.Handle, ownerAuth, authVal string, 
 }
 
 // NVDefineSpace creates an index in TPM's NV storage.
-func NVDefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle, ownerAuth, authString string, policy []byte, attributes uint32, dataSize uint16) error {
+func NVDefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle, ownerAuth, authString string, policy []byte, attributes NVAttr, dataSize uint16) error {
 	cmd, err := encodeDefineSpace(owner, handle, ownerAuth, authString, attributes, policy, dataSize)
 	if err != nil {
 		return err
@@ -1009,6 +1009,16 @@ func decodeNVReadPublic(in []byte) (NVPublic, error) {
 	return pub, err
 }
 
+// NVReadPublic reads the public data of an NV index
+func NVReadPublic(rw io.ReadWriter, index tpmutil.Handle) (NVPublic, error) {
+	// Read public area to determine data size.
+	resp, err := runCommand(rw, TagNoSessions, cmdReadPublicNV, index)
+	if err != nil {
+		return NVPublic{}, err
+	}
+	return decodeNVReadPublic(resp)
+}
+
 func decodeNVRead(in []byte) ([]byte, error) {
 	var sessionAttributes uint32
 	var data []byte
@@ -1018,8 +1028,8 @@ func decodeNVRead(in []byte) ([]byte, error) {
 	return data, nil
 }
 
-func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uint16) ([]byte, error) {
-	ha, err := tpmutil.Pack(handle, handle)
+func encodeNVRead(owner, handle tpmutil.Handle, authString string, offset, dataSize uint16) ([]byte, error) {
+	ha, err := tpmutil.Pack(owner, handle)
 	if err != nil {
 		return nil, err
 	}
@@ -1035,27 +1045,27 @@ func encodeNVRead(handle tpmutil.Handle, authString string, offset, dataSize uin
 }
 
 // NVRead reads a full data blob from an NV index.
-func NVRead(rw io.ReadWriter, index tpmutil.Handle) ([]byte, error) {
-	// Read public area to determine data size.
-	resp, err := runCommand(rw, TagNoSessions, cmdReadPublicNV, index)
+func NVRead(rw io.ReadWriter, owner, index tpmutil.Handle, authString string, offset, size uint16) ([]byte, error) {
+	cmd, err := encodeNVRead(owner, index, authString, offset, size)
 	if err != nil {
-		return nil, fmt.Errorf("running NV_ReadPublic command: %v", err)
+		return nil, err
 	}
-	pub, err := decodeNVReadPublic(resp)
+	resp, err := runCommand(rw, TagSessions, cmdReadNV, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeNVRead(resp)
+}
+
+// NVReadAll is a convenience function that reads a full data blob from an NV index.
+func NVReadAll(rw io.ReadWriter, owner, index tpmutil.Handle, authString string) ([]byte, error) {
+	// Read public area to determine data size.
+	pub, err := NVReadPublic(rw, index)
 	if err != nil {
 		return nil, fmt.Errorf("decoding NV_ReadPublic response: %v", err)
 	}
-
-	// Read pub.DataSize of actual data.
-	cmd, err := encodeNVRead(index, "", 0, pub.DataSize)
-	if err != nil {
-		return nil, fmt.Errorf("building NV_Read command: %v", err)
-	}
-	resp, err = runCommand(rw, TagSessions, cmdReadNV, tpmutil.RawBytes(cmd))
-	if err != nil {
-		return nil, fmt.Errorf("running NV_Read command: %v", err)
-	}
-	return decodeNVRead(resp)
+	// Read pub.DataSize of actual data from offset 0.
+	return NVRead(rw, owner, index, authString, 0, pub.DataSize)
 }
 
 // Hash computes a hash of data in buf using the TPM.

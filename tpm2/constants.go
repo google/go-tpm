@@ -273,3 +273,42 @@ var hashConstructors = map[Algorithm]func() hash.Hash{
 	AlgSHA384: sha512.New384,
 	AlgSHA512: sha512.New,
 }
+
+// NVAttr is a bitmask used in Attributes field of NV indexes. Individual
+// flags should be OR-ed to form a full mask.
+type NVAttr uint32
+
+const (
+	AttrPPWrite NVAttr = 1 << iota
+	AttrOwnerWrite
+	AttrAuthWrite
+	AttrPolicyWrite
+	_
+	_
+	_
+	_
+	_
+	_
+	AttrPolicyDelete
+	AttrWriteLocked
+	AttrWriteAll
+	AttrWriteDefine
+	AttrWriteSTClear
+	AttrGlobalLock
+	AttrPPRead
+	AttrOwnerRead
+	AttrAuthRead
+	AttrPolicyRead
+	_
+	_
+	_
+	_
+	_
+	AttrNoDA
+	AttrOrderly
+	AttrClearSTClear
+	AttrReadLocked
+	AttrWritten
+	AttrPlatformCreate
+	AttrReadSTClear
+)

@@ -931,14 +931,14 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 }
 
-func TestNVWrite(t *testing.T) {
+func TestNVReadWrite(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
 	var (
 		idx  tpmutil.Handle = 0x1500000
 		data                = []byte("testdata")
-		attr uint32         = 0x20002 // TODO: change to named attributes like NVAttrOwnerWrite|NVAttrOwnerRead
+		attr                = AttrOwnerWrite | AttrOwnerRead
 	)
 
 	// Define space in NV storage and clean up afterwards or subsequent runs will fail.
@@ -958,5 +958,34 @@ func TestNVWrite(t *testing.T) {
 	// Write the data
 	if err := NVWrite(rw, HandleOwner, idx, emptyPassword, data, 0); err != nil {
 		t.Fatalf("NVWrite failed: %v", err)
+	}
+
+	// Make sure the public area of the index can be read
+	pub, err := NVReadPublic(rw, idx)
+	if err != nil {
+		t.Fatalf("NVReadPublic failed: %v", err)
+	}
+	if int(pub.DataSize) != len(data) {
+		t.Fatalf("public NV data size doesn't match expected %d, got %d", pub.DataSize, len(data))
+	}
+
+	// Read all of the data with NVRead
+	outdata, err := NVRead(rw, HandleOwner, idx, emptyPassword, 0, pub.DataSize)
+	if err != nil {
+		t.Fatalf("NVRead failed: %v", err)
+	}
+
+	if !bytes.Equal(data, outdata) {
+		t.Fatal("data read from NV index does not match expected")
+	}
+
+	// Read it all again using NVReadAll
+	outdata, err = NVReadAll(rw, HandleOwner, idx, emptyPassword)
+	if err != nil {
+		t.Fatalf("NVReadAll failed: %v", err)
+	}
+
+	if !bytes.Equal(data, outdata) {
+		t.Fatal("data read from NV index does not match expected")
 	}
 }
