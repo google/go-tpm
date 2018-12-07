@@ -937,12 +937,15 @@ func TestNVRead(t *testing.T) {
 	defer rw.Close()
 
 	// Read the NVCert, which should be present on any real TPM.
-	_, err := NVRead(rw, 0x1c00002)
+	d, err := NVRead(rw, 0x1c00002)
 	if err != nil {
 		t.Fatalf("NVRead() failed: %v", err)
-  }
+	}
+	if len(d) == 0 {
+		t.Error("NVRead() returned no data, expected something")
+	}
 }
-    
+
 func TestNVWrite(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
