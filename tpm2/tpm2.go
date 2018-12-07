@@ -1067,13 +1067,13 @@ func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password strin
 	if blockSize == 0 {
 		readBuff, _, err := GetCapability(rw, CapabilityTPMProperties, 1, uint32(NVMaxBufferSize))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetCapability for TPM_PT_NV_BUFFER_MAX failed: %v", err)
 		}
 		if len(readBuff) != 1 {
 			return nil, fmt.Errorf("could not determine NVRAM read/write buffer size")
 		}
-		rb, isTaggedProp := readBuff[0].(TaggedProperty)
-		if !isTaggedProp {
+		rb, ok := readBuff[0].(TaggedProperty)
+		if !ok {
 			return nil, fmt.Errorf("GetCapability returned unexpected type: %t, expected TaggedProperty", readBuff[0])
 		}
 		blockSize = int(rb.Value)
