@@ -619,6 +619,32 @@ func PolicyPassword(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
+func encodePolicySecret(entityHandle tpmutil.Handle, entityPassword string, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte) ([]byte, error) {
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(entityPassword)})
+	if err != nil {
+		return nil, err
+	}
+	handles, err := tpmutil.Pack(entityHandle, policyHandle)
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(policyNonce, cpHash, policyRef, int32(0))
+	if err != nil {
+		return nil, err
+	}
+	return concat(handles, auth, params)
+}
+
+// PolicySecret sets a secret authorization requirement on the provided entity.
+func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityPassword string, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte) error {
+	cmd, err := encodePolicySecret(entityHandle, entityPassword, policyHandle, policyNonce, cpHash, policyRef)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdPolicySecret, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func encodePolicyPCR(session tpmutil.Handle, expectedDigest []byte, sel PCRSelection) ([]byte, error) {
 	params, err := tpmutil.Pack(session, expectedDigest)
 	if err != nil {
@@ -777,20 +803,20 @@ func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, owner
 	return decodeQuote(resp)
 }
 
-func encodeActivateCredential(activeHandle tpmutil.Handle, keyHandle tpmutil.Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
+func encodeActivateCredential(auth []AuthCommand, activeHandle tpmutil.Handle, keyHandle tpmutil.Handle, credBlob, secret []byte) ([]byte, error) {
 	ha, err := tpmutil.Pack(activeHandle, keyHandle)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(activePassword)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(protectorPassword)})
+	a, err := encodeAuthArea(auth...)
 	if err != nil {
 		return nil, err
 	}
-	params, err := tpmutil.Pack(credBlob, secret)
+	params, err := concat(credBlob, secret)
 	if err != nil {
 		return nil, err
 	}
-	return concat(ha, auth, params)
+	return concat(ha, a, params)
 }
 
 func decodeActivateCredential(in []byte) ([]byte, error) {
@@ -806,7 +832,20 @@ func decodeActivateCredential(in []byte) ([]byte, error) {
 // ActivateCredential associates an object with a credential.
 // Returns decrypted certificate information.
 func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle tpmutil.Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
-	cmd, err := encodeActivateCredential(activeHandle, keyHandle, activePassword, protectorPassword, credBlob, secret)
+	return ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(activePassword)},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(protectorPassword)},
+	}, activeHandle, keyHandle, credBlob, secret)
+}
+
+// ActivateCredentialUsingAuth associates an object with a credential, using the
+// given set of authorizations. Returns decrypted certificate information.
+func ActivateCredentialUsingAuth(rw io.ReadWriter, auth []AuthCommand, activeHandle, keyHandle tpmutil.Handle, credBlob, secret []byte) ([]byte, error) {
+	if len(auth) != 2 {
+		return nil, fmt.Errorf("len(auth) = %d, want 2", len(auth))
+	}
+
+	cmd, err := encodeActivateCredential(auth, activeHandle, keyHandle, credBlob, secret)
 	if err != nil {
 		return nil, err
 	}

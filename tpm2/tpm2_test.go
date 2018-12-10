@@ -960,3 +960,18 @@ func TestNVWrite(t *testing.T) {
 		t.Fatalf("NVWrite failed: %v", err)
 	}
 }
+
+func TestPolicySecret(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Fatalf("StartAuthSession() failed: %v", err)
+	}
+	defer FlushContext(rw, sessHandle)
+
+	if err := PolicySecret(rw, HandleEndorsement, "", sessHandle, nil, nil, nil); err != nil {
+		t.Fatalf("PolicySecret() failed: %v", err)
+	}
+}
