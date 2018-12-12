@@ -133,7 +133,7 @@ func TestGetCapability(t *testing.T) {
 	}{
 		{CapabilityHandles, 1, 0x80000000, tpmutil.Handle(0)},
 		{CapabilityAlgs, 1, 0, AlgorithmDescription{}},
-		{CapabilityTPMProperties, 1, 0x100 + 44, TaggedProperty{}},
+		{CapabilityTPMProperties, 1, uint32(NVMaxBufferSize), TaggedProperty{}},
 	} {
 		l, _, err := GetCapability(rw, tt.capa, tt.count, tt.property)
 		if err != nil {
