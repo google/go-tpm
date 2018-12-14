@@ -273,7 +273,7 @@ func encodePCREvent(pcr tpmutil.Handle, eventData []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("")})
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: EmptyAuth})
 	if err != nil {
 		return nil, err
 	}
