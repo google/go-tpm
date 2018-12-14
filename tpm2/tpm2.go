@@ -1074,7 +1074,7 @@ func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password strin
 		}
 		rb, ok := readBuff[0].(TaggedProperty)
 		if !ok {
-			return nil, fmt.Errorf("GetCapability returned unexpected type: %t, expected TaggedProperty", readBuff[0])
+			return nil, fmt.Errorf("GetCapability returned unexpected type: %T, expected TaggedProperty", readBuff[0])
 		}
 		blockSize = int(rb.Value)
 	}
