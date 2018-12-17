@@ -203,15 +203,37 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	credential := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
 	credBlob, encryptedSecret0, err := MakeCredential(rw, parentHandle, credential, name)
 	if err != nil {
-		t.Fatalf("MakeCredential failed: %s", err)
+		t.Fatalf("MakeCredential failed: %v", err)
 	}
 
 	recoveredCredential1, err := ActivateCredential(rw, keyHandle, parentHandle, defaultPassword, emptyPassword, credBlob, encryptedSecret0)
 	if err != nil {
-		t.Fatalf("ActivateCredential failed: %s", err)
+		t.Fatalf("ActivateCredential failed: %v", err)
 	}
 	if bytes.Compare(credential, recoveredCredential1) != 0 {
 		t.Fatalf("Credential and recovered credential differ: got %v, want %v", recoveredCredential1, credential)
+	}
+
+	recoveredCredential2, err := ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(defaultPassword)},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
+	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
+	if err != nil {
+		t.Fatalf("ActivateCredentialWithAuth failed: %v", err)
+	}
+	if bytes.Compare(credential, recoveredCredential2) != 0 {
+		t.Fatalf("Credential and recovered credential differ: got %v, want %v", recoveredCredential2, credential)
+	}
+
+	_, err = ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("wrong password")},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
+	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
+	if err == nil {
+		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected authorization failure")
+	}
+	if err.Error() != "asa" {
+		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected authorization failure", err)
 	}
 }
 
