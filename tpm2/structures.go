@@ -808,3 +808,12 @@ func decodeTicket(in *bytes.Buffer) (*Ticket, error) {
 	}
 	return &t, nil
 }
+
+// AuthCommand represents a TPMS_AUTH_COMMAND. This structure encapsulates parameters
+// which authorize the use of a given handle or parameter.
+type AuthCommand struct {
+	Session    tpmutil.Handle
+	Nonce      []byte
+	Attributes SessionAttributes
+	Auth       []byte
+}

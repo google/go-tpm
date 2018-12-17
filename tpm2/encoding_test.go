@@ -303,7 +303,7 @@ func TestEncodeEvictControl(t *testing.T) {
 }
 
 func TestEncodeAuthArea(t *testing.T) {
-	pwAuth, err := encodeAuthArea(HandlePasswordSession, defaultPassword)
+	pwAuth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(defaultPassword)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +312,7 @@ func TestEncodeAuthArea(t *testing.T) {
 		t.Fatalf("got: %v, want: %v", pwAuth, want)
 	}
 
-	pwAuth, err = encodeAuthArea(HandlePasswordSession, "")
+	pwAuth, err = encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("")})
 	if err != nil {
 		t.Fatal(err)
 	}
