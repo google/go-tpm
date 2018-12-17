@@ -986,7 +986,7 @@ func TestPolicySecret(t *testing.T) {
 	}
 	defer FlushContext(rw, sessHandle)
 
-	if err := PolicySecret(rw, HandleEndorsement, "", sessHandle, nil, nil, nil); err != nil {
+	if _, err := PolicySecret(rw, HandleEndorsement, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, sessHandle, nil, nil, nil, 0); err != nil {
 		t.Fatalf("PolicySecret() failed: %v", err)
 	}
 }

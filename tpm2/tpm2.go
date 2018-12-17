@@ -1,4 +1,4 @@
-// Copyright (c) 2018, Google Inc. All rights reserved.
+	// Copyright (c) 2018, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -635,8 +635,8 @@ func PolicyPassword(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
-func encodePolicySecret(entityHandle tpmutil.Handle, entityPassword string, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte) ([]byte, error) {
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(entityPassword)})
+func encodePolicySecret(entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) ([]byte, error) {
+	auth, err := encodeAuthArea(entityAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -644,7 +644,7 @@ func encodePolicySecret(entityHandle tpmutil.Handle, entityPassword string, poli
 	if err != nil {
 		return nil, err
 	}
-	params, err := tpmutil.Pack(policyNonce, cpHash, policyRef, int32(0))
+	params, err := tpmutil.Pack(policyNonce, cpHash, policyRef, expiry)
 	if err != nil {
 		return nil, err
 	}
@@ -652,13 +652,20 @@ func encodePolicySecret(entityHandle tpmutil.Handle, entityPassword string, poli
 }
 
 // PolicySecret sets a secret authorization requirement on the provided entity.
-func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityPassword string, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte) error {
-	cmd, err := encodePolicySecret(entityHandle, entityPassword, policyHandle, policyNonce, cpHash, policyRef)
+func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) (*Ticket, error) {
+	cmd, err := encodePolicySecret(entityHandle, entityAuth, policyHandle, policyNonce, cpHash, policyRef, expiry)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = runCommand(rw, TagSessions, cmdPolicySecret, tpmutil.RawBytes(cmd))
-	return err
+	resp, err := runCommand(rw, TagSessions, cmdPolicySecret, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	tk, err := decodeTicket(bytes.NewBuffer(resp))
+	if err != nil {
+		return nil, fmt.Errorf("decoding ticket: %v", err)
+	}
+	return tk, nil
 }
 
 func encodePolicyPCR(session tpmutil.Handle, expectedDigest []byte, sel PCRSelection) ([]byte, error) {
@@ -855,7 +862,8 @@ func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle tpmutil.Handle
 }
 
 // ActivateCredentialUsingAuth associates an object with a credential, using the
-// given set of authorizations. Returns decrypted certificate information.
+// given set of authorizations. Two authorization must be provided.
+// Returns decrypted certificate information.
 func ActivateCredentialUsingAuth(rw io.ReadWriter, auth []AuthCommand, activeHandle, keyHandle tpmutil.Handle, credBlob, secret []byte) ([]byte, error) {
 	if len(auth) != 2 {
 		return nil, fmt.Errorf("len(auth) = %d, want 2", len(auth))
