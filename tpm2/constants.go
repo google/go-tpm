@@ -130,6 +130,14 @@ const (
 		FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
 )
 
+// TPMProp represents the index of a TPM property in a call to GetCapability().
+type TPMProp uint32
+
+// TPM Capability Properties.
+const (
+	NVMaxBufferSize TPMProp = 0x100 + 44
+)
+
 // Reserved Handles.
 const (
 	HandleOwner tpmutil.Handle = 0x40000001 + iota
