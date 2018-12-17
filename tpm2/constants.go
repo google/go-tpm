@@ -104,6 +104,9 @@ const (
 	AttrAudit
 )
 
+// EmptyAuth represents the empty authorization value.
+var EmptyAuth []byte
+
 // KeyProp is a bitmask used in Attributes field of key templates. Individual
 // flags should be OR-ed to form a full mask.
 type KeyProp uint32
@@ -125,6 +128,14 @@ const (
 		FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
 	FlagStorageDefault = FlagDecrypt | FlagRestricted | FlagFixedTPM |
 		FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
+)
+
+// TPMProp represents the index of a TPM property in a call to GetCapability().
+type TPMProp uint32
+
+// TPM Capability Properties.
+const (
+	NVMaxBufferSize TPMProp = 0x100 + 44
 )
 
 // Reserved Handles.
