@@ -230,10 +230,10 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
 	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
 	if err == nil {
-		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected authorization failure")
+		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected response status 0x98e (authorization failure)")
 	}
-	if err.Error() != "asa" {
-		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected authorization failure", err)
+	if err.Error() != "response status 0x98e" {
+		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected response status 0x98e (authorization failure)", err)
 	}
 }
 
