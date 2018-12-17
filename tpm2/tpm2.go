@@ -1,4 +1,4 @@
-	// Copyright (c) 2018, Google Inc. All rights reserved.
+// Copyright (c) 2018, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -835,7 +835,7 @@ func encodeActivateCredential(auth []AuthCommand, activeHandle tpmutil.Handle, k
 	if err != nil {
 		return nil, err
 	}
-	params, err := concat(credBlob, secret)
+	params, err := tpmutil.Pack(credBlob, secret)
 	if err != nil {
 		return nil, err
 	}
