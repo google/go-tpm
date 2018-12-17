@@ -237,28 +237,28 @@ const (
 	// CmdPolicySecret is a command code for TPM2_PolicySecret.
 	// It's exported for computing of default AuthPolicy value.
 	CmdPolicySecret     tpmutil.Command = 0x00000151
-	cmdCreate             tpmutil.Command = 0x00000153
-	cmdLoad               tpmutil.Command = 0x00000157
-	cmdQuote              tpmutil.Command = 0x00000158
-	cmdSign               tpmutil.Command = 0x0000015D
-	cmdUnseal             tpmutil.Command = 0x0000015E
-	cmdContextLoad        tpmutil.Command = 0x00000161
-	cmdContextSave        tpmutil.Command = 0x00000162
-	cmdFlushContext       tpmutil.Command = 0x00000165
-	cmdLoadExternal       tpmutil.Command = 0x00000167
-	cmdMakeCredential     tpmutil.Command = 0x00000168
-	cmdReadPublicNV       tpmutil.Command = 0x00000169
-	cmdReadPublic         tpmutil.Command = 0x00000173
-	cmdStartAuthSession   tpmutil.Command = 0x00000176
-	cmdGetCapability      tpmutil.Command = 0x0000017A
-	cmdGetRandom          tpmutil.Command = 0x0000017B
-	cmdHash               tpmutil.Command = 0x0000017D
-	cmdPCRRead            tpmutil.Command = 0x0000017E
-	cmdPolicyPCR          tpmutil.Command = 0x0000017F
-	cmdReadClock          tpmutil.Command = 0x00000181
-	cmdPCRExtend          tpmutil.Command = 0x00000182
-	cmdPolicyGetDigest    tpmutil.Command = 0x00000189
-	cmdPolicyPassword     tpmutil.Command = 0x0000018C
+	cmdCreate           tpmutil.Command = 0x00000153
+	cmdLoad             tpmutil.Command = 0x00000157
+	cmdQuote            tpmutil.Command = 0x00000158
+	cmdSign             tpmutil.Command = 0x0000015D
+	cmdUnseal           tpmutil.Command = 0x0000015E
+	cmdContextLoad      tpmutil.Command = 0x00000161
+	cmdContextSave      tpmutil.Command = 0x00000162
+	cmdFlushContext     tpmutil.Command = 0x00000165
+	cmdLoadExternal     tpmutil.Command = 0x00000167
+	cmdMakeCredential   tpmutil.Command = 0x00000168
+	cmdReadPublicNV     tpmutil.Command = 0x00000169
+	cmdReadPublic       tpmutil.Command = 0x00000173
+	cmdStartAuthSession tpmutil.Command = 0x00000176
+	cmdGetCapability    tpmutil.Command = 0x0000017A
+	cmdGetRandom        tpmutil.Command = 0x0000017B
+	cmdHash             tpmutil.Command = 0x0000017D
+	cmdPCRRead          tpmutil.Command = 0x0000017E
+	cmdPolicyPCR        tpmutil.Command = 0x0000017F
+	cmdReadClock        tpmutil.Command = 0x00000181
+	cmdPCRExtend        tpmutil.Command = 0x00000182
+	cmdPolicyGetDigest  tpmutil.Command = 0x00000189
+	cmdPolicyPassword   tpmutil.Command = 0x0000018C
 )
 
 // Regular TPM 2.0 devices use 24-bit mask (3 bytes) for PCR selection.
