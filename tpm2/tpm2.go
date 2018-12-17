@@ -657,7 +657,7 @@ func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth Auth
 	if err != nil {
 		return nil, err
 	}
-	resp, err := runCommand(rw, TagSessions, cmdPolicySecret, tpmutil.RawBytes(cmd))
+	resp, err := runCommand(rw, TagSessions, CmdPolicySecret, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, err
 	}
