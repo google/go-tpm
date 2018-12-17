@@ -661,11 +661,16 @@ func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth Auth
 	if err != nil {
 		return nil, err
 	}
-	tk, err := decodeTicket(bytes.NewBuffer(resp))
-	if err != nil {
-		return nil, fmt.Errorf("decoding ticket: %v", err)
+
+	// Tickets are only provided if expiry is set.
+	if expiry != 0 {
+		tk, err := decodeTicket(bytes.NewBuffer(resp))
+		if err != nil {
+			return nil, fmt.Errorf("decoding ticket: %v", err)
+		}
+		return tk, nil
 	}
-	return tk, nil
+	return nil, nil
 }
 
 func encodePolicyPCR(session tpmutil.Handle, expectedDigest []byte, sel PCRSelection) ([]byte, error) {
