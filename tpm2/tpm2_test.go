@@ -29,6 +29,7 @@ import (
 	"math/big"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -210,7 +211,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ActivateCredential failed: %v", err)
 	}
-	if bytes.Compare(credential, recoveredCredential1) != 0 {
+	if !bytes.Equal(credential, recoveredCredential1) {
 		t.Fatalf("Credential and recovered credential differ: got %v, want %v", recoveredCredential1, credential)
 	}
 
@@ -221,19 +222,29 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ActivateCredentialWithAuth failed: %v", err)
 	}
-	if bytes.Compare(credential, recoveredCredential2) != 0 {
-		t.Fatalf("Credential and recovered credential differ: got %v, want %v", recoveredCredential2, credential)
+	if !bytes.Equal(credential, recoveredCredential2) {
+		t.Errorf("Credential and recovered credential differ: got %v, want %v", recoveredCredential2, credential)
 	}
 
 	_, err = ActivateCredentialUsingAuth(rw, []AuthCommand{
-		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("wrong password")},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("incorrect password")},
 		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
 	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
 	if err == nil {
 		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected response status 0x98e (authorization failure)")
 	}
-	if err.Error() != "response status 0x98e" {
+	if !strings.Contains(err.Error(), "0x98e") {
 		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected response status 0x98e (authorization failure)", err)
+	}
+
+	_, err = ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
+	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
+	if err == nil {
+		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected response status 0x98e (authorization failure)")
+	}
+	if !strings.Contains(err.Error(), "len(auth) = 1, want 2") {
+		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected len(auth) = 1, want 2", err)
 	}
 }
 

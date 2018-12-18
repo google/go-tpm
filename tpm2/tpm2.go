@@ -652,6 +652,7 @@ func encodePolicySecret(entityHandle tpmutil.Handle, entityAuth AuthCommand, pol
 }
 
 // PolicySecret sets a secret authorization requirement on the provided entity.
+// If expiry is non-zero, the authorization is valid for expiry seconds.
 func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) (*Ticket, error) {
 	cmd, err := encodePolicySecret(entityHandle, entityAuth, policyHandle, policyNonce, cpHash, policyRef, expiry)
 	if err != nil {
