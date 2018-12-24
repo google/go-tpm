@@ -548,14 +548,14 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 	}
 
 	if pk != nil {
-		pubk, err := convertPubKey(pk)
+		pubKey, err := convertPubKey(pk)
 		if err != nil {
 			return nil, err
 		}
 
 		// We can't pack the pair of values directly, since the label is
 		// included directly as bytes, without any length.
-		fullpkb, err := tpmutil.Pack(pubk)
+		fullpkb, err := tpmutil.Pack(pubKey)
 		if err != nil {
 			return nil, err
 		}

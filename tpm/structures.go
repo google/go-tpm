@@ -300,10 +300,10 @@ func convertPubKey(pk crypto.PublicKey) (*pubKey, error) {
 		SigScheme: ssRSASaPKCS1v15SHA1,
 		Params:     rsakpb,
 	}
-	pubk := pubKey{
+	pubKey := pubKey{
 		AlgorithmParams: kp,
 		Key:            pkRSA.N.Bytes(),
 	}
 
-	return &pubk, nil
+	return &pubKey, nil
 }
