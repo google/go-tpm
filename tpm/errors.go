@@ -108,7 +108,7 @@ const (
 	errNoOperator
 	errResourceMissing
 	errDelegateLock
-	errDelegateFamliy
+	errDelegateFamily
 	errDelegateAdmin
 	errTransportNotExclusive
 	errOwnerControl
@@ -210,7 +210,7 @@ var tpmErrMsgs = map[tpmError]string{
 	errNoOperator:            "no operator AuthData value is set",
 	errResourceMissing:       "the resource pointed to by context is not loaded",
 	errDelegateLock:          "the delegate administration is locked",
-	errDelegateFamliy:        "attempt to manage a family other than the delegated family",
+	errDelegateFamily:        "attempt to manage a family other than the delegated family",
 	errDelegateAdmin:         "delegation table management not enabled",
 	errTransportNotExclusive: "there was a command executed outside of an exclusive transport session",
 	errOwnerControl:          "attempt to context save a owner evict controlled key",
