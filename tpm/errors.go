@@ -118,7 +118,7 @@ const (
 	errDAAIssuerSettings
 	errDAASettings
 	errDAAState
-	errDAAIssuerVailidity
+	errDAAIssuerValidity
 	errDAAWrongW
 	errBadHandle
 	errBadDelegate
@@ -220,7 +220,7 @@ var tpmErrMsgs = map[tpmError]string{
 	errDAAIssuerSettings:     "the consistency check on DAA_issuerSettings has failed",
 	errDAASettings:           "the consistency check on DAA_tpmSpecific has failed",
 	errDAAState:              "the atomic process indicated by the submitted DAA command is not the expected process",
-	errDAAIssuerVailidity:    "the issuer's validity check has detected an inconsistency",
+	errDAAIssuerValidity:    "the issuer's validity check has detected an inconsistency",
 	errDAAWrongW:             "the consistency check on w has failed",
 	errBadHandle:             "the handle is incorrect",
 	errBadDelegate:           "delegation is not correct",
