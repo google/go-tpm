@@ -43,7 +43,7 @@ const (
 	tpmSessionEnd     uint32 = 20
 )
 
-// Config holds configuration parameters for connecting to the simluator.
+// Config holds configuration parameters for connecting to the simulator.
 type Config struct {
 	// Addresses of the command and platform handlers.
 	//
@@ -150,7 +150,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 
 	var rc uint32
 	if err := binary.Read(c.conn, binary.BigEndian, &rc); err != nil {
-		return 0, fmt.Errorf("read MS simualtor return code: %v", err)
+		return 0, fmt.Errorf("read MS simulator return code: %v", err)
 	}
 	if rc != 0 {
 		return 0, fmt.Errorf("MS simulator returned invalid return code: 0x%x", rc)
