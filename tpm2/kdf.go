@@ -50,7 +50,7 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 			return nil, fmt.Errorf("pack counter: %v", err)
 		}
 		mac.Write([]byte(label))
-		mac.Write([]byte{0}) // Terminating null chacter for C-string.
+		mac.Write([]byte{0}) // Terminating null character for C-string.
 		mac.Write(contextU)
 		mac.Write(contextV)
 		if err := binary.Write(mac, binary.BigEndian, uint32(bits)); err != nil {
