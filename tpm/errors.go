@@ -82,7 +82,7 @@ const (
 	errNoWrapTransport
 	errAuditFailUnsuccessful
 	errAuditFailSuccessful
-	errNotResetable
+	errNotResettable
 	errNotLocal
 	errBadType
 	errInvalidResource
@@ -184,7 +184,7 @@ var tpmErrMsgs = map[tpmError]string{
 	errNoWrapTransport:       "the TPM does not allow for wrapped transport sessions",
 	errAuditFailUnsuccessful: "TPM audit construction failed and the underlying command was returning a failure code also",
 	errAuditFailSuccessful:   "TPM audit construction failed and the underlying command was returning success",
-	errNotResetable:          "attempt to reset a PCR register that does not have the resettable attribute",
+	errNotResettable:          "attempt to reset a PCR register that does not have the resettable attribute",
 	errNotLocal:              "attempt to reset a PCR register that requires locality and locality modifier not part of command transport",
 	errBadType:               "make identity blob not properly typed",
 	errInvalidResource:       "when saving context identified resource type does not match actual resource",
