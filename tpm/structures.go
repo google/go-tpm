@@ -69,7 +69,7 @@ type pcrInfo struct {
 
 // A capVersionInfo contains information about the TPM itself. Note that this
 // is deserialized specially, since it has a variable-length byte array but no
-// length. It is preceeded with a length in the response to the Quote2 command.
+// length. It is preceded with a length in the response to the Quote2 command.
 type capVersionInfo struct {
 	CapVersionFixed capVersionInfoFixed
 	VendorSpecific  []byte
