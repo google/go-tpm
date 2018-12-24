@@ -157,7 +157,7 @@ const (
 // Capability identifies some TPM property or state type.
 type Capability uint32
 
-// TPM Capabilies.
+// TPM Capabilities.
 const (
 	CapabilityAlgs Capability = iota
 	CapabilityHandles
