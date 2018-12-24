@@ -128,7 +128,7 @@ type Conn struct {
 }
 
 // Read a response from the simulator. If the response is longer than the provided
-// buffer, the remainer will be cached for the next read.
+// buffer, the remainder will be cached for the next read.
 func (c *Conn) Read(b []byte) (int, error) {
 	if c.prevRead != nil && c.prevRead.Len() > 0 {
 		return c.prevRead.Read(b)
