@@ -501,12 +501,12 @@ func TestTakeOwnership(t *testing.T) {
 	srkAuth := getAuth(srkAuthEnvVar)
 
 	// This test assumes that the TPM has been cleared using OwnerClear.
-	pubek, err := ReadPubEK(rwc)
+	pubEK, err := ReadPubEK(rwc)
 	if err != nil {
 		t.Fatal("Couldn't read the public endorsement key from the TPM:", err)
 	}
 
-	if err := TakeOwnership(rwc, ownerAuth, srkAuth, pubek); err != nil {
+	if err := TakeOwnership(rwc, ownerAuth, srkAuth, pubEK); err != nil {
 		t.Fatal("Couldn't take ownership of the TPM:", err)
 	}
 }

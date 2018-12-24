@@ -619,7 +619,7 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 		return nil, err
 	}
 
-	// TODO(tmroeder): check the signature against the pubek.
+	// TODO(tmroeder): check the signature against the pubEK.
 	blob, err := tpmutil.Pack(k)
 	if err != nil {
 		return nil, err
