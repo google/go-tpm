@@ -635,6 +635,45 @@ func PolicyPassword(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
+func encodePolicySecret(entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) ([]byte, error) {
+	auth, err := encodeAuthArea(entityAuth)
+	if err != nil {
+		return nil, err
+	}
+	handles, err := tpmutil.Pack(entityHandle, policyHandle)
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(policyNonce, cpHash, policyRef, expiry)
+	if err != nil {
+		return nil, err
+	}
+	return concat(handles, auth, params)
+}
+
+// PolicySecret sets a secret authorization requirement on the provided entity.
+// If expiry is non-zero, the authorization is valid for expiry seconds.
+func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) (*Ticket, error) {
+	cmd, err := encodePolicySecret(entityHandle, entityAuth, policyHandle, policyNonce, cpHash, policyRef, expiry)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdPolicySecret, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+
+	// Tickets are only provided if expiry is set.
+	if expiry != 0 {
+		tk, err := decodeTicket(bytes.NewBuffer(resp))
+		if err != nil {
+			return nil, fmt.Errorf("decoding ticket: %v", err)
+		}
+		return tk, nil
+	}
+	return nil, nil
+}
+
 func encodePolicyPCR(session tpmutil.Handle, expectedDigest []byte, sel PCRSelection) ([]byte, error) {
 	params, err := tpmutil.Pack(session, expectedDigest)
 	if err != nil {
@@ -793,12 +832,12 @@ func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, owner
 	return decodeQuote(resp)
 }
 
-func encodeActivateCredential(activeHandle tpmutil.Handle, keyHandle tpmutil.Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
+func encodeActivateCredential(auth []AuthCommand, activeHandle tpmutil.Handle, keyHandle tpmutil.Handle, credBlob, secret []byte) ([]byte, error) {
 	ha, err := tpmutil.Pack(activeHandle, keyHandle)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(activePassword)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(protectorPassword)})
+	a, err := encodeAuthArea(auth...)
 	if err != nil {
 		return nil, err
 	}
@@ -806,7 +845,7 @@ func encodeActivateCredential(activeHandle tpmutil.Handle, keyHandle tpmutil.Han
 	if err != nil {
 		return nil, err
 	}
-	return concat(ha, auth, params)
+	return concat(ha, a, params)
 }
 
 func decodeActivateCredential(in []byte) ([]byte, error) {
@@ -822,7 +861,21 @@ func decodeActivateCredential(in []byte) ([]byte, error) {
 // ActivateCredential associates an object with a credential.
 // Returns decrypted certificate information.
 func ActivateCredential(rw io.ReadWriter, activeHandle, keyHandle tpmutil.Handle, activePassword, protectorPassword string, credBlob, secret []byte) ([]byte, error) {
-	cmd, err := encodeActivateCredential(activeHandle, keyHandle, activePassword, protectorPassword, credBlob, secret)
+	return ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(activePassword)},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(protectorPassword)},
+	}, activeHandle, keyHandle, credBlob, secret)
+}
+
+// ActivateCredentialUsingAuth associates an object with a credential, using the
+// given set of authorizations. Two authorization must be provided.
+// Returns decrypted certificate information.
+func ActivateCredentialUsingAuth(rw io.ReadWriter, auth []AuthCommand, activeHandle, keyHandle tpmutil.Handle, credBlob, secret []byte) ([]byte, error) {
+	if len(auth) != 2 {
+		return nil, fmt.Errorf("len(auth) = %d, want 2", len(auth))
+	}
+
+	cmd, err := encodeActivateCredential(auth, activeHandle, keyHandle, credBlob, secret)
 	if err != nil {
 		return nil, err
 	}

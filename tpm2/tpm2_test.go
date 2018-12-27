@@ -29,6 +29,7 @@ import (
 	"math/big"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -203,15 +204,47 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	credential := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
 	credBlob, encryptedSecret0, err := MakeCredential(rw, parentHandle, credential, name)
 	if err != nil {
-		t.Fatalf("MakeCredential failed: %s", err)
+		t.Fatalf("MakeCredential failed: %v", err)
 	}
 
 	recoveredCredential1, err := ActivateCredential(rw, keyHandle, parentHandle, defaultPassword, emptyPassword, credBlob, encryptedSecret0)
 	if err != nil {
-		t.Fatalf("ActivateCredential failed: %s", err)
+		t.Fatalf("ActivateCredential failed: %v", err)
 	}
-	if bytes.Compare(credential, recoveredCredential1) != 0 {
+	if !bytes.Equal(credential, recoveredCredential1) {
 		t.Fatalf("Credential and recovered credential differ: got %v, want %v", recoveredCredential1, credential)
+	}
+
+	recoveredCredential2, err := ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(defaultPassword)},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
+	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
+	if err != nil {
+		t.Fatalf("ActivateCredentialWithAuth failed: %v", err)
+	}
+	if !bytes.Equal(credential, recoveredCredential2) {
+		t.Errorf("Credential and recovered credential differ: got %v, want %v", recoveredCredential2, credential)
+	}
+
+	_, err = ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("incorrect password")},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
+	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
+	if err == nil {
+		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected response status 0x98e (authorization failure)")
+	}
+	if !strings.Contains(err.Error(), "0x98e") {
+		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected response status 0x98e (authorization failure)", err)
+	}
+
+	_, err = ActivateCredentialUsingAuth(rw, []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
+	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
+	if err == nil {
+		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected response status 0x98e (authorization failure)")
+	}
+	if !strings.Contains(err.Error(), "len(auth) = 1, want 2") {
+		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected len(auth) = 1, want 2", err)
 	}
 }
 
@@ -973,5 +1006,20 @@ func TestNVWrite(t *testing.T) {
 	// Write the data
 	if err := NVWrite(rw, HandleOwner, idx, emptyPassword, data, 0); err != nil {
 		t.Fatalf("NVWrite failed: %v", err)
+	}
+}
+
+func TestPolicySecret(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Fatalf("StartAuthSession() failed: %v", err)
+	}
+	defer FlushContext(rw, sessHandle)
+
+	if _, err := PolicySecret(rw, HandleEndorsement, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, sessHandle, nil, nil, nil, 0); err != nil {
+		t.Fatalf("PolicySecret() failed: %v", err)
 	}
 }
