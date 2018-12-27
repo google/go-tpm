@@ -443,6 +443,7 @@ type AttestationData struct {
 	ClockInfo            ClockInfo
 	FirmwareVersion      uint64
 	AttestedCertifyInfo  *CertifyInfo
+	AttestedQuoteInfo    *QuoteInfo
 	AttestedCreationInfo *CreationInfo
 }
 
@@ -475,6 +476,10 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 	case TagAttestCreation:
 		if ad.AttestedCreationInfo, err = decodeCreationInfo(buf); err != nil {
 			return nil, fmt.Errorf("decoding AttestedCreationInfo: %v", err)
+		}
+	case TagAttestQuote:
+		if ad.AttestedQuoteInfo, err = decodeQuoteInfo(buf); err != nil {
+			return nil, fmt.Errorf("decoding AttestedQuoteInfo: %v", err)
 		}
 	default:
 		return nil, fmt.Errorf("only Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
@@ -588,6 +593,25 @@ func (ci CertifyInfo) encode() ([]byte, error) {
 		return nil, fmt.Errorf("encoding QualifiedName: %v", err)
 	}
 	return concat(n, qn)
+}
+
+// QuoteInfo represents a TPMS_QUOTE_INFO structure.
+type QuoteInfo struct {
+	PCRSelection PCRSelection
+	PCRDigest    []byte
+}
+
+func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
+	var out QuoteInfo
+	sel, err := decodeTPMLPCRSelection(in)
+	if err != nil {
+		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
+	}
+	out.PCRSelection = sel
+	if err := tpmutil.UnpackBuf(in, &out.PCRDigest); err != nil {
+		return nil, fmt.Errorf("decoding PCRDigest: %v", err)
+	}
+	return &out, nil
 }
 
 // IDObject represents an encrypted credential bound to a TPM object.
