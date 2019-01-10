@@ -1023,3 +1023,52 @@ func TestPolicySecret(t *testing.T) {
 		t.Fatalf("PolicySecret() failed: %v", err)
 	}
 }
+
+func TestQuote(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	params := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSignerDefault | FlagNoDA,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA256,
+			},
+			KeyBits: 2048,
+			Modulus: big.NewInt(0),
+		},
+	}
+	keyHandle, pub, _, _, _, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection, emptyPassword, emptyPassword, params)
+	if err != nil {
+		t.Fatalf("CreatePrimaryEx failed: %s", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	attestation, signature, err := Quote(rw, keyHandle, emptyPassword, emptyPassword, nil, pcrSelection, AlgNull)
+	if err != nil {
+		t.Fatalf("Quote failed: %v", err)
+	}
+
+	att, err := DecodeAttestationData(attestation)
+	if err != nil {
+		t.Fatalf("DecodeAttestationData(%v) failed: %v", attestation, err)
+	}
+	if att.Type != TagAttestQuote {
+		t.Errorf("Got att.Type = %v, want TagAttestQuote", att.Type)
+	}
+	if att.AttestedQuoteInfo == nil {
+		t.Error("AttestedQuoteInfo = nil, want non-nil")
+	}
+	p, err := DecodePublic(pub)
+	if err != nil {
+		t.Fatalf("DecodePublic failed: %v", err)
+	}
+	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent), N: p.RSAParameters.Modulus}
+	hsh := crypto.SHA256.New()
+	hsh.Write(attestation)
+	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature.RSA.Signature); err != nil {
+		t.Errorf("VerifyPKCS1v15 failed: %v", err)
+	}
+}
