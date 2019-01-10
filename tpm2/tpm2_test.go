@@ -1046,7 +1046,7 @@ func TestQuote(t *testing.T) {
 	}
 	defer FlushContext(rw, keyHandle)
 
-	attestation, signature, err := Quote(rw, keyHandle, "", "", nil, pcrSelection, AlgNull)
+	attestation, signature, err := Quote(rw, keyHandle, emptyPassword, emptyPassword, nil, pcrSelection, AlgNull)
 	if err != nil {
 		t.Fatalf("Quote failed: %v", err)
 	}
