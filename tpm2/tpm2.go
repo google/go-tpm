@@ -1076,7 +1076,7 @@ func decodeNVReadPublic(in []byte) (NVPublic, error) {
 	return pub, err
 }
 
-// NVReadPublic reads the public data of an NV index
+// NVReadPublic reads the public data of an NV index.
 func NVReadPublic(rw io.ReadWriter, index tpmutil.Handle) (NVPublic, error) {
 	// Read public area to determine data size.
 	resp, err := runCommand(rw, TagNoSessions, cmdReadPublicNV, index)

@@ -1014,16 +1014,16 @@ func TestNVReadWrite(t *testing.T) {
 		t.Fatalf("NVReadPublic failed: %v", err)
 	}
 	if int(pub.DataSize) != len(data) {
-		t.Fatalf("public NV data size doesn't match expected %d, got %d", pub.DataSize, len(data))
+		t.Fatalf("public NV data size mismatch, got %d, want %d, ", pub.DataSize, len(data))
 	}
 
 	// Read all of the data with NVReadEx and compare to what was written
 	outdata, err := NVReadEx(rw, idx, HandleOwner, emptyPassword, 0)
 	if err != nil {
-		t.Fatalf("NVRead failed: %v", err)
+		t.Fatalf("NVReadEx failed: %v", err)
 	}
 	if !bytes.Equal(data, outdata) {
-		t.Fatal("data read from NV index does not match expected")
+		t.Fatalf("data read from NV index does not match, got %x, want %x", outdata, data)
 	}
 }
 
