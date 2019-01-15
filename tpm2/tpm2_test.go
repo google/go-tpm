@@ -979,14 +979,14 @@ func TestNVRead(t *testing.T) {
 	}
 }
 
-func TestNVWrite(t *testing.T) {
+func TestNVReadWrite(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
 	var (
 		idx  tpmutil.Handle = 0x1500000
 		data                = []byte("testdata")
-		attr uint32         = 0x20002 // TODO: change to named attributes like NVAttrOwnerWrite|NVAttrOwnerRead
+		attr                = AttrOwnerWrite | AttrOwnerRead
 	)
 
 	// Define space in NV storage and clean up afterwards or subsequent runs will fail.
@@ -1006,6 +1006,24 @@ func TestNVWrite(t *testing.T) {
 	// Write the data
 	if err := NVWrite(rw, HandleOwner, idx, emptyPassword, data, 0); err != nil {
 		t.Fatalf("NVWrite failed: %v", err)
+	}
+
+	// Make sure the public area of the index can be read
+	pub, err := NVReadPublic(rw, idx)
+	if err != nil {
+		t.Fatalf("NVReadPublic failed: %v", err)
+	}
+	if int(pub.DataSize) != len(data) {
+		t.Fatalf("public NV data size mismatch, got %d, want %d, ", pub.DataSize, len(data))
+	}
+
+	// Read all of the data with NVReadEx and compare to what was written
+	outdata, err := NVReadEx(rw, idx, HandleOwner, emptyPassword, 0)
+	if err != nil {
+		t.Fatalf("NVReadEx failed: %v", err)
+	}
+	if !bytes.Equal(data, outdata) {
+		t.Fatalf("data read from NV index does not match, got %x, want %x", outdata, data)
 	}
 }
 
