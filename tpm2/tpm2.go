@@ -32,7 +32,7 @@ import (
 var OpenTPM = tpmutil.OpenTPM
 
 // GetRandom gets random bytes from the TPM.
-func GetRandom(rw io.ReadWriteCloser, size uint16) ([]byte, error) {
+func GetRandom(rw io.ReadWriter, size uint16) ([]byte, error) {
 	resp, err := runCommand(rw, TagNoSessions, cmdGetRandom, size)
 	if err != nil {
 		return nil, err
@@ -1373,7 +1373,7 @@ func PCRExtend(rw io.ReadWriter, pcr tpmutil.Handle, hashAlg Algorithm, hash []b
 }
 
 // ReadPCR reads the value of the given PCR.
-func ReadPCR(rw io.ReadWriteCloser, pcr int, hashAlg Algorithm) ([]byte, error) {
+func ReadPCR(rw io.ReadWriter, pcr int, hashAlg Algorithm) ([]byte, error) {
 	pcrSelection := PCRSelection{
 		Hash: hashAlg,
 		PCRs: []int{pcr},
