@@ -80,6 +80,22 @@ const (
 	AlgECB       Algorithm = 0x0044
 )
 
+// HandleType defines a type of handle.
+type HandleType uint8
+
+// Supported handle types
+const (
+	HandleTypePCR           HandleType = 0x00
+	HandleTypeNVIndex       HandleType = 0x01
+	HandleTypeHMACSession   HandleType = 0x02
+	HandleTypeLoadedSession HandleType = 0x02
+	HandleTypePolicySession HandleType = 0x03
+	HandleTypeSavedSession  HandleType = 0x03
+	HandleTypePermanent     HandleType = 0x40
+	HandleTypeTransient     HandleType = 0x80
+	HandleTypePersistent    HandleType = 0x81
+)
+
 // SessionType defines the type of session created in StartAuthSession.
 type SessionType uint8
 

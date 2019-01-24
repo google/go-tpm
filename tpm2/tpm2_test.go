@@ -132,7 +132,7 @@ func TestGetCapability(t *testing.T) {
 		property uint32
 		typ      interface{}
 	}{
-		{CapabilityHandles, 1, 0x80000000, tpmutil.Handle(0)},
+		{CapabilityHandles, 1, uint32(HandleTypeTransient) << 24, tpmutil.Handle(0)},
 		{CapabilityAlgs, 1, 0, AlgorithmDescription{}},
 		{CapabilityTPMProperties, 1, uint32(NVMaxBufferSize), TaggedProperty{}},
 	} {
