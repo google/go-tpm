@@ -187,13 +187,6 @@ const (
 	CapabilityAuthPolicies
 )
 
-// Maximum valous for capabilities
-const (
-	MaxCapabilityBufferLength uint32 = 1024
-	MaxCapabilityData         uint32 = MaxCapabilityBufferLength - 4 - 4
-	MaxCapabilityHandles      uint32 = MaxCapabilityData / 4
-)
-
 // TPM Structure Tags. Tags are used to disambiguate structures, similar to Alg
 // values: tag value defines what kind of data lives in a nested field.
 const (
