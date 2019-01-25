@@ -271,11 +271,13 @@ const (
 	cmdGetRandom        tpmutil.Command = 0x0000017B
 	cmdHash             tpmutil.Command = 0x0000017D
 	cmdPCRRead          tpmutil.Command = 0x0000017E
-	cmdPolicyPCR        tpmutil.Command = 0x0000017F
-	cmdReadClock        tpmutil.Command = 0x00000181
-	cmdPCRExtend        tpmutil.Command = 0x00000182
-	cmdPolicyGetDigest  tpmutil.Command = 0x00000189
-	cmdPolicyPassword   tpmutil.Command = 0x0000018C
+	// CmdPolicyPCR is the command code for TPM2_PolicyPCR.
+	// It's exported for computing AuthPolicy values for PCR-based sessions.
+	CmdPolicyPCR       tpmutil.Command = 0x0000017F
+	cmdReadClock       tpmutil.Command = 0x00000181
+	cmdPCRExtend       tpmutil.Command = 0x00000182
+	cmdPolicyGetDigest tpmutil.Command = 0x00000189
+	cmdPolicyPassword  tpmutil.Command = 0x0000018C
 )
 
 // Regular TPM 2.0 devices use 24-bit mask (3 bytes) for PCR selection.
