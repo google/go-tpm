@@ -692,7 +692,7 @@ func PolicyPCR(rw io.ReadWriter, session tpmutil.Handle, expectedDigest []byte, 
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagNoSessions, cmdPolicyPCR, tpmutil.RawBytes(cmd))
+	_, err = runCommand(rw, TagNoSessions, CmdPolicyPCR, tpmutil.RawBytes(cmd))
 	return err
 }
 
