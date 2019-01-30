@@ -24,7 +24,7 @@ import (
 )
 
 func verifyAction() {
-	var pubKeyPath = flag.String("publicKey", "publickey", "Input path of public key file")
+	var pubKeyPath = flag.String("public-key", "publickey", "Input path of public key file")
 	var hashAlgArg = flag.String("hash", "SHA256", "Hash algorithm to use when verifying the signature")
 	var signaturePath = flag.String("signature", "sig.data", "Input path of previously generated signature")
 	var dataPath = flag.String("data", "", "Path to the data that was signed. If empty or omitted, the data will be read from stdin.")

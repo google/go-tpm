@@ -30,7 +30,7 @@ import (
 func generateAction() {
 	var tpmname = flag.String("tpm", "/dev/tpm0", "The path to the TPM device to use")
 	var keyblobPath = flag.String("keyblob", "keyblob", "Output path of the generated keyblob")
-	var pubKeyPath = flag.String("publicKey", "publickey", "Output path of the generated keyblob's public key")
+	var pubKeyPath = flag.String("public-key", "publickey", "Output path of the generated keyblob's public key")
 	var pcrsStr = flag.String("pcrs", "", "A comma-separated list of PCR numbers against which the generated key will be bound. If blank, it will not be bound to any PCR values.")
 	flag.CommandLine.Parse(os.Args[2:])
 

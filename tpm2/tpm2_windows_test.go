@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-var runTPMTests = flag.Bool("run_tpm_tests", false, "Run the Windows TPM integration tests. Defaults to false.")
+var runTPMTests = flag.Bool("use-tbs", false, "Run integration tests against Windows TPM Base Services (TBS). Defaults to false.")
 
 func openDeviceTPM(t *testing.T) io.ReadWriteCloser {
 	if *runTPMTests == false {
