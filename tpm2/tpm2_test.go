@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -59,11 +58,6 @@ func openTPM(t testing.TB) io.ReadWriteCloser {
 		t.Fatalf("Startup TPM failed: %v", err)
 	}
 	return conn
-}
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
 }
 
 var (
