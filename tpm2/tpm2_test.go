@@ -38,8 +38,8 @@ import (
 
 var (
 	mssimRun          = flag.Bool("mssim", false, "If supplied, run integration tests against a Microsoft simulator.")
-	mssimCommandAddr  = flag.String("mssim_command_addr", "localhost:2321", "Host and port of the simulator's command listener")
-	mssimPlatformAddr = flag.String("mssim_platform_addr", "localhost:2322", "Host and port of the simulator's platform listener")
+	mssimCommandAddr  = flag.String("mssim-command-addr", "localhost:2321", "Host and port of the simulator's command listener")
+	mssimPlatformAddr = flag.String("mssim-platform-addr", "localhost:2322", "Host and port of the simulator's platform listener")
 )
 
 func openTPM(t testing.TB) io.ReadWriteCloser {
