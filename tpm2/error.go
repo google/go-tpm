@@ -7,250 +7,260 @@ import (
 )
 
 type (
-	RcFmt0  uint8 // Format 0 error codes
-	RcFmt1  uint8 // Format 1 error codes
-	RcWarn  uint8 // Warning codes
+	RCFmt0  uint8 // Format 0 error codes
+	RCFmt1  uint8 // Format 1 error codes
+	RCWarn  uint8 // Warning codes
 	RcIndex uint8 // Indexes for arguments, handles and sessions in errors
 )
 
 // Format 0 error codes.
 const (
-	RcInitialize      RcFmt0 = 0x00
-	RcFailure                = 0x01
-	RcSequence               = 0x03
-	RcPrivate                = 0x0B
-	RcHMAC                   = 0x19
-	RcDisabled               = 0x20
-	RcExclusive              = 0x21
-	RcAuthType               = 0x24
-	RcAuthMissing            = 0x25
-	RcPolicy                 = 0x26
-	RcPCR                    = 0x27
-	RcPCRChanged             = 0x28
-	RcUpgrade                = 0x2D
-	RcTooManyContexts        = 0x2E
-	RcAuthUnavailable        = 0x2F
-	RcReboot                 = 0x30
-	RcUnbalanced             = 0x31
-	RcCommandSize            = 0x42
-	RcCommandCode            = 0x43
-	RcAuthSize               = 0x44
-	RcAuthContext            = 0x45
-	RcNVRange                = 0x46
-	RcNVSize                 = 0x47
-	RcNVLocked               = 0x48
-	RcNVAuthorization        = 0x49
-	RcNVUninitialized        = 0x4A
-	RcNVSpace                = 0x4B
-	RcNVDefined              = 0x4C
-	RcBadContext             = 0x50
-	RcCPHash                 = 0x51
-	RcParent                 = 0x52
-	RcNeedsTest              = 0x53
-	RcNoResult               = 0x54
-	RcSensitive              = 0x55
+	RCInitialize      RCFmt0 = 0x00
+	RCFailure                = 0x01
+	RCSequence               = 0x03
+	RCPrivate                = 0x0B
+	RCHMAC                   = 0x19
+	RCDisabled               = 0x20
+	RCExclusive              = 0x21
+	RCAuthType               = 0x24
+	RCAuthMissing            = 0x25
+	RCPolicy                 = 0x26
+	RCPCR                    = 0x27
+	RCPCRChanged             = 0x28
+	RCUpgrade                = 0x2D
+	RCTooManyContexts        = 0x2E
+	RCAuthUnavailable        = 0x2F
+	RCReboot                 = 0x30
+	RCUnbalanced             = 0x31
+	RCCommandSize            = 0x42
+	RCCommandCode            = 0x43
+	RCAuthSize               = 0x44
+	RCAuthContext            = 0x45
+	RCNVRange                = 0x46
+	RCNVSize                 = 0x47
+	RCNVLocked               = 0x48
+	RCNVAuthorization        = 0x49
+	RCNVUninitialized        = 0x4A
+	RCNVSpace                = 0x4B
+	RCNVDefined              = 0x4C
+	RCBadContext             = 0x50
+	RCCPHash                 = 0x51
+	RCParent                 = 0x52
+	RCNeedsTest              = 0x53
+	RCNoResult               = 0x54
+	RCSensitive              = 0x55
 )
 
-var fmt0Msg = map[RcFmt0]string{
-	RcInitialize:      "TPM not initialized by TPM2_Startup or already initialized",
-	RcFailure:         "commands not being accepted because of a TPM failure",
-	RcSequence:        "improper use of a sequence handle",
-	RcPrivate:         "not currently used",
-	RcHMAC:            "not currently used",
-	RcDisabled:        "the command is disabled",
-	RcExclusive:       "command failed because audit sequence required exclusivity",
-	RcAuthType:        "authorization handle is not correct for command",
-	RcAuthMissing:     "5 command requires an authorization session for handle and it is not present.",
-	RcPolicy:          "policy failure in math operation or an invalid authPolicy value",
-	RcPCR:             "PCR check fail",
-	RcPCRChanged:      "PCR have changed since checked",
-	RcUpgrade:         "TPM is in field upgrade mode unless called via TPM2_FieldUpgradeData(), then it is not in field upgrade mode",
-	RcTooManyContexts: "context ID counter is at maximum",
-	RcAuthUnavailable: "authValue or authPolicy is not available for selected entity",
-	RcReboot:          "a _TPM_Init and Startup(CLEAR) is required before the TPM can resume operation",
-	RcUnbalanced:      "the protection algorithms (hash and symmetric) are not reasonably balanced. The digest size of the hash must be larger than the key size of the symmetric algorithm.",
-	RcCommandSize:     "command commandSize value is inconsistent with contents of the command buffer; either the size is not the same as the octets loaded by the hardware interface layer or the value is not large enough to hold a command header",
-	RcCommandCode:     "command code not supported",
-	RcAuthSize:        "the value of authorizationSize is out of range or the number of octets in the Authorization Area is greater than required",
-	RcAuthContext:     "use of an authorization session with a context command or another command that cannot have an authorization session",
-	RcNVRange:         "NV offset+size is out of range",
-	RcNVSize:          "Requested allocation size is larger than allowed",
-	RcNVLocked:        "NV access locked",
-	RcNVAuthorization: "NV access authorization fails in command actions",
-	RcNVUninitialized: "an NV Index is used before being initialized or the state saved by TPM2_Shutdown(STATE) could not be restored",
-	RcNVSpace:         "insufficient space for NV allocation",
-	RcNVDefined:       "NV Index or persistent object already defined",
-	RcBadContext:      "context in TPM2_ContextLoad() is not valid",
-	RcCPHash:          "cpHash value already set or not correct for use",
-	RcParent:          "handle for parent is not a valid parent",
-	RcNeedsTest:       "some function needs testing",
-	RcNoResult:        "returned when an internal function cannot process a request due to an unspecified problem. This code is usually related to invalid parameters that are not properly filtered by the input unmarshaling code",
-	RcSensitive:       "the sensitive area did not unmarshal correctly after decryption",
+var fmt0Msg = map[RCFmt0]string{
+	RCInitialize:      "TPM not initialized by TPM2_Startup or already initialized",
+	RCFailure:         "commands not being accepted because of a TPM failure",
+	RCSequence:        "improper use of a sequence handle",
+	RCPrivate:         "not currently used",
+	RCHMAC:            "not currently used",
+	RCDisabled:        "the command is disabled",
+	RCExclusive:       "command failed because audit sequence required exclusivity",
+	RCAuthType:        "authorization handle is not correct for command",
+	RCAuthMissing:     "5 command requires an authorization session for handle and it is not present",
+	RCPolicy:          "policy failure in math operation or an invalid authPolicy value",
+	RCPCR:             "PCR check fail",
+	RCPCRChanged:      "PCR have changed since checked",
+	RCUpgrade:         "TPM is in field upgrade mode unless called via TPM2_FieldUpgradeData(), then it is not in field upgrade mode",
+	RCTooManyContexts: "context ID counter is at maximum",
+	RCAuthUnavailable: "authValue or authPolicy is not available for selected entity",
+	RCReboot:          "a _TPM_Init and Startup(CLEAR) is required before the TPM can resume operation",
+	RCUnbalanced:      "the protection algorithms (hash and symmetric) are not reasonably balanced; the digest size of the hash must be larger than the key size of the symmetric algorithm",
+	RCCommandSize:     "command commandSize value is inconsistent with contents of the command buffer; either the size is not the same as the octets loaded by the hardware interface layer or the value is not large enough to hold a command header",
+	RCCommandCode:     "command code not supported",
+	RCAuthSize:        "the value of authorizationSize is out of range or the number of octets in the Authorization Area is greater than required",
+	RCAuthContext:     "use of an authorization session with a context command or another command that cannot have an authorization session",
+	RCNVRange:         "NV offset+size is out of range",
+	RCNVSize:          "Requested allocation size is larger than allowed",
+	RCNVLocked:        "NV access locked",
+	RCNVAuthorization: "NV access authorization fails in command actions",
+	RCNVUninitialized: "an NV Index is used before being initialized or the state saved by TPM2_Shutdown(STATE) could not be restored",
+	RCNVSpace:         "insufficient space for NV allocation",
+	RCNVDefined:       "NV Index or persistent object already defined",
+	RCBadContext:      "context in TPM2_ContextLoad() is not valid",
+	RCCPHash:          "cpHash value already set or not correct for use",
+	RCParent:          "handle for parent is not a valid parent",
+	RCNeedsTest:       "some function needs testing",
+	RCNoResult:        "returned when an internal function cannot process a request due to an unspecified problem; this code is usually related to invalid parameters that are not properly filtered by the input unmarshaling code",
+	RCSensitive:       "the sensitive area did not unmarshal correctly after decryption",
 }
 
 // Format 1 error codes.
 const (
-	RcAsymmetric   = 0x01
-	RcAttributes   = 0x02
-	RcHash         = 0x03
-	RcValue        = 0x04
-	RcHierarchy    = 0x05
-	RcKeySize      = 0x07
-	RcMGF          = 0x08
-	RcMode         = 0x09
-	RcType         = 0x0A
-	RcHandle       = 0x0B
-	RcKDF          = 0x0C
-	RcRange        = 0x0D
-	RcAuthFail     = 0x0E
-	RcNonce        = 0x0F
-	RcPP           = 0x10
-	RcScheme       = 0x12
-	RcSize         = 0x15
-	RcSymmetric    = 0x16
-	RcTag          = 0x17
-	RcSelector     = 0x18
-	RcInsufficient = 0x1A
-	RcSignature    = 0x1B
-	RcKey          = 0x1C
-	RcPolicyFail   = 0x1D
-	RcIntegrity    = 0x1F
-	RcTicket       = 0x20
-	RcReservedBits = 0x21
-	RcBadAuth      = 0x22
-	RcExpired      = 0x23
-	RcPolicyCC     = 0x24
-	RcBinding      = 0x25
-	RcCurve        = 0x26
-	RcECCPoint     = 0x27
+	RCAsymmetric   = 0x01
+	RCAttributes   = 0x02
+	RCHash         = 0x03
+	RCValue        = 0x04
+	RCHierarchy    = 0x05
+	RCKeySize      = 0x07
+	RCMGF          = 0x08
+	RCMode         = 0x09
+	RCType         = 0x0A
+	RCHandle       = 0x0B
+	RCKDF          = 0x0C
+	RCRange        = 0x0D
+	RCAuthFail     = 0x0E
+	RCNonce        = 0x0F
+	RCPP           = 0x10
+	RCScheme       = 0x12
+	RCSize         = 0x15
+	RCSymmetric    = 0x16
+	RCTag          = 0x17
+	RCSelector     = 0x18
+	RCInsufficient = 0x1A
+	RCSignature    = 0x1B
+	RCKey          = 0x1C
+	RCPolicyFail   = 0x1D
+	RCIntegrity    = 0x1F
+	RCTicket       = 0x20
+	RCReservedBits = 0x21
+	RCBadAuth      = 0x22
+	RCExpired      = 0x23
+	RCPolicyCC     = 0x24
+	RCBinding      = 0x25
+	RCCurve        = 0x26
+	RCECCPoint     = 0x27
 )
 
-var fmt1Msg = map[RcFmt1]string{
-	RcAsymmetric:   "asymmetric algorithm not supported or not correct",
-	RcAttributes:   "inconsistent attributes",
-	RcHash:         "hash algorithm not supported or not appropriate",
-	RcValue:        "value is out of range or is not correct for the context",
-	RcHierarchy:    "hierarchy is not enabled or is not correct for the use",
-	RcKeySize:      "key size is not supported",
-	RcMGF:          "mask generation function not supported",
-	RcMode:         "mode of operation not supported",
-	RcType:         "the type of the value is not appropriate for the use",
-	RcHandle:       "the handle is not correct for the use",
-	RcKDF:          "unsupported key derivation function or function not appropriate for use",
-	RcRange:        "value was out of allowed range",
-	RcAuthFail:     "the authorization HMAC check failed and DA counter incremented",
-	RcNonce:        "invalid nonce size or nonce value mismatch",
-	RcPP:           "authorization requires assertion of PP",
-	RcScheme:       "unsupported or incompatible scheme",
-	RcSize:         "structure is the wrong size",
-	RcSymmetric:    "unsupported symmetric algorithm or key size, or not appropriate for instance",
-	RcTag:          "incorrect structure tag",
-	RcSelector:     "union selector is incorrect",
-	RcInsufficient: "the TPM was unable to unmarshal a value because there were not enough octets in the input buffer",
-	RcSignature:    "the signature is not valid",
-	RcKey:          "key fields are not compatible with the selected use",
-	RcPolicyFail:   "a policy check failed",
-	RcIntegrity:    "integrity check failed",
-	RcTicket:       "invalid ticket",
-	RcReservedBits: "reserved bits not set to zero as required",
-	RcBadAuth:      "authorization failure without DA implications",
-	RcExpired:      "the policy has expired",
-	RcPolicyCC:     "the commandCode in the policy is not the commandCode of the command or the command code in a policy command references a command that is not implemented",
-	RcBinding:      "public and sensitive portions of an object are not cryptographically bound",
-	RcCurve:        "curve not supported",
-	RcECCPoint:     "point is not on the required curve",
+var fmt1Msg = map[RCFmt1]string{
+	RCAsymmetric:   "asymmetric algorithm not supported or not correct",
+	RCAttributes:   "inconsistent attributes",
+	RCHash:         "hash algorithm not supported or not appropriate",
+	RCValue:        "value is out of range or is not correct for the context",
+	RCHierarchy:    "hierarchy is not enabled or is not correct for the use",
+	RCKeySize:      "key size is not supported",
+	RCMGF:          "mask generation function not supported",
+	RCMode:         "mode of operation not supported",
+	RCType:         "the type of the value is not appropriate for the use",
+	RCHandle:       "the handle is not correct for the use",
+	RCKDF:          "unsupported key derivation function or function not appropriate for use",
+	RCRange:        "value was out of allowed range",
+	RCAuthFail:     "the authorization HMAC check failed and DA counter incremented",
+	RCNonce:        "invalid nonce size or nonce value mismatch",
+	RCPP:           "authorization requires assertion of PP",
+	RCScheme:       "unsupported or incompatible scheme",
+	RCSize:         "structure is the wrong size",
+	RCSymmetric:    "unsupported symmetric algorithm or key size, or not appropriate for instance",
+	RCTag:          "incorrect structure tag",
+	RCSelector:     "union selector is incorrect",
+	RCInsufficient: "the TPM was unable to unmarshal a value because there were not enough octets in the input buffer",
+	RCSignature:    "the signature is not valid",
+	RCKey:          "key fields are not compatible with the selected use",
+	RCPolicyFail:   "a policy check failed",
+	RCIntegrity:    "integrity check failed",
+	RCTicket:       "invalid ticket",
+	RCReservedBits: "reserved bits not set to zero as required",
+	RCBadAuth:      "authorization failure without DA implications",
+	RCExpired:      "the policy has expired",
+	RCPolicyCC:     "the commandCode in the policy is not the commandCode of the command or the command code in a policy command references a command that is not implemented",
+	RCBinding:      "public and sensitive portions of an object are not cryptographically bound",
+	RCCurve:        "curve not supported",
+	RCECCPoint:     "point is not on the required curve",
 }
 
 // Warning codes.
 const (
-	RcContextGap     RcWarn = 0x01
-	RcObjectMemory          = 0x02
-	RcSessionMemory         = 0x03
-	RcMemory                = 0x04
-	RcSessionHandles        = 0x05
-	RcObjectHandles         = 0x06
-	RcLocality              = 0x07
-	RcYielded               = 0x08
-	RcCanceled              = 0x09
-	RcTesting               = 0x0A
-	RcReferenceH0           = 0x10
-	RcReferenceH1           = 0x11
-	RcReferenceH2           = 0x12
-	RcReferenceH3           = 0x13
-	RcReferenceH4           = 0x14
-	RcReferenceH5           = 0x15
-	RcReferenceH6           = 0x16
-	RcReferenceS0           = 0x18
-	RcReferenceS1           = 0x19
-	RcReferenceS2           = 0x1A
-	RcReferenceS3           = 0x1B
-	RcReferenceS4           = 0x1C
-	RcReferenceS5           = 0x1D
-	RcReferenceS6           = 0x1E
-	RcNVRate                = 0x20
-	RcLockout               = 0x21
-	RcRetry                 = 0x22
-	RcNVUnavailable         = 0x23
+	RCContextGap     RCWarn = 0x01
+	RCObjectMemory          = 0x02
+	RCSessionMemory         = 0x03
+	RCMemory                = 0x04
+	RCSessionHandles        = 0x05
+	RCObjectHandles         = 0x06
+	RCLocality              = 0x07
+	RCYielded               = 0x08
+	RCCanceled              = 0x09
+	RCTesting               = 0x0A
+	RCReferenceH0           = 0x10
+	RCReferenceH1           = 0x11
+	RCReferenceH2           = 0x12
+	RCReferenceH3           = 0x13
+	RCReferenceH4           = 0x14
+	RCReferenceH5           = 0x15
+	RCReferenceH6           = 0x16
+	RCReferenceS0           = 0x18
+	RCReferenceS1           = 0x19
+	RCReferenceS2           = 0x1A
+	RCReferenceS3           = 0x1B
+	RCReferenceS4           = 0x1C
+	RCReferenceS5           = 0x1D
+	RCReferenceS6           = 0x1E
+	RCNVRate                = 0x20
+	RCLockout               = 0x21
+	RCRetry                 = 0x22
+	RCNVUnavailable         = 0x23
 )
 
-var warnMgs = map[RcWarn]string{
-	RcContextGap:     "gap for context ID is too large",
-	RcObjectMemory:   "out of memory for object contexts",
-	RcSessionMemory:  "out of memory for session contexts",
-	RcMemory:         "out of shared object/session memory or need space for internal operations",
-	RcSessionHandles: "out of session handles",
-	RcObjectHandles:  "out of object handles",
-	RcLocality:       "bad locality",
-	RcYielded:        "the TPM has suspended operation on the command; forward progress was made and the command may be retried",
-	RcCanceled:       "the command was canceled",
-	RcTesting:        "TPM is performing self-tests",
-	RcReferenceH0:    "the 1st handle in the handle area references a transient object or session that is not loaded",
-	RcReferenceH1:    "the 2nd handle in the handle area references a transient object or session that is not loaded",
-	RcReferenceH2:    "the 3rd handle in the handle area references a transient object or session that is not loaded",
-	RcReferenceH3:    "the 4th handle in the handle area references a transient object or session that is not loaded",
-	RcReferenceH4:    "the 5th handle in the handle area references a transient object or session that is not loaded",
-	RcReferenceH5:    "the 6th handle in the handle area references a transient object or session that is not loaded",
-	RcReferenceH6:    "the 7th handle in the handle area references a transient object or session that is not loaded",
-	RcReferenceS0:    "the 1st authorization session handle references a session that is not loaded",
-	RcReferenceS1:    "the 2nd authorization session handle references a session that is not loaded",
-	RcReferenceS2:    "the 3rd authorization session handle references a session that is not loaded",
-	RcReferenceS3:    "the 4th authorization session handle references a session that is not loaded",
-	RcReferenceS4:    "the 5th authorization session handle references a session that is not loaded",
-	RcReferenceS5:    "the 6th authorization session handle references a session that is not loaded",
-	RcReferenceS6:    "the 7th authorization session handle references a session that is not loaded",
-	RcNVRate:         "the TPM is rate-limiting accesses to prevent wearout of NV",
-	RcLockout:        "authorizations for objects subject to DA protection are not allowed at this time because the TPM is in DA lockout mode",
-	RcRetry:          "the TPM was not able to start the command",
-	RcNVUnavailable:  "the command may require writing of NV and NV is not current accessible",
+var warnMsg = map[RCWarn]string{
+	RCContextGap:     "gap for context ID is too large",
+	RCObjectMemory:   "out of memory for object contexts",
+	RCSessionMemory:  "out of memory for session contexts",
+	RCMemory:         "out of shared object/session memory or need space for internal operations",
+	RCSessionHandles: "out of session handles",
+	RCObjectHandles:  "out of object handles",
+	RCLocality:       "bad locality",
+	RCYielded:        "the TPM has suspended operation on the command; forward progress was made and the command may be retried",
+	RCCanceled:       "the command was canceled",
+	RCTesting:        "TPM is performing self-tests",
+	RCReferenceH0:    "the 1st handle in the handle area references a transient object or session that is not loaded",
+	RCReferenceH1:    "the 2nd handle in the handle area references a transient object or session that is not loaded",
+	RCReferenceH2:    "the 3rd handle in the handle area references a transient object or session that is not loaded",
+	RCReferenceH3:    "the 4th handle in the handle area references a transient object or session that is not loaded",
+	RCReferenceH4:    "the 5th handle in the handle area references a transient object or session that is not loaded",
+	RCReferenceH5:    "the 6th handle in the handle area references a transient object or session that is not loaded",
+	RCReferenceH6:    "the 7th handle in the handle area references a transient object or session that is not loaded",
+	RCReferenceS0:    "the 1st authorization session handle references a session that is not loaded",
+	RCReferenceS1:    "the 2nd authorization session handle references a session that is not loaded",
+	RCReferenceS2:    "the 3rd authorization session handle references a session that is not loaded",
+	RCReferenceS3:    "the 4th authorization session handle references a session that is not loaded",
+	RCReferenceS4:    "the 5th authorization session handle references a session that is not loaded",
+	RCReferenceS5:    "the 6th authorization session handle references a session that is not loaded",
+	RCReferenceS6:    "the 7th authorization session handle references a session that is not loaded",
+	RCNVRate:         "the TPM is rate-limiting accesses to prevent wearout of NV",
+	RCLockout:        "authorizations for objects subject to DA protection are not allowed at this time because the TPM is in DA lockout mode",
+	RCRetry:          "the TPM was not able to start the command",
+	RCNVUnavailable:  "the command may require writing of NV and NV is not current accessible",
 }
 
 // Indexes for arguments, handles and sessions.
 const (
-	Rc1 RcIndex = 0x01
-	Rc2         = 0x02
-	Rc3         = 0x03
-	Rc4         = 0x04
-	Rc5         = 0x05
-	Rc6         = 0x06
-	Rc7         = 0x07
-	Rc8         = 0x08
-	Rc9         = 0x09
-	RcA         = 0x0A
-	RcB         = 0x0B
-	RcC         = 0x0C
-	RcD         = 0x0D
-	RcE         = 0x0E
-	RcF         = 0x0F
+	RC1 RcIndex = 0x01
+	RC2         = 0x02
+	RC3         = 0x03
+	RC4         = 0x04
+	RC5         = 0x05
+	RC6         = 0x06
+	RC7         = 0x07
+	RC8         = 0x08
+	RC9         = 0x09
+	RCA         = 0x0A
+	RCB         = 0x0B
+	RCC         = 0x0C
+	RCD         = 0x0D
+	RCE         = 0x0E
+	RCF         = 0x0F
 )
 
+const unknownCode = "unknown error code"
+
+// Error is returned for all Format 0 errors from the TPM. It is used for general
+// errors not specific to a parameter, handle or session.
 type Error struct {
-	Code RcFmt0
+	Code RCFmt0
 }
 
 func (e Error) Error() string {
-	return fmt.Sprintf("error code 0x%x : %s", e.Code, fmt0Msg[e.Code])
+	msg := fmt0Msg[e.Code]
+	if msg == "" {
+		msg = unknownCode
+	}
+	return fmt.Sprintf("error code 0x%x : %s", e.Code, msg)
 }
 
+// VendorError represents a vendor-specific error response. These types of responses
+// are not decoded and Code contains the complete response code.
 type VendorError struct {
 	Code uint32
 }
@@ -259,39 +269,59 @@ func (e VendorError) Error() string {
 	return fmt.Sprintf("vendor error code 0x%x", e.Code)
 }
 
+// Warning is typically used to report transient errors.
 type Warning struct {
-	Code RcWarn
+	Code RCWarn
 }
 
 func (w Warning) Error() string {
-	return fmt.Sprintf("warning code 0x%x : %s", w.Code, warnMgs[w.Code])
+	msg := warnMsg[w.Code]
+	if msg == "" {
+		msg = unknownCode
+	}
+	return fmt.Sprintf("warning code 0x%x : %s", w.Code, msg)
 }
 
+// ParameterError describes an error related to a parameter, and the parameter number.
 type ParameterError struct {
-	Code      RcFmt1
+	Code      RCFmt1
 	Parameter RcIndex
 }
 
 func (e ParameterError) Error() string {
-	return fmt.Sprintf("parameter %d, error code 0x%x : %s", e.Parameter, e.Code, fmt1Msg[e.Code])
+	msg := fmt1Msg[e.Code]
+	if msg == "" {
+		msg = unknownCode
+	}
+	return fmt.Sprintf("parameter %d, error code 0x%x : %s", e.Parameter, e.Code, msg)
 }
 
+// HandleError describes an error related to a handle, and the handle number.
 type HandleError struct {
-	Code   RcFmt1
+	Code   RCFmt1
 	Handle RcIndex
 }
 
 func (e HandleError) Error() string {
-	return fmt.Sprintf("handle %d, error code 0x%x : %s", e.Handle, e.Code, fmt1Msg[e.Code])
+	msg := fmt1Msg[e.Code]
+	if msg == "" {
+		msg = unknownCode
+	}
+	return fmt.Sprintf("handle %d, error code 0x%x : %s", e.Handle, e.Code, msg)
 }
 
+// SessionError describes an error related to a session, and the session number.
 type SessionError struct {
-	Code    RcFmt1
+	Code    RCFmt1
 	Session RcIndex
 }
 
 func (e SessionError) Error() string {
-	return fmt.Sprintf("session %d, error code 0x%x : %s", e.Session, e.Code, fmt1Msg[e.Code])
+	msg := fmt1Msg[e.Code]
+	if msg == "" {
+		msg = unknownCode
+	}
+	return fmt.Sprintf("session %d, error code 0x%x : %s", e.Session, e.Code, msg)
 }
 
 // Decode a TPM2 response code and return the appropriate error. Logic
@@ -309,17 +339,17 @@ func decodeResponse(code tpmutil.ResponseCode) error {
 			return VendorError{uint32(code)}
 		}
 		if code&0x800 > 0 { // Bit 11 set, warning with code in bit 0:6
-			return Warning{RcWarn(code & 0x7f)}
+			return Warning{RCWarn(code & 0x7f)}
 		}
 		// error with code in bit 0:6
-		return Error{RcFmt0(code & 0x7f)}
+		return Error{RCFmt0(code & 0x7f)}
 	}
-	if code&0x40 > 0 { // Bit 6 set, parameter number in 8:11, code in 0:5
-		return ParameterError{RcFmt1(code & 0x3f), RcIndex((code & 0xf00) >> 8)}
+	if code&0x40 > 0 { // Bit 6 set, code in 0:5, parameter number in 8:11
+		return ParameterError{RCFmt1(code & 0x3f), RcIndex((code & 0xf00) >> 8)}
 	}
-	if code&0x800 == 0 { // Bit 11 unset, handle in 8:10, code in 0:5
-		return HandleError{RcFmt1(code & 0x3f), RcIndex((code & 0x700) >> 8)}
+	if code&0x800 == 0 { // Bit 11 unset, code in 0:5, handle in 8:10
+		return HandleError{RCFmt1(code & 0x3f), RcIndex((code & 0x700) >> 8)}
 	}
-	// Session in 8:10, code in 0:5
-	return SessionError{RcFmt1(code & 0x3f), RcIndex((code & 0x700) >> 8)}
+	// Code in 0:5, Session in 8:10
+	return SessionError{RCFmt1(code & 0x3f), RcIndex((code & 0x700) >> 8)}
 }
