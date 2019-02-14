@@ -7,10 +7,17 @@ import (
 )
 
 type (
-	RCFmt0  uint8 // Format 0 error codes
-	RCFmt1  uint8 // Format 1 error codes
-	RCWarn  uint8 // Warning codes
-	RcIndex uint8 // Indexes for arguments, handles and sessions in errors
+	// RCFmt0 holds Format 0 error codes
+	RCFmt0 uint8
+
+	// RCFmt1 holds Format 1 error codes
+	RCFmt1 uint8
+
+	// RCWarn holds error codes used in warnings
+	RCWarn uint8
+
+	// RCIndex is used to reference arguments, handles and sessions in errors
+	RCIndex uint8
 )
 
 // Format 0 error codes.
@@ -226,7 +233,7 @@ var warnMsg = map[RCWarn]string{
 
 // Indexes for arguments, handles and sessions.
 const (
-	RC1 RcIndex = 0x01
+	RC1 RCIndex = 0x01
 	RC2         = 0x02
 	RC3         = 0x03
 	RC4         = 0x04
@@ -285,7 +292,7 @@ func (w Warning) Error() string {
 // ParameterError describes an error related to a parameter, and the parameter number.
 type ParameterError struct {
 	Code      RCFmt1
-	Parameter RcIndex
+	Parameter RCIndex
 }
 
 func (e ParameterError) Error() string {
@@ -299,7 +306,7 @@ func (e ParameterError) Error() string {
 // HandleError describes an error related to a handle, and the handle number.
 type HandleError struct {
 	Code   RCFmt1
-	Handle RcIndex
+	Handle RCIndex
 }
 
 func (e HandleError) Error() string {
@@ -313,7 +320,7 @@ func (e HandleError) Error() string {
 // SessionError describes an error related to a session, and the session number.
 type SessionError struct {
 	Code    RCFmt1
-	Session RcIndex
+	Session RCIndex
 }
 
 func (e SessionError) Error() string {
@@ -345,11 +352,11 @@ func decodeResponse(code tpmutil.ResponseCode) error {
 		return Error{RCFmt0(code & 0x7f)}
 	}
 	if code&0x40 > 0 { // Bit 6 set, code in 0:5, parameter number in 8:11
-		return ParameterError{RCFmt1(code & 0x3f), RcIndex((code & 0xf00) >> 8)}
+		return ParameterError{RCFmt1(code & 0x3f), RCIndex((code & 0xf00) >> 8)}
 	}
 	if code&0x800 == 0 { // Bit 11 unset, code in 0:5, handle in 8:10
-		return HandleError{RCFmt1(code & 0x3f), RcIndex((code & 0x700) >> 8)}
+		return HandleError{RCFmt1(code & 0x3f), RCIndex((code & 0x700) >> 8)}
 	}
 	// Code in 0:5, Session in 8:10
-	return SessionError{RCFmt1(code & 0x3f), RcIndex((code & 0x700) >> 8)}
+	return SessionError{RCFmt1(code & 0x3f), RCIndex((code & 0x700) >> 8)}
 }
