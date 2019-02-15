@@ -233,21 +233,21 @@ var warnMsg = map[RCWarn]string{
 
 // Indexes for arguments, handles and sessions.
 const (
-	RC1 RCIndex = 0x01
-	RC2         = 0x02
-	RC3         = 0x03
-	RC4         = 0x04
-	RC5         = 0x05
-	RC6         = 0x06
-	RC7         = 0x07
-	RC8         = 0x08
-	RC9         = 0x09
-	RCA         = 0x0A
-	RCB         = 0x0B
-	RCC         = 0x0C
-	RCD         = 0x0D
-	RCE         = 0x0E
-	RCF         = 0x0F
+	RC1 RCIndex = iota + 1
+	RC2
+	RC3
+	RC4
+	RC5
+	RC6
+	RC7
+	RC8
+	RC9
+	RCA
+	RCB
+	RCC
+	RCD
+	RCE
+	RCF
 )
 
 const unknownCode = "unknown error code"
