@@ -1332,10 +1332,7 @@ func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...in
 	if err != nil {
 		return nil, err
 	}
-	if code != tpmutil.RCSuccess {
-		return nil, fmt.Errorf("response status 0x%x", code)
-	}
-	return resp, nil
+	return resp, decodeResponse(code)
 }
 
 // concat is a helper for encoding functions that separately encode handle,
