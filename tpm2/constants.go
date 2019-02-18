@@ -151,7 +151,20 @@ type TPMProp uint32
 
 // TPM Capability Properties.
 const (
-	NVMaxBufferSize TPMProp = 0x100 + 44
+	NVMaxBufferSize    TPMProp = 0x100 + 44
+	PCRFirst           TPMProp = 0x00000000
+	HMACSessionFirst   TPMProp = 0x02000000
+	LoadedSessionFirst TPMProp = 0x02000000
+	PolicySessionFirst TPMProp = 0x03000000
+	ActiveSessionFirst TPMProp = 0x03000000
+	TransientFirst     TPMProp = 0x80000000
+	PersistentFirst    TPMProp = 0x81000000
+	PersistentLast     TPMProp = 0x81FFFFFF
+	PlatformPersistent TPMProp = 0x81800000
+	NVIndexFirst       TPMProp = 0x01000000
+	NVIndexLast        TPMProp = 0x01FFFFFF
+	PermanentFirst     TPMProp = 0x40000000
+	PermanentLast      TPMProp = 0x4000010F
 )
 
 // Reserved Handles.
