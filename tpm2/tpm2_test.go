@@ -1084,3 +1084,28 @@ func TestQuote(t *testing.T) {
 		t.Errorf("VerifyPKCS1v15 failed: %v", err)
 	}
 }
+
+func TestReadPublicKey(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	keyHandle, pubKey1, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %s", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	pub, _, _, err := ReadPublic(rw, keyHandle)
+	if err != nil {
+		t.Fatalf("ReadPublic failed: %s", err)
+	}
+
+	pubKey2, err := pub.Key()
+	if err != nil {
+		t.Fatalf("Public.Key() failed: %s", err)
+	}
+
+	if !reflect.DeepEqual(pubKey1, pubKey2) {
+		t.Fatalf("Public.Key() = %#v; want %#v", pubKey2, pubKey1)
+	}
+}

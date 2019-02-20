@@ -112,7 +112,7 @@ func (p Public) Key() (crypto.PublicKey, error) {
 			Curve: curve,
 		}
 	default:
-		return nil, fmt.Errorf("unsupported primary key type 0x%x", p.Type)
+		return nil, fmt.Errorf("unsupported public key type 0x%x", p.Type)
 	}
 	return pubKey, nil
 }
