@@ -1089,23 +1089,78 @@ func TestReadPublicKey(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	keyHandle, pubKey1, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, defaultKeyParams)
-	if err != nil {
-		t.Fatalf("CreatePrimary failed: %s", err)
-	}
-	defer FlushContext(rw, keyHandle)
+	run := func(t *testing.T, public Public, private Private, pubKeyIn crypto.PublicKey) {
+		t.Helper()
 
-	pub, _, _, err := ReadPublic(rw, keyHandle)
-	if err != nil {
-		t.Fatalf("ReadPublic failed: %s", err)
+		h, _, err := LoadExternal(rw, public, private, HandleNull)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer FlushContext(rw, h)
+
+		pub, _, _, err := ReadPublic(rw, h)
+		if err != nil {
+			t.Fatalf("ReadPublic failed: %s", err)
+		}
+
+		pubKeyOut, err := pub.Key()
+		if err != nil {
+			t.Fatalf("Public.Key() failed: %s", err)
+		}
+
+		if !reflect.DeepEqual(pubKeyIn, pubKeyOut) {
+			t.Fatalf("Public.Key() = %#v; want %#v", pubKeyOut, pubKeyIn)
+		}
 	}
 
-	pubKey2, err := pub.Key()
-	if err != nil {
-		t.Fatalf("Public.Key() failed: %s", err)
-	}
-
-	if !reflect.DeepEqual(pubKey1, pubKey2) {
-		t.Fatalf("Public.Key() = %#v; want %#v", pubKey2, pubKey1)
-	}
+	t.Run("RSA", func(t *testing.T) {
+		pk, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rp := Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			RSAParameters: &RSAParams{
+				Sign: &SigScheme{
+					Alg:  AlgRSASSA,
+					Hash: AlgSHA1,
+				},
+				KeyBits:  2048,
+				Exponent: uint32(pk.PublicKey.E),
+				Modulus:  pk.PublicKey.N,
+			},
+		}
+		private := Private{
+			Type:      AlgRSA,
+			Sensitive: pk.Primes[0].Bytes(),
+		}
+		run(t, rp, private, &pk.PublicKey)
+	})
+	t.Run("ECC", func(t *testing.T) {
+		skipOnUnsupportedAlg(t, rw, AlgECC)
+		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		public := Public{
+			Type:       AlgECC,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			ECCParameters: &ECCParams{
+				Sign: &SigScheme{
+					Alg:  AlgECDSA,
+					Hash: AlgSHA1,
+				},
+				CurveID: CurveNISTP256,
+				Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+			},
+		}
+		private := Private{
+			Type:      AlgECC,
+			Sensitive: pk.D.Bytes(),
+		}
+		run(t, public, private, &pk.PublicKey)
+	})
 }
