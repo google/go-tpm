@@ -18,8 +18,6 @@ package tpm2
 import (
 	"bytes"
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"fmt"
 	"io"
 
@@ -408,24 +406,9 @@ func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, par
 		return 0, nil, fmt.Errorf("parsing public: %v", err)
 	}
 
-	var pubKey crypto.PublicKey
-	switch pub.Type {
-	case AlgRSA:
-		// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
-		// (big-endian).
-		pubKey = &rsa.PublicKey{N: pub.RSAParameters.Modulus, E: int(pub.RSAParameters.Exponent)}
-	case AlgECC:
-		curve, ok := toGoCurve[pub.ECCParameters.CurveID]
-		if !ok {
-			return 0, nil, fmt.Errorf("can't map TPM EC curve ID 0x%x to Go elliptic.Curve value", pub.ECCParameters.CurveID)
-		}
-		pubKey = &ecdsa.PublicKey{
-			X:     pub.ECCParameters.Point.X,
-			Y:     pub.ECCParameters.Point.Y,
-			Curve: curve,
-		}
-	default:
-		return 0, nil, fmt.Errorf("unsupported primary key type 0x%x", pub.Type)
+	pubKey, err := pub.Key()
+	if err != nil {
+		return 0, nil, err
 	}
 
 	return hnd, pubKey, err
