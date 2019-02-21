@@ -29,6 +29,11 @@ func init() {
 	tpmutil.UseTPM20LengthPrefixSize()
 }
 
+// MAX_DIGEST_BUFFER is the maximum size of []byte request or response fields.
+// Typically used for chunking of big blobs of data (such as for hashing or
+// encryption).
+const maxDigestBuffer = 1024
+
 // Algorithm represents a TPM_ALG_ID value.
 type Algorithm uint16
 
@@ -73,6 +78,7 @@ const (
 	AlgECDAA     Algorithm = 0x001A
 	AlgKDF2      Algorithm = 0x0021
 	AlgECC       Algorithm = 0x0023
+	AlgSymCipher Algorithm = 0x0025
 	AlgCTR       Algorithm = 0x0040
 	AlgOFB       Algorithm = 0x0041
 	AlgCBC       Algorithm = 0x0042
@@ -274,6 +280,7 @@ const (
 	cmdUnseal           tpmutil.Command = 0x0000015E
 	cmdContextLoad      tpmutil.Command = 0x00000161
 	cmdContextSave      tpmutil.Command = 0x00000162
+	cmdEncryptDecrypt   tpmutil.Command = 0x00000164
 	cmdFlushContext     tpmutil.Command = 0x00000165
 	cmdLoadExternal     tpmutil.Command = 0x00000167
 	cmdMakeCredential   tpmutil.Command = 0x00000168
@@ -291,6 +298,7 @@ const (
 	cmdPCRExtend       tpmutil.Command = 0x00000182
 	cmdPolicyGetDigest tpmutil.Command = 0x00000189
 	cmdPolicyPassword  tpmutil.Command = 0x0000018C
+	cmdEncryptDecrypt2 tpmutil.Command = 0x00000193
 )
 
 // Regular TPM 2.0 devices use 24-bit mask (3 bytes) for PCR selection.

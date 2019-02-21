@@ -1312,8 +1312,8 @@ func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil
 
 func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...interface{}) ([]byte, error) {
 	resp, code, err := tpmutil.RunCommand(rw, tag, cmd, in...)
-	if err != nil {
-		return nil, err
+	if err != nil || code != tpmutil.RCSuccess {
+		return nil, decodeResponse(code)
 	}
 	return resp, decodeResponse(code)
 }
@@ -1367,4 +1367,117 @@ func ReadPCR(rw io.ReadWriter, pcr int, hashAlg Algorithm) ([]byte, error) {
 		return nil, fmt.Errorf("PCR %d value missing from response", pcr)
 	}
 	return pcrVal, nil
+}
+
+// EncryptSymmetric encrypts data using a symmetric key. iv is the
+// initialization vector. iv must not be empty and its size depends on the
+// details of the symmetric encryption scheme.
+//
+// data may be longer than block size, EncryptSymmetric will chain multiple TPM
+// calls to encrypt the entire blob.
+//
+// Key handle should point at SymCipher object which is a child of the key (and
+// not e.g. RSA key itself).
+func EncryptSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpmutil.Handle, iv, data []byte) ([]byte, error) {
+	return encryptDecryptSymmetric(rw, keyAuth, key, iv, data, false)
+}
+
+// DecryptSymmetric decrypts data using a symmetric key. iv is the
+// initialization vector. iv must not be empty and its size depends on the
+// details of the symmetric encryption scheme.
+//
+// data may be longer than block size, DecryptSymmetric will chain multiple TPM
+// calls to decrypt the entire blob.
+//
+// Key handle should point at SymCipher object which is a child of the key (and
+// not e.g. RSA key itself).
+func DecryptSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpmutil.Handle, iv, data []byte) ([]byte, error) {
+	return encryptDecryptSymmetric(rw, keyAuth, key, iv, data, true)
+}
+
+func encodeEncryptDecrypt(keyAuth string, key tpmutil.Handle, iv, data []byte, decrypt bool) ([]byte, error) {
+	ha, err := tpmutil.Pack(key)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(keyAuth)})
+	if err != nil {
+		return nil, err
+	}
+	// Use encryption key's mode.
+	params, err := tpmutil.Pack(decrypt, AlgNull, iv, data)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+func encodeEncryptDecrypt2(keyAuth string, key tpmutil.Handle, iv, data []byte, decrypt bool) ([]byte, error) {
+	ha, err := tpmutil.Pack(key)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(keyAuth)})
+	if err != nil {
+		return nil, err
+	}
+	// Use encryption key's mode.
+	params, err := tpmutil.Pack(data, decrypt, AlgNull, iv)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+func decodeEncryptDecrypt(resp []byte) ([]byte, []byte, error) {
+	var paramSize uint32
+	var out, nextIV []byte
+	if _, err := tpmutil.Unpack(resp, &paramSize, &out, &nextIV); err != nil {
+		return nil, nil, err
+	}
+	return out, nextIV, nil
+}
+
+func encryptDecryptBlockSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpmutil.Handle, iv, data []byte, decrypt bool) ([]byte, []byte, error) {
+	cmd, err := encodeEncryptDecrypt2(keyAuth, key, iv, data, decrypt)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, cmdEncryptDecrypt2, tpmutil.RawBytes(cmd))
+	if err != nil {
+		fmt0Err, ok := err.(Error)
+		if ok && fmt0Err.Code == RCCommandCode {
+			// If TPM2_EncryptDecrypt2 is not supported, fall back to
+			// TPM2_EncryptDecrypt.
+			cmd, err := encodeEncryptDecrypt(keyAuth, key, iv, data, decrypt)
+			if err != nil {
+				return nil, nil, err
+			}
+			resp, err = runCommand(rw, TagSessions, cmdEncryptDecrypt, tpmutil.RawBytes(cmd))
+		}
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeEncryptDecrypt(resp)
+}
+
+func encryptDecryptSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpmutil.Handle, iv, data []byte, decrypt bool) ([]byte, error) {
+	var out, block []byte
+	var err error
+
+	for rest := data; len(rest) > 0; {
+		if len(rest) > maxDigestBuffer {
+			block, rest = rest[:maxDigestBuffer], rest[maxDigestBuffer:]
+		} else {
+			block, rest = rest, nil
+		}
+		block, iv, err = encryptDecryptBlockSymmetric(rw, keyAuth, key, iv, block, decrypt)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, block...)
+	}
+
+	return out, nil
 }
