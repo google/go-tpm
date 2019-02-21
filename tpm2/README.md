@@ -9,7 +9,7 @@ By default, running `go test` will skip them. To run the tests on a host with
 available TPM device, run
 
 ```
-go test --tpm_path=/dev/tpm0
+go test --tpm-path=/dev/tpm0
 ```
 
 where `/dev/tpm0` is path to a TPM character device or a Unix socket.

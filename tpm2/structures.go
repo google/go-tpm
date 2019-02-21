@@ -16,6 +16,9 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -88,6 +91,30 @@ func (p Public) Encode() ([]byte, error) {
 		return nil, fmt.Errorf("encoding RSAParameters, ECCParameters or KeyedHash: %v", err)
 	}
 	return concat(head, params)
+}
+
+// Key returns the (public) key from the public area of an object.
+func (p Public) Key() (crypto.PublicKey, error) {
+	var pubKey crypto.PublicKey
+	switch p.Type {
+	case AlgRSA:
+		// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
+		// (big-endian).
+		pubKey = &rsa.PublicKey{N: p.RSAParameters.Modulus, E: int(p.RSAParameters.Exponent)}
+	case AlgECC:
+		curve, ok := toGoCurve[p.ECCParameters.CurveID]
+		if !ok {
+			return nil, fmt.Errorf("can't map TPM EC curve ID 0x%x to Go elliptic.Curve value", p.ECCParameters.CurveID)
+		}
+		pubKey = &ecdsa.PublicKey{
+			X:     p.ECCParameters.Point.X,
+			Y:     p.ECCParameters.Point.Y,
+			Curve: curve,
+		}
+	default:
+		return nil, fmt.Errorf("unsupported public key type 0x%x", p.Type)
+	}
+	return pubKey, nil
 }
 
 // DecodePublic decodes a TPMT_PUBLIC message. No error is returned if

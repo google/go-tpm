@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -38,8 +37,8 @@ import (
 
 var (
 	mssimRun          = flag.Bool("mssim", false, "If supplied, run integration tests against a Microsoft simulator.")
-	mssimCommandAddr  = flag.String("mssim_command_addr", "localhost:2321", "Host and port of the simulator's command listener")
-	mssimPlatformAddr = flag.String("mssim_platform_addr", "localhost:2322", "Host and port of the simulator's platform listener")
+	mssimCommandAddr  = flag.String("mssim-command-addr", "localhost:2321", "Host and port of the simulator's command listener")
+	mssimPlatformAddr = flag.String("mssim-platform-addr", "localhost:2322", "Host and port of the simulator's platform listener")
 )
 
 func openTPM(t testing.TB) io.ReadWriteCloser {
@@ -59,11 +58,6 @@ func openTPM(t testing.TB) io.ReadWriteCloser {
 		t.Fatalf("Startup TPM failed: %v", err)
 	}
 	return conn
-}
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
 }
 
 var (
@@ -1089,4 +1083,84 @@ func TestQuote(t *testing.T) {
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature.RSA.Signature); err != nil {
 		t.Errorf("VerifyPKCS1v15 failed: %v", err)
 	}
+}
+
+func TestReadPublicKey(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	run := func(t *testing.T, public Public, private Private, pubKeyIn crypto.PublicKey) {
+		t.Helper()
+
+		h, _, err := LoadExternal(rw, public, private, HandleNull)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer FlushContext(rw, h)
+
+		pub, _, _, err := ReadPublic(rw, h)
+		if err != nil {
+			t.Fatalf("ReadPublic failed: %s", err)
+		}
+
+		pubKeyOut, err := pub.Key()
+		if err != nil {
+			t.Fatalf("Public.Key() failed: %s", err)
+		}
+
+		if !reflect.DeepEqual(pubKeyIn, pubKeyOut) {
+			t.Fatalf("Public.Key() = %#v; want %#v", pubKeyOut, pubKeyIn)
+		}
+	}
+
+	t.Run("RSA", func(t *testing.T) {
+		pk, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rp := Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			RSAParameters: &RSAParams{
+				Sign: &SigScheme{
+					Alg:  AlgRSASSA,
+					Hash: AlgSHA1,
+				},
+				KeyBits:  2048,
+				Exponent: uint32(pk.PublicKey.E),
+				Modulus:  pk.PublicKey.N,
+			},
+		}
+		private := Private{
+			Type:      AlgRSA,
+			Sensitive: pk.Primes[0].Bytes(),
+		}
+		run(t, rp, private, &pk.PublicKey)
+	})
+	t.Run("ECC", func(t *testing.T) {
+		skipOnUnsupportedAlg(t, rw, AlgECC)
+		pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		public := Public{
+			Type:       AlgECC,
+			NameAlg:    AlgSHA1,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			ECCParameters: &ECCParams{
+				Sign: &SigScheme{
+					Alg:  AlgECDSA,
+					Hash: AlgSHA1,
+				},
+				CurveID: CurveNISTP256,
+				Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+			},
+		}
+		private := Private{
+			Type:      AlgECC,
+			Sensitive: pk.D.Bytes(),
+		}
+		run(t, public, private, &pk.PublicKey)
+	})
 }
