@@ -115,6 +115,7 @@ const (
 // SessionAttributes represents an attribute of a session.
 type SessionAttributes byte
 
+// Session Attributes (Structures 8.4 TPMA_SESSION)
 const (
 	AttrContinueSession SessionAttributes = 1 << iota
 	AttrAuditExclusive
