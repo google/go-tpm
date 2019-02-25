@@ -1369,12 +1369,12 @@ func ReadPCR(rw io.ReadWriter, pcr int, hashAlg Algorithm) ([]byte, error) {
 	return pcrVal, nil
 }
 
-// EncryptSymmetric encrypts data using a symmetric key. iv is the
-// initialization vector. iv must not be empty and its size depends on the
+// EncryptSymmetric encrypts data using a symmetric key. The iv is the
+// initialization vector. The iv must not be empty and its size depends on the
 // details of the symmetric encryption scheme.
 //
-// data may be longer than block size, EncryptSymmetric will chain multiple TPM
-// calls to encrypt the entire blob.
+// The data may be longer than block size, EncryptSymmetric will chain multiple
+// TPM calls to encrypt the entire blob.
 //
 // Key handle should point at SymCipher object which is a child of the key (and
 // not e.g. RSA key itself).
@@ -1382,12 +1382,12 @@ func EncryptSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpmutil.Handle,
 	return encryptDecryptSymmetric(rw, keyAuth, key, iv, data, false)
 }
 
-// DecryptSymmetric decrypts data using a symmetric key. iv is the
-// initialization vector. iv must not be empty and its size depends on the
+// DecryptSymmetric decrypts data using a symmetric key. The iv is the
+// initialization vector. The iv must not be empty and its size depends on the
 // details of the symmetric encryption scheme.
 //
-// data may be longer than block size, DecryptSymmetric will chain multiple TPM
-// calls to decrypt the entire blob.
+// The data may be longer than block size, DecryptSymmetric will chain multiple
+// TPM calls to decrypt the entire blob.
 //
 // Key handle should point at SymCipher object which is a child of the key (and
 // not e.g. RSA key itself).
