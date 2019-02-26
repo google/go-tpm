@@ -905,7 +905,6 @@ func TestEncodeDecodeCreationData(t *testing.T) {
 		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, cd)
 	}
 }
-
 func TestCreateAndCertifyCreation(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -1163,4 +1162,66 @@ func TestReadPublicKey(t *testing.T) {
 		}
 		run(t, public, private, &pk.PublicKey)
 	})
+}
+
+func TestEncryptDecrypt(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagRestricted | FlagDecrypt | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
+		RSAParameters: &RSAParams{
+			Symmetric: &SymScheme{
+				Alg:     AlgAES,
+				KeyBits: 128,
+				Mode:    AlgCFB,
+			},
+			KeyBits: 2048,
+			Modulus: big.NewInt(0),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %s", err)
+	}
+	defer FlushContext(rw, parentHandle)
+	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, Public{
+		Type:       AlgSymCipher,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagDecrypt | FlagSign | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
+		SymCipherParameters: &SymCipherParams{
+			Symmetric: &SymScheme{
+				Alg:     AlgAES,
+				KeyBits: 128,
+				Mode:    AlgCFB,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateKey failed: %s", err)
+	}
+	key, _, err := Load(rw, parentHandle, defaultPassword, publicBlob, privateBlob)
+	if err != nil {
+		t.Fatalf("Load failed: %s", err)
+	}
+	defer FlushContext(rw, key)
+
+	data := bytes.Repeat([]byte("a"), 1e4) // 10KB
+	iv := make([]byte, 16)
+
+	encrypted, err := EncryptSymmetric(rw, defaultPassword, key, iv, data)
+	if err != nil {
+		t.Fatalf("EncryptSymmetric failed: %s", err)
+	}
+	if bytes.Equal(encrypted, data) {
+		t.Error("encrypted blob matches unenecrypted data")
+	}
+	decrypted, err := DecryptSymmetric(rw, defaultPassword, key, iv, encrypted)
+	if err != nil {
+		t.Fatalf("DecryptSymmetric failed: %s", err)
+	}
+	if !bytes.Equal(decrypted, data) {
+		t.Errorf("got decrypted data: %q, want: %q", decrypted, data)
+	}
 }
