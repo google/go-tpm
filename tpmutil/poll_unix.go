@@ -1,3 +1,5 @@
+// +build !windows
+
 package tpmutil
 
 import (
@@ -10,11 +12,11 @@ import (
 func poll(f *os.File) error {
 	const (
 		events  = 0x001 // POLLIN
-		timeout = -1    // TSS2_TCTI_TIMEOUT_BLOCK
+		timeout = -1    // TSS2_TCTI_TIMEOUT_BLOCK=-1; block indefinitely until data is available
 	)
-	pollfds := []unix.PollFd{
+	pollFds := []unix.PollFd{
 		{Fd: int32(f.Fd()), Events: events},
 	}
-	_, err := unix.Poll(pollfds, timeout)
+	_, err := unix.Poll(pollFds, timeout)
 	return err
 }
