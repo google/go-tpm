@@ -1393,7 +1393,7 @@ func EncryptSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpmutil.Handle,
 // Secure use of this command is subtle and requires careful analysis.
 // Please consult with experts in cryptography for how to use it securely.
 //
-// The iv  is the initialization vector. The iv must not be empty and its size
+// The iv is the initialization vector. The iv must not be empty and its size
 // depends on the details of the symmetric encryption scheme.
 //
 // The data may be longer than block size, DecryptSymmetric will chain multiple
