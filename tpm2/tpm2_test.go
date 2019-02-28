@@ -639,8 +639,17 @@ func TestSign(t *testing.T) {
 		}
 		switch signerPub := signerPub.(type) {
 		case *rsa.PublicKey:
-			if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature); err != nil {
-				t.Errorf("Signature verification failed: %v", err)
+			switch scheme.Alg {
+			case AlgRSASSA:
+				if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature); err != nil {
+					t.Errorf("Signature verification failed: %v", err)
+				}
+			case AlgRSAPSS:
+				if err := rsa.VerifyPSS(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature, nil); err != nil {
+					t.Errorf("Signature verification failed: %v", err)
+				}
+			default:
+				t.Errorf("unsupported signature algorithm 0x%x", scheme.Alg)
 			}
 		case *ecdsa.PublicKey:
 			if !ecdsa.Verify(signerPub, digest[:], sig.ECC.R, sig.ECC.S) {
@@ -649,7 +658,7 @@ func TestSign(t *testing.T) {
 		}
 	}
 
-	t.Run("RSA", func(t *testing.T) {
+	t.Run("RSA SSA", func(t *testing.T) {
 		run(t, Public{
 			Type:       AlgRSA,
 			NameAlg:    AlgSHA256,
@@ -657,6 +666,21 @@ func TestSign(t *testing.T) {
 			RSAParameters: &RSAParams{
 				Sign: &SigScheme{
 					Alg:  AlgRSASSA,
+					Hash: AlgSHA256,
+				},
+				KeyBits: 2048,
+				Modulus: big.NewInt(0),
+			},
+		})
+	})
+	t.Run("RSA PSS", func(t *testing.T) {
+		run(t, Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA256,
+			Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+			RSAParameters: &RSAParams{
+				Sign: &SigScheme{
+					Alg:  AlgRSAPSS,
 					Hash: AlgSHA256,
 				},
 				KeyBits: 2048,
