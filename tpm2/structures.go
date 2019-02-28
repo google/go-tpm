@@ -444,7 +444,7 @@ func decodeSignature(in *bytes.Buffer) (*Signature, error) {
 		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
 	switch sig.Alg {
-	case AlgRSASSA:
+	case AlgRSASSA, AlgRSAPSS:
 		sig.RSA = new(SignatureRSA)
 		if err := tpmutil.UnpackBuf(in, sig.RSA); err != nil {
 			return nil, fmt.Errorf("decoding RSA: %v", err)
