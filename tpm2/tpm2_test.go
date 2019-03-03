@@ -57,7 +57,24 @@ func openTPM(t testing.TB) io.ReadWriteCloser {
 		conn.Close()
 		t.Fatalf("Startup TPM failed: %v", err)
 	}
-	return conn
+	return simulator{conn}
+}
+
+// Simulator is a wrapper around a simulator connection that ensures shutdown is called on close.
+// This is only necessary with simulators. If shutdown isn't called before disconnecting, the
+// lockout counter in the simulator is incremented leading to DA lockout after running a few tests.
+type simulator struct {
+	*mssim.Conn
+}
+
+// Close calls Shutdown() on the simulator before disconnecting to ensure the lockout counter doesn't
+// get incremented.
+func (s simulator) Close() error {
+	if err := Shutdown(s, StartupClear); err != nil {
+		s.Conn.Close()
+		return err
+	}
+	return s.Conn.Close()
 }
 
 var (
