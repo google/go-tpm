@@ -1249,3 +1249,71 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Errorf("got decrypted data: %q, want: %q", decrypted, data)
 	}
 }
+
+func TestRSAEncryptDecrypt(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	handle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagDecrypt | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgNull,
+				Hash: AlgNull,
+			},
+			KeyBits: 2048,
+			Modulus: big.NewInt(0),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %s", err)
+	}
+	defer FlushContext(rw, handle)
+
+	tests := map[string]struct {
+		scheme *AsymScheme
+		data   []byte
+		label  string
+	}{
+		"No padding": {
+			scheme: &AsymScheme{Alg: AlgNull},
+			data:   bytes.Repeat([]byte("a"), 256),
+		},
+		"RSAES-PKCS1": {
+			scheme: &AsymScheme{Alg: AlgRSAES},
+			data:   bytes.Repeat([]byte("a"), 245),
+		},
+		"RSAES-OAEP-SHA1": {
+			scheme: &AsymScheme{Alg: AlgOAEP, Hash: AlgSHA1},
+			data:   bytes.Repeat([]byte("a"), 214),
+		},
+		"RSAES-OAEP-SHA256": {
+			scheme: &AsymScheme{Alg: AlgOAEP, Hash: AlgSHA256},
+			data:   bytes.Repeat([]byte("a"), 190),
+		},
+		"RSAES-OAEP-SHA256 with label": {
+			scheme: &AsymScheme{Alg: AlgOAEP, Hash: AlgSHA256},
+			data:   bytes.Repeat([]byte("a"), 190),
+			label:  "label\x00",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			encrypted, err := RSAEncrypt(rw, handle, test.data, test.scheme, test.label)
+			if err != nil {
+				t.Fatal("RSAEncrypt failed:", err)
+			}
+			decrypted, err := RSADecrypt(rw, handle, defaultPassword, encrypted, test.scheme, test.label)
+			if err != nil {
+				t.Fatal("RSADecrypt failed:", err)
+			}
+			if !bytes.Equal(decrypted, test.data) {
+				t.Errorf("got decrypted data: %q, want: %q", decrypted, test.data)
+			}
+		})
+	}
+
+}

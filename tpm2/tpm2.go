@@ -1491,3 +1491,90 @@ func encryptDecryptSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpmutil.
 
 	return out, nil
 }
+
+func encodeRSAEncrypt(key tpmutil.Handle, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
+	ha, err := tpmutil.Pack(key)
+	if err != nil {
+		return nil, err
+	}
+	m, err := tpmutil.Pack(message)
+	if err != nil {
+		return nil, err
+	}
+	s, err := scheme.encode()
+	if err != nil {
+		return nil, err
+	}
+	l, err := tpmutil.Pack([]byte(label))
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, m, s, l)
+}
+
+func decodeRSAEncrypt(resp []byte) ([]byte, error) {
+	var out []byte
+	_, err := tpmutil.Unpack(resp, &out)
+	return out, err
+}
+
+// RSAEncrypt performs RSA encryption and padding according to RFC 3447. When using OAEP
+// with a label, the label needs to be null-terminated. The null byte is also included in the
+// padding scheme.
+func RSAEncrypt(rw io.ReadWriter, key tpmutil.Handle, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
+	cmd, err := encodeRSAEncrypt(key, message, scheme, label)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagNoSessions, cmdRSAEncrypt, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeRSAEncrypt(resp)
+}
+
+func encodeRSADecrypt(key tpmutil.Handle, password string, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
+	ha, err := tpmutil.Pack(key)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	m, err := tpmutil.Pack(message)
+	if err != nil {
+		return nil, err
+	}
+	s, err := scheme.encode()
+	if err != nil {
+		return nil, err
+	}
+	l, err := tpmutil.Pack([]byte(label))
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, m, s, l)
+}
+
+func decodeRSADecrypt(resp []byte) ([]byte, error) {
+	var out []byte
+	var paramSize uint32
+	_, err := tpmutil.Unpack(resp, &paramSize, &out)
+	return out, err
+}
+
+// RSADecrypt performs RSA decryption with a padding scheme according to RFC 3447. When using OAEP
+// with a label, the label needs to be null-terminated. The null byte is also included in the
+// padding scheme.
+func RSADecrypt(rw io.ReadWriter, key tpmutil.Handle, password string, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
+	cmd, err := encodeRSADecrypt(key, password, message, scheme, label)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, cmdRSADecrypt, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeRSADecrypt(resp)
+}
