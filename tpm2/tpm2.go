@@ -1518,9 +1518,10 @@ func decodeRSAEncrypt(resp []byte) ([]byte, error) {
 	return out, err
 }
 
-// RSAEncrypt performs RSA encryption and padding according to RFC 3447. When using OAEP
-// with a label, the label needs to be null-terminated. The null byte is also included in the
-// padding scheme.
+// RSAEncrypt performs RSA encryption in the TPM according to RFC 3447. The key must be
+// a (public) key loaded into the TPM beforehand. Note that when using OAEP with a label,
+// the label needs to be null-terminated and the null byte is included in the padding
+// scheme.
 func RSAEncrypt(rw io.ReadWriter, key tpmutil.Handle, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
 	cmd, err := encodeRSAEncrypt(key, message, scheme, label)
 	if err != nil {
@@ -1564,8 +1565,9 @@ func decodeRSADecrypt(resp []byte) ([]byte, error) {
 	return out, err
 }
 
-// RSADecrypt performs RSA decryption with a padding scheme according to RFC 3447. When using OAEP
-// with a label, the label needs to be null-terminated. The null byte is also included in the
+// RSADecrypt performs RSA decryption in the TPM according to RFC 3447. The key must be
+// a private RSA key in the TPM with FlagDecrypt set. Note that when using OAEP with a
+// label, the label needs to be null-terminated and the null byte is included in the
 // padding scheme.
 func RSADecrypt(rw io.ReadWriter, key tpmutil.Handle, password string, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
 	cmd, err := encodeRSADecrypt(key, password, message, scheme, label)
