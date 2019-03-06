@@ -1505,6 +1505,9 @@ func encodeRSAEncrypt(key tpmutil.Handle, message []byte, scheme *AsymScheme, la
 	if err != nil {
 		return nil, err
 	}
+	if label != "" {
+		label += "\x00"
+	}
 	l, err := tpmutil.Pack([]byte(label))
 	if err != nil {
 		return nil, err
@@ -1520,7 +1523,7 @@ func decodeRSAEncrypt(resp []byte) ([]byte, error) {
 
 // RSAEncrypt performs RSA encryption in the TPM according to RFC 3447. The key must be
 // a (public) key loaded into the TPM beforehand. Note that when using OAEP with a label,
-// the label needs to be null-terminated and the null byte is included in the padding
+// a null byte is appended to the label and the null byte is included in the padding
 // scheme.
 func RSAEncrypt(rw io.ReadWriter, key tpmutil.Handle, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
 	cmd, err := encodeRSAEncrypt(key, message, scheme, label)
@@ -1551,6 +1554,9 @@ func encodeRSADecrypt(key tpmutil.Handle, password string, message []byte, schem
 	if err != nil {
 		return nil, err
 	}
+	if label != "" {
+		label += "\x00"
+	}
 	l, err := tpmutil.Pack([]byte(label))
 	if err != nil {
 		return nil, err
@@ -1567,7 +1573,7 @@ func decodeRSADecrypt(resp []byte) ([]byte, error) {
 
 // RSADecrypt performs RSA decryption in the TPM according to RFC 3447. The key must be
 // a private RSA key in the TPM with FlagDecrypt set. Note that when using OAEP with a
-// label, the label needs to be null-terminated and the null byte is included in the
+// label, a null byte is appended to the label and the null byte is included in the
 // padding scheme.
 func RSADecrypt(rw io.ReadWriter, key tpmutil.Handle, password string, message []byte, scheme *AsymScheme, label string) ([]byte, error) {
 	cmd, err := encodeRSADecrypt(key, password, message, scheme, label)

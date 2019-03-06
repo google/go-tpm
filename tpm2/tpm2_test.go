@@ -1296,7 +1296,7 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 		"RSAES-OAEP-SHA256 with label": {
 			scheme: &AsymScheme{Alg: AlgOAEP, Hash: AlgSHA256},
 			data:   bytes.Repeat([]byte("a"), 190),
-			label:  "label\x00",
+			label:  "label",
 		},
 	}
 
