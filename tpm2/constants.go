@@ -47,6 +47,11 @@ func (a Algorithm) UsesCount() bool {
 	return a == AlgECDAA
 }
 
+// UsesHash returns true if the algorithm requires the use of a hash.
+func (a Algorithm) UsesHash() bool {
+	return a == AlgOAEP
+}
+
 // HashConstructor returns a function that can be used to make a
 // hash.Hash using the specified algorithm. An error is returned
 // if the algorithm is not a hash algorithm.
@@ -277,6 +282,7 @@ const (
 	cmdCreate           tpmutil.Command = 0x00000153
 	cmdLoad             tpmutil.Command = 0x00000157
 	cmdQuote            tpmutil.Command = 0x00000158
+	cmdRSADecrypt       tpmutil.Command = 0x00000159
 	cmdSign             tpmutil.Command = 0x0000015D
 	cmdUnseal           tpmutil.Command = 0x0000015E
 	cmdContextLoad      tpmutil.Command = 0x00000161
@@ -287,6 +293,7 @@ const (
 	cmdMakeCredential   tpmutil.Command = 0x00000168
 	cmdReadPublicNV     tpmutil.Command = 0x00000169
 	cmdReadPublic       tpmutil.Command = 0x00000173
+	cmdRSAEncrypt       tpmutil.Command = 0x00000174
 	cmdStartAuthSession tpmutil.Command = 0x00000176
 	cmdGetCapability    tpmutil.Command = 0x0000017A
 	cmdGetRandom        tpmutil.Command = 0x0000017B

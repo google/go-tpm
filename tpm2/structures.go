@@ -367,6 +367,22 @@ func decodeSymScheme(in *bytes.Buffer) (*SymScheme, error) {
 	return &scheme, nil
 }
 
+// AsymScheme represents am asymmetric encryption scheme.
+type AsymScheme struct {
+	Alg  Algorithm
+	Hash Algorithm
+}
+
+func (s *AsymScheme) encode() ([]byte, error) {
+	if s == nil || s.Alg.IsNull() {
+		return tpmutil.Pack(AlgNull)
+	}
+	if s.Alg.UsesHash() {
+		return tpmutil.Pack(s.Alg, s.Hash)
+	}
+	return tpmutil.Pack(s.Alg)
+}
+
 // SigScheme represents a signing scheme.
 type SigScheme struct {
 	Alg   Algorithm
