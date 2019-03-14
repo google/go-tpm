@@ -26,7 +26,7 @@ type winTPMBuffer struct {
 	outBuffer []byte
 }
 
-// Executes the TPM command specified by commandBuffer (at Normal Priority), returning the number
+// Write executes the TPM command specified by commandBuffer (at Normal Priority), returning the number
 // of bytes in the command and any error code returned by executing the TPM command. Command
 // response can be read by calling Read().
 func (rwc *winTPMBuffer) Write(commandBuffer []byte) (int, error) {
