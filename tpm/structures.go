@@ -241,6 +241,13 @@ type pubKey struct {
 	Key             []byte
 }
 
+// A symKey is a TPM representation of a symmetric key.
+type symKey struct {
+	AlgID     uint32
+	EncScheme uint16
+	Key       tpmutil.U16Bytes
+}
+
 // A tpmStoredData holds sealed data from the TPM.
 type tpmStoredData struct {
 	Version uint32

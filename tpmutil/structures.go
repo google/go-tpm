@@ -48,3 +48,6 @@ type responseHeader struct {
 
 // A Handle is a reference to a TPM object.
 type Handle uint32
+
+// A U16Bytes is a byte slice with 16-bit header.
+type U16Bytes []byte

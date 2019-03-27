@@ -18,6 +18,8 @@ package tpm
 import (
 	"bytes"
 	"crypto"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
@@ -627,6 +629,141 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 	}
 
 	return blob, nil
+}
+
+func unloadTrspiCred(blob []byte) ([]byte, error) {
+	/*
+	 * Trousers expects the asym blob to have an additional data in the header.
+	 * The relevant data is duplicated in the TPM_SYMMETRIC_KEY struct so we parse
+	 * and throw the header away.
+	 * Trspi_UnloadBlob_UINT32(offset, &credSize, blob);
+	 * Trspi_UnloadBlob_UINT32(offset, &keyParms->algorithmID, blob);
+	 * Trspi_UnloadBlob_UINT16(offset, &keyParms->encScheme, blob);
+	 * Trspi_UnloadBlob_UINT16(offset, &keyParms->sigScheme, blob);
+	 * Trspi_UnloadBlob_UINT32(offset, &keyParms->parmSize, blob);
+	 * Trspi_UnloadBlob(offset, keyParms->parmSize, blob, keyParms->parms);
+	 * Trspi_UnloadBlob(offset, sym->credSize, blob, sym->credential);
+	 */
+
+	var (
+		credsize  uint32
+		algID     uint32
+		encScheme uint16
+		sigScheme uint16
+		parmsize  uint32
+	)
+
+	symbuf := bytes.NewReader(blob)
+	if err := binary.Read(symbuf, binary.BigEndian, &credsize); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	if err := binary.Read(symbuf, binary.BigEndian, &algID); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	if err := binary.Read(symbuf, binary.BigEndian, &encScheme); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	if err := binary.Read(symbuf, binary.BigEndian, &sigScheme); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	if err := binary.Read(symbuf, binary.BigEndian, &parmsize); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	keyparms := make([]byte, parmsize)
+	if err := binary.Read(symbuf, binary.BigEndian, keyparms); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	cred := make([]byte, credsize)
+	if err := binary.Read(symbuf, binary.BigEndian, cred); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	return cred, nil
+}
+
+// ActivateIdentity sks the TPM to decrypt an EKPub encrypted symmetric session key
+// which it uses to decrpyt the symmetrically encrypted secret.
+func ActivateIdentity(rw io.ReadWriter, aikAuth []byte, ownerAuth []byte, aik tpmutil.Handle, asym, sym []byte) ([]byte, error) {
+	// Run OSAP for the AIK, reading a random OddOSAP for our initial command
+	// and getting back a secret and a handle.
+	//sharedSecretAIK, osaprAIK, err := newOSAPSession(rw, etKeyHandle, aik, aikAuth)
+	oiaprAIK, err := oiap(rw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start OIAP session: %v", err)
+	}
+	//defer osaprAIK.Close(rw)
+	//defer zeroBytes(sharedSecretAIK[:])
+
+	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
+	// and getting back a secret and a handle.
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownerAuth)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start OSAP session: %v", err)
+	}
+	defer osaprOwn.Close(rw)
+	defer zeroBytes(sharedSecretOwn[:])
+
+	authIn := []interface{}{ordActivateIdentity, asym}
+	ca1, err := newCommandAuth(oiaprAIK.AuthHandle, oiaprAIK.NonceEven, aikAuth, authIn)
+	if err != nil {
+		return nil, fmt.Errorf("newCommandAuth failed: %v", err)
+	}
+	ca2, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return nil, fmt.Errorf("newCommandAuth failed: %v", err)
+	}
+
+	symkey, ra1, ra2, ret, err := activateIdentity(rw, aik, asym, ca1, ca2)
+	if err != nil {
+		return nil, fmt.Errorf("activateIdentity failed: %v", err)
+	}
+
+	// Check response authentication.
+	raIn := []interface{}{ret, ordActivateIdentity, symkey}
+	if err := ra1.verify(ca1.NonceOdd, aikAuth, raIn); err != nil {
+		return nil, fmt.Errorf("aik resAuth failed to verify: %v", err)
+	}
+
+	if err := ra2.verify(ca2.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return nil, fmt.Errorf("owner resAuth failed to verify: %v", err)
+	}
+
+	cred, err := unloadTrspiCred(sym)
+	var (
+		block     cipher.Block
+		iv        []byte
+		ciphertxt []byte
+		secret    []byte
+	)
+	switch id := symkey.AlgID; id {
+	case algAES128:
+		block, err = aes.NewCipher(symkey.Key)
+		if err != nil {
+			return nil, fmt.Errorf("aes.NewCipher failed: %v", err)
+		}
+		iv = cred[:aes.BlockSize]
+		ciphertxt = cred[aes.BlockSize:]
+		secret = ciphertxt
+	default:
+		return nil, fmt.Errorf("%v is not a supported session key algorithm", id)
+	}
+	switch es := symkey.EncScheme; es {
+	case esSymCTR:
+		stream := cipher.NewCTR(block, iv)
+		stream.XORKeyStream(secret, ciphertxt)
+	case esSymOFB:
+		stream := cipher.NewOFB(block, iv)
+		stream.XORKeyStream(secret, ciphertxt)
+	case esSymCBCPKCS5:
+		mode := cipher.NewCBCDecrypter(block, iv)
+		mode.CryptBlocks(secret, ciphertxt)
+		// remove PKCS5 padding
+		padlen := int(secret[len(secret)-1])
+		secret = secret[:len(secret)-padlen]
+	default:
+		return nil, fmt.Errorf("%v is not a supported encryption scheme", es)
+	}
+
+	return secret, nil
 }
 
 // ResetLockValue resets the dictionary-attack value in the TPM; this allows the

@@ -168,6 +168,13 @@ func packType(buf io.Writer, elts ...interface{}) error {
 				if err := binary.Write(buf, binary.BigEndian, s); err != nil {
 					return err
 				}
+			case U16Bytes:
+				if err := binary.Write(buf, binary.BigEndian, uint16(len(s))); err != nil {
+					return err
+				}
+				if err := binary.Write(buf, binary.BigEndian, s); err != nil {
+					return err
+				}
 			default:
 				return fmt.Errorf("only []byte and RawBytes slices are supported, got %T", e)
 			}
@@ -220,10 +227,17 @@ func UnpackBuf(buf io.Reader, elts ...interface{}) error {
 		case reflect.Slice:
 			var size int
 			_, isHandles := e.(*[]Handle)
+			_, isU16Bytes := e.(*U16Bytes)
 
 			switch {
 			// []Handle always uses 2-byte length, even with TPM 1.2.
 			case isHandles:
+				var tmpSize uint16
+				if err := binary.Read(buf, binary.BigEndian, &tmpSize); err != nil {
+					return err
+				}
+				size = int(tmpSize)
+			case isU16Bytes:
 				var tmpSize uint16
 				if err := binary.Read(buf, binary.BigEndian, &tmpSize); err != nil {
 					return err
@@ -266,6 +280,12 @@ func UnpackBuf(buf io.Reader, elts ...interface{}) error {
 					*b = (*b)[:size]
 				} else {
 					*b = append(*b, make([]Handle, size-len(*b))...)
+				}
+			case *U16Bytes:
+				if len(*b) >= size {
+					*b = (*b)[:size]
+				} else {
+					*b = append(*b, make([]byte, size-len(*b))...)
 				}
 			default:
 				return fmt.Errorf("can't fill pointer to %T, only []byte or []Handle slices", e)
