@@ -24,6 +24,7 @@ import (
 	"crypto/sha1"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -711,6 +712,103 @@ func OwnerReadSRK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
 	}
 
 	return tpmutil.Pack(pk)
+}
+
+// ReadEKCert reads the EKCert from the NVRAM
+func ReadEKCert(rw io.ReadWriter, ownAuth digest) ([]byte, error) {
+	var (
+		data     []byte
+		ekbuf    []byte
+		buff     io.Reader
+		offset   uint32
+		bufSize  uint32
+		tag      uint16
+		certType uint8
+		certSize uint16
+	)
+	offset = 0
+	data, err := NVReadValue(rw, 0x1000f000, offset, 5, ownAuth)
+	if err != nil {
+		return nil, err
+	}
+	offset = offset + 5
+	buff = bytes.NewReader(data)
+
+	if err := binary.Read(buff, binary.BigEndian, &tag); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	if err := binary.Read(buff, binary.BigEndian, &certType); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+	if err := binary.Read(buff, binary.BigEndian, &certSize); err != nil {
+		return nil, fmt.Errorf("binary.Read failed: %v", err)
+	}
+
+	if tag != 0x1001 { // TCG_TAG_PCCLIENT_STORED_CERT
+		return nil, fmt.Errorf("invalid certificate")
+	}
+
+	switch certType {
+	case 0: // TCG_FULL_CERT
+		data, err := NVReadValue(rw, 0x1000f000, offset, 2, ownAuth)
+		if err != nil {
+			return nil, err
+		}
+		bufSize = uint32(certSize) + offset
+		offset = offset + 2
+		buff = bytes.NewReader(data)
+
+		if err := binary.Read(buff, binary.BigEndian, &tag); err != nil {
+			return nil, fmt.Errorf("binary.Read failed: %v", err)
+		}
+
+		if tag != 0x1002 { // TCG_TAG_PCCLIENT_FULL_CERT
+			return nil, fmt.Errorf("certificate type and tag do not match")
+		}
+
+	case 1: // TCG_PARTIAL_SMALL_CERT
+		return nil, fmt.Errorf("certType is not TCG_FULL_CERT: currently do not support partial certs")
+	}
+
+	for offset < bufSize {
+		length := bufSize - offset
+		if length > 128 { // read the cert in 128byte chunks
+			length = 128
+		}
+		data, err = NVReadValue(rw, 0x1000f000, offset, length, ownAuth)
+		if err != nil {
+			return nil, err
+		}
+
+		ekbuf = append(ekbuf, data...)
+		offset += length
+	}
+
+	return ekbuf, nil
+}
+
+// NVReadValue consumes an index, offset, and length, and returns the value from that location in NVRAM
+func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([]byte, error) {
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
+	if err != nil {
+		return nil, fmt.Errorf("newOSAPSession failed: %v", err)
+	}
+	defer osaprOwn.Close(rw)
+	defer zeroBytes(sharedSecretOwn[:])
+	authIn := []interface{}{ordNVReadValue, index, offset, len}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new CommandAuth: %v", err)
+	}
+	data, ra, ret, err := nvReadValue(rw, index, offset, len, ca)
+	if err != nil {
+		return nil, fmt.Errorf("nvReadValue failed: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVReadValue, data}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return nil, fmt.Errorf("responseAuth failed to verify: %v", err)
+	}
+	return data, nil
 }
 
 // OwnerReadPubEK uses owner auth to get a blob representing the public part of the

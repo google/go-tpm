@@ -143,6 +143,18 @@ func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pu
 	return &pk, &ra, ret, nil
 }
 
+func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
+	var b []byte
+	var ra responseAuth
+	in := []interface{}{index, offset, len, ca}
+	out := []interface{}{&b, &ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVReadValue, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return b, &ra, ret, nil
+}
+
 // getCapability reads the requested capability and sub-capability from NVRAM
 func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	var b []byte
