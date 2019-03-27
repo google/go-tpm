@@ -754,6 +754,11 @@ func ReadPubEK(rw io.ReadWriter) ([]byte, error) {
 	return tpmutil.Pack(pk)
 }
 
+// GetManufacturer returns the manufacturer ID
+func GetManufacturer(rw io.ReadWriter) ([]byte, error) {
+	return getCapability(rw, capProperty, tpmCapPropManufacturer)
+}
+
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth digest) error {

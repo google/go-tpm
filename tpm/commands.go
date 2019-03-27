@@ -143,6 +143,17 @@ func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pu
 	return &pk, &ra, ret, nil
 }
 
+// getCapability reads the requested capability and sub-capability from NVRAM
+func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
+	var b []byte
+	in := []interface{}{cap, uint32(4), subcap} // tcsd requires capabilities to be of size 4, cannot find any mention of this in the spec
+	out := []interface{}{&b}
+	if _, err := submitTPMRequest(rw, tagRQUCommand, ordGetCapability, in, out); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
 // quote2 signs arbitrary data under a given set of PCRs and using a key
 // specified by keyHandle. It returns information about the PCRs it signed
 // under, the signature, auth information, and optionally information about the
