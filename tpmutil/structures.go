@@ -14,6 +14,8 @@
 
 package tpmutil
 
+import "io"
+
 // RawBytes is for Pack and RunCommand arguments that are already encoded.
 // Compared to []byte, RawBytes will not be prepended with slice length during
 // encoding.
@@ -48,3 +50,11 @@ type responseHeader struct {
 
 // A Handle is a reference to a TPM object.
 type Handle uint32
+
+// SelfMarshaler allows custom types to override default encoding/decoding
+// behavior in Pack, Unpack and UnpackBuf.
+type SelfMarshaler interface {
+	TPMMarshal(out io.Writer) error
+	TPMUnmarshal(in io.Reader) error
+	TPMPackedSize() int
+}

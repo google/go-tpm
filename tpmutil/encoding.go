@@ -51,6 +51,11 @@ func UseTPM20LengthPrefixSize() {
 func packedSize(elts ...interface{}) (int, error) {
 	var size int
 	for _, e := range elts {
+		marshaler, ok := e.(SelfMarshaler)
+		if ok {
+			size += marshaler.TPMPackedSize()
+			continue
+		}
 		v := reflect.ValueOf(e)
 		switch v.Kind() {
 		case reflect.Ptr:
@@ -134,6 +139,13 @@ func Pack(elts ...interface{}) ([]byte, error) {
 // using encoding/binary for everything else.
 func packType(buf io.Writer, elts ...interface{}) error {
 	for _, e := range elts {
+		marshaler, ok := e.(SelfMarshaler)
+		if ok {
+			if err := marshaler.TPMMarshal(buf); err != nil {
+				return err
+			}
+			continue
+		}
 		v := reflect.ValueOf(e)
 		switch v.Kind() {
 		case reflect.Ptr:
@@ -141,6 +153,7 @@ func packType(buf io.Writer, elts ...interface{}) error {
 				return err
 			}
 		case reflect.Struct:
+			// TODO(awly): Currently packType cannot handle non-struct fields that implement SelfMarshaler
 			for i := 0; i < v.NumField(); i++ {
 				if err := packType(buf, v.Field(i).Interface()); err != nil {
 					return err
@@ -208,6 +221,13 @@ func UnpackBuf(buf io.Reader, elts ...interface{}) error {
 			return errors.New("can't fill a nil pointer")
 		}
 
+		marshaler, ok := e.(SelfMarshaler)
+		if ok {
+			if err := marshaler.TPMUnmarshal(buf); err != nil {
+				return err
+			}
+			continue
+		}
 		iv := reflect.Indirect(v)
 		switch iv.Kind() {
 		case reflect.Struct:

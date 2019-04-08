@@ -17,6 +17,7 @@ package tpm
 import (
 	"crypto"
 	"crypto/rsa"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -239,6 +240,57 @@ type key12 struct {
 type pubKey struct {
 	AlgorithmParams keyParams
 	Key             []byte
+}
+
+// A symKey is a TPM representation of a symmetric key.
+type symKey struct {
+	AlgID     uint32
+	EncScheme uint16
+	Key       []byte
+}
+
+// TPMMarshal will marshal the symKey into a byte Buffer as specified the TPM spec.
+func (k *symKey) TPMMarshal(out io.Writer) error {
+	if err := binary.Write(out, binary.BigEndian, &k.AlgID); err != nil {
+		return err
+	}
+	if err := binary.Write(out, binary.BigEndian, &k.EncScheme); err != nil {
+		return err
+	}
+	if err := binary.Write(out, binary.BigEndian, uint16(len(k.Key))); err != nil {
+		return err
+	}
+	if err := binary.Write(out, binary.BigEndian, k.Key); err != nil {
+		return err
+	}
+	return nil
+}
+
+// TPMUnmarshal will parse the byte Buffer and populate the symKey.
+func (k *symKey) TPMUnmarshal(in io.Reader) error {
+	if err := binary.Read(in, binary.BigEndian, &k.AlgID); err != nil {
+		return err
+	}
+	if err := binary.Read(in, binary.BigEndian, &k.EncScheme); err != nil {
+		return err
+	}
+	var size uint16
+	if err := binary.Read(in, binary.BigEndian, &size); err != nil {
+		return err
+	}
+	key := make([]byte, size)
+	if err := binary.Read(in, binary.BigEndian, &key); err != nil {
+		return err
+	}
+	k.Key = key
+	return nil
+}
+
+// TPMPackedSize will return the expected size in bytes of the marshaled symKey.
+func (k *symKey) TPMPackedSize() int {
+	// AlgID  + EncScheme + len(Key) + Key
+	// uint32 + uint16    + uint16   + BYTE[]
+	return binary.Size(k.AlgID) + binary.Size(k.EncScheme) + binary.Size(uint16(len(k.Key))) + binary.Size(k.Key)
 }
 
 // A tpmStoredData holds sealed data from the TPM.
