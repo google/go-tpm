@@ -143,6 +143,18 @@ func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pu
 	return &pk, &ra, ret, nil
 }
 
+func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
+	var b []byte
+	var ra responseAuth
+	in := []interface{}{index, offset, len, ca}
+	out := []interface{}{&b, &ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVReadValue, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return b, &ra, ret, nil
+}
+
 // quote2 signs arbitrary data under a given set of PCRs and using a key
 // specified by keyHandle. It returns information about the PCRs it signed
 // under, the signature, auth information, and optionally information about the

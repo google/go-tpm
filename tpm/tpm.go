@@ -24,6 +24,7 @@ import (
 	"crypto/sha1"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/google/go-tpm/tpmutil"
@@ -711,6 +712,112 @@ func OwnerReadSRK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
 	}
 
 	return tpmutil.Pack(pk)
+}
+
+// ReadEKCert reads the EKCert from the NVRAM.
+// The TCG PC Client specifies additional headers that are to be stored with the EKCert, we parse them
+// here and return only the DER encoded certificate.
+// TCG PC Client Specific Implementation Specification for Conventional BIOS 7.4.4
+// https://www.trustedcomputinggroup.org/wp-content/uploads/TCG_PCClientImplementation_1-21_1_00.pdf
+func ReadEKCert(rw io.ReadWriter, ownAuth digest) ([]byte, error) {
+	const (
+		certIndex                 = 0x1000f000 // TPM_NV_INDEX_EKCert (TPM Main Part 2 TPM Structures 19.1.2)
+		certTagPCClientStoredCert = 0x1001     // TCG_TAG_PCCLIENT_STORED_CERT
+		certTagPCClientFullCert   = 0x1002     // TCG_TAG_PCCLIENT_FULL_CERT
+		tcgFullCert               = 0          // TCG_FULL_CERT
+		tcgPartialSmallCert       = 1          // TCG_PARTIAL_SMALL_CERT
+	)
+	offset := uint32(0)
+	var header struct {
+		Tag      uint16
+		CertType uint8
+		CertSize uint16
+	}
+
+	data, err := NVReadValue(rw, certIndex, offset, uint32(binary.Size(header)), ownAuth)
+	if err != nil {
+		return nil, err
+	}
+	offset = offset + uint32(binary.Size(header))
+	buff := bytes.NewReader(data)
+
+	if err := binary.Read(buff, binary.BigEndian, &header); err != nil {
+		return nil, err
+	}
+
+	if header.Tag != certTagPCClientStoredCert {
+		return nil, fmt.Errorf("invalid certificate")
+	}
+
+	var bufSize uint32
+	switch header.CertType {
+	case tcgFullCert:
+		var tag uint16
+		data, err := NVReadValue(rw, certIndex, offset, uint32(binary.Size(tag)), ownAuth)
+		if err != nil {
+			return nil, err
+		}
+		bufSize = uint32(header.CertSize) + offset
+		offset = offset + uint32(binary.Size(tag))
+		buff = bytes.NewReader(data)
+
+		if err := binary.Read(buff, binary.BigEndian, &tag); err != nil {
+			return nil, err
+		}
+
+		if tag != certTagPCClientFullCert {
+			return nil, fmt.Errorf("certificate type and tag do not match")
+		}
+	case tcgPartialSmallCert:
+		return nil, fmt.Errorf("certType is not TCG_FULL_CERT: currently do not support partial certs")
+	default:
+		return nil, fmt.Errorf("invalid certType: 0x%x", header.CertType)
+	}
+
+	var ekbuf []byte
+	for offset < bufSize {
+		length := bufSize - offset
+		// TPMs can only read so much memory per command so we read in 128byte chunks.
+		// 128 was taken from go-tspi. The actual max read seems to be platform dependent
+		// but cannot be queried on TPM1.2 (and does not seem to appear in any documentation).
+		if length > 128 {
+			length = 128
+		}
+		data, err = NVReadValue(rw, certIndex, offset, length, ownAuth)
+		if err != nil {
+			return nil, err
+		}
+
+		ekbuf = append(ekbuf, data...)
+		offset += length
+	}
+
+	return ekbuf, nil
+}
+
+// NVReadValue returns the value from a given index, offset, and length in NVRAM.
+// See TPM-Main-Part-2-TPM-Structures 19.1.
+func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([]byte, error) {
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to start new auth session: %v", err)
+	}
+	defer osaprOwn.Close(rw)
+	defer zeroBytes(sharedSecretOwn[:])
+	authIn := []interface{}{ordNVReadValue, index, offset, len}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct owner auth fields: %v", err)
+	}
+	data, ra, ret, err := nvReadValue(rw, index, offset, len, ca)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from NVRAM: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVReadValue, data}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return nil, fmt.Errorf("failed to verify authenticity of response: %v", err)
+	}
+	return data, nil
 }
 
 // OwnerReadPubEK uses owner auth to get a blob representing the public part of the
