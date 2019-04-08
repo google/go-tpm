@@ -53,6 +53,7 @@ const (
 	ordForceClear           uint32 = 0x0000005D
 	ordGetCapability        uint32 = 0x00000065
 	ordMakeIdentity         uint32 = 0x00000079
+	ordActivateIdentity     uint32 = 0x0000007A
 	ordReadPubEK            uint32 = 0x0000007C
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
@@ -130,6 +131,7 @@ const (
 	esRSAEsOAEPSHA1MGF1
 	esSymCTR
 	esSymOFB
+	esSymCBCPKCS5 = 0xff // esSymCBCPKCS5 was taken from go-tspi
 )
 
 // Signature schemes. These are only valid under algRSA.

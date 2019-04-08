@@ -210,6 +210,22 @@ func makeIdentity(rw io.ReadWriter, encAuth digest, idDigest digest, k *key, ca1
 	return &aik, sig, &ra1, &ra2, ret, nil
 }
 
+// activateIdentity provides the TPM with an EK encrypted challenge and asks it to
+// decrypt the challenge and return the secret (symmetric key).
+func activateIdentity(rw io.ReadWriter, keyHandle tpmutil.Handle, blob []byte, ca1 *commandAuth, ca2 *commandAuth) (*symKey, *responseAuth, *responseAuth, uint32, error) {
+	in := []interface{}{keyHandle, blob, ca1, ca2}
+	var symkey symKey
+	var ra1 responseAuth
+	var ra2 responseAuth
+	out := []interface{}{&symkey, &ra1, &ra2}
+	ret, err := submitTPMRequest(rw, tagRQUAuth2Command, ordActivateIdentity, in, out)
+	if err != nil {
+		return nil, nil, nil, 0, err
+	}
+
+	return &symkey, &ra1, &ra2, ret, nil
+}
+
 // resetLockValue resets the dictionary-attack lock in the TPM, using owner
 // auth.
 func resetLockValue(rw io.ReadWriter, ca *commandAuth) (*responseAuth, uint32, error) {
