@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha1"
+	"crypto/x509"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -81,6 +82,24 @@ func TestPcrExtend(t *testing.T) {
 		t.Logf("PCR are equal!\n")
 	} else {
 		t.Fatal("PCR are not equal! Test failed.\n")
+	}
+}
+
+func TestReadEKCert(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	ownAuth := getAuth(ownerAuthEnvVar)
+	cert, err := ReadEKCert(rwc, ownAuth)
+	if err != nil {
+		t.Fatal("Unable to read EKCert from NVRAM:", err)
+	}
+
+	x509cert, err := x509.ParseCertificate(cert)
+	if err != nil {
+		t.Logf("Malformed certificate: %v\n", err)
+	} else {
+		t.Logf("Certificate: %v\n", x509cert)
 	}
 }
 
