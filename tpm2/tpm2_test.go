@@ -169,7 +169,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	}
 	defer FlushContext(rw, parentHandle)
 
-	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, defaultKeyParams)
+	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -195,7 +195,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	}
 	defer FlushContext(rw, parentHandle)
 
-	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, emptyPassword, defaultPassword, defaultKeyParams)
+	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection, emptyPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -303,7 +303,7 @@ func TestCombinedContextTest(t *testing.T) {
 	defer FlushContext(rw, rootHandle)
 
 	// CreateKey (Quote Key)
-	quotePrivate, quotePublic, err := CreateKey(rw, rootHandle, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestEvictControl(t *testing.T) {
 	defer FlushContext(rw, rootHandle)
 
 	// CreateKey (Quote Key)
-	quotePrivate, quotePublic, err := CreateKey(rw, rootHandle, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
@@ -1227,7 +1227,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 	defer FlushContext(rw, parentHandle)
-	privateBlob, publicBlob, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, Public{
+	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, Public{
 		Type:       AlgSymCipher,
 		NameAlg:    AlgSHA256,
 		Attributes: FlagDecrypt | FlagSign | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
