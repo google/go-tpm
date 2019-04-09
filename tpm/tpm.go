@@ -39,14 +39,8 @@ var OpenTPM = tpmutil.OpenTPM
 
 // GetKeys gets the list of handles for currently-loaded TPM keys.
 func GetKeys(rw io.ReadWriter) ([]tpmutil.Handle, error) {
-	var b []byte
-	subCap, err := tpmutil.Pack(rtKey)
+	b, err := getCapability(rw, capHandle, rtKey)
 	if err != nil {
-		return nil, err
-	}
-	in := []interface{}{capHandle, subCap}
-	out := []interface{}{&b}
-	if _, err := submitTPMRequest(rw, tagRQUCommand, ordGetCapability, in, out); err != nil {
 		return nil, err
 	}
 	var handles []tpmutil.Handle
@@ -979,6 +973,11 @@ func ReadPubEK(rw io.ReadWriter) ([]byte, error) {
 	}
 
 	return tpmutil.Pack(pk)
+}
+
+// GetManufacturer returns the manufacturer ID
+func GetManufacturer(rw io.ReadWriter) ([]byte, error) {
+	return getCapability(rw, capProperty, tpmCapPropManufacturer)
 }
 
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM

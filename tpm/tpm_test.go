@@ -58,6 +58,18 @@ func TestGetKeys(t *testing.T) {
 	t.Logf("Got %d keys: % d\n", len(handles), handles)
 }
 
+func TestGetManufacturer(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	vendorID, err := GetManufacturer(rwc)
+	if err != nil {
+		t.Fatal("Couldn't read VendorID from TPM:", err)
+	}
+
+	t.Logf("TPM VendorID: %v\n", vendorID)
+}
+
 func TestPcrExtend(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
