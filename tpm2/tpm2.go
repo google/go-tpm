@@ -504,13 +504,10 @@ func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objec
 }
 
 // CreateKey creates a new key pair under the owner handle.
-// Returns private key and public key blobs.
-func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) ([]byte, []byte, error) {
-	_, private, public, _, _, _, err := create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
-	if err != nil {
-		return nil, nil, err
-	}
-	return private, public, nil
+// Returns private key and public key blobs as well as the
+// creation data, a hash of said data and the creation ticket.
+func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (handle tpmutil.Handle, private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
+	return create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
 }
 
 // Seal creates a data blob object that seals the sensitive data under a parent and with a
