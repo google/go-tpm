@@ -26,7 +26,7 @@ import (
 )
 
 func init() {
-	tpmutil.UseTPM20LengthPrefixSize()
+	tpmutil.UseTPM20Encoding()
 }
 
 // MAX_DIGEST_BUFFER is the maximum size of []byte request or response fields.
