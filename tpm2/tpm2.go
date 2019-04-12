@@ -793,7 +793,7 @@ func decodeQuote(in []byte) ([]byte, *Signature, error) {
 	if err := tpmutil.UnpackBuf(buf, &paramSize, &attest); err != nil {
 		return nil, nil, err
 	}
-	sig, err := decodeSignature(buf)
+	sig, err := DecodeSignature(buf)
 	return attest, sig, err
 }
 
@@ -1214,7 +1214,7 @@ func decodeSign(buf []byte) (*Signature, error) {
 	if err := tpmutil.UnpackBuf(in, &paramSize); err != nil {
 		return nil, err
 	}
-	return decodeSignature(in)
+	return DecodeSignature(in)
 }
 
 // Sign computes a signature for digest using a given loaded key. Signature

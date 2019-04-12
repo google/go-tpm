@@ -454,7 +454,8 @@ type Signature struct {
 	ECC *SignatureECC
 }
 
-func decodeSignature(in *bytes.Buffer) (*Signature, error) {
+// DecodeSignature decodes a serialized TPMT_SIGNATURE structure.
+func DecodeSignature(in *bytes.Buffer) (*Signature, error) {
 	var sig Signature
 	if err := tpmutil.UnpackBuf(in, &sig.Alg); err != nil {
 		return nil, fmt.Errorf("decoding Alg: %v", err)
