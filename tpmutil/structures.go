@@ -14,12 +14,83 @@
 
 package tpmutil
 
-import "io"
+import (
+	"encoding/binary"
+	"io"
+)
 
 // RawBytes is for Pack and RunCommand arguments that are already encoded.
 // Compared to []byte, RawBytes will not be prepended with slice length during
 // encoding.
 type RawBytes []byte
+
+// U16Bytes is a byte slice with a 16-bit header
+type U16Bytes []byte
+
+// TPMMarshal packs U16Bytes
+func (b *U16Bytes) TPMMarshal(out io.Writer) error {
+	size := uint16(len([]byte(*b)))
+	if err := binary.Write(out, binary.BigEndian, size); err != nil {
+		return err
+	}
+	if err := binary.Write(out, binary.BigEndian, []byte(*b)); err != nil {
+		return err
+	}
+	return nil
+}
+
+// TPMUnmarshal unpacks a U16Bytes
+func (b *U16Bytes) TPMUnmarshal(in io.Reader) error {
+	var tmpSize uint16
+	if err := binary.Read(in, binary.BigEndian, &tmpSize); err != nil {
+		return err
+	}
+	size := int(tmpSize)
+	if len([]byte(*b)) >= size {
+		*b = (*b)[:size]
+	} else {
+		*b = append(*b, make([]byte, size-len(*b))...)
+	}
+
+	if err := binary.Read(in, binary.BigEndian, b); err != nil {
+		return err
+	}
+	return nil
+}
+
+// U32Bytes is a byte slice with a 32-bit header
+type U32Bytes []byte
+
+// TPMMarshal packs U32Bytes
+func (b *U32Bytes) TPMMarshal(out io.Writer) error {
+	size := uint32(len([]byte(*b)))
+	if err := binary.Write(out, binary.BigEndian, size); err != nil {
+		return err
+	}
+	if err := binary.Write(out, binary.BigEndian, []byte(*b)); err != nil {
+		return err
+	}
+	return nil
+}
+
+// TPMUnmarshal unpacks a U32Bytes
+func (b *U32Bytes) TPMUnmarshal(in io.Reader) error {
+	var tmpSize uint32
+	if err := binary.Read(in, binary.BigEndian, &tmpSize); err != nil {
+		return err
+	}
+	size := int(tmpSize)
+	if len([]byte(*b)) >= size {
+		*b = (*b)[:size]
+	} else {
+		*b = append(*b, make([]byte, size-len(*b))...)
+	}
+
+	if err := binary.Read(in, binary.BigEndian, b); err != nil {
+		return err
+	}
+	return nil
+}
 
 // Tag is a command tag.
 type Tag uint16
@@ -51,10 +122,13 @@ type responseHeader struct {
 // A Handle is a reference to a TPM object.
 type Handle uint32
 
+// TODO(jsonp): Refactor use of *[]Handle to its own type, so special-case
+// logic can be moved out of unpackValue() & instead the new type can
+// implement SelfMarshaler.
+
 // SelfMarshaler allows custom types to override default encoding/decoding
 // behavior in Pack, Unpack and UnpackBuf.
 type SelfMarshaler interface {
 	TPMMarshal(out io.Writer) error
 	TPMUnmarshal(in io.Reader) error
-	TPMPackedSize() int
 }
