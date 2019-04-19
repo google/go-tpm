@@ -217,62 +217,29 @@ func TestEncodingInvalidUnpack(t *testing.T) {
 }
 
 func TestSelfMarshaler(t *testing.T) {
-	var b U32Bytes
-	// The slice ui represents uint32(0), which is the length of an empty byte array.
-	ui := []byte{0, 0, 0, 0}
-	uiBuf := bytes.NewBuffer(ui)
-	if err := UnpackBuf(uiBuf, &b); err != nil {
-		t.Fatal("UnpackBuf failed to unpack the empty byte array")
+	var empty16 U16Bytes
+	var empty32 U32Bytes
+	subTests := []struct {
+		encoded []byte
+		decoded interface{}
+	}{
+		{[]byte{0, 0}, &empty16},
+		{[]byte{0, 1, 137}, &empty16},
+		{[]byte{0, 0, 0, 0}, &empty32},
+		{[]byte{0, 0, 0, 1, 137}, &empty32},
 	}
-	pb, err := Pack(&b)
-	if err != nil {
-		t.Fatalf("Pack failed on U32Bytes")
-	}
-	if !bytes.Equal(pb, ui) {
-		t.Fatal("Pack failed to pack U32Bytes properly:", pb)
-	}
-
-	// A byte slice of length 1 with a single entry: b[0] == 137
-	ui2 := []byte{0, 0, 0, 1, 137}
-	uiBuf2 := bytes.NewBuffer(ui2)
-	if err := UnpackBuf(uiBuf2, &b); err != nil {
-		t.Fatal("UnpackBuf failed to unpack a byte array with a single value in it")
-	}
-	pb2, err := Pack(&b)
-	if err != nil {
-		t.Fatalf("Pack failed on U32Bytes")
-	}
-	if !bytes.Equal(pb2, ui2) {
-		t.Fatal("Pack failed to pack U32Bytes properly:", pb2)
-	}
-
-	var b2 U16Bytes
-	// The slice ui represents uint16(0), which is the length of an empty byte array.
-	ui3 := []byte{0, 0}
-	uiBuf3 := bytes.NewBuffer(ui3)
-	if err := UnpackBuf(uiBuf3, &b2); err != nil {
-		t.Fatal("UnpackBuf failed to unpack the empty byte array")
-	}
-	pb3, err := Pack(&b2)
-	if err != nil {
-		t.Fatalf("Pack failed on U16Bytes")
-	}
-	if !bytes.Equal(pb3, ui3) {
-		t.Fatal("Pack failed to pack U16Bytes properly:", pb3)
-	}
-
-	// A byte slice of length 1 with a single entry: b[0] == 137
-	ui4 := []byte{0, 1, 137}
-	uiBuf4 := bytes.NewBuffer(ui4)
-	if err := UnpackBuf(uiBuf4, &b2); err != nil {
-		t.Fatal("UnpackBuf failed to unpack a byte array with a single value in it")
-	}
-	pb4, err := Pack(&b2)
-	if err != nil {
-		t.Fatalf("Pack failed on U16Bytes")
-	}
-	if !bytes.Equal(pb4, ui4) {
-		t.Fatal("Pack failed to pack U16Bytes properly:", pb4)
+	for _, st := range subTests {
+		buffer := bytes.NewBuffer(st.encoded)
+		if err := UnpackBuf(buffer, st.decoded); err != nil {
+			t.Fatal("UnpackBuf failed:", err)
+		}
+		packed, err := Pack(st.decoded)
+		if err != nil {
+			t.Fatal("Pack failed:", err)
+		}
+		if !bytes.Equal(packed, st.encoded) {
+			t.Fatalf("Pack failed: expected %#v, got %#v", st.encoded, packed)
+		}
 	}
 }
 

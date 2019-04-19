@@ -33,10 +33,7 @@ func (b *U16Bytes) TPMMarshal(out io.Writer) error {
 	if err := binary.Write(out, binary.BigEndian, size); err != nil {
 		return err
 	}
-	if err := binary.Write(out, binary.BigEndian, []byte(*b)); err != nil {
-		return err
-	}
-	return nil
+	return binary.Write(out, binary.BigEndian, *b)
 }
 
 // TPMUnmarshal unpacks a U16Bytes
@@ -52,10 +49,7 @@ func (b *U16Bytes) TPMUnmarshal(in io.Reader) error {
 		*b = append(*b, make([]byte, size-len(*b))...)
 	}
 
-	if err := binary.Read(in, binary.BigEndian, b); err != nil {
-		return err
-	}
-	return nil
+	return binary.Read(in, binary.BigEndian, b)
 }
 
 // U32Bytes is a byte slice with a 32-bit header
@@ -67,10 +61,7 @@ func (b *U32Bytes) TPMMarshal(out io.Writer) error {
 	if err := binary.Write(out, binary.BigEndian, size); err != nil {
 		return err
 	}
-	if err := binary.Write(out, binary.BigEndian, []byte(*b)); err != nil {
-		return err
-	}
-	return nil
+	return binary.Write(out, binary.BigEndian, *b)
 }
 
 // TPMUnmarshal unpacks a U32Bytes
@@ -86,10 +77,7 @@ func (b *U32Bytes) TPMUnmarshal(in io.Reader) error {
 		*b = append(*b, make([]byte, size-len(*b))...)
 	}
 
-	if err := binary.Read(in, binary.BigEndian, b); err != nil {
-		return err
-	}
-	return nil
+	return binary.Read(in, binary.BigEndian, b)
 }
 
 // Tag is a command tag.

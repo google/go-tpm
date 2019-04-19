@@ -62,19 +62,22 @@ func Pack(elts ...interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// tryMarshal attempts to use a Marshal() method defined on the type
+// tryMarshal attempts to use a TPMMarshal() method defined on the type
 // to pack v into buf. True is returned if the method exists and the
 // marshal was attempted.
 func tryMarshal(buf io.Writer, v reflect.Value) (bool, error) {
 	t := v.Type()
 	if t.Implements(selfMarshalerType) {
+		if v.Kind() == reflect.Ptr && v.IsNil() {
+			return true, fmt.Errorf("cannot call TPMMarshal on a nil pointer")
+		}
 		return true, v.Interface().(SelfMarshaler).TPMMarshal(buf)
 	}
 
 	// We might have a non-pointer struct field, but we dont have a
 	// pointer with which to implement the interface.
 	// If the pointer of the type implements the interface, we should be
-	// able to construct a value to call TPMUnmarshal() with.
+	// able to construct a value to call TPMMarshal() with.
 	if reflect.PtrTo(t).Implements(selfMarshalerType) {
 		tmp := reflect.New(t)
 		tmp.Elem().Set(v)
@@ -125,6 +128,9 @@ func packType(buf io.Writer, elts ...interface{}) error {
 func tryUnmarshal(buf io.Reader, v reflect.Value) (bool, error) {
 	t := v.Type()
 	if t.Implements(selfMarshalerType) {
+		if v.Kind() == reflect.Ptr && v.IsNil() {
+			return true, fmt.Errorf("cannot call TPMUnmarshal on a nil pointer")
+		}
 		return true, v.Interface().(SelfMarshaler).TPMUnmarshal(buf)
 	}
 
@@ -186,7 +192,7 @@ func unpackValue(buf io.Reader, v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
-			return fmt.Errorf("cannot pack nil %s", v.Type().String())
+			return fmt.Errorf("cannot unpack nil %s", v.Type().String())
 		}
 		return unpackValue(buf, v.Elem())
 	case reflect.Struct:
@@ -197,13 +203,13 @@ func unpackValue(buf io.Reader, v reflect.Value) error {
 			}
 		}
 		return nil
+	default:
+		// binary.Read can only set pointer values, so we need to take the address.
+		if !v.CanAddr() {
+			return fmt.Errorf("cannot unpack unaddressable leaf type %q", v.Type().String())
+		}
+		return binary.Read(buf, binary.BigEndian, v.Addr().Interface())
 	}
-
-	// binary.Read can only set pointer values, so we need to take the address.
-	if !v.CanAddr() {
-		return fmt.Errorf("cannot unpack unaddressable leaf type %q", v.Type().String())
-	}
-	return binary.Read(buf, binary.BigEndian, v.Addr().Interface())
 }
 
 // UnpackBuf recursively unpacks types from a reader just as encoding/binary
