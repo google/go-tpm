@@ -216,13 +216,13 @@ func TestResizeableSlice(t *testing.T) {
 		t.Fatal("Couldn't read random bytes into the byte array")
 	}
 
-	bb, err := tpmutil.Pack(ra, b)
+	bb, err := tpmutil.Pack(ra, tpmutil.U32Bytes(b))
 	if err != nil {
 		t.Fatal("Couldn't pack the bytes:", err)
 	}
 
 	var ra2 responseAuth
-	var b2 []byte
+	var b2 tpmutil.U32Bytes
 	if _, err := tpmutil.Unpack(bb, &ra2, &b2); err != nil {
 		t.Fatal("Couldn't unpack the resizeable values:", err)
 	}

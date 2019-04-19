@@ -13,10 +13,6 @@
 // limitations under the License.
 
 // Package tpmutil provides common utility functions for both TPM 1.2 and TPM 2.0 devices.
-//
-// Users should call either UseTPM12LengthPrefixSize or
-// UseTPM20LengthPrefixSize before using this package, depending on their type
-// of TPM device.
 package tpmutil
 
 import (

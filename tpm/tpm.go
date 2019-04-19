@@ -93,7 +93,7 @@ func FetchPCRValues(rw io.ReadWriter, pcrVals []int) ([]byte, error) {
 
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
-	var b []byte
+	var b tpmutil.U32Bytes
 	in := []interface{}{size}
 	out := []interface{}{&b}
 	// There's no need to check the ret value here, since the err value
@@ -177,7 +177,7 @@ func Quote2(rw io.ReadWriter, handle tpmutil.Handle, data []byte, pcrVals []int,
 	}
 
 	// Check response authentication.
-	raIn := []interface{}{ret, ordQuote2, pcrShort, capBytes, sig}
+	raIn := []interface{}{ret, ordQuote2, pcrShort, tpmutil.U32Bytes(capBytes), tpmutil.U32Bytes(sig)}
 	if err := ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func sealHelper(rw io.ReadWriter, pcrInfo *pcrInfoLong, data []byte, srkAuth []b
 	// digest = SHA1(ordSeal || encAuth || binary.Size(pcrInfo) || pcrInfo ||
 	//               len(data) || data)
 	//
-	authIn := []interface{}{ordSeal, sc.EncAuth, uint32(binary.Size(pcrInfo)), pcrInfo, data}
+	authIn := []interface{}{ordSeal, sc.EncAuth, uint32(binary.Size(pcrInfo)), pcrInfo, tpmutil.U32Bytes(data)}
 	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
 	if err != nil {
 		return nil, err
@@ -446,7 +446,7 @@ func Unseal(rw io.ReadWriter, sealed []byte, srkAuth []byte) ([]byte, error) {
 	}
 
 	// Check the response authentication.
-	raIn := []interface{}{ret, ordUnseal, unsealed}
+	raIn := []interface{}{ret, ordUnseal, tpmutil.U32Bytes(unsealed)}
 	if err := ra1.verify(ca1.NonceOdd, sharedSecret[:], raIn); err != nil {
 		return nil, err
 	}
@@ -488,7 +488,7 @@ func Quote(rw io.ReadWriter, handle tpmutil.Handle, data []byte, pcrNums []int, 
 	}
 
 	// Check response authentication.
-	raIn := []interface{}{ret, ordQuote, pcrc, sig}
+	raIn := []interface{}{ret, ordQuote, pcrc, tpmutil.U32Bytes(sig)}
 	if err := ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
 		return nil, nil, err
 	}
@@ -607,7 +607,7 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 	}
 
 	// Check response authentication.
-	raIn := []interface{}{ret, ordMakeIdentity, k, sig}
+	raIn := []interface{}{ret, ordMakeIdentity, k, tpmutil.U32Bytes(sig)}
 	if err := ra1.verify(ca1.NonceOdd, sharedSecretSRK[:], raIn); err != nil {
 		return nil, err
 	}
@@ -679,7 +679,7 @@ func ActivateIdentity(rw io.ReadWriter, aikAuth []byte, ownerAuth []byte, aik tp
 	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
 
-	authIn := []interface{}{ordActivateIdentity, asym}
+	authIn := []interface{}{ordActivateIdentity, tpmutil.U32Bytes(asym)}
 	ca1, err := newCommandAuth(oiaprAIK.AuthHandle, oiaprAIK.NonceEven, aikAuth, authIn)
 	if err != nil {
 		return nil, fmt.Errorf("newCommandAuth failed: %v", err)
@@ -927,7 +927,7 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from NVRAM: %v", err)
 	}
-	raIn := []interface{}{ret, ordNVReadValue, data}
+	raIn := []interface{}{ret, ordNVReadValue, tpmutil.U32Bytes(data)}
 	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
 		return nil, fmt.Errorf("failed to verify authenticity of response: %v", err)
 	}
@@ -1214,7 +1214,7 @@ func Sign(rw io.ReadWriter, keyAuth []byte, keyHandle tpmutil.Handle, hash crypt
 	defer osapr.Close(rw)
 	defer zeroBytes(sharedSecret[:])
 
-	authIn := []interface{}{ordSign, data}
+	authIn := []interface{}{ordSign, tpmutil.U32Bytes(data)}
 	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
 	if err != nil {
 		return nil, err
@@ -1225,7 +1225,7 @@ func Sign(rw io.ReadWriter, keyAuth []byte, keyHandle tpmutil.Handle, hash crypt
 		return nil, err
 	}
 
-	raIn := []interface{}{ret, ordSign, signature}
+	raIn := []interface{}{ret, ordSign, tpmutil.U32Bytes(signature)}
 	err = ra.verify(ca.NonceOdd, sharedSecret[:], raIn)
 	if err != nil {
 		return nil, err

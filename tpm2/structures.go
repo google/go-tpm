@@ -31,13 +31,13 @@ type NVPublic struct {
 	NVIndex    tpmutil.Handle
 	NameAlg    Algorithm
 	Attributes KeyProp
-	AuthPolicy []byte
+	AuthPolicy tpmutil.U16Bytes
 	DataSize   uint16
 }
 
 type tpmsSensitiveCreate struct {
-	UserAuth []byte
-	Data     []byte
+	UserAuth tpmutil.U16Bytes
+	Data     tpmutil.U16Bytes
 }
 
 // PCRSelection contains a slice of PCR indexes and a hash algorithm used in
@@ -58,7 +58,7 @@ type Public struct {
 	Type       Algorithm
 	NameAlg    Algorithm
 	Attributes KeyProp
-	AuthPolicy []byte
+	AuthPolicy tpmutil.U16Bytes
 
 	// If Type is AlgKeyedHash, then do not set these.
 	// Otherwise, only one of the Parameters fields should be set. When encoding/decoding,
@@ -161,7 +161,7 @@ type RSAParams struct {
 	// encoded bitstream, so Name digest calculations will be correct.
 	encodeDefaultExponentAsZero bool
 	Exponent                    uint32
-	ModulusRaw                  []byte
+	ModulusRaw                  tpmutil.U16Bytes
 	Modulus                     *big.Int
 }
 
@@ -194,7 +194,7 @@ func (p *RSAParams) encode() ([]byte, error) {
 	}
 	mod := p.ModulusRaw
 	if p.Modulus != nil {
-		mod = p.Modulus.Bytes()
+		mod = tpmutil.U16Bytes(p.Modulus.Bytes())
 	}
 	unique, err := tpmutil.Pack(mod)
 	if err != nil {
@@ -214,7 +214,7 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	if params.Sign, err = decodeSigScheme(in); err != nil {
 		return nil, fmt.Errorf("decoding Sign: %v", err)
 	}
-	var modBytes []byte
+	var modBytes tpmutil.U16Bytes
 	if err := tpmutil.UnpackBuf(in, &params.KeyBits, &params.Exponent, &modBytes); err != nil {
 		return nil, fmt.Errorf("decoding KeyBits, Exponent, Modulus: %v", err)
 	}
@@ -276,7 +276,8 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
-	point, err := tpmutil.Pack(p.Point.x().Bytes(), p.Point.y().Bytes())
+	x, y := p.Point.x().Bytes(), p.Point.y().Bytes()
+	point, err := tpmutil.Pack(tpmutil.U16Bytes(x), tpmutil.U16Bytes(y))
 	if err != nil {
 		return nil, fmt.Errorf("encoding Point: %v", err)
 	}
@@ -299,7 +300,7 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 	if params.KDF, err = decodeKDFScheme(in); err != nil {
 		return nil, fmt.Errorf("decoding KDF: %v", err)
 	}
-	var x, y []byte
+	var x, y tpmutil.U16Bytes
 	if err := tpmutil.UnpackBuf(in, &x, &y); err != nil {
 		return nil, fmt.Errorf("decoding Point: %v", err)
 	}
@@ -311,7 +312,7 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 // SymCipherParams represents parameters of a symmetric block cipher TPM object.
 type SymCipherParams struct {
 	Symmetric *SymScheme
-	Unique    []byte
+	Unique    tpmutil.U16Bytes
 }
 
 func (p *SymCipherParams) encode() ([]byte, error) {
@@ -468,7 +469,7 @@ func DecodeSignature(in *bytes.Buffer) (*Signature, error) {
 		}
 	case AlgECDSA:
 		sig.ECC = new(SignatureECC)
-		var r, s []byte
+		var r, s tpmutil.U16Bytes
 		if err := tpmutil.UnpackBuf(in, &sig.ECC.HashAlg, &r, &s); err != nil {
 			return nil, fmt.Errorf("decoding ECC: %v", err)
 		}
@@ -483,7 +484,7 @@ func DecodeSignature(in *bytes.Buffer) (*Signature, error) {
 // SignatureRSA is an RSA-specific signature value.
 type SignatureRSA struct {
 	HashAlg   Algorithm
-	Signature []byte
+	Signature tpmutil.U16Bytes
 }
 
 // SignatureECC is an ECC-specific signature value.
@@ -496,9 +497,9 @@ type SignatureECC struct {
 // Private contains private section of a TPM key.
 type Private struct {
 	Type      Algorithm
-	AuthValue []byte
-	SeedValue []byte
-	Sensitive []byte
+	AuthValue tpmutil.U16Bytes
+	SeedValue tpmutil.U16Bytes
+	Sensitive tpmutil.U16Bytes
 }
 
 // Encode serializes a Private structure in TPM wire format.
@@ -519,7 +520,7 @@ type AttestationData struct {
 	Magic                uint32
 	Type                 tpmutil.Tag
 	QualifiedSigner      Name
-	ExtraData            []byte
+	ExtraData            tpmutil.U16Bytes
 	ClockInfo            ClockInfo
 	FirmwareVersion      uint64
 	AttestedCertifyInfo  *CertifyInfo
@@ -606,7 +607,7 @@ type CreationInfo struct {
 	// Most TPM2B_Digest structures contain a TPMU_HA structure
 	// and get parsed to HashValue. This is never the case for the
 	// digest in TPMS_CREATION_INFO.
-	OpaqueDigest []byte
+	OpaqueDigest tpmutil.U16Bytes
 }
 
 func decodeCreationInfo(in *bytes.Buffer) (*CreationInfo, error) {
@@ -678,7 +679,7 @@ func (ci CertifyInfo) encode() ([]byte, error) {
 // QuoteInfo represents a TPMS_QUOTE_INFO structure.
 type QuoteInfo struct {
 	PCRSelection PCRSelection
-	PCRDigest    []byte
+	PCRDigest    tpmutil.U16Bytes
 }
 
 func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
@@ -696,8 +697,8 @@ func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 
 // IDObject represents an encrypted credential bound to a TPM object.
 type IDObject struct {
-	IntegrityHMAC []byte
-	EncIdentity   []byte
+	IntegrityHMAC tpmutil.U16Bytes
+	EncIdentity   tpmutil.RawBytes
 }
 
 // Encode packs the IDObject into a byte stream representing
@@ -705,23 +706,23 @@ type IDObject struct {
 func (o *IDObject) Encode() ([]byte, error) {
 	// encIdentity is packed raw, as the bytes representing the size
 	// of the credential value are present within the encrypted blob.
-	d, err := tpmutil.Pack(o.IntegrityHMAC, tpmutil.RawBytes(o.EncIdentity))
+	d, err := tpmutil.Pack(o.IntegrityHMAC, o.EncIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("encoding IntegrityHMAC, EncIdentity: %v", err)
 	}
-	return tpmutil.Pack(d)
+	return tpmutil.Pack(tpmutil.U16Bytes(d))
 }
 
 // CreationData describes the attributes and environment for an object created
 // on the TPM. This structure encodes/decodes to/from TPMS_CREATION_DATA.
 type CreationData struct {
 	PCRSelection        PCRSelection
-	PCRDigest           []byte
+	PCRDigest           tpmutil.U16Bytes
 	Locality            byte
 	ParentNameAlg       Algorithm
 	ParentName          Name
 	ParentQualifiedName Name
-	OutsideInfo         []byte
+	OutsideInfo         tpmutil.U16Bytes
 }
 
 func (cd *CreationData) encode() ([]byte, error) {
@@ -789,7 +790,7 @@ type Name struct {
 }
 
 func decodeName(in *bytes.Buffer) (*Name, error) {
-	var nameBuf []byte
+	var nameBuf tpmutil.U16Bytes
 	if err := tpmutil.UnpackBuf(in, &nameBuf); err != nil {
 		return nil, err
 	}
@@ -828,7 +829,7 @@ func (n Name) encode() ([]byte, error) {
 	default:
 		// Name is empty, which is valid.
 	}
-	return tpmutil.Pack(buf)
+	return tpmutil.Pack(tpmutil.U16Bytes(buf))
 }
 
 // MatchesPublic compares Digest in Name against given Public structure. Note:
@@ -856,7 +857,7 @@ func (n Name) MatchesPublic(p Public) (bool, error) {
 // HashValue is an algorithm-specific hash value.
 type HashValue struct {
 	Alg   Algorithm
-	Value []byte
+	Value tpmutil.U16Bytes
 }
 
 func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
@@ -868,7 +869,7 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 	if !ok {
 		return nil, fmt.Errorf("unsupported hash algorithm type 0x%x", hv.Alg)
 	}
-	hv.Value = make([]byte, hfn().Size())
+	hv.Value = make(tpmutil.U16Bytes, hfn().Size())
 	if _, err := in.Read(hv.Value); err != nil {
 		return nil, fmt.Errorf("decoding Value: %v", err)
 	}
@@ -911,7 +912,7 @@ type TaggedProperty struct {
 type Ticket struct {
 	Type      tpmutil.Tag
 	Hierarchy uint32
-	Digest    []byte
+	Digest    tpmutil.U16Bytes
 }
 
 func decodeTicket(in *bytes.Buffer) (*Ticket, error) {
@@ -926,7 +927,7 @@ func decodeTicket(in *bytes.Buffer) (*Ticket, error) {
 // which authorize the use of a given handle or parameter.
 type AuthCommand struct {
 	Session    tpmutil.Handle
-	Nonce      []byte
+	Nonce      tpmutil.U16Bytes
 	Attributes SessionAttributes
-	Auth       []byte
+	Auth       tpmutil.U16Bytes
 }
