@@ -88,6 +88,9 @@ func tryMarshal(buf io.Writer, v reflect.Value) (bool, error) {
 }
 
 func packValue(buf io.Writer, v reflect.Value) error {
+	if v.Type() == handlesAreaType {
+		v = v.Convert(reflect.TypeOf((*handleList)(nil)))
+	}
 	if canMarshal, err := tryMarshal(buf, v); canMarshal {
 		return err
 	}
@@ -161,32 +164,11 @@ func Unpack(b []byte, elts ...interface{}) (int, error) {
 }
 
 func unpackValue(buf io.Reader, v reflect.Value) error {
+	if v.Type() == handlesAreaType {
+		v = v.Convert(reflect.TypeOf((*handleList)(nil)))
+	}
 	if didUnmarshal, err := tryUnmarshal(buf, v); didUnmarshal {
 		return err
-	}
-
-	if v.Type() == handlesAreaType {
-		var numHandles uint16
-		if err := binary.Read(buf, binary.BigEndian, &numHandles); err != nil {
-			return err
-		}
-
-		// A zero size is used by the TPM to signal that certain elements
-		// are not present.
-		if int(numHandles) == 0 {
-			return nil
-		}
-
-		// Make len(e) match size exactly.
-		handlesArea := v.Interface().(*[]Handle)
-		areaLen := v.Elem().Len()
-		if areaLen >= int(numHandles) {
-			*handlesArea = (*handlesArea)[:int(numHandles)]
-		} else {
-			*handlesArea = append(*handlesArea, make([]Handle, int(numHandles)-areaLen)...)
-		}
-
-		return binary.Read(buf, binary.BigEndian, handlesArea)
 	}
 
 	switch v.Kind() {

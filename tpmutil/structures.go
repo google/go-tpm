@@ -52,7 +52,7 @@ func (b *U16Bytes) TPMUnmarshal(in io.Reader) error {
 		return err
 	}
 	size := int(tmpSize)
-	if len([]byte(*b)) >= size {
+	if len(*b) >= size {
 		*b = (*b)[:size]
 	} else {
 		*b = append(*b, make([]byte, size-len(*b))...)
@@ -95,7 +95,7 @@ func (b *U32Bytes) TPMUnmarshal(in io.Reader) error {
 		return err
 	}
 	size := int(tmpSize)
-	if len([]byte(*b)) >= size {
+	if len(*b) >= size {
 		*b = (*b)[:size]
 	} else {
 		*b = append(*b, make([]byte, size-len(*b))...)
@@ -141,9 +141,27 @@ type responseHeader struct {
 // A Handle is a reference to a TPM object.
 type Handle uint32
 
-// TODO(jsonp): Refactor use of *[]Handle to its own type, so special-case
-// logic can be moved out of unpackValue() & instead the new type can
-// implement SelfMarshaler.
+type handleList []Handle
+
+func (l *handleList) TPMMarshal(out io.Writer) error {
+	return fmt.Errorf("TPM should never marshal []Handle")
+}
+
+func (l *handleList) TPMUnmarshal(in io.Reader) error {
+	var numHandles uint16
+	if err := binary.Read(in, binary.BigEndian, &numHandles); err != nil {
+		return err
+	}
+
+	// Make len(e) match size exactly.
+	size := int(numHandles)
+	if len(*l) >= size {
+		*l = (*l)[:size]
+	} else {
+		*l = append(*l, make([]Handle, size-len(*l))...)
+	}
+	return binary.Read(in, binary.BigEndian, *l)
+}
 
 // SelfMarshaler allows custom types to override default encoding/decoding
 // behavior in Pack, Unpack and UnpackBuf.
