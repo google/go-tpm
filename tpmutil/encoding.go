@@ -38,7 +38,7 @@ func packWithHeader(ch commandHeader, cmd ...interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't pack message body: %v", err)
 	}
-	bodySize := binary.Size(body)
+	bodySize := len(body)
 	ch.Size = uint32(hdrSize + bodySize)
 	header, err := Pack(ch)
 	if err != nil {
@@ -69,7 +69,7 @@ func tryMarshal(buf io.Writer, v reflect.Value) (bool, error) {
 	t := v.Type()
 	if t.Implements(selfMarshalerType) {
 		if v.Kind() == reflect.Ptr && v.IsNil() {
-			return true, fmt.Errorf("cannot call TPMMarshal on a nil pointer")
+			return true, fmt.Errorf("cannot call TPMMarshal on a nil pointer of type %T", v)
 		}
 		return true, v.Interface().(SelfMarshaler).TPMMarshal(buf)
 	}
@@ -206,7 +206,7 @@ func UnpackBuf(buf io.Reader, elts ...interface{}) error {
 			return fmt.Errorf("non-pointer value %q passed to UnpackBuf", v.Type().String())
 		}
 		if v.IsNil() {
-			return errors.New("nill pointer passed to UnpackBuf")
+			return errors.New("nil pointer passed to UnpackBuf")
 		}
 
 		if err := unpackValue(buf, v); err != nil {

@@ -229,16 +229,17 @@ func TestSelfMarshaler(t *testing.T) {
 		{[]byte{0, 0, 0, 1, 137}, &empty32},
 	}
 	for _, st := range subTests {
+		t.Logf("Attempting to Marshal/Unmarshal %#v into %T", st.encoded, st.decoded)
 		buffer := bytes.NewBuffer(st.encoded)
 		if err := UnpackBuf(buffer, st.decoded); err != nil {
-			t.Fatal("UnpackBuf failed:", err)
+			t.Fatalf("UnpackBuf failed: %v", err)
 		}
 		packed, err := Pack(st.decoded)
 		if err != nil {
-			t.Fatal("Pack failed:", err)
+			t.Fatalf("Pack failed: %v", err)
 		}
 		if !bytes.Equal(packed, st.encoded) {
-			t.Fatalf("Pack failed: expected %#v, got %#v", st.encoded, packed)
+			t.Fatalf("Pack failed: got %#v, want: %#v", packed, st.encoded)
 		}
 	}
 }

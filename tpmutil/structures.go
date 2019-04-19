@@ -144,7 +144,7 @@ type Handle uint32
 type handleList []Handle
 
 func (l *handleList) TPMMarshal(out io.Writer) error {
-	return fmt.Errorf("TPM should never marshal []Handle")
+	return fmt.Errorf("TPMMarhsal on []Handle is not supported yet")
 }
 
 func (l *handleList) TPMUnmarshal(in io.Reader) error {

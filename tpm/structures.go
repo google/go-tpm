@@ -245,7 +245,7 @@ type pubKey struct {
 type symKey struct {
 	AlgID     uint32
 	EncScheme uint16
-	Key       tpmutil.U16Bytes
+	Key       tpmutil.U16Bytes // TPM_SYMMETRIC_KEY uses a 16-bit header for Key data
 }
 
 // A tpmStoredData holds sealed data from the TPM.
