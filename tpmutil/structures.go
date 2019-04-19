@@ -16,6 +16,7 @@ package tpmutil
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -33,7 +34,15 @@ func (b *U16Bytes) TPMMarshal(out io.Writer) error {
 	if err := binary.Write(out, binary.BigEndian, size); err != nil {
 		return err
 	}
-	return binary.Write(out, binary.BigEndian, *b)
+
+	n, err := out.Write(*b)
+	if err != nil {
+		return err
+	}
+	if n != int(size) {
+		return fmt.Errorf("unable to write all contents of U16Bytes")
+	}
+	return nil
 }
 
 // TPMUnmarshal unpacks a U16Bytes
@@ -49,7 +58,14 @@ func (b *U16Bytes) TPMUnmarshal(in io.Reader) error {
 		*b = append(*b, make([]byte, size-len(*b))...)
 	}
 
-	return binary.Read(in, binary.BigEndian, b)
+	n, err := in.Read(*b)
+	if err != nil {
+		return err
+	}
+	if n != size {
+		return fmt.Errorf("unable to read all contents in to U16Bytes")
+	}
+	return nil
 }
 
 // U32Bytes is a byte slice with a 32-bit header
@@ -61,7 +77,15 @@ func (b *U32Bytes) TPMMarshal(out io.Writer) error {
 	if err := binary.Write(out, binary.BigEndian, size); err != nil {
 		return err
 	}
-	return binary.Write(out, binary.BigEndian, *b)
+
+	n, err := out.Write(*b)
+	if err != nil {
+		return err
+	}
+	if n != int(size) {
+		return fmt.Errorf("unable to write all contents of U32Bytes")
+	}
+	return nil
 }
 
 // TPMUnmarshal unpacks a U32Bytes
@@ -77,7 +101,14 @@ func (b *U32Bytes) TPMUnmarshal(in io.Reader) error {
 		*b = append(*b, make([]byte, size-len(*b))...)
 	}
 
-	return binary.Read(in, binary.BigEndian, b)
+	n, err := in.Read(*b)
+	if err != nil {
+		return err
+	}
+	if n != size {
+		return fmt.Errorf("unable to read all contents in to U32Bytes")
+	}
+	return nil
 }
 
 // Tag is a command tag.
