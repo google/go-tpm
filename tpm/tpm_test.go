@@ -556,7 +556,7 @@ func TestForceClear(t *testing.T) {
 	}
 }
 
-func TestEncodePubkey(t *testing.T) {
+func TestEncodeDecodePubkey(t *testing.T) {
 	k, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
