@@ -359,3 +359,28 @@ func convertPubKey(pk crypto.PublicKey) (*pubKey, error) {
 
 	return &pubKey, nil
 }
+
+// DecodePublic consumes bytes representing a TPM_PUBKEY, and returns a
+// crypto.PublicKey representing the encoded public key. Currently, this
+// function only supports 2048-bit RSA keys.
+func DecodePublic(b []byte) (crypto.PublicKey, error) {
+	var pk pubKey
+	if _, err := tpmutil.Unpack(b, &pk); err != nil {
+		return nil, err
+	}
+	if pk.AlgorithmParams.AlgID != algRSA {
+		return nil, fmt.Errorf("expected RSA algorithm, got %v", pk.AlgorithmParams.AlgID)
+	}
+	var kp rsaKeyParams
+	if _, err := tpmutil.Unpack(pk.AlgorithmParams.Params, &kp); err != nil {
+		return nil, fmt.Errorf("unpacking rsaKeyParams: %v", err)
+	}
+	if kp.KeyLength != 2048 {
+		return nil, fmt.Errorf("only 2048-bit keys supported, got %d-bit", kp.KeyLength)
+	}
+
+	return &rsa.PublicKey{
+		E: int(big.NewInt(0).SetBytes(kp.Exponent).Int64()),
+		N: big.NewInt(0).SetBytes(pk.Key),
+	}, nil
+}

@@ -17,6 +17,7 @@ package tpm
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
 	"io/ioutil"
@@ -552,5 +553,35 @@ func TestForceClear(t *testing.T) {
 
 	if err := ForceClear(rwc); err != nil {
 		t.Fatal("Couldn't clear the TPM without owner auth in physical presence mode:", err)
+	}
+}
+
+func TestEncodePubkey(t *testing.T) {
+	k, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pk, err := convertPubKey(k.Public())
+	if err != nil {
+		t.Fatalf("convertPubKey() failed: %v", err)
+	}
+
+	packed, err := tpmutil.Pack(&pk)
+	if err != nil {
+		t.Fatalf("tpmutil.Pack(&pk) failed: %v", err)
+	}
+	pk2, err := DecodePublic(packed)
+	if err != nil {
+		t.Fatalf("DecodePublic() failed: %v", err)
+	}
+	decodedPK := pk2.(*rsa.PublicKey)
+
+	if k.N.Cmp(decodedPK.N) != 0 {
+		t.Errorf("k.N != decodedPK.N")
+		t.Logf("Got: %v", k.N)
+		t.Logf("Want: %v", decodedPK.N)
+	}
+	if k.E != decodedPK.E {
+		t.Errorf("decodedPK.E = %v, want %v", decodedPK.E, k.E)
 	}
 }
