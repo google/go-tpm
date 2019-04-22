@@ -36,7 +36,7 @@ var (
 
 	tpmPath  = flag.String("tpm", "/dev/tpm0", "The path to the TPM device to use")
 	certPath = flag.String("cert", "ek.der", "The path to write the EK out to")
-	certOrg  = flag.String("cert_org", "Acme Co", "The organization string to use in the EKCert")
+	certOrg  = flag.String("cert_org", "Fake EK", "The organization string to use in the EKCert")
 )
 
 func generateCertificate(pub *rsa.PublicKey) ([]byte, error) {
