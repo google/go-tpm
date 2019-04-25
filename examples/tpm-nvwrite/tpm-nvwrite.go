@@ -17,6 +17,7 @@ package main
 import (
 	"crypto/sha1"
 	"flag"
+	"io/ioutil"
 	"fmt"
 	"os"
 
@@ -35,6 +36,10 @@ var (
 
 func main() {
 	flag.Parse()
+	if flag.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Error: Missing required argument.")
+		return
+	}
 
 	rwc, err := tpm.OpenTPM(*tpmPath)
 	if err != nil {
@@ -54,5 +59,16 @@ func main() {
 			fmt.Fprintf(os.Stderr, "NVDefineSpace failed: %v\n", err)
 			return
 		}
+	}
+
+	data, err := ioutil.ReadFile(flag.Arg(1))
+	if err != nil {
+                fmt.Fprintf(os.Stderr, "Failed to read input data from %s: %s\n", flag.Arg(1), err)
+                return
+        }
+
+	if err := tpm.NVWriteValue(rwc, uint32(*index), 0, data, ownerAuth); err != nil {
+		fmt.Fprintf(os.Stderr, "NVWriteValue failed: %v\n", err)
+		return
 	}
 }
