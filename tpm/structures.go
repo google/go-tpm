@@ -384,3 +384,24 @@ func DecodePublic(b []byte) (crypto.PublicKey, error) {
 		N: big.NewInt(0).SetBytes(pk.Key),
 	}, nil
 }
+
+// NVAttributesArea describes the permissions set on an NV area.
+type NVAttributesArea struct {
+	Tag        uint16
+	Attributes NVAttr
+}
+
+// NVPublicDescription describes the public description and controls on
+// a NV area. This struct mirrors the layout of the TPM_NV_DATA_PUBLIC
+// structure in the TPM 1.2 specification.
+type NVPublicDescription struct {
+	Tag           uint16
+	Index         uint32
+	ReadPCRState  pcrInfoShort
+	WritePCRState pcrInfoShort
+	Attributes    NVAttributesArea
+	ReadSTClear   byte
+	WriteSTClear  byte
+	WriteDefine   byte
+	DataSize      uint32
+}

@@ -934,6 +934,57 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([
 	return data, nil
 }
 
+// NVDefineSpace creates a new region in NVRAM at the specified index, and
+// with the specified properties. See TPM-Main-Part-2-TPM-Structures 19.3.
+func NVDefineSpace(rw io.ReadWriter, pub *NVPublicDescription, ownAuth digest) error {
+	pub.Tag = 0x0018
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
+	if err != nil {
+		return fmt.Errorf("failed to start new auth session: %v", err)
+	}
+	defer osaprOwn.Close(rw)
+	defer zeroBytes(sharedSecretOwn[:])
+	authIn := []interface{}{ordNVDefineSpace, pub}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return fmt.Errorf("failed to construct owner auth fields: %v", err)
+	}
+	ra, ret, err := nvDefineSpace(rw, pub, ca)
+	if err != nil {
+		return fmt.Errorf("failed to define space in NVRAM: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVDefineSpace}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return fmt.Errorf("failed to verify authenticity of response: %v", err)
+	}
+	return nil
+}
+
+// NVWriteValue writes the value into a given index & offset in NVRAM.
+// See TPM-Main-Part-2-TPM-Commands 20.2.
+func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth digest) error {
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
+	if err != nil {
+		return fmt.Errorf("failed to start new auth session: %v", err)
+	}
+	defer osaprOwn.Close(rw)
+	defer zeroBytes(sharedSecretOwn[:])
+	authIn := []interface{}{ordNVWriteValue, index, offset, uint32(len(data)), data}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return fmt.Errorf("failed to construct owner auth fields: %v", err)
+	}
+	ra, ret, err := nvWriteValue(rw, index, offset, data, ca)
+	if err != nil {
+		return fmt.Errorf("failed to read from NVRAM: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVWriteValue}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return fmt.Errorf("failed to verify authenticity of response: %v", err)
+	}
+	return nil
+}
+
 // OwnerReadPubEK uses owner auth to get a blob representing the public part of the
 // endorsement key.
 func OwnerReadPubEK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {

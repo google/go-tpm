@@ -58,6 +58,8 @@ const (
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
 	ordPcrReset             uint32 = 0x000000C8
+	ordNVDefineSpace        uint32 = 0x000000CC
+	ordNVWriteValue         uint32 = 0x000000CD
 	ordNVReadValue          uint32 = 0x000000CF
 )
 
@@ -175,3 +177,22 @@ const quoteVersion uint32 = 0x01010000
 
 // oaepLabel is the label used for OEAP encryption in esRSAEsOAEPSHA1MGF1
 var oaepLabel = []byte{byte('T'), byte('C'), byte('P'), byte('A')}
+
+// NV Attributes, as defined by section 19.2 of
+// the TPM 1.2 structures specification.
+const (
+	NVAttrPPWrite      NVAttr = (1 << 0)
+	NVAttrOwnerWrite   NVAttr = (1 << 1)
+	NVAttrAuthWrite    NVAttr = (1 << 2)
+	NVAttrWriteAll     NVAttr = (1 << 12)
+	NVAttrWriteDefine  NVAttr = (1 << 13)
+	NVAttrWriteSTClear NVAttr = (1 << 14)
+	NVAttrGlobalLock   NVAttr = (1 << 15)
+	NVAttrPPRead       NVAttr = (1 << 16)
+	NVAttrOwnerRead    NVAttr = (1 << 17)
+	NVAttrAuthRead     NVAttr = (1 << 18)
+	NVAttrReadSTClear  NVAttr = (1 << 31)
+)
+
+// NVAttr represents a NV area attributes value.
+type NVAttr uint32
