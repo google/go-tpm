@@ -969,7 +969,7 @@ func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth d
 	}
 	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
-	authIn := []interface{}{ordNVWriteValue, index, offset, uint32(len(data)), data}
+	authIn := []interface{}{ordNVWriteValue, index, offset, tpmutil.U32Bytes(data)}
 	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
 	if err != nil {
 		return fmt.Errorf("failed to construct owner auth fields: %v", err)

@@ -172,7 +172,7 @@ func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) (
 
 func nvWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ca *commandAuth) (*responseAuth, uint32, error) {
 	var ra responseAuth
-	in := []interface{}{index, offset, uint32(len(data)), tpmutil.RawBytes(data), ca}
+	in := []interface{}{index, offset, tpmutil.U32Bytes(data), ca}
 	out := []interface{}{&ra}
 	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVWriteValue, in, out)
 	if err != nil {
