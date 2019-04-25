@@ -181,7 +181,7 @@ func nvWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ca *comma
 	return &ra, ret, nil
 }
 
-func nvDefineSpace(rw io.ReadWriter, pub *NVPublicDescription, ca *commandAuth) (*responseAuth, uint32, error) {
+func nvDefineSpace(rw io.ReadWriter, pub *nvPublicDescription, ca *commandAuth) (*responseAuth, uint32, error) {
 	var ra responseAuth
 	in := []interface{}{pub, ca}
 	out := []interface{}{&ra}

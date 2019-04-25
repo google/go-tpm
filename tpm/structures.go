@@ -56,8 +56,8 @@ type pcrInfoLong struct {
 
 // pcrInfoShort stores detailed information about PCRs.
 type pcrInfoShort struct {
-	LocAtRelease    byte
 	PCRsAtRelease   pcrSelection
+	LocAtRelease    byte
 	DigestAtRelease digest
 }
 
@@ -346,10 +346,10 @@ type NVAttributesArea struct {
 	Attributes NVAttr
 }
 
-// NVPublicDescription describes the public description and controls on
+// nvPublicDescription describes the public description and controls on
 // a NV area. This struct mirrors the layout of the TPM_NV_DATA_PUBLIC
 // structure in the TPM 1.2 specification.
-type NVPublicDescription struct {
+type nvPublicDescription struct {
 	Tag           uint16
 	Index         uint32
 	ReadPCRState  pcrInfoShort

@@ -17,8 +17,8 @@ package main
 import (
 	"crypto/sha1"
 	"flag"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/google/go-tpm/tpm"
@@ -54,18 +54,18 @@ func main() {
 		copy(ownerAuth[:], oa[:])
 	}
 
+	data, err := ioutil.ReadFile(flag.Arg(0))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read input data from %s: %s\n", flag.Arg(0), err)
+		return
+	}
+
 	if *defineSpace {
-		if err := tpm.NVDefineSpace(rwc, &tpm.NVPublicDescription{Index: uint32(*index)}, ownerAuth); err != nil {
+		if err := tpm.NVDefineSpace(rwc, uint32(*index), uint32(len(data)), 0, ownerAuth); err != nil {
 			fmt.Fprintf(os.Stderr, "NVDefineSpace failed: %v\n", err)
 			return
 		}
 	}
-
-	data, err := ioutil.ReadFile(flag.Arg(1))
-	if err != nil {
-                fmt.Fprintf(os.Stderr, "Failed to read input data from %s: %s\n", flag.Arg(1), err)
-                return
-        }
 
 	if err := tpm.NVWriteValue(rwc, uint32(*index), 0, data, ownerAuth); err != nil {
 		fmt.Fprintf(os.Stderr, "NVWriteValue failed: %v\n", err)

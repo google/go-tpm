@@ -936,20 +936,40 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([
 
 // NVDefineSpace creates a new region in NVRAM at the specified index, and
 // with the specified properties. See TPM-Main-Part-2-TPM-Structures 19.3.
-func NVDefineSpace(rw io.ReadWriter, pub *NVPublicDescription, ownAuth digest) error {
-	pub.Tag = 0x0018
+func NVDefineSpace(rw io.ReadWriter, index, len uint32, attrs NVAttr, ownAuth digest) error {
+	pcrs, err := newPCRSelection([]int{})
+	if err != nil {
+		return fmt.Errorf("newPCRSelection failed: %v", err)
+	}
+	pcrState := pcrInfoShort{
+		LocAtRelease:  0x1f,
+		PCRsAtRelease: *pcrs,
+	}
+
+	pub := nvPublicDescription{
+		Tag:           0x0018,
+		Index:         index,
+		ReadPCRState:  pcrState,
+		WritePCRState: pcrState,
+		Attributes: NVAttributesArea{
+			Tag:        0x0017,
+			Attributes: attrs,
+		},
+		DataSize: len,
+	}
+
 	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
 	if err != nil {
 		return fmt.Errorf("failed to start new auth session: %v", err)
 	}
 	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
-	authIn := []interface{}{ordNVDefineSpace, pub}
+	authIn := []interface{}{ordNVDefineSpace, &pub}
 	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
 	if err != nil {
 		return fmt.Errorf("failed to construct owner auth fields: %v", err)
 	}
-	ra, ret, err := nvDefineSpace(rw, pub, ca)
+	ra, ret, err := nvDefineSpace(rw, &pub, ca)
 	if err != nil {
 		return fmt.Errorf("failed to define space in NVRAM: %v", err)
 	}
