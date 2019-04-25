@@ -242,10 +242,10 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)},
 	}, keyHandle, parentHandle, credBlob, encryptedSecret0)
 	if err == nil {
-		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected response status 0x98e (authorization failure)")
+		t.Fatal("ActivateCredentialUsingAuth: error == nil, expected authorization failure")
 	}
-	if !strings.Contains(err.Error(), "0x98e") {
-		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected response status 0x98e (authorization failure)", err)
+	if !strings.Contains(err.Error(), "the authorization HMAC check failed") {
+		t.Errorf("ActivateCredentialUsingAuth: error = %v, expected authorization failure", err)
 	}
 
 	_, err = ActivateCredentialUsingAuth(rw, []AuthCommand{

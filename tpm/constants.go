@@ -16,11 +16,6 @@ package tpm
 
 import "github.com/google/go-tpm/tpmutil"
 
-func init() {
-	// TPM 1.2 spec uses uint32 for length prefix of byte arrays.
-	tpmutil.UseTPM12LengthPrefixSize()
-}
-
 // Supported TPM commands.
 const (
 	tagPCRInfoLong     uint16 = 0x06

@@ -25,10 +25,6 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-func init() {
-	tpmutil.UseTPM20LengthPrefixSize()
-}
-
 // MAX_DIGEST_BUFFER is the maximum size of []byte request or response fields.
 // Typically used for chunking of big blobs of data (such as for hashing or
 // encryption).

@@ -95,7 +95,7 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	if err != nil {
 		return nil, nil, fmt.Errorf("symmetric cipher setup: %v", err)
 	}
-	cv, err := tpmutil.Pack(secret)
+	cv, err := tpmutil.Pack(tpmutil.U16Bytes(secret))
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating cv (TPM2B_Digest): %v", err)
 	}
@@ -125,7 +125,7 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	if err != nil {
 		return nil, nil, fmt.Errorf("encoding IDObject: %v", err)
 	}
-	packedEncSecret, err := tpmutil.Pack(encSecret)
+	packedEncSecret, err := tpmutil.Pack(tpmutil.U16Bytes(encSecret))
 	if err != nil {
 		return nil, nil, fmt.Errorf("packing encSecret: %v", err)
 	}
