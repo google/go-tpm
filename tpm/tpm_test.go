@@ -554,3 +554,16 @@ func TestForceClear(t *testing.T) {
 		t.Fatal("Couldn't clear the TPM without owner auth in physical presence mode:", err)
 	}
 }
+
+func TestStartup(t *testing.T) {
+	// This only works if startup has not yet been performed. On TPM 1.2
+	// hardware, this happens at a lower level in the stack. However, this
+	// can be tested against emulators.
+	t.Skip()
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	if err := Startup(rwc, StartupClear); err != nil {
+		t.Fatal("Couldn't start the TPM")
+	}
+}
