@@ -99,6 +99,14 @@ var (
 	emptyPassword   = ""
 )
 
+func TestRunCommandErr(t *testing.T) {
+	// nil ReadWriter handle will cause tpmutil.RunCommand to return an error
+	// immediately.
+	if _, err := runCommand(nil, TagSessions, cmdSign); err == nil {
+		t.Error("runCommand returned nil error on error from tpmutil.RunCommand")
+	}
+}
+
 func TestGetRandom(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
