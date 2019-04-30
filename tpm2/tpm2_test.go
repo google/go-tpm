@@ -999,20 +999,6 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 }
 
-func TestNVRead(t *testing.T) {
-	rw := openTPM(t)
-	defer rw.Close()
-
-	// Read the NVCert, which should be present on any real TPM.
-	d, err := NVRead(rw, 0x1c00002)
-	if err != nil {
-		t.Fatalf("NVRead() failed: %v", err)
-	}
-	if len(d) == 0 {
-		t.Error("NVRead() returned no data, expected something")
-	}
-}
-
 func TestNVReadWrite(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -1022,6 +1008,12 @@ func TestNVReadWrite(t *testing.T) {
 		data                = []byte("testdata")
 		attr                = AttrOwnerWrite | AttrOwnerRead
 	)
+
+	// Undefine the space, just in case the previous run of this test failed
+	// to clean up.
+	if err := NVUndefineSpace(rw, emptyPassword, HandleOwner, idx); err != nil {
+		t.Logf("(not a failure) NVUndefineSpace at index 0x%x failed: %v", idx, err)
+	}
 
 	// Define space in NV storage and clean up afterwards or subsequent runs will fail.
 	if err := NVDefineSpace(rw,
