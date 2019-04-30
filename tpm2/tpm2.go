@@ -1308,7 +1308,10 @@ func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil
 
 func runCommand(rw io.ReadWriter, tag tpmutil.Tag, cmd tpmutil.Command, in ...interface{}) ([]byte, error) {
 	resp, code, err := tpmutil.RunCommand(rw, tag, cmd, in...)
-	if err != nil || code != tpmutil.RCSuccess {
+	if err != nil {
+		return nil, err
+	}
+	if code != tpmutil.RCSuccess {
 		return nil, decodeResponse(code)
 	}
 	return resp, decodeResponse(code)
