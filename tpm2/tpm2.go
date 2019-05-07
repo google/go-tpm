@@ -79,40 +79,41 @@ func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
 	return tpmutil.Pack(uint32(1), ts)
 }
 
-func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
+func decodeTPMLPCRSelection(buf *bytes.Buffer) ([]PCRSelection, error) {
 	var count uint32
-	var sel PCRSelection
+	var sel []PCRSelection
+
+	// This unpacks buffer which is of type TPMLPCRSelection
+	// and returns the count of TPMSPCRSelections.
 	if err := tpmutil.UnpackBuf(buf, &count); err != nil {
 		return sel, err
 	}
-	switch count {
-	case 0:
-		sel.Hash = AlgUnknown
-		return sel, nil
-	case 1: // We only support decoding of a single PCRSelection.
-	default:
-		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
-	}
 
-	// See comment in encodeTPMLPCRSelection for details on this format.
 	var ts tpmsPCRSelection
-	if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
-		return sel, err
-	}
-	ts.PCRs = make(tpmutil.RawBytes, ts.Size)
-	if _, err := buf.Read(ts.PCRs); err != nil {
-		return sel, err
-	}
-
-	sel.Hash = ts.Hash
-	for i := 0; i < int(ts.Size); i++ {
-		for j := 0; j < 8; j++ {
-			set := ts.PCRs[i] & byte(1<<byte(j))
-			if set == 0 {
-				continue
-			}
-			sel.PCRs = append(sel.PCRs, 8*i+j)
+	for i:=0 ; i < int(count); i++ {
+		if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
+			return sel, err
 		}
+		ts.PCRs = make(tpmutil.RawBytes, ts.Size)
+		if _, err := buf.Read(ts.PCRs); err != nil {
+			return sel, err
+		}
+		sel = append(sel,PCRSelection{})
+		sel[i].Hash = ts.Hash
+		for j := 0; j < int(ts.Size); j++ {
+			for k := 0; k < 8; k++ {
+				set := ts.PCRs[j] & byte(1<<byte(j))
+				if set == 0 {
+					continue
+				}
+				sel[i].PCRs = append(sel[i].PCRs, 8*j+k)
+			}
+		}
+	}
+	if len(sel) == 0 {
+		sel = append(sel,PCRSelection{
+			Hash: AlgUnknown,
+		})
 	}
 	return sel, nil
 }
@@ -124,10 +125,12 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 		return nil, err
 	}
 
-	sel, err := decodeTPMLPCRSelection(buf)
+	sels, err := decodeTPMLPCRSelection(buf)
 	if err != nil {
 		return nil, fmt.Errorf("decoding TPML_PCR_SELECTION: %v", err)
 	}
+
+	sel := sels[0]
 
 	var digestCount uint32
 	if err = tpmutil.UnpackBuf(buf, &digestCount); err != nil {

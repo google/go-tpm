@@ -688,7 +688,7 @@ func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
 	}
-	out.PCRSelection = sel
+	out.PCRSelection = sel[0]
 	if err := tpmutil.UnpackBuf(in, &out.PCRDigest); err != nil {
 		return nil, fmt.Errorf("decoding PCRDigest: %v", err)
 	}
@@ -759,7 +759,7 @@ func DecodeCreationData(buf []byte) (*CreationData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
 	}
-	out.PCRSelection = sel
+	out.PCRSelection = sel[0]
 
 	if err := tpmutil.UnpackBuf(in, &out.PCRDigest, &out.Locality, &out.ParentNameAlg); err != nil {
 		return nil, fmt.Errorf("decoding PCRDigest, Locality, ParentNameAlg: %v", err)
