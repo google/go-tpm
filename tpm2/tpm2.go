@@ -245,6 +245,18 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 		}
 		return props, moreData > 0, nil
 
+
+	case CapabilityPCRs:
+		var pcrss []interface{}
+		//for i := 0; i < int(numPCRs); i++ {
+		pcrs, err := decodeTPMLPCRSelection(buf)
+		if err != nil {
+			return nil, false, fmt.Errorf("could not unpack pcr selection: %v", err)
+		}
+		pcrss = append(pcrss, pcrs)
+		//}
+		return pcrss, moreData > 0, nil
+		
 	default:
 		return nil, false, fmt.Errorf("unsupported capability %v", capReported)
 	}
