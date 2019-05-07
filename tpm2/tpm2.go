@@ -253,7 +253,10 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 		if err != nil {
 			return nil, false, fmt.Errorf("could not unpack pcr selection: %v", err)
 		}
-		pcrss = append(pcrss, pcrs)
+		for i:=0; i< len(pcrs); i++ {
+			pcrss = append(pcrss, pcrs[i])
+		}
+		
 		//}
 		return pcrss, moreData > 0, nil
 		
