@@ -90,7 +90,8 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) ([]PCRSelection, error) {
 	}
 
 	var ts tpmsPCRSelection
-	for i:=0 ; i < int(count); i++ {
+	var s PCRSelection
+	for i := 0; i < int(count); i++ {
 		if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
 			return sel, err
 		}
@@ -98,20 +99,20 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) ([]PCRSelection, error) {
 		if _, err := buf.Read(ts.PCRs); err != nil {
 			return sel, err
 		}
-		sel = append(sel,PCRSelection{})
-		sel[i].Hash = ts.Hash
+		s.Hash = ts.Hash
 		for j := 0; j < int(ts.Size); j++ {
 			for k := 0; k < 8; k++ {
-				set := ts.PCRs[j] & byte(1<<byte(j))
+				set := ts.PCRs[j] & byte(1<<byte(k))
 				if set == 0 {
 					continue
 				}
-				sel[i].PCRs = append(sel[i].PCRs, 8*j+k)
+				s.PCRs = append(s.PCRs, 8*j+k)
 			}
 		}
+		sel = append(sel, s)
 	}
 	if len(sel) == 0 {
-		sel = append(sel,PCRSelection{
+		sel = append(sel, PCRSelection{
 			Hash: AlgUnknown,
 		})
 	}
@@ -245,21 +246,18 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 		}
 		return props, moreData > 0, nil
 
-
 	case CapabilityPCRs:
 		var pcrss []interface{}
-		//for i := 0; i < int(numPCRs); i++ {
 		pcrs, err := decodeTPMLPCRSelection(buf)
 		if err != nil {
 			return nil, false, fmt.Errorf("could not unpack pcr selection: %v", err)
 		}
-		for i:=0; i< len(pcrs); i++ {
+		for i := 0; i < len(pcrs); i++ {
 			pcrss = append(pcrss, pcrs[i])
 		}
-		
-		//}
+
 		return pcrss, moreData > 0, nil
-		
+
 	default:
 		return nil, false, fmt.Errorf("unsupported capability %v", capReported)
 	}

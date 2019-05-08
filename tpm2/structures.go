@@ -688,7 +688,12 @@ func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
 	}
-	out.PCRSelection = sel[0]
+	if len(sel) == 1 {
+		out.PCRSelection = sel[0]
+	} else {
+		return nil, fmt.Errorf("PCRSelection is empty")
+	}
+
 	if err := tpmutil.UnpackBuf(in, &out.PCRDigest); err != nil {
 		return nil, fmt.Errorf("decoding PCRDigest: %v", err)
 	}
