@@ -90,8 +90,8 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) ([]PCRSelection, error) {
 	}
 
 	var ts tpmsPCRSelection
-	var s PCRSelection
 	for i := 0; i < int(count); i++ {
+		var s PCRSelection
 		if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
 			return sel, err
 		}
@@ -119,6 +119,17 @@ func decodeTPMLPCRSelection(buf *bytes.Buffer) ([]PCRSelection, error) {
 	return sel, nil
 }
 
+func decodeOneTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
+	sels, err := decodeTPMLPCRSelection(buf)
+	if err != nil {
+		return PCRSelection{}, err
+	}
+	if len(sels) != 1 {
+		return PCRSelection{}, fmt.Errorf("got %d TPMS_PCR_SELECTION items in TPML_PCR_SELECTION, expected 1", len(sels))
+	}
+	return sels[0], nil
+}
+
 func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 	buf := bytes.NewBuffer(in)
 	var updateCounter uint32
@@ -126,12 +137,7 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 		return nil, err
 	}
 
-	sels, err := decodeTPMLPCRSelection(buf)
-	if err != nil {
-		return nil, fmt.Errorf("decoding TPML_PCR_SELECTION: %v", err)
-	}
-
-	sel := sels[0]
+	sel, err := decodeOneTPMLPCRSelection(buf)
 
 	var digestCount uint32
 	if err = tpmutil.UnpackBuf(buf, &digestCount); err != nil {
