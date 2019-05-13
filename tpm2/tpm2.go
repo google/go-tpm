@@ -51,8 +51,12 @@ func FlushContext(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
-func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
-	if len(sel.PCRs) == 0 {
+func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
+	var s []PCRSelection
+	for _, sels := range sel {
+		s = append(s, sels)
+	}
+	if len(s) == 0 {
 		return tpmutil.Pack(uint32(0))
 	}
 
@@ -64,19 +68,28 @@ func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
 	// For example, selecting PCRs 3 and 9 looks like:
 	// size(3)  mask     mask     mask
 	// 00000011 00000000 00000001 00000100
-	ts := tpmsPCRSelection{
-		Hash: sel.Hash,
-		Size: sizeOfPCRSelect,
-		PCRs: make(tpmutil.RawBytes, sizeOfPCRSelect),
+	var retBytes []byte
+	for i := 0; i < len(s); i++ {
+		ts := tpmsPCRSelection{
+			Hash: s[i].Hash,
+			Size: sizeOfPCRSelect,
+			PCRs: make(tpmutil.RawBytes, sizeOfPCRSelect),
+		}
+		// s[i].PCRs parameter is indexes of PCRs, convert that to set bits.
+		for _, n := range s[i].PCRs {
+			byteNum := n / 8
+			bytePos := byte(1 << byte(n%8))
+			ts.PCRs[byteNum] |= bytePos
+		}
+		tmpBytes, err := tpmutil.Pack(uint32(1), ts)
+		if err != nil {
+			return nil, err
+		}
+
+		retBytes = append(retBytes, tmpBytes...)
 	}
-	// sel.PCRs parameter is indexes of PCRs, convert that to set bits.
-	for _, n := range sel.PCRs {
-		byteNum := n / 8
-		bytePos := byte(1 << byte(n%8))
-		ts.PCRs[byteNum] |= bytePos
-	}
-	// Only encode 1 TPMS_PCR_SELECT value.
-	return tpmutil.Pack(uint32(1), ts)
+
+	return retBytes, nil
 }
 
 func decodeTPMLPCRSelection(buf *bytes.Buffer) ([]PCRSelection, error) {
