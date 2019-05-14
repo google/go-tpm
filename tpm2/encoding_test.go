@@ -37,7 +37,7 @@ func TestDecodeReadPCRs(t *testing.T) {
 	}
 }
 
-func TestEncodeDecodeTPMLSelection(t *testing.T) {
+func TestSingleEncodeDecodeTPMLSelection(t *testing.T) {
 	buf, err := encodeTPMLPCRSelection(pcrSelection)
 	if err != nil {
 		t.Fatal(err)
@@ -49,6 +49,23 @@ func TestEncodeDecodeTPMLSelection(t *testing.T) {
 
 	if !reflect.DeepEqual(got, pcrSelection) {
 		t.Errorf("after decoding: %+v, before encoding: %+v", got, pcrSelection)
+	}
+}
+
+func TestMultiArgsEncodeDecodeTPMLSelection(t *testing.T) {
+	var multipcrselection []PCRSelection
+	multipcrselection = append(multipcrselection, pcrSelection)
+	buf, err := encodeTPMLPCRSelection(multipcrselection...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := decodeTPMLPCRSelection(bytes.NewBuffer(buf))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(got, multipcrselection) {
+		t.Errorf("after decoding: %+v, before encoding %+v", got, multipcrselection)
 	}
 }
 

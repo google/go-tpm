@@ -52,11 +52,7 @@ func FlushContext(rw io.ReadWriter, handle tpmutil.Handle) error {
 }
 
 func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
-	var s []PCRSelection
-	for _, sels := range sel {
-		s = append(s, sels)
-	}
-	if len(s) == 0 {
+	if len(sel) == 0 {
 		return tpmutil.Pack(uint32(0))
 	}
 
@@ -69,25 +65,38 @@ func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
 	// size(3)  mask     mask     mask
 	// 00000011 00000000 00000001 00000100
 	var retBytes []byte
-	for i := 0; i < len(s); i++ {
+	var tSize int
+	for i, s := range sel {
+		if len(s.PCRs) == 0 {
+			return tpmutil.Pack(uint32(0))
+		}
+
 		ts := tpmsPCRSelection{
-			Hash: s[i].Hash,
+			Hash: s.Hash,
 			Size: sizeOfPCRSelect,
 			PCRs: make(tpmutil.RawBytes, sizeOfPCRSelect),
 		}
+		tSize = i + 1
+
 		// s[i].PCRs parameter is indexes of PCRs, convert that to set bits.
-		for _, n := range s[i].PCRs {
+		for _, n := range s.PCRs {
 			byteNum := n / 8
 			bytePos := byte(1 << byte(n%8))
 			ts.PCRs[byteNum] |= bytePos
 		}
-		tmpBytes, err := tpmutil.Pack(uint32(1), ts)
+
+		tmpBytes, err := tpmutil.Pack(ts)
 		if err != nil {
 			return nil, err
 		}
 
 		retBytes = append(retBytes, tmpBytes...)
 	}
+	tmpSize, err := tpmutil.Pack(uint32(tSize))
+	if err != nil {
+		return nil, err
+	}
+	retBytes = append(tmpSize, retBytes...)
 
 	return retBytes, nil
 }
