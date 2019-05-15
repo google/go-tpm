@@ -39,7 +39,7 @@ func BenchmarkRSA2048Signing(b *testing.B) {
 		},
 	}
 
-	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, pub)
+	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, pub)
 	if err != nil {
 		b.Fatalf("CreatePrimary failed: %v", err)
 	}
@@ -74,7 +74,7 @@ func BenchmarkECCNISTP256Signing(b *testing.B) {
 		},
 	}
 
-	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, pub)
+	signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, pub)
 	if err != nil {
 		b.Fatalf("CreatePrimary failed: %v", err)
 	}

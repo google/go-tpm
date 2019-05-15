@@ -684,11 +684,12 @@ type QuoteInfo struct {
 
 func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 	var out QuoteInfo
-	sel, err := decodeTPMLPCRSelection(in)
+	sel, err := decodeOneTPMLPCRSelection(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
 	}
 	out.PCRSelection = sel
+
 	if err := tpmutil.UnpackBuf(in, &out.PCRDigest); err != nil {
 		return nil, fmt.Errorf("decoding PCRDigest: %v", err)
 	}
@@ -755,9 +756,9 @@ func DecodeCreationData(buf []byte) (*CreationData, error) {
 	in := bytes.NewBuffer(buf)
 	var out CreationData
 
-	sel, err := decodeTPMLPCRSelection(in)
+	sel, err := decodeOneTPMLPCRSelection(in)
 	if err != nil {
-		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
+		return nil, fmt.Errorf("decodeOneTPMLPCRSelection returned error %v", err)
 	}
 	out.PCRSelection = sel
 

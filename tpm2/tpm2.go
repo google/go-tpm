@@ -51,8 +51,8 @@ func FlushContext(rw io.ReadWriter, handle tpmutil.Handle) error {
 	return err
 }
 
-func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
-	if len(sel.PCRs) == 0 {
+func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
+	if len(sel) == 0 {
 		return tpmutil.Pack(uint32(0))
 	}
 
@@ -64,57 +64,90 @@ func encodeTPMLPCRSelection(sel PCRSelection) ([]byte, error) {
 	// For example, selecting PCRs 3 and 9 looks like:
 	// size(3)  mask     mask     mask
 	// 00000011 00000000 00000001 00000100
-	ts := tpmsPCRSelection{
-		Hash: sel.Hash,
-		Size: sizeOfPCRSelect,
-		PCRs: make(tpmutil.RawBytes, sizeOfPCRSelect),
+	var retBytes []byte
+	for _, s := range sel {
+		if len(s.PCRs) == 0 {
+			return tpmutil.Pack(uint32(0))
+		}
+
+		ts := tpmsPCRSelection{
+			Hash: s.Hash,
+			Size: sizeOfPCRSelect,
+			PCRs: make(tpmutil.RawBytes, sizeOfPCRSelect),
+		}
+
+		// s[i].PCRs parameter is indexes of PCRs, convert that to set bits.
+		for _, n := range s.PCRs {
+			byteNum := n / 8
+			bytePos := byte(1 << byte(n%8))
+			ts.PCRs[byteNum] |= bytePos
+		}
+
+		tmpBytes, err := tpmutil.Pack(ts)
+		if err != nil {
+			return nil, err
+		}
+
+		retBytes = append(retBytes, tmpBytes...)
 	}
-	// sel.PCRs parameter is indexes of PCRs, convert that to set bits.
-	for _, n := range sel.PCRs {
-		byteNum := n / 8
-		bytePos := byte(1 << byte(n%8))
-		ts.PCRs[byteNum] |= bytePos
+	tmpSize, err := tpmutil.Pack(uint32(len(sel)))
+	if err != nil {
+		return nil, err
 	}
-	// Only encode 1 TPMS_PCR_SELECT value.
-	return tpmutil.Pack(uint32(1), ts)
+	retBytes = append(tmpSize, retBytes...)
+
+	return retBytes, nil
 }
 
-func decodeTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
+func decodeTPMLPCRSelection(buf *bytes.Buffer) ([]PCRSelection, error) {
 	var count uint32
-	var sel PCRSelection
+	var sel []PCRSelection
+
+	// This unpacks buffer which is of type TPMLPCRSelection
+	// and returns the count of TPMSPCRSelections.
 	if err := tpmutil.UnpackBuf(buf, &count); err != nil {
 		return sel, err
 	}
-	switch count {
-	case 0:
-		sel.Hash = AlgUnknown
-		return sel, nil
-	case 1: // We only support decoding of a single PCRSelection.
-	default:
-		return sel, fmt.Errorf("decoding TPML_PCR_SELECTION list longer than 1 is not supported (got length %d)", count)
-	}
 
-	// See comment in encodeTPMLPCRSelection for details on this format.
 	var ts tpmsPCRSelection
-	if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
-		return sel, err
-	}
-	ts.PCRs = make(tpmutil.RawBytes, ts.Size)
-	if _, err := buf.Read(ts.PCRs); err != nil {
-		return sel, err
-	}
-
-	sel.Hash = ts.Hash
-	for i := 0; i < int(ts.Size); i++ {
-		for j := 0; j < 8; j++ {
-			set := ts.PCRs[i] & byte(1<<byte(j))
-			if set == 0 {
-				continue
-			}
-			sel.PCRs = append(sel.PCRs, 8*i+j)
+	for i := 0; i < int(count); i++ {
+		var s PCRSelection
+		if err := tpmutil.UnpackBuf(buf, &ts.Hash, &ts.Size); err != nil {
+			return sel, err
 		}
+		ts.PCRs = make(tpmutil.RawBytes, ts.Size)
+		if _, err := buf.Read(ts.PCRs); err != nil {
+			return sel, err
+		}
+		s.Hash = ts.Hash
+		for j := 0; j < int(ts.Size); j++ {
+			for k := 0; k < 8; k++ {
+				set := ts.PCRs[j] & byte(1<<byte(k))
+				if set == 0 {
+					continue
+				}
+				s.PCRs = append(s.PCRs, 8*j+k)
+			}
+		}
+		sel = append(sel, s)
+	}
+	if len(sel) == 0 {
+		sel = append(sel, PCRSelection{
+			Hash: AlgUnknown,
+		})
 	}
 	return sel, nil
+}
+
+func decodeOneTPMLPCRSelection(buf *bytes.Buffer) (PCRSelection, error) {
+	sels, err := decodeTPMLPCRSelection(buf)
+	if err != nil {
+		return PCRSelection{}, err
+	}
+	if len(sels) != 1 {
+		return PCRSelection{}, fmt.Errorf("got %d TPMS_PCR_SELECTION items in TPML_PCR_SELECTION, expected 1", len(sels))
+	}
+	return sels[0], nil
 }
 
 func decodeReadPCRs(in []byte) (map[int][]byte, error) {
@@ -124,9 +157,9 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 		return nil, err
 	}
 
-	sel, err := decodeTPMLPCRSelection(buf)
+	sel, err := decodeOneTPMLPCRSelection(buf)
 	if err != nil {
-		return nil, fmt.Errorf("decoding TPML_PCR_SELECTION: %v", err)
+		return nil, err
 	}
 
 	var digestCount uint32
@@ -241,6 +274,18 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 			props = append(props, prop)
 		}
 		return props, moreData > 0, nil
+
+	case CapabilityPCRs:
+		var pcrss []interface{}
+		pcrs, err := decodeTPMLPCRSelection(buf)
+		if err != nil {
+			return nil, false, fmt.Errorf("could not unpack pcr selection: %v", err)
+		}
+		for i := 0; i < len(pcrs); i++ {
+			pcrss = append(pcrss, pcrs[i])
+		}
+
+		return pcrss, moreData > 0, nil
 
 	default:
 		return nil, false, fmt.Errorf("unsupported capability %v", capReported)
