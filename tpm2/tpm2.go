@@ -65,8 +65,7 @@ func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
 	// size(3)  mask     mask     mask
 	// 00000011 00000000 00000001 00000100
 	var retBytes []byte
-	var tSize int
-	for i, s := range sel {
+	for _, s := range sel {
 		if len(s.PCRs) == 0 {
 			return tpmutil.Pack(uint32(0))
 		}
@@ -76,7 +75,6 @@ func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
 			Size: sizeOfPCRSelect,
 			PCRs: make(tpmutil.RawBytes, sizeOfPCRSelect),
 		}
-		tSize = i + 1
 
 		// s[i].PCRs parameter is indexes of PCRs, convert that to set bits.
 		for _, n := range s.PCRs {
@@ -92,7 +90,7 @@ func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
 
 		retBytes = append(retBytes, tmpBytes...)
 	}
-	tmpSize, err := tpmutil.Pack(uint32(tSize))
+	tmpSize, err := tpmutil.Pack(uint32(len(sel)))
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +158,9 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 	}
 
 	sel, err := decodeOneTPMLPCRSelection(buf)
+	if err != nil {
+		return nil, err
+	}
 
 	var digestCount uint32
 	if err = tpmutil.UnpackBuf(buf, &digestCount); err != nil {

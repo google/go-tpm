@@ -38,7 +38,7 @@ func TestDecodeReadPCRs(t *testing.T) {
 }
 
 func TestSingleEncodeDecodeTPMLSelection(t *testing.T) {
-	buf, err := encodeTPMLPCRSelection(pcrSelection)
+	buf, err := encodeTPMLPCRSelection(pcrSelection7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,14 +47,13 @@ func TestSingleEncodeDecodeTPMLSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(got, pcrSelection) {
-		t.Errorf("after decoding: %+v, before encoding: %+v", got, pcrSelection)
+	if !reflect.DeepEqual(got, pcrSelection7) {
+		t.Errorf("after decoding: %+v, before encoding: %+v", got, pcrSelection7)
 	}
 }
 
 func TestMultiArgsEncodeDecodeTPMLSelection(t *testing.T) {
-	var multipcrselection []PCRSelection
-	multipcrselection = append(multipcrselection, pcrSelection)
+	multipcrselection := []PCRSelection{pcrSelection0, pcrSelection1, pcrSelection7}
 	buf, err := encodeTPMLPCRSelection(multipcrselection...)
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +146,7 @@ func TestEncodeCreate(t *testing.T) {
 			Modulus:  big.NewInt(0),
 		},
 	}
-	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection, "", defaultPassword, []byte{255} /*sensitiveData*/, params)
+	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection7, "", defaultPassword, []byte{255} /*sensitiveData*/, params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +180,7 @@ func TestEncodePolicyPCR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdBytes, err := encodePolicyPCR(tpmutil.Handle(0x03000000), []byte(nil), pcrSelection)
+	cmdBytes, err := encodePolicyPCR(tpmutil.Handle(0x03000000), []byte(nil), pcrSelection7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +255,7 @@ func TestEncodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	toQuote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), defaultPassword, "", toQuote, pcrSelection, 0x0010)
+	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), defaultPassword, "", toQuote, pcrSelection7, 0x0010)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +350,7 @@ func TestEncodeSensitiveArea(t *testing.T) {
 }
 
 func TestEncodeTPMLPCRSelection(t *testing.T) {
-	s, err := encodeTPMLPCRSelection(pcrSelection)
+	s, err := encodeTPMLPCRSelection(pcrSelection7)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -79,7 +79,9 @@ func (s simulator) Close() error {
 
 var (
 	// PCR7 is for SecureBoot.
-	pcrSelection     = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
+	pcrSelection0    = PCRSelection{Hash: AlgSHA1, PCRs: []int{0}}
+	pcrSelection1    = PCRSelection{Hash: AlgSHA1, PCRs: []int{1}}
+	pcrSelection7    = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
 	defaultKeyParams = Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
@@ -112,7 +114,7 @@ func TestReadPCRs(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	pcrs, err := ReadPCRs(rw, pcrSelection)
+	pcrs, err := ReadPCRs(rw, pcrSelection7)
 	if err != nil {
 		t.Errorf("ReadPCRs failed: %s", err)
 	}
@@ -163,13 +165,13 @@ func TestCombinedKeyTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, defaultKeyParams)
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 	defer FlushContext(rw, parentHandle)
 
-	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, defaultKeyParams)
+	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -189,13 +191,13 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 	defer FlushContext(rw, parentHandle)
 
-	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection, emptyPassword, defaultPassword, defaultKeyParams)
+	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, emptyPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -263,7 +265,7 @@ func TestCreatePrimaryEx(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	keyHandle, pub1, creation, _, _, name, err := CreatePrimaryEx(rw, HandleOwner, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	keyHandle, pub1, creation, _, _, name, err := CreatePrimaryEx(rw, HandleOwner, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %v", err)
 	}
@@ -296,14 +298,14 @@ func TestCombinedContextTest(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %v", err)
 	}
 	defer FlushContext(rw, rootHandle)
 
 	// CreateKey (Quote Key)
-	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
@@ -330,14 +332,14 @@ func TestEvictControl(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %v", err)
 	}
 	defer FlushContext(rw, rootHandle)
 
 	// CreateKey (Quote Key)
-	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection, emptyPassword, emptyPassword, defaultKeyParams)
+	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
@@ -483,13 +485,13 @@ func TestCertify(t *testing.T) {
 			Modulus: big.NewInt(0),
 		},
 	}
-	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, params)
+	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimary(signer) failed: %s", err)
 	}
 	defer FlushContext(rw, signerHandle)
 
-	subjectHandle, subjectPub, err := CreatePrimary(rw, HandlePlatform, pcrSelection, emptyPassword, defaultPassword, params)
+	subjectHandle, subjectPub, err := CreatePrimary(rw, HandlePlatform, pcrSelection7, emptyPassword, defaultPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimary(subject) failed: %s", err)
 	}
@@ -553,7 +555,7 @@ func TestCertifyExternalKey(t *testing.T) {
 			Modulus: big.NewInt(0),
 		},
 	}
-	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, params)
+	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimary(signer) failed: %s", err)
 	}
@@ -635,7 +637,7 @@ func TestSign(t *testing.T) {
 	defer rw.Close()
 
 	run := func(t *testing.T, pub Public) {
-		signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, pub)
+		signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, pub)
 		if err != nil {
 			t.Fatalf("CreatePrimary failed: %s", err)
 		}
@@ -962,7 +964,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 			Modulus: big.NewInt(0),
 		},
 	}
-	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection, emptyPassword, emptyPassword, params)
+	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimaryEx failed: %s", err)
 	}
@@ -1092,13 +1094,13 @@ func TestQuote(t *testing.T) {
 			Modulus: big.NewInt(0),
 		},
 	}
-	keyHandle, pub, _, _, _, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection, emptyPassword, emptyPassword, params)
+	keyHandle, pub, _, _, _, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
 	if err != nil {
 		t.Fatalf("CreatePrimaryEx failed: %s", err)
 	}
 	defer FlushContext(rw, keyHandle)
 
-	attestation, signature, err := Quote(rw, keyHandle, emptyPassword, emptyPassword, nil, pcrSelection, AlgNull)
+	attestation, signature, err := Quote(rw, keyHandle, emptyPassword, emptyPassword, nil, pcrSelection7, AlgNull)
 	if err != nil {
 		t.Fatalf("Quote failed: %v", err)
 	}
@@ -1209,7 +1211,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, Public{
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA256,
 		Attributes: FlagRestricted | FlagDecrypt | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
@@ -1227,7 +1229,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 	defer FlushContext(rw, parentHandle)
-	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection, defaultPassword, defaultPassword, Public{
+	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, Public{
 		Type:       AlgSymCipher,
 		NameAlg:    AlgSHA256,
 		Attributes: FlagDecrypt | FlagSign | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
@@ -1271,7 +1273,7 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	handle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection, emptyPassword, defaultPassword, Public{
+	handle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA256,
 		Attributes: FlagDecrypt | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
