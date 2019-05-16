@@ -488,8 +488,17 @@ func CreatePrimaryRawTemplate(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSel
 		return 0, nil, err
 	}
 
-	hnd, pub, _, _, _, _, err := decodeCreatePrimary(resp)
-	return hnd, pub, err
+	hnd, public, _, _, _, _, err := decodeCreatePrimary(resp)
+	pub, err := DecodePublic(public)
+	if err != nil {
+		return 0, nil, fmt.Errorf("parsing public: %v", err)
+	}
+
+	pubKey, err := pub.Key()
+	if err != nil {
+		return 0, nil, fmt.Errorf("extracting cryto.PublicKey from Public part of primary key: %v", err)
+	}
+	return hnd, pubKey, nil
 }
 
 func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {

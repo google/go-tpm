@@ -1336,3 +1336,30 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 	}
 
 }
+
+func TestCreatePrimaryRawTemplate(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	pubRaw, err := defaultKeyParams.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	kh, pub, err := CreatePrimaryRawTemplate(rw, HandleEndorsement, PCRSelection{}, "", "", pubRaw)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %v", err)
+	}
+	defer FlushContext(rw, kh)
+
+	pubRSA, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		t.Fatalf("got public key type %T, want *rsa.PublicKey", pub)
+	}
+	gotKeySize, wantKeySize := pubRSA.Size(), int(defaultKeyParams.RSAParameters.KeyBits/8)
+	if gotKeySize != wantKeySize {
+		t.Errorf("got key size %v, want %v", gotKeySize, wantKeySize)
+	}
+	if pubRSA.E != int(defaultKeyParams.RSAParameters.Exponent) {
+		t.Errorf("got key exponent %v, want %v", pubRSA.E, defaultKeyParams.RSAParameters.Exponent)
+	}
+}
