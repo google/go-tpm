@@ -24,11 +24,6 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-// OpenTPM opens a channel to the TPM at the given path. If the file is a
-// device, then it treats it like a normal TPM device, and if the file is a
-// Unix domain socket, then it opens a connection to the socket.
-var OpenTPM = tpmutil.OpenTPM
-
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriter, size uint16) ([]byte, error) {
 	resp, err := runCommand(rw, TagNoSessions, cmdGetRandom, size)
