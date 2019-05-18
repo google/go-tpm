@@ -1,3 +1,5 @@
+// +build !windows
+
 // Binary tpm2-nvread reads data from NVRAM at a specified index. The data is
 // printed out hex-encoded.
 package main
