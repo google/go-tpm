@@ -309,6 +309,17 @@ func GetCapability(rw io.ReadWriter, capa Capability, count, property uint32) (v
 	return decodeGetCapability(resp)
 }
 
+// GetManufacturer returns the manufacturer ID
+func GetManufacturer(rw io.ReadWriter) ([]byte, error) {
+	caps, _, err := GetCapability(rw, CapabilityTPMProperties, 1, uint32(Manufacturer))
+	if err != nil {
+		return nil, err
+	}
+
+	prop := caps[0].(TaggedProperty)
+	return tpmutil.Pack(prop.Value)
+}
+
 func encodeAuthArea(sections ...AuthCommand) ([]byte, error) {
 	var res tpmutil.RawBytes
 	for _, s := range sections {
