@@ -157,9 +157,57 @@ const (
 // TPMProp represents the index of a TPM property in a call to GetCapability().
 type TPMProp uint32
 
-// TPM Capability Properties.
+// TPM Capability Properties, see TPM 2.0 Spec, Rev 1.38, Table 23
 const (
-	NVMaxBufferSize    TPMProp = 0x100 + 44
+	// Fixed TPM Properties (PT_FIXED)
+	FamilyIndicator TPMProp = 0x100 + iota
+	SpecLevel
+	SpecRevision
+	SpecDayOfYear
+	SpecYear
+	Manufacturer
+	VendorString1
+	VendorString2
+	VendorString3
+	VendorString4
+	VendorTPMType
+	FirmwareVersion1
+	FirmwareVersion2
+	InputMaxBufferSize
+	TransientObjectsMin
+	PersistentObjectsMin
+	LoadedObjectsMin
+	ActiveSessionsMax
+	PCRCount
+	PCRSelectMin
+	ContextGapMax
+	_ // (PT_FIXED + 21) is skipped
+	NVCountersMax
+	NVIndexMax
+	MemoryMethod
+	ClockUpdate
+	ContextHash
+	ContextSym
+	ContextSymSize
+	OrderlyCount
+	CommandMaxSize
+	ResponseMaxSize
+	DigestMaxSize
+	ObjectContextMaxSize
+	SessionContextMaxSize
+	PSFamilyIndicator
+	PSSpecLevel
+	PSSpecRevision
+	PSSpecDayOfYear
+	PSSpecYear
+	SplitSigningMax
+	TotalCommands
+	LibraryCommands
+	VendorCommands
+	NVMaxBufferSize
+	TPMModes
+	CapabilityMaxBufferSize
+
 	PCRFirst           TPMProp = 0x00000000
 	HMACSessionFirst   TPMProp = 0x02000000
 	LoadedSessionFirst TPMProp = 0x02000000
