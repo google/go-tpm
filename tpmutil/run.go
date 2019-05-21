@@ -48,7 +48,7 @@ func RunCommand(rw io.ReadWriter, tag Tag, cmd Command, in ...interface{}) ([]by
 	// If the TPM is a real device, it may not be ready for reading immediately after writing
 	// the command. Wait until the file descriptor is ready to be read from.
 	if f, ok := rw.(*os.File); ok {
-		if err = poll(f, pollNoTimeout); err != nil {
+		if err = poll(f); err != nil {
 			return nil, 0, err
 		}
 	}

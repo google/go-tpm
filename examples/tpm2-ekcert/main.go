@@ -1,3 +1,5 @@
+// +build !windows
+
 // Binary tpm2-ekcert reads an x509 certificate from a specific NVRAM index.
 package main
 
