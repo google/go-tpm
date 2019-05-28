@@ -899,12 +899,9 @@ type AlgorithmDescription struct {
 	Attributes AlgorithmAttributes
 }
 
-// PropertyTag represents a TPM_PT value.
-type PropertyTag uint32
-
 // TaggedProperty represents a TPMS_TAGGED_PROPERTY structure.
 type TaggedProperty struct {
-	Tag   PropertyTag
+	Tag   TPMProp
 	Value uint32
 }
 

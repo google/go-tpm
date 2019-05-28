@@ -32,11 +32,6 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-// OpenTPM opens a channel to the TPM at the given path. If the file is a
-// device, then it treats it like a normal TPM device, and if the file is a
-// Unix domain socket, then it opens a connection to the socket.
-var OpenTPM = tpmutil.OpenTPM
-
 // GetKeys gets the list of handles for currently-loaded TPM keys.
 func GetKeys(rw io.ReadWriter) ([]tpmutil.Handle, error) {
 	b, err := getCapability(rw, capHandle, rtKey)
