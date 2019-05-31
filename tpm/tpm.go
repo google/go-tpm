@@ -904,6 +904,17 @@ func ReadEKCert(rw io.ReadWriter, ownAuth digest) ([]byte, error) {
 	return ekbuf, nil
 }
 
+func nvDefineSpace(rw io.ReadWriter, index, len uint32) {
+
+}
+
+// NVDefineSpace defines space in NVRAM for the indicated index.
+// Definition include the access requirements for writing and reading the area
+func NVDefineSpace(rw io.ReadWriter, index, len uint32, ownAuth digest) ([]byte, error) {
+
+	return nil, nil
+}
+
 // NVReadValue returns the value from a given index, offset, and length in NVRAM.
 // See TPM-Main-Part-2-TPM-Structures 19.1.
 func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([]byte, error) {
