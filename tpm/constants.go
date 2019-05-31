@@ -53,6 +53,7 @@ const (
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
 	ordPcrReset             uint32 = 0x000000C8
+	ordNVDefineSpace        uint32 = 0x000000CC
 	ordNVReadValue          uint32 = 0x000000CF
 )
 
