@@ -906,7 +906,7 @@ func ReadEKCert(rw io.ReadWriter, ownAuth []byte) ([]byte, error) {
 
 // NVDefineSpace defines space in NVRAM for the indicated index.
 // Definition include the access requirements for writing and reading the area
-func NVDefineSpace(rw io.ReadWriter, index tpmutil.Handle, len uint, perms []uint32, ownAuth digest) ([]byte, error) {
+func NVDefineSpace(rw io.ReadWriter, index tpmutil.Handle, len uint32, perms []uint32, ownAuth digest) ([]byte, error) {
 	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
 	if err != nil {
 		return nil, fmt.Errorf("failed to start new auth session: %v", err)
@@ -917,7 +917,7 @@ func NVDefineSpace(rw io.ReadWriter, index tpmutil.Handle, len uint, perms []uin
 	for _, i := range perms {
 		perm += i
 	}
-	nvdata := nvDataPublic{0x0018, index, pcrInfoShort{}, pcrInfoShort{}, nvAttribute{tpmutil.Tag(0x0017), uint32(perm)}, false, false, false, 1}
+	nvdata := nvDataPublic{0x0018, index, pcrInfoShort{}, pcrInfoShort{}, nvAttribute{tpmutil.Tag(0x0017), uint32(perm)}, false, false, false, len}
 	authIn := []interface{}{ordNVDefineSpace, nvdata}
 	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
 	if err != nil {
