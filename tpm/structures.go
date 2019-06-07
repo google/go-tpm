@@ -43,6 +43,11 @@ type pcrSelection struct {
 	Mask pcrMask
 }
 
+type nvAttribute struct {
+	tag         tpmutil.Tag
+	permissions uint32
+}
+
 // pcrInfoLong stores detailed information about PCRs.
 type pcrInfoLong struct {
 	Tag              uint16
@@ -65,6 +70,18 @@ type pcrInfo struct {
 	PcrSelection     pcrSelection
 	DigestAtRelease  digest
 	DigestAtCreation digest
+}
+
+type nvDataPublic struct {
+	tag          tpmutil.Tag
+	index        tpmutil.Handle
+	pcrshort1    pcrInfoShort
+	pcrshort2    pcrInfoShort
+	Attrbute     nvAttribute
+	readSTClear  bool
+	writeSTClear bool
+	writeDefine  bool
+	dataSize     uint32
 }
 
 // A capVersionInfo contains information about the TPM itself. Note that this

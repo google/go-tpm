@@ -163,6 +163,32 @@ const (
 	authPrivUseOnly byte = 0x03
 )
 
+// Locality Selection
+
+const (
+	locFour  byte = 0x16
+	locThree byte = 0x8
+	locTwo   byte = 0x4
+	locOne   byte = 0x2
+	locZero  byte = 0x1
+)
+
+// nvPremissions and Operations
+
+const (
+	nvPerPPWrite      uint32 = 0x00000001
+	nvPerOwnerWrite   uint32 = 0x00000002
+	nvPerAuthWrite    uint32 = 0x00000004
+	nvPerWriteAll     uint32 = 0x00000800
+	nvPerWriteDefine  uint32 = 0x00001000
+	nvPerWriteSTClear uint32 = 0x00002000
+	nvPerGlobalLock   uint32 = 0x00004000
+	nvPerPPRead       uint32 = 0x00008000
+	nvPerOwnerRead    uint32 = 0x00100000
+	nvPerAuthRead     uint32 = 0x00200000
+	nvPerReadSTClear  uint32 = 0x80000000
+)
+
 // fixedQuote is the fixed constant string used in quoteInfo.
 var fixedQuote = [4]byte{byte('Q'), byte('U'), byte('O'), byte('T')}
 

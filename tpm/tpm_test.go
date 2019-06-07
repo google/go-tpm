@@ -232,6 +232,20 @@ func TestResizeableSlice(t *testing.T) {
 	}
 }
 
+func TestNVDefineSpace(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+	index := tpmutil.Handle(0x50000001)
+	permissions := []uint32{nvPerWriteDefine}
+	length := uint(54)
+	ownerAuth := getAuth(ownerAuthEnvVar)
+	_, err := NVDefineSpace(rwc, index, length, permissions, ownerAuth)
+	if err != nil {
+		t.Fatal("Couldn't define space:", err)
+	}
+
+}
+
 func TestSeal(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
