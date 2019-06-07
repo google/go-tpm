@@ -178,11 +178,13 @@ const (
 // nvPremissions and Operations
 
 const (
-	nvPerPPWrite      uint32 = 0x00000001
-	nvPerOwnerWrite   uint32 = 0x00000002
-	nvPerAuthWrite    uint32 = 0x00000004
-	nvPerWriteAll     uint32 = 0x00000800
-	nvPerWriteDefine  uint32 = 0x00001000
+	nvPerPPWrite    uint32 = 0x00000001
+	nvPerOwnerWrite uint32 = 0x00000002
+	nvPerAuthWrite  uint32 = 0x00000004
+	nvPerWriteAll   uint32 = 0x00000800
+	//REALLY REALLY BAD!!!!!!!!!!!!!!!!
+	//PERMALOCK! Only use if you know what you're doing!!!!
+	//nvPerWriteDefine  uint32 = 0x00001000
 	nvPerWriteSTClear uint32 = 0x00002000
 	nvPerGlobalLock   uint32 = 0x00004000
 	nvPerPPRead       uint32 = 0x00008000
