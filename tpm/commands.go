@@ -158,6 +158,18 @@ func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	return b, nil
 }
 
+func nvDefineSpace(rw io.ReadWriter, nvData nvDataPublic, ca *commandAuth, encAuth ...authValue) ([]byte, *responseAuth, uint32, error) {
+	var b tpmutil.U32Bytes
+	var ra responseAuth
+	in := []interface{}{nvData, ca, encAuth}
+	out := []interface{}{&b, &ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVDefineSpace, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return b, &ra, ret, nil
+}
+
 func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
 	var b tpmutil.U32Bytes
 	var ra responseAuth
