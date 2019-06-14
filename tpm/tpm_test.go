@@ -246,6 +246,19 @@ func TestNVDefineSpace(t *testing.T) {
 
 }
 
+func TestNVWriteValue(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+	index := uint32(0x50000001)
+	ownerAuth := getAuth(ownerAuthEnvVar)
+	randomdata := make([]byte, 20)
+	rand.Read(randomdata)
+	_, err := NVWriteValue(rwc, index, 0, randomdata, ownerAuth)
+	if err != nil {
+		t.Fatal("Couldn't write to NV space:", err)
+	}
+}
+
 func TestSeal(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
