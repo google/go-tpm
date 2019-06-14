@@ -934,6 +934,31 @@ func NVDefineSpace(rw io.ReadWriter, index tpmutil.Handle, len uint32, perms []u
 	return data, nil
 }
 
+// NVWriteValue writes a given value with its length to a given adress in NVRAM
+func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth digest) ([]byte, error) {
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to start new auth session: %v", err)
+	}
+	defer osaprOwn.Close(rw)
+	defer zeroBytes(sharedSecretOwn[:])
+	authIn := []interface{}{ordNVWriteValue, data}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct owner auth fields: %v", err)
+	}
+	data, ra, ret, err := nvWriteValue(rw, index, offset, data, ca)
+	if err != nil {
+		return nil, fmt.Errorf("failed to define space in NVRAM: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVWriteValue, tpmutil.U32Bytes(data)}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return nil, fmt.Errorf("failed to verify authenticity of response: %v", err)
+	}
+
+	return nil, nil
+}
+
 // NVReadValue returns the value from a given index, offset, and length in NVRAM.
 // See TPM-Main-Part-2-TPM-Structures 19.1.
 func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([]byte, error) {
