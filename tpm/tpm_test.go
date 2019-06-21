@@ -235,7 +235,7 @@ func TestResizeableSlice(t *testing.T) {
 func TestNVDefineSpace(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
-	index := tpmutil.Handle(0x50000001)
+	index := tpmutil.Handle(0x40000001)
 	permissions := []uint32{nvPerWriteSTClear}
 	length := uint32(54)
 	ownerAuth := getAuth(ownerAuthEnvVar)
@@ -249,7 +249,7 @@ func TestNVDefineSpace(t *testing.T) {
 func TestNVWriteValue(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
-	index := uint32(0x50000001)
+	index := uint32(0x40000001)
 	ownerAuth := getAuth(ownerAuthEnvVar)
 	randomdata := make([]byte, 20)
 	rand.Read(randomdata)
