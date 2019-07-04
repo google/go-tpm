@@ -106,7 +106,8 @@ func TestEncodeLoad(t *testing.T) {
 	}
 	privateBlob := testCmdBytes[33:123]
 	publicBlob := testCmdBytes[125:]
-	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), defaultPassword, publicBlob, privateBlob)
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(defaultPassword)}
+	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), auth, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("encodeLoad failed %s", err)
 	}
