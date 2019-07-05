@@ -553,6 +553,31 @@ func SetDictionaryAttackParameters(rw io.ReadWriter, maxTries, recoveryTime, loc
 	return err
 }
 
+func encodeHierarchyChangeAuthParameters(hierarchy tpmutil.Handle, oldPassword, newPassword string) ([]byte, error) {
+	handle, err := tpmutil.Pack(hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(oldPassword)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(tpmutil.U16Bytes(newPassword))
+	if err != nil {
+		return nil, err
+	}
+	return concat(handle, auth, params)
+}
+
+func HierarchyChangeAuth(rw io.ReadWriter, hierarchy tpmutil.Handle, oldPassword, newPassword string) error {
+	cmd, err := encodeHierarchyChangeAuthParameters(hierarchy, oldPassword, newPassword)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdHierarchyChangeAuth, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
 	var resp struct {
 		Public        tpmutil.U16Bytes
