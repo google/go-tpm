@@ -304,23 +304,24 @@ var toGoCurve = map[EllipticCurve]elliptic.Curve{
 
 // Supported TPM operations.
 const (
-	cmdEvictControl       tpmutil.Command = 0x00000120
-	cmdUndefineSpace      tpmutil.Command = 0x00000122
-	cmdClear	      tpmutil.Command = 0x00000126
-	cmdClockSet           tpmutil.Command = 0x00000128
-	cmdDefineSpace        tpmutil.Command = 0x0000012A
-	cmdPCRAllocate        tpmutil.Command = 0x0000012B
-	cmdCreatePrimary      tpmutil.Command = 0x00000131
-	cmdIncrementNVCounter tpmutil.Command = 0x00000134
-	cmdWriteNV            tpmutil.Command = 0x00000137
-	cmdPCREvent           tpmutil.Command = 0x0000013C
-	cmdStartup            tpmutil.Command = 0x00000144
-	cmdShutdown           tpmutil.Command = 0x00000145
-	cmdStirRandom         tpmutil.Command = 0x00000146
-	cmdActivateCredential tpmutil.Command = 0x00000147
-	cmdCertify            tpmutil.Command = 0x00000148
-	cmdCertifyCreation    tpmutil.Command = 0x0000014A
-	cmdReadNV             tpmutil.Command = 0x0000014E
+	cmdEvictControl               tpmutil.Command = 0x00000120
+	cmdUndefineSpace              tpmutil.Command = 0x00000122
+	cmdClear                      tpmutil.Command = 0x00000126
+	cmdClockSet                   tpmutil.Command = 0x00000128
+	cmdDefineSpace                tpmutil.Command = 0x0000012A
+	cmdPCRAllocate                tpmutil.Command = 0x0000012B
+	cmdCreatePrimary              tpmutil.Command = 0x00000131
+	cmdIncrementNVCounter         tpmutil.Command = 0x00000134
+	cmdWriteNV                    tpmutil.Command = 0x00000137
+	cmdPCREvent                   tpmutil.Command = 0x0000013C
+	cmdDictionaryAttackParameters tpmutil.Command = 0x0000013A
+	cmdStartup                    tpmutil.Command = 0x00000144
+	cmdShutdown                   tpmutil.Command = 0x00000145
+	cmdStirRandom                 tpmutil.Command = 0x00000146
+	cmdActivateCredential         tpmutil.Command = 0x00000147
+	cmdCertify                    tpmutil.Command = 0x00000148
+	cmdCertifyCreation            tpmutil.Command = 0x0000014A
+	cmdReadNV                     tpmutil.Command = 0x0000014E
 	// CmdPolicySecret is a command code for TPM2_PolicySecret.
 	// It's exported for computing of default AuthPolicy value.
 	CmdPolicySecret     tpmutil.Command = 0x00000151

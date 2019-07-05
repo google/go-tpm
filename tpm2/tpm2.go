@@ -528,6 +528,31 @@ func Clear(rw io.ReadWriter, hierarchy tpmutil.Handle, password string) error {
 	return err
 }
 
+func encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery uint32, password string) ([]byte, error) {
+	lockout, err := tpmutil.Pack(HandleLockout)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(maxTries, recoveryTime, lockoutRecovery)
+	if err != nil {
+		return nil, err
+	}
+	return concat(lockout, auth, params)
+}
+
+func SetDictionaryAttackParameters(rw io.ReadWriter, maxTries, recoveryTime, lockoutRecovery uint32, password string) error {
+	cmd, err := encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery, password)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdDictionaryAttackParameters, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
 	var resp struct {
 		Public        tpmutil.U16Bytes
