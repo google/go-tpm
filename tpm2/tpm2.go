@@ -528,6 +528,31 @@ func Clear(rw io.ReadWriter, hierarchy tpmutil.Handle, password string) error {
 	return err
 }
 
+func encodeDisableOwnerClear(password string) ([]byte, error) {
+	lockout, err := tpmutil.Pack(HandleLockout)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	param, err := tpmutil.Pack(true)
+	if err != nil {
+		return nil, err
+	}
+	return concat(lockout, auth, param)
+}
+
+func DisableOwnerClear(rw io.ReadWriter, password string) error {
+	cmd, err := encodeDisableOwnerClear(password)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdClearControl, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery uint32, password string) ([]byte, error) {
 	lockout, err := tpmutil.Pack(HandleLockout)
 	if err != nil {
