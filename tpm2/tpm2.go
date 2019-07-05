@@ -507,6 +507,27 @@ func CreatePrimaryRawTemplate(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSel
 	return hnd, pubKey, nil
 }
 
+func encodeClear(hierarchy tpmutil.Handle, password string) ([]byte, error) {
+	ha, err := tpmutil.Pack(hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth)
+}
+
+func Clear(rw io.ReadWriter, hierarchy tpmutil.Handle, password string) error {
+	cmd, err := encodeClear(hierarchy, password)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdClear, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
 	var resp struct {
 		Public        tpmutil.U16Bytes

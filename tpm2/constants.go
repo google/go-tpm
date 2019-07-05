@@ -306,6 +306,7 @@ var toGoCurve = map[EllipticCurve]elliptic.Curve{
 const (
 	cmdEvictControl       tpmutil.Command = 0x00000120
 	cmdUndefineSpace      tpmutil.Command = 0x00000122
+	cmdClear	      tpmutil.Command = 0x00000126
 	cmdClockSet           tpmutil.Command = 0x00000128
 	cmdDefineSpace        tpmutil.Command = 0x0000012A
 	cmdPCRAllocate        tpmutil.Command = 0x0000012B
