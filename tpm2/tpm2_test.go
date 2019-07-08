@@ -1392,7 +1392,6 @@ func TestClear(t *testing.T) {
 	}
 
 	vals, _, err := GetCapability(rw, CapabilityHandles, 1, uint32(persistentHandle))
-	t.Logf("len(vals)=%d", len(vals))
 	if err != nil {
 		t.Fatalf("GetCapability failed: %v", err)
 	}
