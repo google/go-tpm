@@ -578,6 +578,13 @@ func encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery uint32, passw
 	return concat(lockout, auth, params)
 }
 
+// Change the dictionary attack lockout parameters. The first parameter is the number of authorization failures
+// before the lockout is enabled. The second parameter is the number of seconds before the authorization failure
+// count is decremented by one. Setting this to zero disables dictionary attack protection. The third parameter
+// is the number of seconds after a lockout hierarchy authorization failure before the lockout hierarchy can
+// be used again. Setting this to zero causes this lockout to be cleared after a power cycle.
+//
+// This command must be authorized using the lockout hierarchy.
 func SetDictionaryAttackParameters(rw io.ReadWriter, maxTries, recoveryTime, lockoutRecovery uint32, password string) error {
 	cmd, err := encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery, password)
 	if err != nil {
@@ -603,6 +610,8 @@ func encodeHierarchyChangeAuthParameters(hierarchy tpmutil.Handle, oldPassword, 
 	return concat(handle, auth, params)
 }
 
+// Change the authorization value for the specified hierarchy. The command must be authorized with the
+// hierarchy's current authorization value.
 func HierarchyChangeAuth(rw io.ReadWriter, hierarchy tpmutil.Handle, oldPassword, newPassword string) error {
 	cmd, err := encodeHierarchyChangeAuthParameters(hierarchy, oldPassword, newPassword)
 	if err != nil {
