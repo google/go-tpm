@@ -519,6 +519,9 @@ func encodeClear(hierarchy tpmutil.Handle, password string) ([]byte, error) {
 	return concat(ha, auth)
 }
 
+// Clear removes all context associated with the current owner from the TPM.
+// The handle provided must be for the platform or lockout hierarchy. This command will fail if the clear command
+// has been disabled via the ClearControl() API.
 func Clear(rw io.ReadWriter, hierarchy tpmutil.Handle, password string) error {
 	cmd, err := encodeClear(hierarchy, password)
 	if err != nil {
@@ -528,8 +531,8 @@ func Clear(rw io.ReadWriter, hierarchy tpmutil.Handle, password string) error {
 	return err
 }
 
-func encodeDisableOwnerClear(password string) ([]byte, error) {
-	lockout, err := tpmutil.Pack(HandleLockout)
+func encodeClearControl(hierarchy tpmutil.Handle, disable bool, password string) ([]byte, error) {
+	handle, err := tpmutil.Pack(hierarchy)
 	if err != nil {
 		return nil, err
 	}
@@ -537,15 +540,21 @@ func encodeDisableOwnerClear(password string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	param, err := tpmutil.Pack(true)
+	param, err := tpmutil.Pack(disable)
 	if err != nil {
 		return nil, err
 	}
-	return concat(lockout, auth, param)
+	return concat(handle, auth, param)
 }
 
-func DisableOwnerClear(rw io.ReadWriter, password string) error {
-	cmd, err := encodeDisableOwnerClear(password)
+// Control whether the TPM can be cleared with the Clear() API. Calling this with the third parameter set to
+// true will disable the ability to clear the TPM. Calling it with the third parameter set to false will
+// reenable the ability to clear the TPM.
+//
+// The handle provided must be for the platform or lockout hierarchy when disabling the ability to clear the
+// TPM, but reenabling requires that it be the handle for the platform hierarchy.
+func ClearControl(rw io.ReadWriter, hierarchy tpmutil.Handle, disable bool, password string) error {
+	cmd, err := encodeClearControl(hierarchy, disable, password)
 	if err != nil {
 		return err
 	}

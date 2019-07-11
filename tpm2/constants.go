@@ -315,8 +315,8 @@ const (
 	cmdCreatePrimary              tpmutil.Command = 0x00000131
 	cmdIncrementNVCounter         tpmutil.Command = 0x00000134
 	cmdWriteNV                    tpmutil.Command = 0x00000137
-	cmdPCREvent                   tpmutil.Command = 0x0000013C
 	cmdDictionaryAttackParameters tpmutil.Command = 0x0000013A
+	cmdPCREvent                   tpmutil.Command = 0x0000013C
 	cmdStartup                    tpmutil.Command = 0x00000144
 	cmdShutdown                   tpmutil.Command = 0x00000145
 	cmdStirRandom                 tpmutil.Command = 0x00000146
