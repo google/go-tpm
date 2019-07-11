@@ -929,6 +929,16 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([
 	return data, nil
 }
 
+// NVReadNoValue returns the value from a given index, offset, and length in NVRAM.
+// See TPM-Main-Part-2-TPM-Structures 19.1.
+func NVReadValueNoAuth(rw io.ReadWriter, index, offset, len uint32) ([]byte, error) {
+	data, _, _, err := nvReadValue(rw, index, offset, len, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from NVRAM: %v", err)
+	}
+	return data, nil
+}
+
 // OwnerReadPubEK uses owner auth to get a blob representing the public part of the
 // endorsement key.
 func OwnerReadPubEK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {

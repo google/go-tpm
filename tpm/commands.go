@@ -161,9 +161,19 @@ func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
 	var b tpmutil.U32Bytes
 	var ra responseAuth
-	in := []interface{}{index, offset, len, ca}
-	out := []interface{}{&b, &ra}
-	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVReadValue, in, out)
+	var err error
+	var ret uint32
+
+	if ca != nil {
+		in := []interface{}{index, offset, len, ca}
+		out := []interface{}{&b, &ra}
+		ret, err = submitTPMRequest(rw, tagRQUAuth1Command, ordNVReadValue, in, out)
+	} else {
+		in := []interface{}{index, offset, len}
+		out := []interface{}{&b}
+		ret, err = submitTPMRequest(rw, tagRQUCommand, ordNVReadValue, in, out)
+	}
+
 	if err != nil {
 		return nil, nil, 0, err
 	}
