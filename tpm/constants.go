@@ -59,12 +59,14 @@ const (
 // Capability types.
 const (
 	capProperty uint32 = 0x00000005
+	capFlag     uint32 = 0x00000004
 	capHandle   uint32 = 0x00000014
 )
 
 // SubCapabilities
 const (
 	tpmCapPropManufacturer uint32 = 0x00000103
+	tpmCapFlagPermanent    uint32 = 0x00000108
 )
 
 // Entity types. The LSB gives the entity type, and the MSB (currently fixed to

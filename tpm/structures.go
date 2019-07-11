@@ -84,6 +84,31 @@ type capVersionInfoFixed struct {
 	VendorID  byte
 }
 
+// PermanentFlags contains persistent TPM properties
+type PermanentFlags struct {
+	Tag                          uint16
+	Disable                      bool
+	Ownership                    bool
+	Deactivated                  bool
+	ReadPubEK                    bool
+	DisableOwnerClear            bool
+	AllowMaintenance             bool
+	PhysicalPresenceLifetimeLock bool
+	PhysicalPresenceHWEnable     bool
+	PhysicalPresenceCMDEnable    bool
+	CEKPUsed                     bool
+	TPMPost                      bool
+	TPMPostLock                  bool
+	FIPS                         bool
+	Operator                     bool
+	EnableRevokeEK               bool
+	NVLocked                     bool
+	ReadSRKPub                   bool
+	TPMEstablished               bool
+	MaintenanceDone              bool
+	DisableFullDALogicInfo       bool
+}
+
 // CloseKey flushes the key associated with the tpmutil.Handle.
 func CloseKey(rw io.ReadWriter, h tpmutil.Handle) error {
 	return flushSpecific(rw, h, rtKey)

@@ -975,6 +975,19 @@ func GetManufacturer(rw io.ReadWriter) ([]byte, error) {
 	return getCapability(rw, capProperty, tpmCapPropManufacturer)
 }
 
+// GetPermanentFlags returns the TPM_PERMANENT_FLAGS structure.
+func GetPermanentFlags(rw io.ReadWriter) (PermanentFlags, error) {
+	var ret PermanentFlags
+
+	raw, err := getCapability(rw, capFlag, tpmCapFlagPermanent)
+	if err != nil {
+		return ret, err
+	}
+
+	_, err = tpmutil.Unpack(raw, &ret)
+	return ret, err
+}
+
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth digest) error {
