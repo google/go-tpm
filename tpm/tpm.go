@@ -828,7 +828,7 @@ func OwnerReadSRK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
 // here and return only the DER encoded certificate.
 // TCG PC Client Specific Implementation Specification for Conventional BIOS 7.4.4
 // https://www.trustedcomputinggroup.org/wp-content/uploads/TCG_PCClientImplementation_1-21_1_00.pdf
-func ReadEKCert(rw io.ReadWriter, ownAuth digest) ([]byte, error) {
+func ReadEKCert(rw io.ReadWriter, ownAuth []byte) ([]byte, error) {
 	const (
 		certIndex                 = 0x1000f000 // TPM_NV_INDEX_EKCert (TPM Main Part 2 TPM Structures 19.1.2)
 		certTagPCClientStoredCert = 0x1001     // TCG_TAG_PCCLIENT_STORED_CERT
@@ -906,8 +906,8 @@ func ReadEKCert(rw io.ReadWriter, ownAuth digest) ([]byte, error) {
 
 // NVReadValue returns the value from a given index, offset, and length in NVRAM.
 // See TPM-Main-Part-2-TPM-Structures 19.1.
-func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth digest) ([]byte, error) {
-	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
+func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([]byte, error) {
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start new auth session: %v", err)
 	}
