@@ -219,7 +219,7 @@ func TestDecodeCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, _, _, _, _, err = decodeCreate(testRespBytes[10:]); err != nil {
+	if _, _, _, _, _, err = decodeCreate(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
