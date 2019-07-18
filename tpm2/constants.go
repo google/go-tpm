@@ -306,16 +306,13 @@ var toGoCurve = map[EllipticCurve]elliptic.Curve{
 const (
 	cmdEvictControl       tpmutil.Command = 0x00000120
 	cmdUndefineSpace      tpmutil.Command = 0x00000122
-	cmdClockSet           tpmutil.Command = 0x00000128
 	cmdDefineSpace        tpmutil.Command = 0x0000012A
-	cmdPCRAllocate        tpmutil.Command = 0x0000012B
 	cmdCreatePrimary      tpmutil.Command = 0x00000131
 	cmdIncrementNVCounter tpmutil.Command = 0x00000134
 	cmdWriteNV            tpmutil.Command = 0x00000137
 	cmdPCREvent           tpmutil.Command = 0x0000013C
 	cmdStartup            tpmutil.Command = 0x00000144
 	cmdShutdown           tpmutil.Command = 0x00000145
-	cmdStirRandom         tpmutil.Command = 0x00000146
 	cmdActivateCredential tpmutil.Command = 0x00000147
 	cmdCertify            tpmutil.Command = 0x00000148
 	cmdCertifyCreation    tpmutil.Command = 0x0000014A
