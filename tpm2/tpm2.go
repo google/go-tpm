@@ -547,9 +547,9 @@ func encodeClearControl(hierarchy tpmutil.Handle, disable bool, password string)
 	return concat(handle, auth, param)
 }
 
-// Control whether the TPM can be cleared with the Clear() API. Calling this with the third parameter set to
-// true will disable the ability to clear the TPM. Calling it with the third parameter set to false will
-// reenable the ability to clear the TPM.
+// ClearControl controls whether the TPM can be cleared with the Clear() API. Calling this with the third
+// parameter set to true will disable the ability to clear the TPM. Calling it with the third parameter set to
+// false will reenable the ability to clear the TPM.
 //
 // The handle provided must be for the platform or lockout hierarchy when disabling the ability to clear the
 // TPM, but reenabling requires that it be the handle for the platform hierarchy.
@@ -578,11 +578,12 @@ func encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery uint32, passw
 	return concat(lockout, auth, params)
 }
 
-// Change the dictionary attack lockout parameters. The first parameter is the number of authorization failures
-// before the lockout is enabled. The second parameter is the number of seconds before the authorization failure
-// count is decremented by one. Setting this to zero disables dictionary attack protection. The third parameter
-// is the number of seconds after a lockout hierarchy authorization failure before the lockout hierarchy can
-// be used again. Setting this to zero causes this lockout to be cleared after a power cycle.
+// SetDictionaryAttackParameters changes the dictionary attack lockout parameters. The first parameter is the
+// number of authorization failures before the lockout is enabled. The second parameter is the number of
+// seconds before the authorization failure count is decremented by one. Setting this to zero disables
+// dictionary attack protection. The third parameter is the number of seconds after a lockout hierarchy
+// authorization failure before the lockout hierarchy can be used again. Setting this to zero causes this
+// lockout to be cleared after a power cycle.
 //
 // This command must be authorized using the lockout hierarchy.
 func SetDictionaryAttackParameters(rw io.ReadWriter, maxTries, recoveryTime, lockoutRecovery uint32, password string) error {
