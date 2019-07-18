@@ -534,31 +534,31 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte
 	return decodeReadPublic(resp)
 }
 
-func decodeCreate(in []byte) (handle tpmutil.Handle, private, public, creationData, creationHash tpmutil.U16Bytes, creationTicket Ticket, err error) {
+func decodeCreate(in []byte) (private, public, creationData, creationHash tpmutil.U16Bytes, creationTicket Ticket, err error) {
 	buf := bytes.NewBuffer(in)
-
-	if err := tpmutil.UnpackBuf(buf, &handle, &private, &public, &creationData, &creationHash); err != nil {
-		return 0, nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding Handle, Private, Public, CreationData, CreationHash: %v", err)
+	var paramSize uint32
+	if err := tpmutil.UnpackBuf(buf, &paramSize, &private, &public, &creationData, &creationHash); err != nil {
+		return nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding Handle, Private, Public, CreationData, CreationHash: %v", err)
 	}
 	cr, err := decodeTicket(buf)
 	if err != nil {
-		return 0, nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationTicket: %v", err)
+		return nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationTicket: %v", err)
 	}
 	creationTicket = *cr
 	if _, err := DecodeCreationData(creationData); err != nil {
-		return 0, nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationData: %v", err)
+		return nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationData: %v", err)
 	}
-	return handle, private, public, creationData, creationHash, creationTicket, nil
+	return private, public, creationData, creationHash, creationTicket, nil
 }
 
-func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, sensitiveData []byte, pub Public, pcrSelection PCRSelection) (handle tpmutil.Handle, private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
+func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, sensitiveData []byte, pub Public, pcrSelection PCRSelection) (private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
 	cmd, err := encodeCreate(parentHandle, pcrSelection, parentPassword, objectPassword, sensitiveData, pub)
 	if err != nil {
-		return 0, nil, nil, nil, nil, Ticket{}, err
+		return nil, nil, nil, nil, Ticket{}, err
 	}
 	resp, err := runCommand(rw, TagSessions, cmdCreate, tpmutil.RawBytes(cmd))
 	if err != nil {
-		return 0, nil, nil, nil, nil, Ticket{}, err
+		return nil, nil, nil, nil, Ticket{}, err
 	}
 	return decodeCreate(resp)
 }
@@ -566,7 +566,7 @@ func create(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objec
 // CreateKey creates a new key pair under the owner handle.
 // Returns private key and public key blobs as well as the
 // creation data, a hash of said data and the creation ticket.
-func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (handle tpmutil.Handle, private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
+func CreateKey(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
 	return create(rw, owner, parentPassword, ownerPassword, nil /*inSensitive*/, pub, sel)
 }
 
@@ -580,7 +580,7 @@ func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectP
 		Attributes: FlagFixedTPM | FlagFixedParent,
 		AuthPolicy: objectAuthPolicy,
 	}
-	_, private, public, _, _, _, err := create(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic, PCRSelection{})
+	private, public, _, _, _, err := create(rw, parentHandle, parentPassword, objectPassword, sensitiveData, inPublic, PCRSelection{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -691,6 +691,22 @@ func encodePolicySecret(entityHandle tpmutil.Handle, entityAuth AuthCommand, pol
 	return concat(handles, auth, params)
 }
 
+func decodePolicySecret(in []byte) (*Ticket, error) {
+	buf := bytes.NewBuffer(in)
+
+	var paramSize uint32
+	var timeout tpmutil.U16Bytes
+	if err := tpmutil.UnpackBuf(buf, &paramSize, &timeout); err != nil {
+		return nil, fmt.Errorf("decoding timeout: %v", err)
+	}
+
+	ticket, err := decodeTicket(buf)
+	if err != nil {
+		return nil, fmt.Errorf("decoding ticket: %v", err)
+	}
+	return ticket, nil
+}
+
 // PolicySecret sets a secret authorization requirement on the provided entity.
 // If expiry is non-zero, the authorization is valid for expiry seconds.
 func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) (*Ticket, error) {
@@ -705,11 +721,7 @@ func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth Auth
 
 	// Tickets are only provided if expiry is set.
 	if expiry != 0 {
-		tk, err := decodeTicket(bytes.NewBuffer(resp))
-		if err != nil {
-			return nil, fmt.Errorf("decoding ticket: %v", err)
-		}
-		return tk, nil
+		return decodePolicySecret(resp)
 	}
 	return nil, nil
 }
@@ -1126,9 +1138,9 @@ func NVReadPublic(rw io.ReadWriter, index tpmutil.Handle) (NVPublic, error) {
 }
 
 func decodeNVRead(in []byte) ([]byte, error) {
-	var sessionAttributes uint32
+	var paramSize uint32
 	var data tpmutil.U16Bytes
-	if _, err := tpmutil.Unpack(in, &sessionAttributes, &data); err != nil {
+	if _, err := tpmutil.Unpack(in, &paramSize, &data); err != nil {
 		return nil, err
 	}
 	return data, nil
