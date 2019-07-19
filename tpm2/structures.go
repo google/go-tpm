@@ -60,12 +60,12 @@ type Public struct {
 	Attributes KeyProp
 	AuthPolicy tpmutil.U16Bytes
 
-	// If Type is AlgKeyedHash, then do not set these.
-	// Otherwise, only one of the Parameters fields should be set. When encoding/decoding,
+	// Only one of the following fields should be set. When encoding/decoding,
 	// one will be picked based on Type.
 	RSAParameters       *RSAParams
 	ECCParameters       *ECCParams
 	SymCipherParameters *SymCipherParams
+	KeyedHashUnique     tpmutil.U16Bytes // Optional for AlgKeyedHash
 }
 
 // Encode serializes a Public structure in TPM wire format.
@@ -79,10 +79,7 @@ func (p Public) Encode() ([]byte, error) {
 	case AlgRSA:
 		params, err = p.RSAParameters.encode()
 	case AlgKeyedHash:
-		// We only support "keyedHash" objects for the purposes of
-		// creating "Sealed Data Blobs".
-		var unique uint16
-		params, err = tpmutil.Pack(AlgNull, unique)
+		params, err = tpmutil.Pack(AlgNull, p.KeyedHashUnique)
 	case AlgECC:
 		params, err = p.ECCParameters.encode()
 	case AlgSymCipher:
@@ -120,6 +117,26 @@ func (p Public) Key() (crypto.PublicKey, error) {
 	return pubKey, nil
 }
 
+// Name computes the Digest-based Name from the public area of an object.
+func (p Public) Name() (*Name, error) {
+	pubEncoded, err := p.Encode()
+	if err != nil {
+		return nil, err
+	}
+	hash, err := p.NameAlg.HashConstructor()
+	if err != nil {
+		return nil, err
+	}
+	nameHash := hash()
+	nameHash.Write(pubEncoded)
+	return &Name{
+		Digest: &HashValue{
+			Alg:   p.NameAlg,
+			Value: nameHash.Sum(nil),
+		},
+	}, nil
+}
+
 // DecodePublic decodes a TPMT_PUBLIC message. No error is returned if
 // the input has extra trailing data.
 func DecodePublic(buf []byte) (Public, error) {
@@ -137,6 +154,8 @@ func DecodePublic(buf []byte) (Public, error) {
 		pub.ECCParameters, err = decodeECCParams(in)
 	case AlgSymCipher:
 		pub.SymCipherParameters, err = decodeSymCipherParams(in)
+	case AlgKeyedHash:
+		err = tpmutil.UnpackBuf(in, &pub.KeyedHashUnique)
 	default:
 		err = fmt.Errorf("unsupported type in TPMT_PUBLIC: 0x%x", pub.Type)
 	}
@@ -341,6 +360,7 @@ func decodeSymCipherParams(in *bytes.Buffer) (*SymCipherParams, error) {
 }
 
 // SymScheme represents a symmetric encryption scheme.
+// Known in the specification by TPMT_SYM_DEF_OBJECT.
 type SymScheme struct {
 	Alg     Algorithm
 	KeyBits uint16
@@ -699,19 +719,9 @@ func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 // IDObject represents an encrypted credential bound to a TPM object.
 type IDObject struct {
 	IntegrityHMAC tpmutil.U16Bytes
-	EncIdentity   tpmutil.RawBytes
-}
-
-// Encode packs the IDObject into a byte stream representing
-// a TPM2B_ID_OBJECT.
-func (o *IDObject) Encode() ([]byte, error) {
-	// encIdentity is packed raw, as the bytes representing the size
+	// EncIdentity is packed raw, as the bytes representing the size
 	// of the credential value are present within the encrypted blob.
-	d, err := tpmutil.Pack(o.IntegrityHMAC, o.EncIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("encoding IntegrityHMAC, EncIdentity: %v", err)
-	}
-	return tpmutil.Pack(tpmutil.U16Bytes(d))
+	EncIdentity tpmutil.RawBytes
 }
 
 // CreationData describes the attributes and environment for an object created
@@ -836,23 +846,15 @@ func (n Name) encode() ([]byte, error) {
 // MatchesPublic compares Digest in Name against given Public structure. Note:
 // this only works for regular Names, not Qualified Names.
 func (n Name) MatchesPublic(p Public) (bool, error) {
-	buf, err := p.Encode()
-	if err != nil {
-		return false, err
-	}
 	if n.Digest == nil {
 		return false, errors.New("Name doesn't have a Digest, can't compare to Public")
 	}
-	hfn, ok := hashConstructors[n.Digest.Alg]
-	if !ok {
-		return false, fmt.Errorf("Name hash algorithm 0x%x not supported", n.Digest.Alg)
+	expected, err := p.Name()
+	if err != nil {
+		return false, err
 	}
-
-	h := hfn()
-	h.Write(buf)
-	digest := h.Sum(nil)
-
-	return bytes.Equal(digest, n.Digest.Value), nil
+	// No secrets, so no constant-time comparison
+	return bytes.Equal(expected.Digest.Value, n.Digest.Value), nil
 }
 
 // HashValue is an algorithm-specific hash value.
