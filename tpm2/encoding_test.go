@@ -147,7 +147,7 @@ func TestEncodeCreate(t *testing.T) {
 			Modulus:  big.NewInt(0),
 		},
 	}
-	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: nil}
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}
 	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection7, auth, defaultPassword, []byte{255} /*sensitiveData*/, params)
 	if err != nil {
 		t.Fatal(err)
