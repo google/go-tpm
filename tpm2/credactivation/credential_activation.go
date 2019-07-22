@@ -121,14 +121,19 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 		IntegrityHMAC: integrityHMAC,
 		EncIdentity:   encIdentity,
 	}
-	id, err := idObject.Encode()
+	id, err := tpmutil.Pack(idObject)
 	if err != nil {
 		return nil, nil, fmt.Errorf("encoding IDObject: %v", err)
+	}
+
+	packedID, err := tpmutil.Pack(tpmutil.U16Bytes(id))
+	if err != nil {
+		return nil, nil, fmt.Errorf("packing id: %v", err)
 	}
 	packedEncSecret, err := tpmutil.Pack(tpmutil.U16Bytes(encSecret))
 	if err != nil {
 		return nil, nil, fmt.Errorf("packing encSecret: %v", err)
 	}
 
-	return id, packedEncSecret, nil
+	return packedID, packedEncSecret, nil
 }

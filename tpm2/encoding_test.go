@@ -106,7 +106,8 @@ func TestEncodeLoad(t *testing.T) {
 	}
 	privateBlob := testCmdBytes[33:123]
 	publicBlob := testCmdBytes[125:]
-	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), defaultPassword, publicBlob, privateBlob)
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(defaultPassword)}
+	cmdBytes, err := encodeLoad(tpmutil.Handle(0x80000000), auth, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("encodeLoad failed %s", err)
 	}
@@ -146,7 +147,8 @@ func TestEncodeCreate(t *testing.T) {
 			Modulus:  big.NewInt(0),
 		},
 	}
-	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection7, "", defaultPassword, []byte{255} /*sensitiveData*/, params)
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}
+	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection7, auth, defaultPassword, []byte{255} /*sensitiveData*/, params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +221,7 @@ func TestDecodeCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, _, _, _, _, err = decodeCreate(testRespBytes[10:]); err != nil {
+	if _, _, _, _, _, err = decodeCreate(testRespBytes[10:]); err != nil {
 		t.Fatal(err)
 	}
 }
