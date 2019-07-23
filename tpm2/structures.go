@@ -118,18 +118,18 @@ func (p Public) Key() (crypto.PublicKey, error) {
 }
 
 // Name computes the Digest-based Name from the public area of an object.
-func (p Public) Name() (*Name, error) {
+func (p Public) Name() (Name, error) {
 	pubEncoded, err := p.Encode()
 	if err != nil {
-		return nil, err
+		return Name{}, err
 	}
 	hash, err := p.NameAlg.HashConstructor()
 	if err != nil {
-		return nil, err
+		return Name{}, err
 	}
 	nameHash := hash()
 	nameHash.Write(pubEncoded)
-	return &Name{
+	return Name{
 		Digest: &HashValue{
 			Alg:   p.NameAlg,
 			Value: nameHash.Sum(nil),
