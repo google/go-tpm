@@ -254,11 +254,16 @@ type ECCParams struct {
 	CurveID   EllipticCurve
 	KDF       *KDFScheme
 	Point     ECPoint
+	PointRaw  *ECPointRaw
 }
 
 // ECPoint represents a ECC coordinates for a point.
 type ECPoint struct {
 	X, Y *big.Int
+}
+
+type ECPointRaw struct {
+	X, Y tpmutil.U16Bytes
 }
 
 func (p *ECPoint) x() *big.Int {
@@ -295,7 +300,23 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
-	x, y := p.Point.x().Bytes(), p.Point.y().Bytes()
+
+	var x, y []byte
+	
+	if p.Point.X == nil && p.Point.Y == nil {
+		if p.PointRaw != nil && len(p.PointRaw.X) == 32 && len(p.PointRaw.Y) == 32 {
+			x, y = p.PointRaw.X, p.PointRaw.Y
+		} else {
+			return nil, fmt.Errorf("must set Point or PointRaw (size 32)")
+		}
+	} else {
+		if p.PointRaw == nil {
+			x, y = p.Point.x().Bytes(), p.Point.y().Bytes()
+		} else {
+			return nil, fmt.Errorf("must not set both Point and PointRaw")
+		}
+	}	
+
 	point, err := tpmutil.Pack(tpmutil.U16Bytes(x), tpmutil.U16Bytes(y))
 	if err != nil {
 		return nil, fmt.Errorf("encoding Point: %v", err)
