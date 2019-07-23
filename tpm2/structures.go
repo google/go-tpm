@@ -151,31 +151,11 @@ func (p Public) MatchesTemplate(template Public) bool {
 	}
 	switch p.Type {
 	case AlgRSA:
-		pParams := p.RSAParameters
-		tParams := template.RSAParameters
-		pExponent := pParams.Exponent
-		if pExponent == 0 {
-			pExponent = defaultRSAExponent
-		}
-		tExponent := tParams.Exponent
-		if tExponent == 0 {
-			tExponent = defaultRSAExponent
-		}
-		return reflect.DeepEqual(pParams.Symmetric, tParams.Symmetric) &&
-			reflect.DeepEqual(pParams.Sign, tParams.Sign) &&
-			pParams.KeyBits == tParams.KeyBits &&
-			pExponent == tExponent
+		return p.RSAParameters.matchesTemplate(template.RSAParameters)
 	case AlgECC:
-		pParams := p.ECCParameters
-		tParams := template.ECCParameters
-		return reflect.DeepEqual(pParams.Symmetric, tParams.Symmetric) &&
-			reflect.DeepEqual(pParams.Sign, tParams.Sign) &&
-			pParams.CurveID == tParams.CurveID &&
-			reflect.DeepEqual(pParams.KDF, tParams.KDF)
+		return p.ECCParameters.matchesTemplate(template.ECCParameters)
 	case AlgSymCipher:
-		pParams := p.SymCipherParameters
-		tParams := template.SymCipherParameters
-		return reflect.DeepEqual(pParams.Symmetric, tParams.Symmetric)
+		return p.SymCipherParameters.matchesTemplate(template.SymCipherParameters)
 	default:
 		return true
 	}
@@ -228,6 +208,19 @@ type RSAParams struct {
 	Modulus                     *big.Int
 }
 
+func (p *RSAParams) encodedExponent() uint32 {
+	if p.encodeDefaultExponentAsZero && p.Exponent == defaultRSAExponent {
+		return 0
+	}
+	return p.Exponent
+}
+
+func (p *RSAParams) matchesTemplate(t *RSAParams) bool {
+	return reflect.DeepEqual(p.Symmetric, t.Symmetric) &&
+		reflect.DeepEqual(p.Sign, t.Sign) &&
+		p.KeyBits == t.KeyBits && p.encodedExponent() == t.encodedExponent()
+}
+
 func (p *RSAParams) encode() ([]byte, error) {
 	if p == nil {
 		return nil, nil
@@ -240,11 +233,7 @@ func (p *RSAParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding Sign: %v", err)
 	}
-	exp := p.Exponent
-	if p.encodeDefaultExponentAsZero && exp == defaultRSAExponent {
-		exp = 0
-	}
-	rest, err := tpmutil.Pack(p.KeyBits, exp)
+	rest, err := tpmutil.Pack(p.KeyBits, p.encodedExponent())
 	if err != nil {
 		return nil, fmt.Errorf("encoding KeyBits, Exponent: %v", err)
 	}
@@ -319,6 +308,12 @@ func (p *ECPoint) y() *big.Int {
 	return p.Y
 }
 
+func (p *ECCParams) matchesTemplate(t *ECCParams) bool {
+	return reflect.DeepEqual(p.Symmetric, t.Symmetric) &&
+		reflect.DeepEqual(p.Sign, t.Sign) &&
+		p.CurveID == t.CurveID && reflect.DeepEqual(p.KDF, t.KDF)
+}
+
 func (p *ECCParams) encode() ([]byte, error) {
 	if p == nil {
 		return nil, nil
@@ -376,6 +371,10 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 type SymCipherParams struct {
 	Symmetric *SymScheme
 	Unique    tpmutil.U16Bytes
+}
+
+func (p *SymCipherParams) matchesTemplate(t *SymCipherParams) bool {
+	return reflect.DeepEqual(p.Symmetric, t.Symmetric)
 }
 
 func (p *SymCipherParams) encode() ([]byte, error) {

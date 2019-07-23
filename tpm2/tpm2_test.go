@@ -1365,45 +1365,107 @@ func TestCreatePrimaryRawTemplate(t *testing.T) {
 }
 
 func TestMatchesTemplate(t *testing.T) {
-	makePublic := func() Public {
-		return Public{
-			Type:       AlgRSA,
-			NameAlg:    AlgSHA256,
-			Attributes: FlagSignerDefault,
-			RSAParameters: &RSAParams{
-				Sign: &SigScheme{
-					Alg:  AlgRSASSA,
-					Hash: AlgSHA256,
-				},
-				KeyBits:  2048,
-				Exponent: 0,
-				Modulus:  big.NewInt(0),
+	var tests = []struct {
+		name       string
+		makePublic func() Public
+		goodChange func(*Public)
+		badChange  func(*Public)
+	}{
+		{"RSA",
+			func() Public {
+				return Public{
+					Type:       AlgRSA,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+					RSAParameters: &RSAParams{
+						Sign: &SigScheme{
+							Alg:  AlgRSASSA,
+							Hash: AlgSHA256,
+						},
+						KeyBits:  2048,
+						Exponent: 0,
+						Modulus:  big.NewInt(0),
+					},
+				}
 			},
-		}
+			func(pub *Public) { pub.RSAParameters.Modulus = big.NewInt(15) },
+			func(pub *Public) { pub.RSAParameters.KeyBits = 1024 },
+		},
+		{"ECC",
+			func() Public {
+				return Public{
+					Type:       AlgECC,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+					ECCParameters: &ECCParams{
+						Sign: &SigScheme{
+							Alg:  AlgECDSA,
+							Hash: AlgSHA256,
+						},
+						CurveID: CurveNISTP256,
+					},
+				}
+			},
+			func(pub *Public) { pub.ECCParameters.Point.X = big.NewInt(15) },
+			func(pub *Public) { pub.ECCParameters.CurveID = CurveNISTP384 },
+		},
+		{"SymCipher",
+			func() Public {
+				return Public{
+					Type:       AlgSymCipher,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+					SymCipherParameters: &SymCipherParams{
+						Symmetric: &SymScheme{
+							Alg:     AlgAES,
+							KeyBits: 128,
+							Mode:    AlgCFB,
+						},
+					},
+				}
+			},
+			func(pub *Public) { pub.SymCipherParameters.Unique = make([]byte, 256) },
+			func(pub *Public) { pub.SymCipherParameters.Symmetric.KeyBits = 256 },
+		},
+		{"KeyedHash",
+			func() Public {
+				return Public{
+					Type:       AlgKeyedHash,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+				}
+			},
+			func(pub *Public) { pub.KeyedHashUnique = make([]byte, 256) },
+			func(pub *Public) { pub.Attributes |= FlagNoDA },
+		},
 	}
-	template := makePublic()
-	pub := makePublic()
 
-	pub.RSAParameters.Modulus = big.NewInt(15)
-	if !pub.MatchesTemplate(template) {
-		t.Error("Changing Modulus value should not cause template mismatch")
-	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			template := test.makePublic()
+			pub := test.makePublic()
 
-	// Encoding/Decoding can change exponent value, but not MatchesTemplate.
-	encTmpl, err := template.Encode()
-	if err != nil {
-		t.Fatal(err)
-	}
-	decTmpl, err := DecodePublic(encTmpl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !pub.MatchesTemplate(decTmpl) {
-		t.Error("Encoding/Decoding should not cause template mismatch")
-	}
+			test.goodChange(&pub)
+			if !pub.MatchesTemplate(template) {
+				t.Error("Change should not cause template mismatch")
+			}
 
-	pub.RSAParameters.KeyBits = 1024
-	if pub.MatchesTemplate(template) {
-		t.Error("Changing Modulus size should cause template mismatch")
+			encTmpl, err := template.Encode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			decTmpl, err := DecodePublic(encTmpl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !pub.MatchesTemplate(decTmpl) {
+				t.Error("Encoding/Decoding should not cause template mismatch")
+			}
+
+			test.badChange(&pub)
+			if pub.MatchesTemplate(template) {
+				t.Error("Change should cause template mismatch")
+			}
+		})
 	}
 }
