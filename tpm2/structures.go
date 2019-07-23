@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -135,6 +136,49 @@ func (p Public) Name() (*Name, error) {
 			Value: nameHash.Sum(nil),
 		},
 	}, nil
+}
+
+// MatchesTemplate checks if the Public area has the same algorithms and
+// parameters as the provided template. Note that this does not necessarily
+// mean that the key was created from this template, as the Unique field is
+// both provided in the template and overriden in the key creation process.
+func (p Public) MatchesTemplate(template Public) bool {
+	if p.Type != template.Type ||
+		p.NameAlg != template.NameAlg ||
+		p.Attributes != template.Attributes ||
+		!bytes.Equal(p.AuthPolicy, template.AuthPolicy) {
+		return false
+	}
+	switch p.Type {
+	case AlgRSA:
+		pParams := p.RSAParameters
+		tParams := template.RSAParameters
+		pExponent := pParams.Exponent
+		if pExponent == 0 {
+			pExponent = defaultRSAExponent
+		}
+		tExponent := tParams.Exponent
+		if tExponent == 0 {
+			tExponent = defaultRSAExponent
+		}
+		return reflect.DeepEqual(pParams.Symmetric, tParams.Symmetric) &&
+			reflect.DeepEqual(pParams.Sign, tParams.Sign) &&
+			pParams.KeyBits == tParams.KeyBits &&
+			pExponent == tExponent
+	case AlgECC:
+		pParams := p.ECCParameters
+		tParams := template.ECCParameters
+		return reflect.DeepEqual(pParams.Symmetric, tParams.Symmetric) &&
+			reflect.DeepEqual(pParams.Sign, tParams.Sign) &&
+			pParams.CurveID == tParams.CurveID &&
+			reflect.DeepEqual(pParams.KDF, tParams.KDF)
+	case AlgSymCipher:
+		pParams := p.SymCipherParameters
+		tParams := template.SymCipherParameters
+		return reflect.DeepEqual(pParams.Symmetric, tParams.Symmetric)
+	default:
+		return true
+	}
 }
 
 // DecodePublic decodes a TPMT_PUBLIC message. No error is returned if

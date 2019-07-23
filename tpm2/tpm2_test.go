@@ -1363,3 +1363,47 @@ func TestCreatePrimaryRawTemplate(t *testing.T) {
 		t.Errorf("got key exponent %v, want %v", pubRSA.E, defaultKeyParams.RSAParameters.Exponent)
 	}
 }
+
+func TestMatchesTemplate(t *testing.T) {
+	makePublic := func() Public {
+		return Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA256,
+			Attributes: FlagSignerDefault,
+			RSAParameters: &RSAParams{
+				Sign: &SigScheme{
+					Alg:  AlgRSASSA,
+					Hash: AlgSHA256,
+				},
+				KeyBits:  2048,
+				Exponent: 0,
+				Modulus:  big.NewInt(0),
+			},
+		}
+	}
+	template := makePublic()
+	pub := makePublic()
+
+	pub.RSAParameters.Modulus = big.NewInt(15)
+	if !pub.MatchesTemplate(template) {
+		t.Error("Changing Modulus value should not cause template mismatch")
+	}
+
+	// Encoding/Decoding can change exponent value, but not MatchesTemplate.
+	encTmpl, err := template.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decTmpl, err := DecodePublic(encTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !pub.MatchesTemplate(decTmpl) {
+		t.Error("Encoding/Decoding should not cause template mismatch")
+	}
+
+	pub.RSAParameters.KeyBits = 1024
+	if pub.MatchesTemplate(template) {
+		t.Error("Changing Modulus size should cause template mismatch")
+	}
+}
