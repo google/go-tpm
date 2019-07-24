@@ -1365,13 +1365,14 @@ func TestCreatePrimaryRawTemplate(t *testing.T) {
 }
 
 func TestMatchesTemplate(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		name       string
 		makePublic func() Public
 		goodChange func(*Public)
 		badChange  func(*Public)
 	}{
-		{"RSA",
+		{
+			"RSA",
 			func() Public {
 				return Public{
 					Type:       AlgRSA,
@@ -1382,16 +1383,16 @@ func TestMatchesTemplate(t *testing.T) {
 							Alg:  AlgRSASSA,
 							Hash: AlgSHA256,
 						},
-						KeyBits:  2048,
-						Exponent: 0,
-						Modulus:  big.NewInt(0),
+						KeyBits: 2048,
+						Modulus: big.NewInt(0),
 					},
 				}
 			},
 			func(pub *Public) { pub.RSAParameters.Modulus = big.NewInt(15) },
 			func(pub *Public) { pub.RSAParameters.KeyBits = 1024 },
 		},
-		{"ECC",
+		{
+			"ECC",
 			func() Public {
 				return Public{
 					Type:       AlgECC,
@@ -1409,7 +1410,8 @@ func TestMatchesTemplate(t *testing.T) {
 			func(pub *Public) { pub.ECCParameters.Point.X = big.NewInt(15) },
 			func(pub *Public) { pub.ECCParameters.CurveID = CurveNISTP384 },
 		},
-		{"SymCipher",
+		{
+			"SymCipher",
 			func() Public {
 				return Public{
 					Type:       AlgSymCipher,
@@ -1427,19 +1429,34 @@ func TestMatchesTemplate(t *testing.T) {
 			func(pub *Public) { pub.SymCipherParameters.Unique = make([]byte, 256) },
 			func(pub *Public) { pub.SymCipherParameters.Symmetric.KeyBits = 256 },
 		},
-		{"KeyedHash",
+		{
+			"KeyedHash",
 			func() Public {
 				return Public{
 					Type:       AlgKeyedHash,
 					NameAlg:    AlgSHA256,
 					Attributes: FlagSignerDefault,
 					KeyedHashParameters: &KeyedHashParams{
-						Alg: AlgNull,
+						Alg:  AlgHMAC,
+						Hash: AlgSHA256,
 					},
 				}
 			},
 			func(pub *Public) { pub.KeyedHashParameters.Unique = make([]byte, 256) },
-			func(pub *Public) { pub.Attributes |= FlagNoDA },
+			func(pub *Public) { pub.KeyedHashParameters.Hash = AlgSHA1 },
+		},
+		{
+			"TypeMismatch",
+			func() Public {
+				return Public{
+					Type:                AlgKeyedHash,
+					NameAlg:             AlgSHA256,
+					Attributes:          FlagSignerDefault,
+					KeyedHashParameters: &KeyedHashParams{Alg: AlgNull},
+				}
+			},
+			func(pub *Public) { pub.KeyedHashParameters.Unique = make([]byte, 256) },
+			func(pub *Public) { pub.Type = AlgRSA },
 		},
 	}
 
