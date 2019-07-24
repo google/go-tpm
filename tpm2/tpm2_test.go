@@ -1433,9 +1433,12 @@ func TestMatchesTemplate(t *testing.T) {
 					Type:       AlgKeyedHash,
 					NameAlg:    AlgSHA256,
 					Attributes: FlagSignerDefault,
+					KeyedHashParameters: &KeyedHashParams{
+						Alg: AlgNull,
+					},
 				}
 			},
-			func(pub *Public) { pub.KeyedHashUnique = make([]byte, 256) },
+			func(pub *Public) { pub.KeyedHashParameters.Unique = make([]byte, 256) },
 			func(pub *Public) { pub.Attributes |= FlagNoDA },
 		},
 	}
