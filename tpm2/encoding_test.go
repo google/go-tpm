@@ -373,7 +373,7 @@ func TestECCParamsEncodeDecode(t *testing.T) {
 			Hash: AlgSHA1,
 		},
 		CurveID: CurveNISTP256,
-		Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+		Point:   ECPoint{XRaw: pk.PublicKey.X.Bytes(), YRaw: pk.PublicKey.Y.Bytes()},
 	}
 
 	buf, err := params.encode()
@@ -383,6 +383,14 @@ func TestECCParamsEncodeDecode(t *testing.T) {
 	got, err := decodeECCParams(bytes.NewBuffer(buf))
 	if err != nil {
 		t.Fatalf("decodeECCParams: %v", err)
+	}
+
+	if params.Point.X().Cmp(pk.PublicKey.X) != 0 || params.Point.Y().Cmp(pk.PublicKey.Y) != 0 {
+		t.Fatalf("Point deserialized: (%d, %d)\nGenerated: (%d, %d)", params.Point.X(), params.Point.Y(), pk.PublicKey.X, pk.PublicKey.Y)
+	}
+
+	if params.Point.X().Cmp(got.Point.X()) != 0 || params.Point.Y().Cmp(got.Point.Y()) != 0 {
+		t.Fatalf("got Point deserialized: (%d, %d)\nExpect: (%d, %d)", params.Point.X(), params.Point.Y(), got.Point.X(), got.Point.Y())
 	}
 
 	if !reflect.DeepEqual(got, params) {
