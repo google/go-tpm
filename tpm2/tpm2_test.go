@@ -83,7 +83,7 @@ var (
 	defaultKeyParams = Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
-		Attributes: 0x00030072,
+		Attributes: FlagStorageDefault,
 		RSAParameters: &RSAParams{
 			Symmetric: &SymScheme{
 				Alg:     AlgAES,
@@ -91,7 +91,7 @@ var (
 				Mode:    AlgCFB,
 			},
 			KeyBits:     2048,
-			ExponentRaw: 0x00010001,
+			ExponentRaw: defaultRSAExponent,
 		},
 	}
 	defaultPassword = "\x01\x02\x03\x04"

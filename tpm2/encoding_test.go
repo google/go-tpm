@@ -134,7 +134,7 @@ func TestEncodeCreate(t *testing.T) {
 	params := Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
-		Attributes: 0x00030072,
+		Attributes: FlagStorageDefault,
 		RSAParameters: &RSAParams{
 			Symmetric: &SymScheme{
 				Alg:     AlgAES,
@@ -142,7 +142,7 @@ func TestEncodeCreate(t *testing.T) {
 				Mode:    AlgCFB,
 			},
 			KeyBits:     1024,
-			ExponentRaw: 0x00010001,
+			ExponentRaw: defaultRSAExponent,
 		},
 	}
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}
