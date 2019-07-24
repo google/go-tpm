@@ -16,7 +16,6 @@ package tpm2
 
 import (
 	"crypto/sha256"
-	"math/big"
 	"testing"
 )
 
@@ -34,8 +33,7 @@ func BenchmarkRSA2048Signing(b *testing.B) {
 				Alg:  AlgRSASSA,
 				Hash: AlgSHA256,
 			},
-			KeyBits: uint16(2048),
-			Modulus: big.NewInt(0),
+			KeyBits: 2048,
 		},
 	}
 

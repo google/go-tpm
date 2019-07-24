@@ -20,7 +20,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/hex"
-	"math/big"
 	"reflect"
 	"testing"
 
@@ -142,9 +141,8 @@ func TestEncodeCreate(t *testing.T) {
 				KeyBits: 128,
 				Mode:    AlgCFB,
 			},
-			KeyBits:  1024,
-			Exponent: uint32(0x00010001),
-			Modulus:  big.NewInt(0),
+			KeyBits:     1024,
+			ExponentRaw: 0x00010001,
 		},
 	}
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}

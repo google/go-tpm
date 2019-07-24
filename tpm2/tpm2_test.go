@@ -24,9 +24,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
-	"fmt"
 	"io"
-	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -92,9 +90,8 @@ var (
 				KeyBits: 128,
 				Mode:    AlgCFB,
 			},
-			KeyBits:  2048,
-			Exponent: uint32(0x00010001),
-			Modulus:  big.NewInt(0),
+			KeyBits:     2048,
+			ExponentRaw: 0x00010001,
 		},
 	}
 	defaultPassword = "\x01\x02\x03\x04"
@@ -438,9 +435,9 @@ func TestLoadExternalPublicKey(t *testing.T) {
 					Alg:  AlgRSASSA,
 					Hash: AlgSHA1,
 				},
-				KeyBits:  2048,
-				Exponent: uint32(pk.PublicKey.E),
-				Modulus:  pk.PublicKey.N,
+				KeyBits:     2048,
+				ExponentRaw: uint32(pk.PublicKey.E),
+				ModulusRaw:  pk.PublicKey.N.Bytes(),
 			},
 		}
 		private := Private{
@@ -490,7 +487,6 @@ func TestCertify(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
@@ -533,7 +529,7 @@ func TestCertify(t *testing.T) {
 				KeyBits: 2048,
 				// Note: we don't include Exponent because CreatePrimary also
 				// returns Public without it.
-				Modulus: subjectPub.(*rsa.PublicKey).N,
+				ModulusRaw: subjectPub.(*rsa.PublicKey).N.Bytes(),
 			},
 		}
 		matches, err := ad.AttestedCertifyInfo.Name.MatchesPublic(params)
@@ -560,7 +556,6 @@ func TestCertifyExternalKey(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
@@ -602,9 +597,9 @@ func TestCertifyExternalKey(t *testing.T) {
 					Alg:  AlgRSASSA,
 					Hash: AlgSHA1,
 				},
-				KeyBits:  2048,
-				Exponent: uint32(pk.PublicKey.E),
-				Modulus:  pk.PublicKey.N,
+				KeyBits:     2048,
+				ExponentRaw: uint32(pk.PublicKey.E),
+				ModulusRaw:  pk.PublicKey.N.Bytes(),
 			},
 		}
 		private := Private{
@@ -696,7 +691,6 @@ func TestSign(t *testing.T) {
 					Hash: AlgSHA256,
 				},
 				KeyBits: 2048,
-				Modulus: big.NewInt(0),
 			},
 		})
 	})
@@ -711,7 +705,6 @@ func TestSign(t *testing.T) {
 					Hash: AlgSHA256,
 				},
 				KeyBits: 2048,
-				Modulus: big.NewInt(0),
 			},
 		})
 	})
@@ -897,29 +890,24 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 				Alg:  AlgRSASSA,
 				Hash: AlgSHA1,
 			},
-			KeyBits:  2048,
-			Exponent: defaultRSAExponent,
-			Modulus:  new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
+			KeyBits:     2048,
+			ExponentRaw: defaultRSAExponent,
+			ModulusRaw:  []byte{1, 2, 3, 4, 7, 8, 9, 9},
 		},
 	}
 
-	for _, encodeAsZero := range []bool{true, false} {
-		t.Run(fmt.Sprintf("encodeDefaultExponentAsZero = %v", encodeAsZero), func(t *testing.T) {
-			p.RSAParameters.encodeDefaultExponentAsZero = encodeAsZero
-			e, err := p.Encode()
-			if err != nil {
-				t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
-			}
-			d, err := DecodePublic(e)
-			if err != nil {
-				t.Fatalf("DecodePublic(%v) returned error: %v", e, err)
-			}
-			if !reflect.DeepEqual(p, d) {
-				t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
-				t.Logf("\tGot:  %+v", d)
-				t.Logf("\tWant: %+v", p)
-			}
-		})
+	e, err := p.Encode()
+	if err != nil {
+		t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
+	}
+	d, err := DecodePublic(e)
+	if err != nil {
+		t.Fatalf("DecodePublic(%v) returned error: %v", e, err)
+	}
+	if !reflect.DeepEqual(p, d) {
+		t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
+		t.Logf("\tGot:  %+v", d)
+		t.Logf("\tWant: %+v", p)
 	}
 }
 
@@ -968,7 +956,6 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
@@ -1000,7 +987,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Logf("Name: %v", att.AttestedCreationInfo.Name)
 		t.Logf("Public: %v", p)
 	}
-	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent), N: p.RSAParameters.Modulus}
+	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent()), N: p.RSAParameters.Modulus()}
 	hsh := crypto.SHA256.New()
 	hsh.Write(attestation)
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
@@ -1090,7 +1077,6 @@ func TestQuote(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	keyHandle, pub, _, _, _, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
@@ -1118,7 +1104,7 @@ func TestQuote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePublic failed: %v", err)
 	}
-	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent), N: p.RSAParameters.Modulus}
+	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent()), N: p.RSAParameters.Modulus()}
 	hsh := crypto.SHA256.New()
 	hsh.Write(attestation)
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature.RSA.Signature); err != nil {
@@ -1168,9 +1154,9 @@ func TestReadPublicKey(t *testing.T) {
 					Alg:  AlgRSASSA,
 					Hash: AlgSHA1,
 				},
-				KeyBits:  2048,
-				Exponent: uint32(pk.PublicKey.E),
-				Modulus:  pk.PublicKey.N,
+				KeyBits:     2048,
+				ExponentRaw: uint32(pk.PublicKey.E),
+				ModulusRaw:  pk.PublicKey.N.Bytes(),
 			},
 		}
 		private := Private{
@@ -1221,7 +1207,6 @@ func TestEncryptDecrypt(t *testing.T) {
 				Mode:    AlgCFB,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	})
 	if err != nil {
@@ -1282,7 +1267,6 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 				Hash: AlgNull,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	})
 	if err != nil {
@@ -1358,8 +1342,8 @@ func TestCreatePrimaryRawTemplate(t *testing.T) {
 	if gotKeySize != wantKeySize {
 		t.Errorf("got key size %v, want %v", gotKeySize, wantKeySize)
 	}
-	if pubRSA.E != int(defaultKeyParams.RSAParameters.Exponent) {
-		t.Errorf("got key exponent %v, want %v", pubRSA.E, defaultKeyParams.RSAParameters.Exponent)
+	if pubRSA.E != int(defaultKeyParams.RSAParameters.Exponent()) {
+		t.Errorf("got key exponent %v, want %v", pubRSA.E, defaultKeyParams.RSAParameters.Exponent())
 	}
 }
 
@@ -1383,11 +1367,10 @@ func TestMatchesTemplate(t *testing.T) {
 							Hash: AlgSHA256,
 						},
 						KeyBits: 2048,
-						Modulus: big.NewInt(0),
 					},
 				}
 			},
-			func(pub *Public) { pub.RSAParameters.Modulus = big.NewInt(15) },
+			func(pub *Public) { pub.RSAParameters.ModulusRaw = make([]byte, 256) },
 			func(pub *Public) { pub.RSAParameters.KeyBits = 1024 },
 		},
 		{
