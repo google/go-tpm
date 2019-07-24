@@ -385,12 +385,17 @@ func TestECCParamsEncodeDecode(t *testing.T) {
 		t.Fatalf("decodeECCParams: %v", err)
 	}
 
-	if params.Point.X().Cmp(pk.PublicKey.X) != 0 || params.Point.Y().Cmp(pk.PublicKey.Y) != 0 {
-		t.Fatalf("Point deserialized: (%d, %d)\nGenerated: (%d, %d)", params.Point.X(), params.Point.Y(), pk.PublicKey.X, pk.PublicKey.Y)
+	if params.Point.X().Cmp(pk.PublicKey.X) != 0 {
+		t.Fatalf("got: %+v\nwant: %+v", params.Point.X(), pk.PublicKey.X)
 	}
-
-	if params.Point.X().Cmp(got.Point.X()) != 0 || params.Point.Y().Cmp(got.Point.Y()) != 0 {
-		t.Fatalf("got Point deserialized: (%d, %d)\nExpect: (%d, %d)", params.Point.X(), params.Point.Y(), got.Point.X(), got.Point.Y())
+	if params.Point.Y().Cmp(pk.PublicKey.Y) != 0 {
+		t.Fatalf("got: %+v\nwant: %+v", params.Point.Y(), pk.PublicKey.Y)
+	}
+	if params.Point.X().Cmp(got.Point.X()) != 0 {
+		t.Fatalf("got: %+v\nwant: %+v", got.Point.X(), params.Point.X())
+	}
+	if params.Point.Y().Cmp(got.Point.Y()) != 0 {
+		t.Fatalf("got: %+v\nwant: %+v", got.Point.Y(), params.Point.Y())
 	}
 
 	if !reflect.DeepEqual(got, params) {

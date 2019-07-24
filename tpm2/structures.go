@@ -262,19 +262,11 @@ type ECPoint struct {
 }
 
 func (p ECPoint) X() *big.Int {
-	x := big.NewInt(0)
-	if p.XRaw == nil {
-		return x
-	}
-	return x.SetBytes(p.XRaw)
+	return new(big.Int).SetBytes(p.XRaw)
 }
 
 func (p ECPoint) Y() *big.Int {
-	y := big.NewInt(0)
-	if p.YRaw == nil {
-		return y
-	}
-	return y.SetBytes(p.YRaw)
+	return new(big.Int).SetBytes(p.YRaw)
 }
 
 func (p *ECCParams) encode() ([]byte, error) {
@@ -297,9 +289,7 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
-
 	point, err := tpmutil.Pack(tpmutil.U16Bytes(p.Point.XRaw), tpmutil.U16Bytes(p.Point.YRaw))
-
 	if err != nil {
 		return nil, fmt.Errorf("encoding Point: %v", err)
 	}

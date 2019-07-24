@@ -727,7 +727,6 @@ func TestSign(t *testing.T) {
 					Hash: AlgSHA256,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{XRaw: big.NewInt(0).Bytes(), YRaw: big.NewInt(0).Bytes()},
 			},
 		})
 	})
