@@ -64,8 +64,10 @@ const (
 	AlgUnknown   Algorithm = 0x0000
 	AlgRSA       Algorithm = 0x0001
 	AlgSHA1      Algorithm = 0x0004
+	AlgHMAC      Algorithm = 0x0005
 	AlgAES       Algorithm = 0x0006
 	AlgKeyedHash Algorithm = 0x0008
+	AlgXOR       Algorithm = 0x000A
 	AlgSHA256    Algorithm = 0x000B
 	AlgSHA384    Algorithm = 0x000C
 	AlgSHA512    Algorithm = 0x000D

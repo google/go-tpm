@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -60,12 +61,12 @@ type Public struct {
 	Attributes KeyProp
 	AuthPolicy tpmutil.U16Bytes
 
-	// Only one of the following fields should be set. When encoding/decoding,
-	// one will be picked based on Type.
+	// Exactly one of the following fields should be set
+	// When encoding/decoding, one will be picked based on Type.
 	RSAParameters       *RSAParams
 	ECCParameters       *ECCParams
 	SymCipherParameters *SymCipherParams
-	KeyedHashUnique     tpmutil.U16Bytes // Optional for AlgKeyedHash
+	KeyedHashParameters *KeyedHashParams
 }
 
 // Encode serializes a Public structure in TPM wire format.
@@ -79,7 +80,7 @@ func (p Public) Encode() ([]byte, error) {
 	case AlgRSA:
 		params, err = p.RSAParameters.encode()
 	case AlgKeyedHash:
-		params, err = tpmutil.Pack(AlgNull, p.KeyedHashUnique)
+		params, err = p.KeyedHashParameters.encode()
 	case AlgECC:
 		params, err = p.ECCParameters.encode()
 	case AlgSymCipher:
@@ -137,6 +138,31 @@ func (p Public) Name() (Name, error) {
 	}, nil
 }
 
+// MatchesTemplate checks if the Public area has the same algorithms and
+// parameters as the provided template. Note that this does not necessarily
+// mean that the key was created from this template, as the Unique field is
+// both provided in the template and overriden in the key creation process.
+func (p Public) MatchesTemplate(template Public) bool {
+	if p.Type != template.Type ||
+		p.NameAlg != template.NameAlg ||
+		p.Attributes != template.Attributes ||
+		!bytes.Equal(p.AuthPolicy, template.AuthPolicy) {
+		return false
+	}
+	switch p.Type {
+	case AlgRSA:
+		return p.RSAParameters.matchesTemplate(template.RSAParameters)
+	case AlgECC:
+		return p.ECCParameters.matchesTemplate(template.ECCParameters)
+	case AlgSymCipher:
+		return p.SymCipherParameters.matchesTemplate(template.SymCipherParameters)
+	case AlgKeyedHash:
+		return p.KeyedHashParameters.matchesTemplate(template.KeyedHashParameters)
+	default:
+		return true
+	}
+}
+
 // DecodePublic decodes a TPMT_PUBLIC message. No error is returned if
 // the input has extra trailing data.
 func DecodePublic(buf []byte) (Public, error) {
@@ -155,7 +181,7 @@ func DecodePublic(buf []byte) (Public, error) {
 	case AlgSymCipher:
 		pub.SymCipherParameters, err = decodeSymCipherParams(in)
 	case AlgKeyedHash:
-		err = tpmutil.UnpackBuf(in, &pub.KeyedHashUnique)
+		pub.KeyedHashParameters, err = decodeKeyedHashParams(in)
 	default:
 		err = fmt.Errorf("unsupported type in TPMT_PUBLIC: 0x%x", pub.Type)
 	}
@@ -184,6 +210,19 @@ type RSAParams struct {
 	Modulus                     *big.Int
 }
 
+func (p *RSAParams) encodedExponent() uint32 {
+	if p.encodeDefaultExponentAsZero && p.Exponent == defaultRSAExponent {
+		return 0
+	}
+	return p.Exponent
+}
+
+func (p *RSAParams) matchesTemplate(t *RSAParams) bool {
+	return reflect.DeepEqual(p.Symmetric, t.Symmetric) &&
+		reflect.DeepEqual(p.Sign, t.Sign) &&
+		p.KeyBits == t.KeyBits && p.encodedExponent() == t.encodedExponent()
+}
+
 func (p *RSAParams) encode() ([]byte, error) {
 	if p == nil {
 		return nil, nil
@@ -196,11 +235,7 @@ func (p *RSAParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding Sign: %v", err)
 	}
-	exp := p.Exponent
-	if p.encodeDefaultExponentAsZero && exp == defaultRSAExponent {
-		exp = 0
-	}
-	rest, err := tpmutil.Pack(p.KeyBits, exp)
+	rest, err := tpmutil.Pack(p.KeyBits, p.encodedExponent())
 	if err != nil {
 		return nil, fmt.Errorf("encoding KeyBits, Exponent: %v", err)
 	}
@@ -269,6 +304,12 @@ func (p ECPoint) Y() *big.Int {
 	return new(big.Int).SetBytes(p.YRaw)
 }
 
+func (p *ECCParams) matchesTemplate(t *ECCParams) bool {
+	return reflect.DeepEqual(p.Symmetric, t.Symmetric) &&
+		reflect.DeepEqual(p.Sign, t.Sign) &&
+		p.CurveID == t.CurveID && reflect.DeepEqual(p.KDF, t.KDF)
+}
+
 func (p *ECCParams) encode() ([]byte, error) {
 	if p == nil {
 		return nil, nil
@@ -324,6 +365,10 @@ type SymCipherParams struct {
 	Unique    tpmutil.U16Bytes
 }
 
+func (p *SymCipherParams) matchesTemplate(t *SymCipherParams) bool {
+	return reflect.DeepEqual(p.Symmetric, t.Symmetric)
+}
+
 func (p *SymCipherParams) encode() ([]byte, error) {
 	sym, err := p.Symmetric.encode()
 	if err != nil {
@@ -347,6 +392,79 @@ func decodeSymCipherParams(in *bytes.Buffer) (*SymCipherParams, error) {
 		return nil, fmt.Errorf("decoding Unique: %v", err)
 	}
 	return &params, nil
+}
+
+// KeyedHashParams represents parameters of a keyed hash TPM object.
+type KeyedHashParams struct {
+	Alg    Algorithm
+	Hash   Algorithm
+	KDF    Algorithm
+	Unique tpmutil.U16Bytes
+}
+
+func (p *KeyedHashParams) matchesTemplate(t *KeyedHashParams) bool {
+	if p.Alg != t.Alg {
+		return false
+	}
+	switch p.Alg {
+	case AlgHMAC:
+		return p.Hash == t.Hash
+	case AlgXOR:
+		return p.Hash == t.Hash && p.KDF == t.KDF
+	default:
+		return true
+	}
+}
+
+func (p *KeyedHashParams) encode() ([]byte, error) {
+	if p == nil {
+		return tpmutil.Pack(AlgNull, tpmutil.U16Bytes(nil))
+	}
+	var params []byte
+	var err error
+	switch p.Alg {
+	case AlgNull:
+		params, err = tpmutil.Pack(p.Alg)
+	case AlgHMAC:
+		params, err = tpmutil.Pack(p.Alg, p.Hash)
+	case AlgXOR:
+		params, err = tpmutil.Pack(p.Alg, p.Hash, p.KDF)
+	default:
+		err = fmt.Errorf("unsupported KeyedHash Algorithm: 0x%x", p.Alg)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("encoding Alg Params: %v", err)
+	}
+	unique, err := tpmutil.Pack(p.Unique)
+	if err != nil {
+		return nil, fmt.Errorf("encoding Unique: %v", err)
+	}
+	return concat(params, unique)
+}
+
+func decodeKeyedHashParams(in *bytes.Buffer) (*KeyedHashParams, error) {
+	var p KeyedHashParams
+	var err error
+	if err = tpmutil.UnpackBuf(in, &p.Alg); err != nil {
+		return nil, fmt.Errorf("decoding Alg: %v", err)
+	}
+	switch p.Alg {
+	case AlgNull:
+		err = nil
+	case AlgHMAC:
+		err = tpmutil.UnpackBuf(in, &p.Hash)
+	case AlgXOR:
+		err = tpmutil.UnpackBuf(in, &p.Hash, &p.KDF)
+	default:
+		err = fmt.Errorf("unsupported KeyedHash Algorithm: 0x%x", p.Alg)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("decoding Alg Params: %v", err)
+	}
+	if err = tpmutil.UnpackBuf(in, &p.Unique); err != nil {
+		return nil, fmt.Errorf("decoding Unique: %v", err)
+	}
+	return &p, nil
 }
 
 // SymScheme represents a symmetric encryption scheme.
