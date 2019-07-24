@@ -1406,7 +1406,7 @@ func TestMatchesTemplate(t *testing.T) {
 					},
 				}
 			},
-			func(pub *Public) { pub.ECCParameters.Point.X = big.NewInt(15) },
+			func(pub *Public) { pub.ECCParameters.Point.XRaw = make([]byte, 32) },
 			func(pub *Public) { pub.ECCParameters.CurveID = CurveNISTP384 },
 		},
 		{
