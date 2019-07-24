@@ -107,8 +107,8 @@ func (p Public) Key() (crypto.PublicKey, error) {
 			return nil, fmt.Errorf("can't map TPM EC curve ID 0x%x to Go elliptic.Curve value", p.ECCParameters.CurveID)
 		}
 		pubKey = &ecdsa.PublicKey{
-			X:     p.ECCParameters.Point.X,
-			Y:     p.ECCParameters.Point.Y,
+			X:     p.ECCParameters.Point.X(),
+			Y:     p.ECCParameters.Point.Y(),
 			Curve: curve,
 		}
 	default:
@@ -256,23 +256,17 @@ type ECCParams struct {
 	Point     ECPoint
 }
 
-// ECPoint represents a ECC coordinates for a point.
+// ECPoint represents a ECC coordinates for a point using byte buffers.
 type ECPoint struct {
-	X, Y *big.Int
+	XRaw, YRaw tpmutil.U16Bytes
 }
 
-func (p *ECPoint) x() *big.Int {
-	if p == nil || p.X == nil {
-		return big.NewInt(0)
-	}
-	return p.X
+func (p ECPoint) X() *big.Int {
+	return new(big.Int).SetBytes(p.XRaw)
 }
 
-func (p *ECPoint) y() *big.Int {
-	if p == nil || p.Y == nil {
-		return big.NewInt(0)
-	}
-	return p.Y
+func (p ECPoint) Y() *big.Int {
+	return new(big.Int).SetBytes(p.YRaw)
 }
 
 func (p *ECCParams) encode() ([]byte, error) {
@@ -295,8 +289,7 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
-	x, y := p.Point.x().Bytes(), p.Point.y().Bytes()
-	point, err := tpmutil.Pack(tpmutil.U16Bytes(x), tpmutil.U16Bytes(y))
+	point, err := tpmutil.Pack(p.Point.XRaw, p.Point.YRaw)
 	if err != nil {
 		return nil, fmt.Errorf("encoding Point: %v", err)
 	}
@@ -319,12 +312,9 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 	if params.KDF, err = decodeKDFScheme(in); err != nil {
 		return nil, fmt.Errorf("decoding KDF: %v", err)
 	}
-	var x, y tpmutil.U16Bytes
-	if err := tpmutil.UnpackBuf(in, &x, &y); err != nil {
+	if err := tpmutil.UnpackBuf(in, &params.Point.XRaw, &params.Point.YRaw); err != nil {
 		return nil, fmt.Errorf("decoding Point: %v", err)
 	}
-	params.Point.X = new(big.Int).SetBytes(x)
-	params.Point.Y = new(big.Int).SetBytes(y)
 	return &params, nil
 }
 
