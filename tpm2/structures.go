@@ -289,7 +289,7 @@ func (p *ECCParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding KDF: %v", err)
 	}
-	point, err := tpmutil.Pack(tpmutil.U16Bytes(p.Point.XRaw), tpmutil.U16Bytes(p.Point.YRaw))
+	point, err := tpmutil.Pack(p.Point.XRaw, p.Point.YRaw)
 	if err != nil {
 		return nil, fmt.Errorf("encoding Point: %v", err)
 	}
