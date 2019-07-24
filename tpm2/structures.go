@@ -61,12 +61,12 @@ type Public struct {
 	Attributes KeyProp
 	AuthPolicy tpmutil.U16Bytes
 
-	// Only one of the following fields should be set. When encoding/decoding,
-	// one will be picked based on Type.
+	// Exactly one of the following fields should be set
+	// When encoding/decoding, one will be picked based on Type.
 	RSAParameters       *RSAParams
 	ECCParameters       *ECCParams
 	SymCipherParameters *SymCipherParams
-	KeyedHashParameters *KeyedHashParams // Optional for AlgKeyedHash
+	KeyedHashParameters *KeyedHashParams
 }
 
 // Encode serializes a Public structure in TPM wire format.
