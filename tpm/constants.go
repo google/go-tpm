@@ -169,23 +169,24 @@ const (
 // Locality Selection
 
 const (
-	locFour  byte = 0x16
-	locThree byte = 0x8
-	locTwo   byte = 0x4
-	locOne   byte = 0x2
-	locZero  byte = 0x1
+	locZero byte = 1 << iota
+	locOne
+	locTwo
+	locThree
+	locFour
 )
 
-// nvPremissions and Operations
+// NV Permissions and Operations
 
 const (
 	nvPerPPWrite    uint32 = 0x00000001
 	nvPerOwnerWrite uint32 = 0x00000002
 	nvPerAuthWrite  uint32 = 0x00000004
 	nvPerWriteAll   uint32 = 0x00000800
-	//REALLY REALLY BAD!!!!!!!!!!!!!!!!
-	//PERMALOCK! Only use if you know what you're doing!!!!
-	//nvPerWriteDefine  uint32 = 0x00001000
+	// Warning: The Value 0x00001000 is defined in the spec as TPM_NV_PER_WRITEDEFINE,
+	// but it is not included directly in this code because it locks the given NV Index permanently
+	// if used uncorrectly. This operation can't be undone in any way.
+	// Do not use this value unless you know what you're doing!
 	nvPerWriteSTClear uint32 = 0x00002000
 	nvPerGlobalLock   uint32 = 0x00004000
 	nvPerPPRead       uint32 = 0x00008000

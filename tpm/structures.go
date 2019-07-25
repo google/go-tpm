@@ -43,6 +43,9 @@ type pcrSelection struct {
 	Mask pcrMask
 }
 
+// nvAttribute holds permissions for a nvindex
+// mainly used to build up the required structures for
+// NVDefineSpace-Function.
 type nvAttribute struct {
 	tag         tpmutil.Tag
 	permissions uint32

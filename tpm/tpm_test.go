@@ -23,6 +23,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/go-tpm/tpm"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -237,10 +238,9 @@ func TestNVDefineSpace(t *testing.T) {
 	defer rwc.Close()
 	index := tpmutil.Handle(0x40000001)
 	permissions := []uint32{nvPerWriteSTClear}
-	length := uint32(54)
+	length := uint32(64)
 	ownerAuth := getAuth(ownerAuthEnvVar)
-	_, err := NVDefineSpace(rwc, index, length, permissions, ownerAuth)
-	if err != nil {
+	if _, err := NVDefineSpace(rwc, index, length, permissions, ownerAuth); err != nil {
 		t.Fatal("Couldn't define space:", err)
 	}
 
@@ -251,10 +251,13 @@ func TestNVWriteValue(t *testing.T) {
 	defer rwc.Close()
 	index := uint32(0x40000001)
 	ownerAuth := getAuth(ownerAuthEnvVar)
-	randomdata := make([]byte, 20)
-	rand.Read(randomdata)
-	_, err := NVWriteValue(rwc, index, 0, randomdata, ownerAuth)
+	r := make([]byte, 20)
+	_, err := rand.Read(r)
 	if err != nil {
+		t.Fatal("Couldn't read random:", err)
+	}
+
+	if _, err = NVWriteValue(rwc, index, 0, r, ownerAuth); err != nil {
 		t.Fatal("Couldn't write to NV space:", err)
 	}
 }
