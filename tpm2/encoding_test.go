@@ -20,7 +20,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/hex"
-	"math/big"
 	"reflect"
 	"testing"
 
@@ -135,16 +134,15 @@ func TestEncodeCreate(t *testing.T) {
 	params := Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
-		Attributes: 0x00030072,
+		Attributes: FlagStorageDefault,
 		RSAParameters: &RSAParams{
 			Symmetric: &SymScheme{
 				Alg:     AlgAES,
 				KeyBits: 128,
 				Mode:    AlgCFB,
 			},
-			KeyBits:  1024,
-			Exponent: uint32(0x00010001),
-			Modulus:  big.NewInt(0),
+			KeyBits:     1024,
+			ExponentRaw: defaultRSAExponent,
 		},
 	}
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}

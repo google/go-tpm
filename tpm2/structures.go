@@ -101,7 +101,7 @@ func (p Public) Key() (crypto.PublicKey, error) {
 	case AlgRSA:
 		// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
 		// (big-endian).
-		pubKey = &rsa.PublicKey{N: p.RSAParameters.Modulus, E: int(p.RSAParameters.Exponent)}
+		pubKey = &rsa.PublicKey{N: p.RSAParameters.Modulus(), E: int(p.RSAParameters.Exponent())}
 	case AlgECC:
 		curve, ok := toGoCurve[p.ECCParameters.CurveID]
 		if !ok {
@@ -192,35 +192,35 @@ func DecodePublic(buf []byte) (Public, error) {
 //
 // Symmetric and Sign may be nil, depending on key Attributes in Public.
 //
-// One of Modulus and ModulusRaw must always be non-nil. Modulus takes
-// precedence. ModulusRaw is used for key templates where the field named
-// "unique" must be a byte array of all zeroes.
+// ExponentRaw and ModulusRaw are the actual data encoded in the template, which
+// is useful for templates that differ in zero-padding, for example.
 type RSAParams struct {
-	Symmetric *SymScheme
-	Sign      *SigScheme
-	KeyBits   uint16
-	// The default Exponent (65537) has two representations; the
-	// 0 value, and the value 65537.
-	// If encodeDefaultExponentAsZero is set, an exponent of 65537
-	// will be encoded as zero. This is necessary to produce an identical
-	// encoded bitstream, so Name digest calculations will be correct.
-	encodeDefaultExponentAsZero bool
-	Exponent                    uint32
-	ModulusRaw                  tpmutil.U16Bytes
-	Modulus                     *big.Int
+	Symmetric   *SymScheme
+	Sign        *SigScheme
+	KeyBits     uint16
+	ExponentRaw uint32
+	ModulusRaw  tpmutil.U16Bytes
 }
 
-func (p *RSAParams) encodedExponent() uint32 {
-	if p.encodeDefaultExponentAsZero && p.Exponent == defaultRSAExponent {
-		return 0
+// Exponent returns the RSA exponent value represented by ExponentRaw, handling
+// the fact that an exponent of 0 represents a value of 65537 (2^16 + 1).
+func (p *RSAParams) Exponent() uint32 {
+	if p.ExponentRaw == 0 {
+		return defaultRSAExponent
 	}
-	return p.Exponent
+	return p.ExponentRaw
+}
+
+// Modulus returns the RSA modulus value represented by ModulusRaw, handling the
+// fact that the same modulus value can have multiple different representations.
+func (p *RSAParams) Modulus() *big.Int {
+	return new(big.Int).SetBytes(p.ModulusRaw)
 }
 
 func (p *RSAParams) matchesTemplate(t *RSAParams) bool {
 	return reflect.DeepEqual(p.Symmetric, t.Symmetric) &&
 		reflect.DeepEqual(p.Sign, t.Sign) &&
-		p.KeyBits == t.KeyBits && p.encodedExponent() == t.encodedExponent()
+		p.KeyBits == t.KeyBits && p.ExponentRaw == t.ExponentRaw
 }
 
 func (p *RSAParams) encode() ([]byte, error) {
@@ -235,27 +235,11 @@ func (p *RSAParams) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding Sign: %v", err)
 	}
-	rest, err := tpmutil.Pack(p.KeyBits, p.encodedExponent())
+	rest, err := tpmutil.Pack(p.KeyBits, p.ExponentRaw, p.ModulusRaw)
 	if err != nil {
-		return nil, fmt.Errorf("encoding KeyBits, Exponent: %v", err)
+		return nil, fmt.Errorf("encoding KeyBits, Exponent, Modulus: %v", err)
 	}
-
-	if p.Modulus == nil && len(p.ModulusRaw) == 0 {
-		return nil, errors.New("RSAParams.Modulus or RSAParams.ModulusRaw must be set")
-	}
-	if p.Modulus != nil && len(p.ModulusRaw) > 0 {
-		return nil, errors.New("both RSAParams.Modulus and RSAParams.ModulusRaw can't be set")
-	}
-	mod := p.ModulusRaw
-	if p.Modulus != nil {
-		mod = tpmutil.U16Bytes(p.Modulus.Bytes())
-	}
-	unique, err := tpmutil.Pack(mod)
-	if err != nil {
-		return nil, fmt.Errorf("encoding Modulus: %v", err)
-	}
-
-	return concat(sym, sig, rest, unique)
+	return concat(sym, sig, rest)
 }
 
 func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
@@ -268,15 +252,9 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	if params.Sign, err = decodeSigScheme(in); err != nil {
 		return nil, fmt.Errorf("decoding Sign: %v", err)
 	}
-	var modBytes tpmutil.U16Bytes
-	if err := tpmutil.UnpackBuf(in, &params.KeyBits, &params.Exponent, &modBytes); err != nil {
+	if err := tpmutil.UnpackBuf(in, &params.KeyBits, &params.ExponentRaw, &params.ModulusRaw); err != nil {
 		return nil, fmt.Errorf("decoding KeyBits, Exponent, Modulus: %v", err)
 	}
-	if params.Exponent == 0 {
-		params.encodeDefaultExponentAsZero = true
-		params.Exponent = defaultRSAExponent
-	}
-	params.Modulus = new(big.Int).SetBytes(modBytes)
 	return &params, nil
 }
 
@@ -296,10 +274,12 @@ type ECPoint struct {
 	XRaw, YRaw tpmutil.U16Bytes
 }
 
+// X returns the X Point value reprsented by XRaw.
 func (p ECPoint) X() *big.Int {
 	return new(big.Int).SetBytes(p.XRaw)
 }
 
+// Y returns the Y Point value reprsented by YRaw.
 func (p ECPoint) Y() *big.Int {
 	return new(big.Int).SetBytes(p.YRaw)
 }
