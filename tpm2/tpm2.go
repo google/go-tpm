@@ -489,6 +489,121 @@ func CreatePrimaryRawTemplate(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSel
 	return CreatePrimary(rw, owner, sel, parentPassword, ownerPassword, pub)
 }
 
+func encodeClear(hierarchy tpmutil.Handle, password string) ([]byte, error) {
+	ha, err := tpmutil.Pack(hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth)
+}
+
+// Clear removes all context associated with the current owner from the TPM.
+// The handle provided must be for the platform or lockout hierarchy. This command will fail if the clear command
+// has been disabled via the ClearControl() API.
+func Clear(rw io.ReadWriter, hierarchy tpmutil.Handle, password string) error {
+	cmd, err := encodeClear(hierarchy, password)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdClear, tpmutil.RawBytes(cmd))
+	return err
+}
+
+func encodeClearControl(hierarchy tpmutil.Handle, disable bool, password string) ([]byte, error) {
+	handle, err := tpmutil.Pack(hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	param, err := tpmutil.Pack(disable)
+	if err != nil {
+		return nil, err
+	}
+	return concat(handle, auth, param)
+}
+
+// ClearControl controls whether the TPM can be cleared with the Clear() API. Calling this with the third
+// parameter set to true will disable the ability to clear the TPM. Calling it with the third parameter set to
+// false will reenable the ability to clear the TPM.
+//
+// The handle provided must be for the platform or lockout hierarchy when disabling the ability to clear the
+// TPM, but reenabling requires that it be the handle for the platform hierarchy.
+func ClearControl(rw io.ReadWriter, hierarchy tpmutil.Handle, disable bool, password string) error {
+	cmd, err := encodeClearControl(hierarchy, disable, password)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdClearControl, tpmutil.RawBytes(cmd))
+	return err
+}
+
+func encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery uint32, password string) ([]byte, error) {
+	lockout, err := tpmutil.Pack(HandleLockout)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(maxTries, recoveryTime, lockoutRecovery)
+	if err != nil {
+		return nil, err
+	}
+	return concat(lockout, auth, params)
+}
+
+// SetDictionaryAttackParameters changes the dictionary attack lockout parameters. The first parameter is the
+// number of authorization failures before the lockout is enabled. The second parameter is the number of
+// seconds before the authorization failure count is decremented by one. Setting this to zero disables
+// dictionary attack protection. The third parameter is the number of seconds after a lockout hierarchy
+// authorization failure before the lockout hierarchy can be used again. Setting this to zero causes this
+// lockout to be cleared after a power cycle.
+//
+// This command must be authorized using the lockout hierarchy.
+func SetDictionaryAttackParameters(rw io.ReadWriter, maxTries, recoveryTime, lockoutRecovery uint32, password string) error {
+	cmd, err := encodeSetDAParameters(maxTries, recoveryTime, lockoutRecovery, password)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdDictionaryAttackParameters, tpmutil.RawBytes(cmd))
+	return err
+}
+
+func encodeHierarchyChangeAuthParameters(hierarchy tpmutil.Handle, oldPassword, newPassword string) ([]byte, error) {
+	handle, err := tpmutil.Pack(hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(oldPassword)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(tpmutil.U16Bytes(newPassword))
+	if err != nil {
+		return nil, err
+	}
+	return concat(handle, auth, params)
+}
+
+// Change the authorization value for the specified hierarchy. The command must be authorized with the
+// hierarchy's current authorization value.
+func HierarchyChangeAuth(rw io.ReadWriter, hierarchy tpmutil.Handle, oldPassword, newPassword string) error {
+	cmd, err := encodeHierarchyChangeAuthParameters(hierarchy, oldPassword, newPassword)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdHierarchyChangeAuth, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func decodeReadPublic(in []byte) (Public, []byte, []byte, error) {
 	var resp struct {
 		Public        tpmutil.U16Bytes

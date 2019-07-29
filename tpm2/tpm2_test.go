@@ -1471,3 +1471,56 @@ func TestMatchesTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestClear(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	rootHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %v", err)
+	}
+	defer FlushContext(rw, rootHandle)
+
+	persistentHandle := tpmutil.Handle(0x817FFFFF)
+	// Evict persistent key, if there is one already (e.g. last test run failed).
+	if err := EvictControl(rw, emptyPassword, HandleOwner, persistentHandle, persistentHandle); err != nil {
+		t.Logf("(expected) EvictControl failed: %v", err)
+	}
+	// Make key persistent.
+	if err := EvictControl(rw, emptyPassword, HandleOwner, rootHandle, persistentHandle); err != nil {
+		t.Fatalf("EvictControl failed: %v", err)
+	}
+
+	if err := Clear(rw, HandleLockout, emptyPassword); err != nil {
+		if err := EvictControl(rw, emptyPassword, HandleOwner, persistentHandle, persistentHandle); err != nil {
+			t.Logf("EvictControl failed: %v", err)
+		}
+		t.Fatalf("Clear failed: %v", err)
+	}
+
+	vals, _, err := GetCapability(rw, CapabilityHandles, 1, uint32(persistentHandle))
+	if err != nil {
+		t.Fatalf("GetCapability failed: %v", err)
+	}
+
+	if len(vals) != 0 {
+		t.Errorf("Persistent handle wasn't cleared")
+	}
+}
+
+func TestHierarchyChangeAuth(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	if err := HierarchyChangeAuth(rw, HandleOwner, emptyPassword, defaultPassword); err != nil {
+		t.Fatalf("HierarchyChangeAuth failed: %v", err)
+	}
+	defer HierarchyChangeAuth(rw, HandleOwner, defaultPassword, emptyPassword)
+
+	handle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, defaultPassword, emptyPassword, defaultKeyParams)
+	if err != nil {
+		t.Errorf("CreatePrimary failed: %v", err)
+	}
+	FlushContext(rw, handle)
+}
