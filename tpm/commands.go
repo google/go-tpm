@@ -158,10 +158,13 @@ func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	return b, nil
 }
 
-func nvDefineSpace(rw io.ReadWriter, nvData nvDataPublic, ca *commandAuth, encAuth ...authValue) ([]byte, *responseAuth, uint32, error) {
+// nvDefineSpace has to get encAuth of type authValue to be according to spec.
+// This is not implemented
+func nvDefineSpace(rw io.ReadWriter, nvData nvDataPublic, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
 	var b tpmutil.U32Bytes
 	var ra responseAuth
-	in := []interface{}{nvData, ca, encAuth}
+	// byte(20) is just a place holder for encAuth argument
+	in := []interface{}{nvData, ca, byte(20)}
 	out := []interface{}{&b, &ra}
 	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVDefineSpace, in, out)
 	if err != nil {

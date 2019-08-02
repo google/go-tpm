@@ -19,11 +19,11 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"crypto/x509"
+	"encoding/binary"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/google/go-tpm/tpm"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -238,6 +238,8 @@ func TestNVDefineSpace(t *testing.T) {
 	defer rwc.Close()
 	index := tpmutil.Handle(0x40000001)
 	permissions := []uint32{nvPerWriteSTClear}
+	// length is arbitrary. Depends on usecase
+	// of the NV RAM at this address
 	length := uint32(64)
 	ownerAuth := getAuth(ownerAuthEnvVar)
 	if _, err := NVDefineSpace(rwc, index, length, permissions, ownerAuth); err != nil {
@@ -247,6 +249,7 @@ func TestNVDefineSpace(t *testing.T) {
 }
 
 func TestNVWriteValue(t *testing.T) {
+	var ret []byte
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
 	index := uint32(0x40000001)
@@ -257,9 +260,35 @@ func TestNVWriteValue(t *testing.T) {
 		t.Fatal("Couldn't read random:", err)
 	}
 
-	if _, err = NVWriteValue(rwc, index, 0, r, ownerAuth); err != nil {
+	if ret, err = NVWriteValue(rwc, index, 0, r, ownerAuth); err != nil {
 		t.Fatal("Couldn't write to NV space:", err)
 	}
+	var retTag tpmutil.Tag
+	var retSize uint32
+	var retRes tpmutil.ResponseCode
+	var retCode tpmutil.Command
+	buf := bytes.NewReader(ret)
+	if err = binary.Read(buf, binary.LittleEndian, &retTag); err != nil {
+		t.Fatal("Couldn't parse data from NVWrite", err)
+	}
+	if err = binary.Read(buf, binary.LittleEndian, &retSize); err != nil {
+		t.Fatal("Couldn't parse data from NVWrite", err)
+	}
+	if err = binary.Read(buf, binary.LittleEndian, &retRes); err != nil {
+		t.Fatal("Couldn't parse data from NVWrite", err)
+	}
+	if err = binary.Read(buf, binary.LittleEndian, &retCode); err != nil {
+		t.Fatal("Couldn't parse data from NVWrite", err)
+	}
+
+	if retTag != 0x00C5 {
+		t.Fatal("Not correct response tag")
+	}
+
+	if retRes != tpmutil.RCSuccess {
+		t.Fatal("Not correct tpm response code")
+	}
+
 }
 
 func TestSeal(t *testing.T) {
