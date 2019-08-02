@@ -956,7 +956,7 @@ func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth d
 		return nil, fmt.Errorf("failed to verify authenticity of response: %v", err)
 	}
 
-	return nil, nil
+	return data, nil
 }
 
 // NVReadValue returns the value from a given index, offset, and length in NVRAM.

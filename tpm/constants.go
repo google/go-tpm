@@ -183,10 +183,16 @@ const (
 	nvPerOwnerWrite uint32 = 0x00000002
 	nvPerAuthWrite  uint32 = 0x00000004
 	nvPerWriteAll   uint32 = 0x00000800
-	// Warning: The Value 0x00001000 is defined in the spec as TPM_NV_PER_WRITEDEFINE,
-	// but it is not included directly in this code because it locks the given NV Index permanently
-	// if used uncorrectly. This operation can't be undone in any way.
-	// Do not use this value unless you know what you're doing!
+	// Warning: The Value 0x00001000 is
+	// defined in the spec as
+	// TPM_NV_PER_WRITEDEFINE, but it is
+	// not included directly in this
+	// code because it locks the given
+	// NV Index permanently if used
+	// incorrectly. This operation can't
+	// be undone in any way. Do not use
+	// this value unless you know what
+	// you're doing!
 	nvPerWriteSTClear uint32 = 0x00002000
 	nvPerGlobalLock   uint32 = 0x00004000
 	nvPerPPRead       uint32 = 0x00008000
