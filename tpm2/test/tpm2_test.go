@@ -896,7 +896,9 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("CreatePrimaryEx failed: %s", err)
 	}
 	defer FlushContext(rw, keyHandle)
-	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, SigScheme{AlgRSASSA, AlgSHA256, 0}, tix)
+
+	scheme := SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256, Count: 0}
+	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, scheme, tix)
 	if err != nil {
 		t.Fatalf("CertifyCreation failed: %s", err)
 	}
