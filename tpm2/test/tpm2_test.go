@@ -92,7 +92,7 @@ var (
 				Mode:    AlgCFB,
 			},
 			KeyBits:     2048,
-			ExponentRaw: defaultRSAExponent,
+			ExponentRaw: 1<<16 + 1,
 		},
 	}
 	defaultPassword = "\x01\x02\x03\x04"
@@ -824,7 +824,7 @@ func TestEncodeDecodeCertifyAttestationData(t *testing.T) {
 		Name: Name{
 			Digest: &HashValue{
 				Alg:   AlgSHA1,
-				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+				Value: make([]byte, crypto.SHA1.Size()),
 			},
 		},
 		QualifiedName: Name{
@@ -853,7 +853,7 @@ func TestEncodeDecodeCreationAttestationData(t *testing.T) {
 		Name: Name{
 			Digest: &HashValue{
 				Alg:   AlgSHA1,
-				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+				Value: make([]byte, crypto.SHA1.Size()),
 			},
 		},
 		OpaqueDigest: []byte{7, 8, 9},
@@ -884,7 +884,7 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 				Hash: AlgSHA1,
 			},
 			KeyBits:     2048,
-			ExponentRaw: defaultRSAExponent,
+			ExponentRaw: 1<<16 + 1,
 			ModulusRaw:  []byte{1, 2, 3, 4, 7, 8, 9, 9},
 		},
 	}
