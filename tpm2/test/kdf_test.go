@@ -17,6 +17,8 @@ package tpm2
 import (
 	"bytes"
 	"testing"
+
+	. "github.com/google/go-tpm/tpm2"
 )
 
 func TestKDFa(t *testing.T) {
