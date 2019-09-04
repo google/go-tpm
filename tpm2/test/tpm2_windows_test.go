@@ -22,13 +22,13 @@ import (
 
 var runTPMTests = flag.Bool("use-tbs", false, "Run integration tests against Windows TPM Base Services (TBS). Defaults to false.")
 
-func openDeviceTPM(t *testing.T) io.ReadWriteCloser {
-	if *runTPMTests == false {
-		t.SkipNow()
-	}
+func useDeviceTPM() bool { return *runTPMTests }
+
+func openDeviceTPM(tb testing.TB) io.ReadWriteCloser {
+	tb.Helper()
 	rw, err := OpenTPM()
 	if err != nil {
-		t.Fatalf("Open TPM failed: %s\n", err)
+		tb.Fatalf("Open TPM failed: %s\n", err)
 	}
 	return rw
 }

@@ -26,13 +26,13 @@ import (
 
 var tpmPath = flag.String("tpm-path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
 
-func openDeviceTPM(t testing.TB) io.ReadWriteCloser {
-	if *tpmPath == "" {
-		t.SkipNow()
-	}
+func useDeviceTPM() bool { return *tpmPath != "" }
+
+func openDeviceTPM(tb testing.TB) io.ReadWriteCloser {
+	tb.Helper()
 	rw, err := OpenTPM(*tpmPath)
 	if err != nil {
-		t.Fatalf("Open TPM at %s failed: %s\n", *tpmPath, err)
+		tb.Fatalf("Open TPM at %s failed: %s\n", *tpmPath, err)
 	}
 	return rw
 }
