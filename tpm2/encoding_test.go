@@ -16,6 +16,7 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -25,6 +26,39 @@ import (
 
 	"github.com/google/go-tpm/tpmutil"
 )
+
+func TestEncodeDecodeCreationData(t *testing.T) {
+	parentQualified := tpmutil.Handle(101)
+	cd := CreationData{
+		PCRSelection:  PCRSelection{Hash: AlgSHA1, PCRs: []int{7}},
+		PCRDigest:     []byte{1, 2, 3},
+		Locality:      32,
+		ParentNameAlg: AlgSHA1,
+		ParentName: Name{
+			Digest: &HashValue{
+				Alg:   AlgSHA1,
+				Value: make([]byte, crypto.SHA1.Size()),
+			},
+		},
+		ParentQualifiedName: Name{
+			Handle: &parentQualified,
+		},
+		OutsideInfo: []byte{7, 8, 9},
+	}
+
+	encoded, err := cd.encode()
+	if err != nil {
+		t.Fatalf("error encoding CreationData: %v", err)
+	}
+	decoded, err := DecodeCreationData(encoded)
+	if err != nil {
+		t.Fatalf("error decoding CreationData: %v", err)
+	}
+
+	if !reflect.DeepEqual(*decoded, cd) {
+		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, cd)
+	}
+}
 
 func TestDecodeReadPCRs(t *testing.T) {
 	testRespBytes, err := hex.DecodeString("800100000032000000000000001400000001000403800000000000010014427d27fe15f8f69736e02b6007b8f6ea674c0745")
