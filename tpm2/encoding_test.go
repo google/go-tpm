@@ -27,6 +27,13 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
+var (
+	pcrSelection0   = PCRSelection{Hash: AlgSHA1, PCRs: []int{0}}
+	pcrSelection1   = PCRSelection{Hash: AlgSHA1, PCRs: []int{1}}
+	pcrSelection7   = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
+	defaultPassword = "\x01\x02\x03\x04"
+)
+
 func TestEncodeDecodeCreationData(t *testing.T) {
 	parentQualified := tpmutil.Handle(101)
 	cd := CreationData{
