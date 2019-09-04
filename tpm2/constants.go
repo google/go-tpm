@@ -323,6 +323,7 @@ const (
 	// It's exported for computing of default AuthPolicy value.
 	CmdPolicySecret     tpmutil.Command = 0x00000151
 	cmdCreate           tpmutil.Command = 0x00000153
+	cmdImport           tpmutil.Command = 0x00000156
 	cmdLoad             tpmutil.Command = 0x00000157
 	cmdQuote            tpmutil.Command = 0x00000158
 	cmdRSADecrypt       tpmutil.Command = 0x00000159

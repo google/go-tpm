@@ -578,6 +578,50 @@ func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectP
 	return private, public, nil
 }
 
+func encodeImport(parentHandle tpmutil.Handle, auth AuthCommand, publicBlob, privateBlob, symSeed, encryptionKey tpmutil.U16Bytes, sym *SymScheme) ([]byte, error) {
+	ph, err := tpmutil.Pack(parentHandle)
+	if err != nil {
+		return nil, err
+	}
+	encodedAuth, err := encodeAuthArea(auth)
+	if err != nil {
+		return nil, err
+	}
+	data, err := tpmutil.Pack(encryptionKey, publicBlob, privateBlob, symSeed)
+	if err != nil {
+		return nil, err
+	}
+	encodedScheme, err := sym.encode()
+	if err != nil {
+		return nil, err
+	}
+
+	return concat(ph, encodedAuth, data, encodedScheme)
+}
+
+func decodeImport(resp []byte) ([]byte, error) {
+	var paramSize uint32
+	var outPrivate tpmutil.U16Bytes
+	_, err := tpmutil.Unpack(resp, &paramSize, &outPrivate)
+	return outPrivate, err
+}
+
+// Import allows a user to import a key created on a different computer
+// or in a different TPM. The publicBlob and privateBlob must always be
+// provided. symSeed should be non-nil iff an "outer wrapper" is used. Both of
+// encryptionKey and sym should be non-nil iff an "inner wrapper" is used.
+func Import(rw io.ReadWriter, parentHandle tpmutil.Handle, auth AuthCommand, publicBlob, privateBlob, symSeed, encryptionKey []byte, sym *SymScheme) ([]byte, error) {
+	cmd, err := encodeImport(parentHandle, auth, publicBlob, privateBlob, symSeed, encryptionKey, sym)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, cmdImport, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeImport(resp)
+}
+
 func encodeLoad(parentHandle tpmutil.Handle, auth AuthCommand, publicBlob, privateBlob tpmutil.U16Bytes) ([]byte, error) {
 	ah, err := tpmutil.Pack(parentHandle)
 	if err != nil {
