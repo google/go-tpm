@@ -20,6 +20,8 @@ import (
 	"flag"
 	"io"
 	"testing"
+
+	. "github.com/google/go-tpm/tpm2"
 )
 
 var tpmPath = flag.String("tpm-path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
