@@ -85,6 +85,9 @@ func TestReadPCRs(t *testing.T) {
 	if err != nil {
 		t.Errorf("ReadPCRs failed: %s", err)
 	}
+	if !useDeviceTPM() {
+		return // PCR 7 is initialized to 0 in the simulator.
+	}
 	for pcr, val := range pcrs {
 		if empty := make([]byte, len(val)); reflect.DeepEqual(empty, val) {
 			t.Errorf("Value of PCR %d is empty", pcr)
