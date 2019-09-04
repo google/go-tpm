@@ -23,57 +23,26 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
-	"flag"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/google/go-tpm-tools/simulator"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
-	"github.com/google/go-tpm/tpmutil/mssim"
 )
 
-var (
-	mssimRun          = flag.Bool("mssim", false, "If supplied, run integration tests against a Microsoft simulator.")
-	mssimCommandAddr  = flag.String("mssim-command-addr", "localhost:2321", "Host and port of the simulator's command listener")
-	mssimPlatformAddr = flag.String("mssim-platform-addr", "localhost:2322", "Host and port of the simulator's platform listener")
-)
-
-func openTPM(t testing.TB) io.ReadWriteCloser {
-	if !*mssimRun {
-		return openDeviceTPM(t)
+func openTPM(tb testing.TB) io.ReadWriteCloser {
+	tb.Helper()
+	if useDeviceTPM() {
+		return openDeviceTPM(tb)
 	}
-
-	conn, err := mssim.Open(mssim.Config{
-		CommandAddress:  *mssimCommandAddr,
-		PlatformAddress: *mssimPlatformAddr,
-	})
+	simulator, err := simulator.Get()
 	if err != nil {
-		t.Fatalf("Open TPM failed %v", err)
+		tb.Fatalf("Simulator initialization failed: %v", err)
 	}
-	if err := Startup(conn, StartupClear); err != nil {
-		conn.Close()
-		t.Fatalf("Startup TPM failed: %v", err)
-	}
-	return simulator{conn}
-}
-
-// Simulator is a wrapper around a simulator connection that ensures shutdown is called on close.
-// This is only necessary with simulators. If shutdown isn't called before disconnecting, the
-// lockout counter in the simulator is incremented leading to DA lockout after running a few tests.
-type simulator struct {
-	*mssim.Conn
-}
-
-// Close calls Shutdown() on the simulator before disconnecting to ensure the lockout counter doesn't
-// get incremented.
-func (s simulator) Close() error {
-	if err := Shutdown(s, StartupClear); err != nil {
-		s.Conn.Close()
-		return err
-	}
-	return s.Conn.Close()
+	return simulator
 }
 
 var (
