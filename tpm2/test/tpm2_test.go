@@ -291,7 +291,7 @@ func TestCreatePrimaryEx(t *testing.T) {
 		t.Logf("ReadPublic:      %v", pub2)
 	}
 
-	if _, err := decodeName(bytes.NewBuffer(name)); err != nil {
+	if _, err := DecodeName(bytes.NewBuffer(name)); err != nil {
 		t.Errorf("Failed to decode name: %v", err)
 	}
 	if _, err := DecodeCreationData(creation); err != nil {
