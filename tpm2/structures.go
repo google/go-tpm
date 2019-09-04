@@ -645,7 +645,7 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 	if err := tpmutil.UnpackBuf(buf, &ad.Magic, &ad.Type); err != nil {
 		return nil, fmt.Errorf("decoding Magic/Type: %v", err)
 	}
-	n, err := decodeName(buf)
+	n, err := DecodeName(buf)
 	if err != nil {
 		return nil, fmt.Errorf("decoding QualifiedSigner: %v", err)
 	}
@@ -683,7 +683,7 @@ func (ad AttestationData) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding Magic, Type: %v", err)
 	}
-	signer, err := ad.QualifiedSigner.encode()
+	signer, err := ad.QualifiedSigner.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("encoding QualifiedSigner: %v", err)
 	}
@@ -721,7 +721,7 @@ type CreationInfo struct {
 func decodeCreationInfo(in *bytes.Buffer) (*CreationInfo, error) {
 	var ci CreationInfo
 
-	n, err := decodeName(in)
+	n, err := DecodeName(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding Name: %v", err)
 	}
@@ -735,7 +735,7 @@ func decodeCreationInfo(in *bytes.Buffer) (*CreationInfo, error) {
 }
 
 func (ci CreationInfo) encode() ([]byte, error) {
-	n, err := ci.Name.encode()
+	n, err := ci.Name.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("encoding Name: %v", err)
 	}
@@ -757,13 +757,13 @@ type CertifyInfo struct {
 func decodeCertifyInfo(in *bytes.Buffer) (*CertifyInfo, error) {
 	var ci CertifyInfo
 
-	n, err := decodeName(in)
+	n, err := DecodeName(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding Name: %v", err)
 	}
 	ci.Name = *n
 
-	n, err = decodeName(in)
+	n, err = DecodeName(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding QualifiedName: %v", err)
 	}
@@ -773,11 +773,11 @@ func decodeCertifyInfo(in *bytes.Buffer) (*CertifyInfo, error) {
 }
 
 func (ci CertifyInfo) encode() ([]byte, error) {
-	n, err := ci.Name.encode()
+	n, err := ci.Name.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("encoding Name: %v", err)
 	}
-	qn, err := ci.QualifiedName.encode()
+	qn, err := ci.QualifiedName.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("encoding QualifiedName: %v", err)
 	}
@@ -833,11 +833,11 @@ func (cd *CreationData) encode() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding PCRDigest, Locality, ParentNameAlg: %v", err)
 	}
-	pn, err := cd.ParentName.encode()
+	pn, err := cd.ParentName.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("encoding ParentName: %v", err)
 	}
-	pqn, err := cd.ParentQualifiedName.encode()
+	pqn, err := cd.ParentQualifiedName.Encode()
 	if err != nil {
 		return nil, fmt.Errorf("encoding ParentQualifiedName: %v", err)
 	}
@@ -864,12 +864,12 @@ func DecodeCreationData(buf []byte) (*CreationData, error) {
 		return nil, fmt.Errorf("decoding PCRDigest, Locality, ParentNameAlg: %v", err)
 	}
 
-	n, err := decodeName(in)
+	n, err := DecodeName(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ParentName: %v", err)
 	}
 	out.ParentName = *n
-	if n, err = decodeName(in); err != nil {
+	if n, err = DecodeName(in); err != nil {
 		return nil, fmt.Errorf("decoding ParentQualifiedName: %v", err)
 	}
 	out.ParentQualifiedName = *n
@@ -888,7 +888,8 @@ type Name struct {
 	Digest *HashValue
 }
 
-func decodeName(in *bytes.Buffer) (*Name, error) {
+// DecodeName deserializes a Name hash from the TPM wire format.
+func DecodeName(in *bytes.Buffer) (*Name, error) {
 	var nameBuf tpmutil.U16Bytes
 	if err := tpmutil.UnpackBuf(in, &nameBuf); err != nil {
 		return nil, err
@@ -913,7 +914,8 @@ func decodeName(in *bytes.Buffer) (*Name, error) {
 	return name, nil
 }
 
-func (n Name) encode() ([]byte, error) {
+// Encode serializes a Name hash into the TPM wire format.
+func (n Name) Encode() ([]byte, error) {
 	var buf []byte
 	var err error
 	switch {
