@@ -881,8 +881,8 @@ func DecodeCreationData(buf []byte) (*CreationData, error) {
 	return &out, nil
 }
 
-// Name contains a name for TPM entities. Only one of Handle/Digest should be
-// set.
+// Name represents a TPM2B_NAME, a name for TPM entities. Only one of
+// Handle or Digest should be set.
 type Name struct {
 	Handle *tpmutil.Handle
 	Digest *HashValue
