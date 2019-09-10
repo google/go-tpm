@@ -1406,3 +1406,75 @@ func TestMatchesTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestPlainImport(t *testing.T) {
+	// As this test imports a key without using an inner or outer wrapper, the
+	// sensitive data is NOT encrypted. This setup should not actually be used.
+	rw := openTPM(t)
+	defer rw.Close()
+
+	// Create an EK that doesn't require authorization
+	ekHandle, _, err := CreatePrimary(rw, HandleEndorsement, PCRSelection{}, "", "", defaultKeyParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %s", err)
+	}
+	defer FlushContext(rw, ekHandle)
+	emptyAuth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}
+
+	inBuff := make([]byte, 18)
+	io.ReadFull(rand.Reader, inBuff)
+	// Create a private area containing the input
+	private := Private{
+		Type:      AlgKeyedHash,
+		AuthValue: nil,
+		SeedValue: make([]byte, 32),
+		Sensitive: inBuff,
+	}
+	io.ReadFull(rand.Reader, private.SeedValue)
+
+	privArea, err := private.Encode()
+	if err != nil {
+		t.Fatalf("Private encoding error: %s", err)
+	}
+	// We just use a plain Pack here, as there is no integrity checking.
+	duplicate, err := tpmutil.Pack(tpmutil.U16Bytes(privArea))
+	if err != nil {
+		t.Fatalf("Duplicate encoding error: %s", err)
+	}
+
+	// The corresponding Public area contains the hash of the Private area.
+	privHash := crypto.SHA256.New()
+	privHash.Write(private.SeedValue)
+	privHash.Write(private.Sensitive)
+	public := Public{
+		Type:       AlgKeyedHash,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagUserWithAuth,
+		KeyedHashParameters: &KeyedHashParams{
+			Alg:    AlgNull,
+			Unique: privHash.Sum(nil),
+		},
+	}
+	pubArea, err := public.Encode()
+	if err != nil {
+		t.Fatalf("Public encoding error: %s", err)
+	}
+
+	privInternal, err := Import(rw, ekHandle, emptyAuth, pubArea, duplicate, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("Import failed: %s", err)
+	}
+	newHandle, _, err := Load(rw, ekHandle, "", pubArea, privInternal)
+	if err != nil {
+		t.Fatalf("Load failed: %s", err)
+	}
+	defer FlushContext(rw, newHandle)
+
+	outBuff, err := Unseal(rw, newHandle, "")
+	if err != nil {
+		t.Fatalf("Unseal failed: %s", err)
+	}
+	if !bytes.Equal(outBuff, inBuff) {
+		t.Errorf("Got %X, expected %X", outBuff, inBuff)
+	}
+}
