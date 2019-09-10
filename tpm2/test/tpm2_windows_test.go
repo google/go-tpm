@@ -1,5 +1,3 @@
-// +build !windows
-
 // Copyright (c) 2018, Google LLC All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,15 +20,15 @@ import (
 	"testing"
 )
 
-var tpmPath = flag.String("tpm-path", "", "Path to TPM character device. Most Linux systems expose it under /dev/tpm0. Empty value (default) will disable all integration tests.")
+var runTPMTests = flag.Bool("use-tbs", false, "Run integration tests against Windows TPM Base Services (TBS). Defaults to false.")
 
-func openDeviceTPM(t testing.TB) io.ReadWriteCloser {
-	if *tpmPath == "" {
-		t.SkipNow()
-	}
-	rw, err := OpenTPM(*tpmPath)
+func useDeviceTPM() bool { return *runTPMTests }
+
+func openDeviceTPM(tb testing.TB) io.ReadWriteCloser {
+	tb.Helper()
+	rw, err := OpenTPM()
 	if err != nil {
-		t.Fatalf("Open TPM at %s failed: %s\n", *tpmPath, err)
+		tb.Fatalf("Open TPM failed: %s\n", err)
 	}
 	return rw
 }

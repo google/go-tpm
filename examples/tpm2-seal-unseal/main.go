@@ -44,7 +44,6 @@ var (
 				Mode:    tpm2.AlgCFB,
 			},
 			KeyBits:    2048,
-			Exponent:   0,
 			ModulusRaw: make([]byte, 256),
 		},
 	}

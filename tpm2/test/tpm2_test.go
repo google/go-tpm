@@ -23,58 +23,26 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
-	"flag"
-	"fmt"
 	"io"
-	"math/big"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/google/go-tpm-tools/simulator"
+	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
-	"github.com/google/go-tpm/tpmutil/mssim"
 )
 
-var (
-	mssimRun          = flag.Bool("mssim", false, "If supplied, run integration tests against a Microsoft simulator.")
-	mssimCommandAddr  = flag.String("mssim-command-addr", "localhost:2321", "Host and port of the simulator's command listener")
-	mssimPlatformAddr = flag.String("mssim-platform-addr", "localhost:2322", "Host and port of the simulator's platform listener")
-)
-
-func openTPM(t testing.TB) io.ReadWriteCloser {
-	if !*mssimRun {
-		return openDeviceTPM(t)
+func openTPM(tb testing.TB) io.ReadWriteCloser {
+	tb.Helper()
+	if useDeviceTPM() {
+		return openDeviceTPM(tb)
 	}
-
-	conn, err := mssim.Open(mssim.Config{
-		CommandAddress:  *mssimCommandAddr,
-		PlatformAddress: *mssimPlatformAddr,
-	})
+	simulator, err := simulator.Get()
 	if err != nil {
-		t.Fatalf("Open TPM failed %v", err)
+		tb.Fatalf("Simulator initialization failed: %v", err)
 	}
-	if err := Startup(conn, StartupClear); err != nil {
-		conn.Close()
-		t.Fatalf("Startup TPM failed: %v", err)
-	}
-	return simulator{conn}
-}
-
-// Simulator is a wrapper around a simulator connection that ensures shutdown is called on close.
-// This is only necessary with simulators. If shutdown isn't called before disconnecting, the
-// lockout counter in the simulator is incremented leading to DA lockout after running a few tests.
-type simulator struct {
-	*mssim.Conn
-}
-
-// Close calls Shutdown() on the simulator before disconnecting to ensure the lockout counter doesn't
-// get incremented.
-func (s simulator) Close() error {
-	if err := Shutdown(s, StartupClear); err != nil {
-		s.Conn.Close()
-		return err
-	}
-	return s.Conn.Close()
+	return simulator
 }
 
 var (
@@ -85,29 +53,20 @@ var (
 	defaultKeyParams = Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
-		Attributes: 0x00030072,
+		Attributes: FlagStorageDefault,
 		RSAParameters: &RSAParams{
 			Symmetric: &SymScheme{
 				Alg:     AlgAES,
 				KeyBits: 128,
 				Mode:    AlgCFB,
 			},
-			KeyBits:  2048,
-			Exponent: uint32(0x00010001),
-			Modulus:  big.NewInt(0),
+			KeyBits:     2048,
+			ExponentRaw: 1<<16 + 1,
 		},
 	}
 	defaultPassword = "\x01\x02\x03\x04"
 	emptyPassword   = ""
 )
-
-func TestRunCommandErr(t *testing.T) {
-	// nil ReadWriter handle will cause tpmutil.RunCommand to return an error
-	// immediately.
-	if _, err := runCommand(nil, TagSessions, cmdSign); err == nil {
-		t.Error("runCommand returned nil error on error from tpmutil.RunCommand")
-	}
-}
 
 func TestGetRandom(t *testing.T) {
 	rw := openTPM(t)
@@ -125,6 +84,9 @@ func TestReadPCRs(t *testing.T) {
 	pcrs, err := ReadPCRs(rw, pcrSelection7)
 	if err != nil {
 		t.Errorf("ReadPCRs failed: %s", err)
+	}
+	if !useDeviceTPM() {
+		return // PCR 7 is initialized to 0 in the simulator.
 	}
 	for pcr, val := range pcrs {
 		if empty := make([]byte, len(val)); reflect.DeepEqual(empty, val) {
@@ -179,7 +141,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	}
 	defer FlushContext(rw, parentHandle)
 
-	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, defaultKeyParams)
+	privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -205,7 +167,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	}
 	defer FlushContext(rw, parentHandle)
 
-	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, emptyPassword, defaultPassword, defaultKeyParams)
+	privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, emptyPassword, defaultPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
@@ -294,7 +256,7 @@ func TestCreatePrimaryEx(t *testing.T) {
 		t.Logf("ReadPublic:      %v", pub2)
 	}
 
-	if _, err := decodeName(bytes.NewBuffer(name)); err != nil {
+	if _, err := DecodeName(bytes.NewBuffer(name)); err != nil {
 		t.Errorf("Failed to decode name: %v", err)
 	}
 	if _, err := DecodeCreationData(creation); err != nil {
@@ -313,7 +275,7 @@ func TestCombinedContextTest(t *testing.T) {
 	defer FlushContext(rw, rootHandle)
 
 	// CreateKey (Quote Key)
-	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
+	quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
@@ -347,7 +309,7 @@ func TestEvictControl(t *testing.T) {
 	defer FlushContext(rw, rootHandle)
 
 	// CreateKey (Quote Key)
-	_, quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
+	quotePrivate, quotePublic, _, _, _, err := CreateKey(rw, rootHandle, pcrSelection7, emptyPassword, emptyPassword, defaultKeyParams)
 	if err != nil {
 		t.Fatalf("CreateKey failed: %v", err)
 	}
@@ -438,9 +400,9 @@ func TestLoadExternalPublicKey(t *testing.T) {
 					Alg:  AlgRSASSA,
 					Hash: AlgSHA1,
 				},
-				KeyBits:  2048,
-				Exponent: uint32(pk.PublicKey.E),
-				Modulus:  pk.PublicKey.N,
+				KeyBits:     2048,
+				ExponentRaw: uint32(pk.PublicKey.E),
+				ModulusRaw:  pk.PublicKey.N.Bytes(),
 			},
 		}
 		private := Private{
@@ -465,7 +427,7 @@ func TestLoadExternalPublicKey(t *testing.T) {
 					Hash: AlgSHA1,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+				Point:   ECPoint{XRaw: pk.PublicKey.X.Bytes(), YRaw: pk.PublicKey.Y.Bytes()},
 			},
 		}
 		private := Private{
@@ -490,7 +452,6 @@ func TestCertify(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
@@ -533,7 +494,7 @@ func TestCertify(t *testing.T) {
 				KeyBits: 2048,
 				// Note: we don't include Exponent because CreatePrimary also
 				// returns Public without it.
-				Modulus: subjectPub.(*rsa.PublicKey).N,
+				ModulusRaw: subjectPub.(*rsa.PublicKey).N.Bytes(),
 			},
 		}
 		matches, err := ad.AttestedCertifyInfo.Name.MatchesPublic(params)
@@ -560,7 +521,6 @@ func TestCertifyExternalKey(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
@@ -602,9 +562,9 @@ func TestCertifyExternalKey(t *testing.T) {
 					Alg:  AlgRSASSA,
 					Hash: AlgSHA1,
 				},
-				KeyBits:  2048,
-				Exponent: uint32(pk.PublicKey.E),
-				Modulus:  pk.PublicKey.N,
+				KeyBits:     2048,
+				ExponentRaw: uint32(pk.PublicKey.E),
+				ModulusRaw:  pk.PublicKey.N.Bytes(),
 			},
 		}
 		private := Private{
@@ -629,7 +589,7 @@ func TestCertifyExternalKey(t *testing.T) {
 					Hash: AlgSHA1,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+				Point:   ECPoint{XRaw: pk.PublicKey.X.Bytes(), YRaw: pk.PublicKey.Y.Bytes()},
 			},
 		}
 		private := Private{
@@ -696,7 +656,6 @@ func TestSign(t *testing.T) {
 					Hash: AlgSHA256,
 				},
 				KeyBits: 2048,
-				Modulus: big.NewInt(0),
 			},
 		})
 	})
@@ -711,7 +670,6 @@ func TestSign(t *testing.T) {
 					Hash: AlgSHA256,
 				},
 				KeyBits: 2048,
-				Modulus: big.NewInt(0),
 			},
 		})
 	})
@@ -727,7 +685,6 @@ func TestSign(t *testing.T) {
 					Hash: AlgSHA256,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{X: big.NewInt(0), Y: big.NewInt(0)},
 			},
 		})
 	})
@@ -839,7 +796,7 @@ func TestEncodeDecodeCertifyAttestationData(t *testing.T) {
 		Name: Name{
 			Digest: &HashValue{
 				Alg:   AlgSHA1,
-				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+				Value: make([]byte, crypto.SHA1.Size()),
 			},
 		},
 		QualifiedName: Name{
@@ -868,7 +825,7 @@ func TestEncodeDecodeCreationAttestationData(t *testing.T) {
 		Name: Name{
 			Digest: &HashValue{
 				Alg:   AlgSHA1,
-				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
+				Value: make([]byte, crypto.SHA1.Size()),
 			},
 		},
 		OpaqueDigest: []byte{7, 8, 9},
@@ -898,64 +855,27 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 				Alg:  AlgRSASSA,
 				Hash: AlgSHA1,
 			},
-			KeyBits:  2048,
-			Exponent: defaultRSAExponent,
-			Modulus:  new(big.Int).SetBytes([]byte{1, 2, 3, 4, 7, 8, 9, 9}),
+			KeyBits:     2048,
+			ExponentRaw: 1<<16 + 1,
+			ModulusRaw:  []byte{1, 2, 3, 4, 7, 8, 9, 9},
 		},
 	}
 
-	for _, encodeAsZero := range []bool{true, false} {
-		t.Run(fmt.Sprintf("encodeDefaultExponentAsZero = %v", encodeAsZero), func(t *testing.T) {
-			p.RSAParameters.encodeDefaultExponentAsZero = encodeAsZero
-			e, err := p.Encode()
-			if err != nil {
-				t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
-			}
-			d, err := DecodePublic(e)
-			if err != nil {
-				t.Fatalf("DecodePublic(%v) returned error: %v", e, err)
-			}
-			if !reflect.DeepEqual(p, d) {
-				t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
-				t.Logf("\tGot:  %+v", d)
-				t.Logf("\tWant: %+v", p)
-			}
-		})
+	e, err := p.Encode()
+	if err != nil {
+		t.Fatalf("Public{%+v}.Encode() returned error: %v", p, err)
+	}
+	d, err := DecodePublic(e)
+	if err != nil {
+		t.Fatalf("DecodePublic(%v) returned error: %v", e, err)
+	}
+	if !reflect.DeepEqual(p, d) {
+		t.Errorf("RSA TPMT_PUBLIC with default exponent changed after being encoded+decoded")
+		t.Logf("\tGot:  %+v", d)
+		t.Logf("\tWant: %+v", p)
 	}
 }
 
-func TestEncodeDecodeCreationData(t *testing.T) {
-	parentQualified := tpmutil.Handle(101)
-	cd := CreationData{
-		PCRSelection:  PCRSelection{Hash: AlgSHA1, PCRs: []int{7}},
-		PCRDigest:     []byte{1, 2, 3},
-		Locality:      32,
-		ParentNameAlg: AlgSHA1,
-		ParentName: Name{
-			Digest: &HashValue{
-				Alg:   AlgSHA1,
-				Value: make([]byte, hashConstructors[AlgSHA1]().Size()),
-			},
-		},
-		ParentQualifiedName: Name{
-			Handle: &parentQualified,
-		},
-		OutsideInfo: []byte{7, 8, 9},
-	}
-
-	encoded, err := cd.encode()
-	if err != nil {
-		t.Fatalf("error encoding CreationData: %v", err)
-	}
-	decoded, err := DecodeCreationData(encoded)
-	if err != nil {
-		t.Fatalf("error decoding CreationData: %v", err)
-	}
-
-	if !reflect.DeepEqual(*decoded, cd) {
-		t.Errorf("got decoded value:\n%v\nwant:\n%v", decoded, cd)
-	}
-}
 func TestCreateAndCertifyCreation(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
@@ -969,7 +889,6 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
@@ -977,7 +896,9 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("CreatePrimaryEx failed: %s", err)
 	}
 	defer FlushContext(rw, keyHandle)
-	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, SigScheme{AlgRSASSA, AlgSHA256, 0}, tix)
+
+	scheme := SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256, Count: 0}
+	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, scheme, tix)
 	if err != nil {
 		t.Fatalf("CertifyCreation failed: %s", err)
 	}
@@ -1001,7 +922,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Logf("Name: %v", att.AttestedCreationInfo.Name)
 		t.Logf("Public: %v", p)
 	}
-	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent), N: p.RSAParameters.Modulus}
+	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent()), N: p.RSAParameters.Modulus()}
 	hsh := crypto.SHA256.New()
 	hsh.Write(attestation)
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
@@ -1091,7 +1012,6 @@ func TestQuote(t *testing.T) {
 				Hash: AlgSHA256,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	}
 	keyHandle, pub, _, _, _, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
@@ -1119,7 +1039,7 @@ func TestQuote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePublic failed: %v", err)
 	}
-	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent), N: p.RSAParameters.Modulus}
+	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent()), N: p.RSAParameters.Modulus()}
 	hsh := crypto.SHA256.New()
 	hsh.Write(attestation)
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature.RSA.Signature); err != nil {
@@ -1169,9 +1089,9 @@ func TestReadPublicKey(t *testing.T) {
 					Alg:  AlgRSASSA,
 					Hash: AlgSHA1,
 				},
-				KeyBits:  2048,
-				Exponent: uint32(pk.PublicKey.E),
-				Modulus:  pk.PublicKey.N,
+				KeyBits:     2048,
+				ExponentRaw: uint32(pk.PublicKey.E),
+				ModulusRaw:  pk.PublicKey.N.Bytes(),
 			},
 		}
 		private := Private{
@@ -1196,7 +1116,7 @@ func TestReadPublicKey(t *testing.T) {
 					Hash: AlgSHA1,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{X: pk.PublicKey.X, Y: pk.PublicKey.Y},
+				Point:   ECPoint{XRaw: pk.PublicKey.X.Bytes(), YRaw: pk.PublicKey.Y.Bytes()},
 			},
 		}
 		private := Private{
@@ -1222,14 +1142,13 @@ func TestEncryptDecrypt(t *testing.T) {
 				Mode:    AlgCFB,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	})
 	if err != nil {
 		t.Fatalf("CreatePrimary failed: %s", err)
 	}
 	defer FlushContext(rw, parentHandle)
-	_, privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, Public{
+	privateBlob, publicBlob, _, _, _, err := CreateKey(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, Public{
 		Type:       AlgSymCipher,
 		NameAlg:    AlgSHA256,
 		Attributes: FlagDecrypt | FlagSign | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
@@ -1283,7 +1202,6 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 				Hash: AlgNull,
 			},
 			KeyBits: 2048,
-			Modulus: big.NewInt(0),
 		},
 	})
 	if err != nil {
@@ -1359,7 +1277,132 @@ func TestCreatePrimaryRawTemplate(t *testing.T) {
 	if gotKeySize != wantKeySize {
 		t.Errorf("got key size %v, want %v", gotKeySize, wantKeySize)
 	}
-	if pubRSA.E != int(defaultKeyParams.RSAParameters.Exponent) {
-		t.Errorf("got key exponent %v, want %v", pubRSA.E, defaultKeyParams.RSAParameters.Exponent)
+	if pubRSA.E != int(defaultKeyParams.RSAParameters.Exponent()) {
+		t.Errorf("got key exponent %v, want %v", pubRSA.E, defaultKeyParams.RSAParameters.Exponent())
+	}
+}
+
+func TestMatchesTemplate(t *testing.T) {
+	tests := []struct {
+		name       string
+		makePublic func() Public
+		goodChange func(*Public)
+		badChange  func(*Public)
+	}{
+		{
+			"RSA",
+			func() Public {
+				return Public{
+					Type:       AlgRSA,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+					RSAParameters: &RSAParams{
+						Sign: &SigScheme{
+							Alg:  AlgRSASSA,
+							Hash: AlgSHA256,
+						},
+						KeyBits: 2048,
+					},
+				}
+			},
+			func(pub *Public) { pub.RSAParameters.ModulusRaw = make([]byte, 256) },
+			func(pub *Public) { pub.RSAParameters.KeyBits = 1024 },
+		},
+		{
+			"ECC",
+			func() Public {
+				return Public{
+					Type:       AlgECC,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+					ECCParameters: &ECCParams{
+						Sign: &SigScheme{
+							Alg:  AlgECDSA,
+							Hash: AlgSHA256,
+						},
+						CurveID: CurveNISTP256,
+					},
+				}
+			},
+			func(pub *Public) { pub.ECCParameters.Point.XRaw = make([]byte, 32) },
+			func(pub *Public) { pub.ECCParameters.CurveID = CurveNISTP384 },
+		},
+		{
+			"SymCipher",
+			func() Public {
+				return Public{
+					Type:       AlgSymCipher,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+					SymCipherParameters: &SymCipherParams{
+						Symmetric: &SymScheme{
+							Alg:     AlgAES,
+							KeyBits: 128,
+							Mode:    AlgCFB,
+						},
+					},
+				}
+			},
+			func(pub *Public) { pub.SymCipherParameters.Unique = make([]byte, 256) },
+			func(pub *Public) { pub.SymCipherParameters.Symmetric.KeyBits = 256 },
+		},
+		{
+			"KeyedHash",
+			func() Public {
+				return Public{
+					Type:       AlgKeyedHash,
+					NameAlg:    AlgSHA256,
+					Attributes: FlagSignerDefault,
+					KeyedHashParameters: &KeyedHashParams{
+						Alg:  AlgHMAC,
+						Hash: AlgSHA256,
+					},
+				}
+			},
+			func(pub *Public) { pub.KeyedHashParameters.Unique = make([]byte, 256) },
+			func(pub *Public) { pub.KeyedHashParameters.Hash = AlgSHA1 },
+		},
+		{
+			"TypeMismatch",
+			func() Public {
+				return Public{
+					Type:                AlgKeyedHash,
+					NameAlg:             AlgSHA256,
+					Attributes:          FlagSignerDefault,
+					KeyedHashParameters: &KeyedHashParams{Alg: AlgNull},
+				}
+			},
+			func(pub *Public) { pub.KeyedHashParameters.Unique = make([]byte, 256) },
+			func(pub *Public) { pub.Type = AlgRSA },
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			template := test.makePublic()
+			pub := test.makePublic()
+
+			test.goodChange(&pub)
+			if !pub.MatchesTemplate(template) {
+				t.Error("Change should not cause template mismatch")
+			}
+
+			encTmpl, err := template.Encode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			decTmpl, err := DecodePublic(encTmpl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !pub.MatchesTemplate(decTmpl) {
+				t.Error("Encoding/Decoding should not cause template mismatch")
+			}
+
+			test.badChange(&pub)
+			if pub.MatchesTemplate(template) {
+				t.Error("Change should cause template mismatch")
+			}
+		})
 	}
 }

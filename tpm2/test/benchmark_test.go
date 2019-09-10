@@ -16,8 +16,9 @@ package tpm2
 
 import (
 	"crypto/sha256"
-	"math/big"
 	"testing"
+
+	. "github.com/google/go-tpm/tpm2"
 )
 
 func BenchmarkRSA2048Signing(b *testing.B) {
@@ -34,8 +35,7 @@ func BenchmarkRSA2048Signing(b *testing.B) {
 				Alg:  AlgRSASSA,
 				Hash: AlgSHA256,
 			},
-			KeyBits: uint16(2048),
-			Modulus: big.NewInt(0),
+			KeyBits: 2048,
 		},
 	}
 
