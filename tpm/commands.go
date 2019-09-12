@@ -193,6 +193,24 @@ func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) (
 	return b, &ra, ret, nil
 }
 
+// nvWriteValue writes to the NVRAM
+// If TPM isn't locked, no authentication is needed.
+// See TPM-Main-Part-3-Commands-20.2
+func nvWriteValue(rw io.ReadWriter, index, offset, len uint32, data []byte, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
+	var b tpmutil.U32Bytes
+	var ra responseAuth
+	in := []interface{}{index, offset, len, data}
+	if ca != nil {
+		in = append(in, ca)
+	}
+	out := []interface{}{&b, &ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVWriteValue, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return b, &ra, ret, nil
+}
+
 // quote2 signs arbitrary data under a given set of PCRs and using a key
 // specified by keyHandle. It returns information about the PCRs it signed
 // under, the signature, auth information, and optionally information about the

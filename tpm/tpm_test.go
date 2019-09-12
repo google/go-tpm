@@ -20,6 +20,7 @@ import (
 	"crypto/sha1"
 	"crypto/x509"
 	"io/ioutil"
+	mathrand "math/rand"
 	"os"
 	"testing"
 
@@ -630,4 +631,34 @@ func TestForceClear(t *testing.T) {
 	if err := ForceClear(rwc); err != nil {
 		t.Fatal("Couldn't clear the TPM without owner auth in physical presence mode:", err)
 	}
+}
+
+func TestNVWriteValue(t *testing.T) {
+	mathrand.Seed(42)
+	rwc := openTPMOrSkip(t)
+	nvList, err := GetNVList(rwc)
+	if err != nil {
+		t.Fatalf("Couldn't open TPM connection: %v", err)
+	}
+	// If no indices are set, skip the test.
+	// Need DefineSpace-Function for implementing the other case
+	if len(nvList) == 0 {
+		t.Skip()
+	}
+	rndIndex := nvList[mathrand.Intn(len(nvList))]
+	rndIndexInfo, err := GetNVIndex(rwc, rndIndex)
+	if err != nil {
+		t.Fatalf("Couldn't retrieve index information: %v", err)
+	}
+
+	indexValue, err := NVReadValue(rwc, rndIndex, 0, rndIndexInfo.Size, nil)
+	if err != nil {
+		t.Fatalf("Couldn't read index value @ index: %v with error: %v", rndIndex, err)
+	}
+
+	err = NVWriteValue(rwc, rndIndex, 0, indexValue, nil)
+	if err != nil {
+		t.Errorf("Couldn't write to index: %v with error: %v", rndIndex, err)
+	}
+
 }
