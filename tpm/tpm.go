@@ -567,7 +567,7 @@ func MakeIdentity(rw io.ReadWriter, srkAuth []byte, ownerAuth []byte, aikAuth []
 	}
 
 	aikParams := keyParams{
-		AlgID:     algRSA,
+		AlgID:     AlgRSA,
 		EncScheme: esNone,
 		SigScheme: ssRSASaPKCS1v15SHA1,
 		Params:    packedParams,
@@ -707,7 +707,7 @@ func ActivateIdentity(rw io.ReadWriter, aikAuth []byte, ownerAuth []byte, aik tp
 		secret    []byte
 	)
 	switch id := symkey.AlgID; id {
-	case algAES128:
+	case AlgAES128:
 		block, err = aes.NewCipher(symkey.Key)
 		if err != nil {
 			return nil, fmt.Errorf("aes.NewCipher failed: %v", err)
@@ -999,6 +999,35 @@ func GetPermanentFlags(rw io.ReadWriter) (PermanentFlags, error) {
 	return ret, err
 }
 
+// GetAlgs returns a list of algorithms supported by the TPM device.
+func GetAlgs(rw io.ReadWriter) ([]Algorithm, error) {
+	var algs []Algorithm
+	for i := AlgRSA; i <= AlgXOR; i++ {
+		buf, err := getCapability(rw, capAlg, uint32(i))
+		if err != nil {
+			return nil, err
+		}
+		if uint8(buf[0]) > 0 {
+			algs = append(algs, Algorithm(i))
+		}
+
+	}
+	return algs, nil
+}
+
+// GetNVList returns a list of TPM_NV_INDEX values that
+// are currently allocated NV storage through TPM_NV_DefineSpace.
+func GetNVList(rw io.ReadWriter) ([]uint32, error) {
+	var nvList []uint32
+	buf, err := getCapability(rw, capNVList, 0)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewReader(buf)
+	err = binary.Read(r, binary.LittleEndian, &nvList)
+	return nvList, err
+}
+
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth digest) error {
@@ -1072,7 +1101,7 @@ func TakeOwnership(rw io.ReadWriter, newOwnerAuth digest, newSRKAuth digest, pub
 		return err
 	}
 	srkParams := keyParams{
-		AlgID:     algRSA,
+		AlgID:     AlgRSA,
 		EncScheme: esRSAEsOAEPSHA1MGF1,
 		SigScheme: ssNone,
 		Params:    srkpb,
@@ -1171,7 +1200,7 @@ func CreateWrapKey(rw io.ReadWriter, srkAuth []byte, usageAuth digest, migration
 		KeyFlags:      0,
 		AuthDataUsage: authAlways,
 		AlgorithmParams: keyParams{
-			AlgID:     algRSA,
+			AlgID:     AlgRSA,
 			EncScheme: esNone,
 			SigScheme: ssRSASaPKCS1v15DER,
 			Params:    rParamsPacked,
