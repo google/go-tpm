@@ -36,8 +36,8 @@ var (
 // getAuth looks in the environment variables to find a given auth input value.
 // If the environment variable is not present, then getAuth returns the
 // well-known auth value of 20 bytes of zeros.
-func getAuth(name string) [20]byte {
-	var auth [20]byte
+func getAuth(name string) digest {
+	var auth digest
 	authInput := os.Getenv(name)
 	if authInput != "" {
 		aa := sha1.Sum([]byte(authInput))
