@@ -781,6 +781,15 @@ func encodePolicyPCR(session tpmutil.Handle, expectedDigest tpmutil.U16Bytes, se
 }
 
 // PolicyPCR sets PCR state binding for authorization on a session.
+//
+// expectedDigest is optional. When specified, it's compared against the digest
+// of PCRs matched by sel.
+//
+// Note that expectedDigest must be a *digest* of the expected PCR value. You
+// must compute the digest manually. ReadPCR returns raw PCR values, not their
+// digests.
+// If you wish to select multiple PCRs, concatenate their values before
+// computing the digest. See "TPM 2.0 Part 1, Selecting Multiple PCR".
 func PolicyPCR(rw io.ReadWriter, session tpmutil.Handle, expectedDigest []byte, sel PCRSelection) error {
 	cmd, err := encodePolicyPCR(session, expectedDigest, sel)
 	if err != nil {
