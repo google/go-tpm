@@ -1478,3 +1478,58 @@ func TestPlainImport(t *testing.T) {
 		t.Errorf("Got %X, expected %X", outBuff, inBuff)
 	}
 }
+
+func TestPolicyPCR(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA1)
+	if err != nil {
+		t.Fatalf("StartAuthSession failed: %v", err)
+	}
+	defer FlushContext(rw, sessHandle)
+
+	sel := PCRSelection{Hash: AlgSHA1, PCRs: []int{0, 1, 2, 3}}
+	pcrs, err := ReadPCRs(rw, sel)
+	if err != nil {
+		t.Fatalf("ReadPCRs failed: %s", err)
+	}
+
+	// From TPM 2.0 Part 1, Selecting Multiple PCR:
+	// "The list of selectors is processed in order. The selected PCR are
+	// concatenated, with the lowest numbered PCR in the first selector being
+	// the first in the list and the highest numbered PCR in the last selector
+	// being the last."
+	//
+	// Concatenate all selected PCR values before hashing. sel.PCRs is already
+	// sorted in ascending order.
+	var expectedVal []byte
+	for _, pcr := range sel.PCRs {
+		expectedVal = append(expectedVal, pcrs[pcr]...)
+	}
+	t.Logf("expectedVal=%x", expectedVal)
+
+	// Hash algorithm must match the one in StartAuthSession.
+	expectedDigest := sha1.Sum(expectedVal)
+	t.Logf("expectedDigest=%x", expectedDigest)
+
+	tests := []struct {
+		desc           string
+		expectedDigest []byte
+		wantErr        bool
+	}{
+		// PolicyPCR expects a *digest* of the PCR value, not the value itself.
+		// Make sure PolicyPCR with value actually fails.
+		{desc: "success: digest passed in expectedDigest", expectedDigest: expectedDigest[:]},
+		{desc: "fail: value passed in expectedDigest", expectedDigest: expectedVal, wantErr: true},
+		{desc: "success: nil passed in expectedDigest", expectedDigest: nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			err := PolicyPCR(rw, sessHandle, tt.expectedDigest, sel)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("got error: %v, want error: %v", err != nil, tt.wantErr)
+			}
+		})
+	}
+}
