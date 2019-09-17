@@ -1328,7 +1328,7 @@ func decodeSign(buf []byte) (*Signature, error) {
 }
 
 // SignWithSession computes a signature for digest using a given loaded key. Signature
-// algorithm depends on the key type. Used for keys with non-default authorization policies.
+// algorithm depends on the key type. Used for keys with non-password authorization policies.
 func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
 	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme)
 	if err != nil {
