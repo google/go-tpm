@@ -1298,12 +1298,12 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 	return err
 }
 
-func encodeSign(key tpmutil.Handle, password string, digest tpmutil.U16Bytes, sigScheme *SigScheme) ([]byte, error) {
+func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmutil.U16Bytes, sigScheme *SigScheme) ([]byte, error) {
 	ha, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	auth, err := encodeAuthArea(AuthCommand{Session: sessionHandle, Attributes: AttrContinueSession, Auth: []byte(password)})
 	if err != nil {
 		return nil, err
 	}
@@ -1336,10 +1336,10 @@ func decodeSign(buf []byte) (*Signature, error) {
 	return DecodeSignature(in)
 }
 
-// Sign computes a signature for digest using a given loaded key. Signature
-// algorithm depends on the key type.
-func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
-	cmd, err := encodeSign(key, password, digest, sigScheme)
+// SignWithSession computes a signature for digest using a given loaded key. Signature
+// algorithm depends on the key type. Used for keys with non-password authorization policies.
+func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
+	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme)
 	if err != nil {
 		return nil, err
 	}
@@ -1348,6 +1348,12 @@ func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, 
 		return nil, err
 	}
 	return decodeSign(resp)
+}
+
+// Sign computes a signature for digest using a given loaded key. Signature
+// algorithm depends on the key type.
+func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
+	return SignWithSession(rw, HandlePasswordSession, key, password, digest, sigScheme)
 }
 
 func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
