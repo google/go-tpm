@@ -773,7 +773,7 @@ func TestReadPCR(t *testing.T) {
 func makeAttestationData() AttestationData {
 	signer := tpmutil.Handle(100)
 	return AttestationData{
-		Magic: 1,
+		Magic: 0xff544347,
 		QualifiedSigner: Name{
 			Handle: &signer,
 		},
