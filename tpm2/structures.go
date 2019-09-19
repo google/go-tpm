@@ -645,6 +645,13 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 	if err := tpmutil.UnpackBuf(buf, &ad.Magic, &ad.Type); err != nil {
 		return nil, fmt.Errorf("decoding Magic/Type: %v", err)
 	}
+	// All attestation structures have the magic prefix
+	// TPMS_GENERATED_VALUE to symbolize they were created by
+	// the TPM when signed with an AK.
+	if ad.Magic != 0xff544347 {
+		return nil, fmt.Errorf("incorrect magic value: %x", ad.Magic)
+	}
+
 	n, err := DecodeName(buf)
 	if err != nil {
 		return nil, fmt.Errorf("decoding QualifiedSigner: %v", err)
