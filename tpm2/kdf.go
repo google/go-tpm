@@ -68,3 +68,39 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 
 	return out, nil
 }
+
+func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte, bits int) ([]byte, error) {
+	var counter uint32
+	remaining := (bits + 7) / 8
+	var out []byte
+
+	var h hash.Hash
+	switch hashAlg {
+	case AlgSHA1:
+		h = sha1.New()
+	case AlgSHA256:
+		h = sha256.New()
+	default:
+		return nil, fmt.Errorf("hash algorithm 0x%x is not supported", hashAlg)
+	}
+	for remaining > 0 {
+		counter++
+		if err := binary.Write(h, binary.BigEndian, counter); err != nil {
+			return nil, fmt.Errorf("pack counter: %v", err)
+		}
+		h.Write(z)
+		h.Write([]byte(use))
+		h.Write([]byte{0})
+		h.Write(partyUInfo)
+		h.Write(partyVInfo)
+		out = h.Sum(out)
+		remaining -= h.Size()
+		h.Reset()
+	}
+
+	if len(out) > bits/8 {
+		out = out[:bits/8]
+	}
+
+	return out, nil
+}
