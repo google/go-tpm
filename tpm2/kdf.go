@@ -69,6 +69,12 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 	return out, nil
 }
 
+// KDFe implements TPM 2.0's ECDH key derivation function, as defined in
+// section 11.4.9.3 of the TPM revision 2 specification part 1.
+// See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
+// The z parameter is the x coordinate of one parties private ECC key and the other parties public ECC key.
+// The partyUInfo and partyVInfo are the x coordinate of the initiators and the responders ECC points respectively.
+// Only the SHA256 hash algorithm is implemented at this time.
 func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte, bits int) ([]byte, error) {
 	var counter uint32
 	remaining := (bits + 7) / 8
