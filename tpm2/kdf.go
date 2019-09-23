@@ -76,8 +76,6 @@ func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte
 
 	var h hash.Hash
 	switch hashAlg {
-	case AlgSHA1:
-		h = sha1.New()
 	case AlgSHA256:
 		h = sha256.New()
 	default:
