@@ -16,8 +16,6 @@ package tpm2
 
 import (
 	"crypto/hmac"
-	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"hash"
@@ -30,43 +28,22 @@ import (
 // contextV may be.
 // Only SHA1 & SHA256 hash algorithms are implemented at this time.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
-	var counter uint32
-	remaining := (bits + 7) / 8 // As per note at the bottom of page 44.
-	var out []byte
-
-	var mac hash.Hash
-	switch hashAlg {
-	case AlgSHA1:
-		mac = hmac.New(sha1.New, key)
-	case AlgSHA256:
-		mac = hmac.New(sha256.New, key)
-	default:
-		return nil, fmt.Errorf("hash algorithm 0x%x is not supported", hashAlg)
+	// Verify HashConstructor will not throw an error so we can safely ignore err later.
+	h, err := hashAlg.HashConstructor()
+	if err != nil {
+		return nil, err
 	}
-
-	for remaining > 0 {
-		counter++
-		if err := binary.Write(mac, binary.BigEndian, counter); err != nil {
-			return nil, fmt.Errorf("pack counter: %v", err)
-		}
+	mac := hmac.New(h, key)
+	return kdf(mac, func() error {
 		mac.Write([]byte(label))
 		mac.Write([]byte{0}) // Terminating null character for C-string.
 		mac.Write(contextU)
 		mac.Write(contextV)
 		if err := binary.Write(mac, binary.BigEndian, uint32(bits)); err != nil {
-			return nil, fmt.Errorf("pack bits: %v", err)
+			return fmt.Errorf("pack bits: %v", err)
 		}
-
-		out = mac.Sum(out)
-		remaining -= mac.Size()
-		mac.Reset()
-	}
-
-	if len(out) > bits/8 {
-		out = out[:bits/8]
-	}
-
-	return out, nil
+		return nil
+	}, bits)
 }
 
 // KDFe implements TPM 2.0's ECDH key derivation function, as defined in
@@ -76,35 +53,41 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 // The partyUInfo and partyVInfo are the x coordinate of the initiators and the responders ECC points respectively.
 // Only the SHA256 hash algorithm is implemented at this time.
 func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte, bits int) ([]byte, error) {
+	createHash, err := hashAlg.HashConstructor()
+	if err != nil {
+		return nil, err
+	}
+	h := createHash()
+	return kdf(h, func() error {
+		h.Write(z)
+		h.Write([]byte(use))
+		h.Write([]byte{0}) // Terminating null character for C-string.
+		h.Write(partyUInfo)
+		h.Write(partyVInfo)
+		return nil
+	}, bits)
+}
+
+func kdf(h hash.Hash, update func() error, bits int) ([]byte, error) {
 	var counter uint32
 	remaining := (bits + 7) / 8
 	var out []byte
 
-	var h hash.Hash
-	switch hashAlg {
-	case AlgSHA256:
-		h = sha256.New()
-	default:
-		return nil, fmt.Errorf("hash algorithm 0x%x is not supported", hashAlg)
-	}
 	for remaining > 0 {
 		counter++
 		if err := binary.Write(h, binary.BigEndian, counter); err != nil {
 			return nil, fmt.Errorf("pack counter: %v", err)
 		}
-		h.Write(z)
-		h.Write([]byte(use))
-		h.Write([]byte{0})
-		h.Write(partyUInfo)
-		h.Write(partyVInfo)
+		err := update()
+		if err != nil {
+			return nil, err
+		}
 		out = h.Sum(out)
 		remaining -= h.Size()
 		h.Reset()
 	}
-
-	if len(out) > bits/8 {
-		out = out[:bits/8]
+	if bits % 8 != 0 {
+		out[0] &= ((1 << (uint(bits) % 8)) - 1)
 	}
-
 	return out, nil
 }
