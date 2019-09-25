@@ -28,7 +28,6 @@ import (
 // contextV may be.
 // Only SHA1 & SHA256 hash algorithms are implemented at this time.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
-	// Verify HashConstructor will not throw an error so we can safely ignore err later.
 	h, err := hashAlg.HashConstructor()
 	if err != nil {
 		return nil, err
@@ -70,10 +69,10 @@ func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte
 
 func kdf(h hash.Hash, update func() error, bits int) ([]byte, error) {
 	var counter uint32
-	remaining := (bits + 7) / 8
+	bytes := (bits + 7) / 8
 	var out []byte
 
-	for remaining > 0 {
+	for remaining := 0; remaining < bytes; remaining += h.Size() {
 		counter++
 		if err := binary.Write(h, binary.BigEndian, counter); err != nil {
 			return nil, fmt.Errorf("pack counter: %v", err)
@@ -83,10 +82,14 @@ func kdf(h hash.Hash, update func() error, bits int) ([]byte, error) {
 			return nil, err
 		}
 		out = h.Sum(out)
-		remaining -= h.Size()
 		h.Reset()
 	}
-	if bits % 8 != 0 {
+	// out's length is a multiple of hash size. If bytes isn't a multiple of hash size, strip excess.
+	if len(out) > bytes {
+		out = out[:bytes]
+	}
+	// If bits isn't a multiple of 8, mask off excess most significant bits from zeroth byte.
+	if bits%8 != 0 {
 		out[0] &= ((1 << (uint(bits) % 8)) - 1)
 	}
 	return out, nil
