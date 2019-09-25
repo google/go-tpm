@@ -26,7 +26,6 @@ import (
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 // The key & label parameters must not be zero length, but contextU &
 // contextV may be.
-// Only SHA1 & SHA256 hash algorithms are implemented at this time.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
 	h, err := hashAlg.HashConstructor()
 	if err != nil {
@@ -50,7 +49,6 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 // The z parameter is the x coordinate of one parties private ECC key and the other parties public ECC key.
 // The partyUInfo and partyVInfo are the x coordinate of the initiators and the responders ECC points respectively.
-// Only the SHA256 hash algorithm is implemented at this time.
 func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte, bits int) ([]byte, error) {
 	createHash, err := hashAlg.HashConstructor()
 	if err != nil {
