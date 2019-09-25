@@ -24,6 +24,9 @@ import (
 // KDFa implements TPM 2.0's default key derivation function, as defined in
 // section 11.4.9.2 of the TPM revision 2 specification part 1.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
+// Note that masking the most significant byte when bits is not a multiple of
+// 8 is disabled. This is to be compatible with the microsoft reference
+// implementation ms-tpm-20-ref, which deviates from the spec in this regard.
 // The key & label parameters must not be zero length, but contextU &
 // contextV may be.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
@@ -55,7 +58,7 @@ func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte
 		return nil, err
 	}
 	h := createHash()
-	return kdf(h, func() error {
+	out, err := kdf(h, func() error {
 		h.Write(z)
 		h.Write([]byte(use))
 		h.Write([]byte{0}) // Terminating null character for C-string.
@@ -63,6 +66,14 @@ func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte
 		h.Write(partyVInfo)
 		return nil
 	}, bits)
+	if err != nil {
+		return nil, err
+	}
+	// If bits isn't a multiple of 8, mask off excess most significant bits from zeroth byte.
+	if bits%8 != 0 {
+		out[0] &= ((1 << (uint(bits) % 8)) - 1)
+	}
+	return out, nil
 }
 
 func kdf(h hash.Hash, update func() error, bits int) ([]byte, error) {
@@ -85,10 +96,6 @@ func kdf(h hash.Hash, update func() error, bits int) ([]byte, error) {
 	// out's length is a multiple of hash size. If bytes isn't a multiple of hash size, strip excess.
 	if len(out) > bytes {
 		out = out[:bytes]
-	}
-	// If bits isn't a multiple of 8, mask off excess most significant bits from zeroth byte.
-	if bits%8 != 0 {
-		out[0] &= ((1 << (uint(bits) % 8)) - 1)
 	}
 	return out, nil
 }
