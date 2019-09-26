@@ -177,6 +177,28 @@ func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) (
 	return b, &ra, ret, nil
 }
 
+func nvWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ca *commandAuth) (*responseAuth, uint32, error) {
+	var ra responseAuth
+	in := []interface{}{index, offset, tpmutil.U32Bytes(data), ca}
+	out := []interface{}{&ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVWriteValue, in, out)
+	if err != nil {
+		return nil, 0, err
+	}
+	return &ra, ret, nil
+}
+
+func nvDefineSpace(rw io.ReadWriter, pub *nvPublicDescription, ca *commandAuth) (*responseAuth, uint32, error) {
+	var ra responseAuth
+	in := []interface{}{pub, ca}
+	out := []interface{}{&ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVDefineSpace, in, out)
+	if err != nil {
+		return nil, 0, err
+	}
+	return &ra, ret, nil
+}
+
 // quote2 signs arbitrary data under a given set of PCRs and using a key
 // specified by keyHandle. It returns information about the PCRs it signed
 // under, the signature, auth information, and optionally information about the

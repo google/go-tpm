@@ -56,8 +56,8 @@ type pcrInfoLong struct {
 
 // pcrInfoShort stores detailed information about PCRs.
 type pcrInfoShort struct {
-	LocAtRelease    byte
 	PCRsAtRelease   pcrSelection
+	LocAtRelease    byte
 	DigestAtRelease digest
 }
 
@@ -338,4 +338,50 @@ func convertPubKey(pk crypto.PublicKey) (*pubKey, error) {
 	}
 
 	return &pubKey, nil
+}
+
+// DecodePublic consumes bytes representing a TPM_PUBKEY, and returns a
+// crypto.PublicKey representing the encoded public key. Currently, this
+// function only supports 2048-bit RSA keys.
+func DecodePublic(b []byte) (crypto.PublicKey, error) {
+	var pk pubKey
+	if _, err := tpmutil.Unpack(b, &pk); err != nil {
+		return nil, err
+	}
+	if pk.AlgorithmParams.AlgID != algRSA {
+		return nil, fmt.Errorf("expected RSA algorithm, got %v", pk.AlgorithmParams.AlgID)
+	}
+	var kp rsaKeyParams
+	if _, err := tpmutil.Unpack(pk.AlgorithmParams.Params, &kp); err != nil {
+		return nil, fmt.Errorf("unpacking rsaKeyParams: %v", err)
+	}
+	if kp.KeyLength != 2048 {
+		return nil, fmt.Errorf("only 2048-bit keys supported, got %d-bit", kp.KeyLength)
+	}
+
+	return &rsa.PublicKey{
+		E: int(big.NewInt(0).SetBytes(kp.Exponent).Int64()),
+		N: big.NewInt(0).SetBytes(pk.Key),
+	}, nil
+}
+
+// NVAttributesArea describes the permissions set on an NV area.
+type NVAttributesArea struct {
+	Tag        uint16
+	Attributes NVAttr
+}
+
+// nvPublicDescription describes the public description and controls on
+// a NV area. This struct mirrors the layout of the TPM_NV_DATA_PUBLIC
+// structure in the TPM 1.2 specification.
+type nvPublicDescription struct {
+	Tag           uint16
+	Index         uint32
+	ReadPCRState  pcrInfoShort
+	WritePCRState pcrInfoShort
+	Attributes    NVAttributesArea
+	ReadSTClear   byte
+	WriteSTClear  byte
+	WriteDefine   byte
+	DataSize      uint32
 }
