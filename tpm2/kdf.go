@@ -16,55 +16,74 @@ package tpm2
 
 import (
 	"crypto/hmac"
-	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/binary"
-	"fmt"
 	"hash"
 )
 
 // KDFa implements TPM 2.0's default key derivation function, as defined in
 // section 11.4.9.2 of the TPM revision 2 specification part 1.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
-// The key & label parameters must not be zero length, but contextU &
-// contextV may be.
-// Only SHA1 & SHA256 hash algorithms are implemented at this time.
+// The key & label parameters must not be zero length.
+// The label parameter is a non-null-terminated string.
+// The contextU & contextV parameters are optional.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
-	var counter uint32
-	remaining := (bits + 7) / 8 // As per note at the bottom of page 44.
-	var out []byte
-
-	var mac hash.Hash
-	switch hashAlg {
-	case AlgSHA1:
-		mac = hmac.New(sha1.New, key)
-	case AlgSHA256:
-		mac = hmac.New(sha256.New, key)
-	default:
-		return nil, fmt.Errorf("hash algorithm 0x%x is not supported", hashAlg)
+	h, err := hashAlg.HashConstructor()
+	if err != nil {
+		return nil, err
 	}
+	mac := hmac.New(h, key)
 
-	for remaining > 0 {
-		counter++
-		if err := binary.Write(mac, binary.BigEndian, counter); err != nil {
-			return nil, fmt.Errorf("pack counter: %v", err)
-		}
+	out := kdf(mac, bits, func() {
 		mac.Write([]byte(label))
 		mac.Write([]byte{0}) // Terminating null character for C-string.
 		mac.Write(contextU)
 		mac.Write(contextV)
-		if err := binary.Write(mac, binary.BigEndian, uint32(bits)); err != nil {
-			return nil, fmt.Errorf("pack bits: %v", err)
-		}
-
-		out = mac.Sum(out)
-		remaining -= mac.Size()
-		mac.Reset()
-	}
-
-	if len(out) > bits/8 {
-		out = out[:bits/8]
-	}
-
+		binary.Write(mac, binary.BigEndian, uint32(bits))
+	})
 	return out, nil
+}
+
+// KDFe implements TPM 2.0's ECDH key derivation function, as defined in
+// section 11.4.9.3 of the TPM revision 2 specification part 1.
+// See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
+// The z parameter is the x coordinate of one parties private ECC key and the other parties public ECC key.
+// The use parameter is a non-null-terminated string.
+// The partyUInfo and partyVInfo are the x coordinates of the initiators and the responders ECC points respectively.
+func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte, bits int) ([]byte, error) {
+	createHash, err := hashAlg.HashConstructor()
+	if err != nil {
+		return nil, err
+	}
+	h := createHash()
+
+	out := kdf(h, bits, func() {
+		h.Write(z)
+		h.Write([]byte(use))
+		h.Write([]byte{0}) // Terminating null character for C-string.
+		h.Write(partyUInfo)
+		h.Write(partyVInfo)
+	})
+	return out, nil
+}
+
+func kdf(h hash.Hash, bits int, update func()) []byte {
+	bytes := (bits + 7) / 8
+	out := []byte{}
+
+	for counter := 1; len(out) < bytes; counter++ {
+		h.Reset()
+		binary.Write(h, binary.BigEndian, uint32(counter))
+		update()
+
+		out = h.Sum(out)
+	}
+	// out's length is a multiple of hash size, so there will be excess bytes if bytes isn't a multiple of hash size.
+	out = out[:bytes]
+
+	// As mentioned in the KDFa and KDFe specs mentioned above,
+	// the unused bits of the most significant octet are masked off.
+	if maskBits := uint8(bits % 8); maskBits > 0 {
+		out[0] &= (1 << maskBits) - 1
+	}
+	return out
 }
