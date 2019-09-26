@@ -23,9 +23,9 @@ import (
 // KDFa implements TPM 2.0's default key derivation function, as defined in
 // section 11.4.9.2 of the TPM revision 2 specification part 1.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
-// The key & label parameters must not be zero length, but contextU &
-// contextV may be.
+// The key & label parameters must not be zero length.
 // The label parameter is a non-null-terminated string.
+// The contextU & contextV parameters are optional.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
 	h, err := hashAlg.HashConstructor()
 	if err != nil {
@@ -47,8 +47,8 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 // section 11.4.9.3 of the TPM revision 2 specification part 1.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 // The z parameter is the x coordinate of one parties private ECC key and the other parties public ECC key.
-// The partyUInfo and partyVInfo are the x coordinates of the initiators and the responders ECC points respectively.
 // The use parameter is a non-null-terminated string.
+// The partyUInfo and partyVInfo are the x coordinates of the initiators and the responders ECC points respectively.
 func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte, bits int) ([]byte, error) {
 	createHash, err := hashAlg.HashConstructor()
 	if err != nil {
@@ -70,21 +70,20 @@ func kdf(h hash.Hash, bits int, update func()) []byte {
 	bytes := (bits + 7) / 8
 	out := []byte{}
 
-	counter := uint32(1)
-	for remaining := 0; remaining < bytes; remaining += h.Size() {
+	for counter := 1; len(out) < bytes; counter++ {
 		h.Reset()
-		binary.Write(h, binary.BigEndian, counter)
+		binary.Write(h, binary.BigEndian, uint32(counter))
 		update()
+
 		out = h.Sum(out)
-		counter++
 	}
-	// out's length is a multiple of hash size. If bytes isn't a multiple of hash size, strip excess.
-	if len(out) > bytes {
-		out = out[:bytes]
-	}
-	// If bits isn't a multiple of 8, mask off excess most significant bits from zeroth byte.
-	if bits%8 != 0 {
-		out[0] &= ((1 << (uint(bits) % 8)) - 1)
+	// out's length is a multiple of hash size, so there will be excess bytes if bytes isn't a multiple of hash size.
+	out = out[:bytes]
+
+	// As mentioned in the KDFa and KDFe specs mentioned above,
+	// the unused bits of the most significant octet are masked off.
+	if maskBits := uint8(bits % 8); maskBits > 0 {
+		out[0] &= (1 << maskBits) - 1
 	}
 	return out
 }
