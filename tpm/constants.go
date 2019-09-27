@@ -58,8 +58,10 @@ const (
 
 // Capability types.
 const (
+	capAlg      uint32 = 0x00000002
 	capProperty uint32 = 0x00000005
 	capFlag     uint32 = 0x00000004
+	capNVList   uint32 = 0x0000000D
 	capHandle   uint32 = 0x00000014
 )
 
@@ -110,23 +112,46 @@ const (
 	pidTransport
 )
 
+// Algorithm type for more convenient handling.
+// see Algorithm ID for possible values.
+type Algorithm uint32
+
 // Algorithm ID values.
 const (
-	_ uint32 = iota
-	algRSA
+	_ Algorithm = iota
+	AlgRSA
 	_ // was DES
 	_ // was 3DES in EDE mode
-	algSHA
-	algHMAC
-	algAES128
-	algMGF1
-	algAES192
-	algAES256
-	algXOR
+	AlgSHA
+	AlgHMAC
+	AlgAES128
+	AlgMGF1
+	AlgAES192
+	AlgAES256
+	AlgXOR
 )
 
+// AlgMap Map of Algorithms to Strings for nicer output and comparisons, etc.
+var AlgMap = map[Algorithm]string{
+	AlgRSA:    "RSA",
+	AlgSHA:    "SHA1",
+	AlgHMAC:   "HMAC",
+	AlgAES128: "AER128",
+	AlgMGF1:   "MFG1",
+	AlgAES192: "AES192",
+	AlgAES256: "AES256",
+}
+
+func (a Algorithm) String() string {
+	n, ok := AlgMap[a]
+	if !ok {
+		return "unknown_algorithm"
+	}
+	return n
+}
+
 // Encryption schemes. The values esNone and the two that contain the string
-// "RSA" are only valid under algRSA. The other two are symmetric encryption
+// "RSA" are only valid under AlgRSA. The other two are symmetric encryption
 // schemes.
 const (
 	_ uint16 = iota
@@ -138,7 +163,7 @@ const (
 	esSymCBCPKCS5 = 0xff // esSymCBCPKCS5 was taken from go-tspi
 )
 
-// Signature schemes. These are only valid under algRSA.
+// Signature schemes. These are only valid under AlgRSA.
 const (
 	_ uint16 = iota
 	ssNone

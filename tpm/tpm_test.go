@@ -70,6 +70,37 @@ func TestGetManufacturer(t *testing.T) {
 	t.Logf("TPM VendorID: %v\n", vendorID)
 }
 
+func TestGetAlgs(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	algs, err := GetAlgs(rwc)
+	if err != nil {
+		t.Fatalf("Couldn't read Algorithms: %v", err)
+	}
+	want := []Algorithm{AlgRSA, AlgSHA, AlgHMAC, AlgMGF1}
+outer:
+	for _, alg := range want {
+		for _, got := range algs {
+			if got == alg {
+				continue outer
+			}
+			t.Errorf("GetAlgs returned %v, which does not contain a required algorithm %v", algs, alg.String())
+		}
+	}
+}
+
+func TestGetNVList(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	nvList, err := GetNVList(rwc)
+	if err != nil {
+		t.Fatalf("Couldn't read NVList %v", err)
+	}
+	t.Logf("NVList is: %v", nvList)
+}
+
 func TestPcrExtend(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
