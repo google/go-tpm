@@ -14,7 +14,11 @@
 
 package tpm
 
-import "github.com/google/go-tpm/tpmutil"
+import (
+	"fmt"
+	"github.com/google/go-tpm/tpmutil"
+	"strings"
+)
 
 // Supported TPM commands.
 const (
@@ -62,6 +66,7 @@ const (
 	capProperty uint32 = 0x00000005
 	capFlag     uint32 = 0x00000004
 	capNVList   uint32 = 0x0000000D
+	capNVIndex  uint32 = 0x00000011
 	capHandle   uint32 = 0x00000014
 )
 
@@ -70,6 +75,63 @@ const (
 	tpmCapPropManufacturer uint32 = 0x00000103
 	tpmCapFlagPermanent    uint32 = 0x00000108
 )
+
+// permission type
+type permission uint32
+
+// NV Permissions and Operations
+// Note: Permissions are summable
+const (
+	nvPerPPWrite    permission = 0x00000001
+	nvPerOwnerWrite permission = 0x00000002
+	nvPerAuthWrite  permission = 0x00000004
+	nvPerWriteAll   permission = 0x00000800
+	// Warning: The Value 0x00001000 is
+	// defined in the spec as
+	// TPM_NV_PER_WRITEDEFINE, but it is
+	// not included directly in this
+	// code because it locks the given
+	// NV Index permanently if used
+	// incorrectly. This operation can't
+	// be undone in any way. Do not use
+	// this value unless you know what
+	// you're doing!
+	nvPerWriteSTClear permission = 0x00002000
+	nvPerGlobalLock   permission = 0x00004000
+	nvPerPPRead       permission = 0x00008000
+	nvPerOwnerRead    permission = 0x00100000
+	nvPerAuthRead     permission = 0x00200000
+	nvPerReadSTClear  permission = 0x80000000
+)
+
+// permMap : Map of TPM_NV_Permissions to its strings for convenience
+var permMap = map[permission]string{
+	nvPerPPWrite:      "PPWrite",
+	nvPerOwnerWrite:   "OwnerWrite",
+	nvPerAuthWrite:    "AuthWrite",
+	nvPerWriteAll:     "WriteAll",
+	nvPerWriteSTClear: " WriteSTClear",
+	nvPerGlobalLock:   "GlobalLock",
+	nvPerPPRead:       "PPRead",
+	nvPerOwnerRead:    "OwnerRead",
+	nvPerAuthRead:     "AuthRead",
+	nvPerReadSTClear:  "ReadSTClear",
+}
+
+// String returns a textual representation of the set of permissions
+func (p permission) String() string {
+	var retString strings.Builder
+	for iterator, item := range permMap {
+		if (p & iterator) != 0 {
+			retString.WriteString(item + " + ")
+		}
+	}
+	if retString.String() == "" {
+		return "Permission/s not found"
+	}
+	return strings.TrimSuffix(retString.String(), " + ")
+
+}
 
 // Entity types. The LSB gives the entity type, and the MSB (currently fixed to
 // 0x00) gives the ADIP type. ADIP type 0x00 is XOR.
@@ -91,6 +153,42 @@ const (
 	rtHash
 	rtTrans
 )
+
+// Locality type
+type Locality byte
+
+// Values of locality
+// Note: Localities are summable
+const (
+	locZero Locality = 1 << iota
+	locOne
+	locTwo
+	locThree
+	locFour
+)
+
+// LocaMap maps Locality values to strings for convenience
+var locaMap = map[Locality]string{
+	locZero:  "Locality 0",
+	locOne:   "Locality 1",
+	locTwo:   "Locality 2",
+	locThree: "Locality 3",
+	locFour:  "Locality 4",
+}
+
+// PrettyPrint for Localities
+func (l Locality) String() string {
+	var retString strings.Builder
+	for iterator, item := range locaMap {
+		if l&iterator != 0 {
+			retString.WriteString(item + " + ")
+		}
+	}
+	if retString.String() == "" {
+		return fmt.Sprintf("locality %d", int(l))
+	}
+	return strings.TrimSuffix(retString.String(), " + ")
+}
 
 // Entity values.
 const (

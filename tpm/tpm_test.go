@@ -101,6 +101,25 @@ func TestGetNVList(t *testing.T) {
 	t.Logf("NVList is: %v", nvList)
 }
 
+func TestGetNVIndex(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+
+	nvList, err := GetNVList(rwc)
+	if err != nil {
+		t.Fatalf("Couldn't read NVList %v", err)
+	}
+	var nvInfo []NVDataPublic
+	for _, nvEntry := range nvList {
+		index, err := GetNVIndex(rwc, nvEntry)
+		if err != nil {
+			t.Fatalf("Can't read NVDataPublic of index: %v with: %v", nvEntry, err)
+		}
+		nvInfo = append(nvInfo, index)
+	}
+	t.Logf("NVIndices with Attributes:%v", nvInfo)
+}
+
 func TestPcrExtend(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
