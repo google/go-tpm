@@ -96,13 +96,17 @@ func (p Public) Encode() ([]byte, error) {
 
 // Key returns the (public) key from the public area of an object.
 func (p Public) Key() (crypto.PublicKey, error) {
-	var pubKey crypto.PublicKey
 	switch p.Type {
 	case AlgRSA:
+		var pubKey *rsa.PublicKey
+
 		// Endianness of big.Int.Bytes/SetBytes and modulus in the TPM is the same
 		// (big-endian).
 		pubKey = &rsa.PublicKey{N: p.RSAParameters.Modulus(), E: int(p.RSAParameters.Exponent())}
+		return pubKey, nil
 	case AlgECC:
+		var pubKey *ecdsa.PublicKey
+
 		curve, ok := toGoCurve[p.ECCParameters.CurveID]
 		if !ok {
 			return nil, fmt.Errorf("can't map TPM EC curve ID 0x%x to Go elliptic.Curve value", p.ECCParameters.CurveID)
@@ -112,10 +116,10 @@ func (p Public) Key() (crypto.PublicKey, error) {
 			Y:     p.ECCParameters.Point.Y(),
 			Curve: curve,
 		}
+		return pubKey, nil
 	default:
 		return nil, fmt.Errorf("unsupported public key type 0x%x", p.Type)
 	}
-	return pubKey, nil
 }
 
 // Name computes the Digest-based Name from the public area of an object.
