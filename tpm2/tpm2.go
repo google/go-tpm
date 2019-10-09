@@ -909,12 +909,15 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 func decodeQuote(in []byte) ([]byte, []byte, error) {
 	buf := bytes.NewBuffer(in)
 	var paramSize uint32
-	var attest tpmutil.U16Bytes
-	if err := tpmutil.UnpackBuf(buf, &paramSize, &attest); err != nil {
+	if err := tpmutil.UnpackBuf(buf, &paramSize); err != nil {
 		return nil, nil, err
 	}
-	rawSig := buf.Next(int(paramSize) - len(attest))
-	return attest, rawSig, nil
+	buf.Truncate(int(paramSize))
+	var attest tpmutil.U16Bytes
+	if err := tpmutil.UnpackBuf(buf, &attest); err != nil {
+		return nil, nil, err
+	}
+	return attest, buf.Bytes(), nil
 }
 
 // Quote returns a quote of PCR values. A quote is a signature of the PCR
