@@ -1028,6 +1028,23 @@ func GetNVList(rw io.ReadWriter) ([]uint32, error) {
 	return nvList, err
 }
 
+// GetNVIndex returns the structure of nvDataPublic which contains
+// information about the requested NV Index.
+// See: TPM-Main-Part-2-TPM-Structures_v1.2_rev116_01032011, P.167
+func GetNVIndex(rw io.ReadWriter, nvIndex uint32) (NVDataPublic, error) {
+	var nvInfo NVDataPublic
+	buf, err := getCapability(rw, capNVIndex, 0)
+	if err != nil {
+		return nvInfo, fmt.Errorf("failed to get capability NVIndex: %v", err)
+	}
+	r := bytes.NewReader(buf)
+	err = binary.Read(r, binary.LittleEndian, &nvInfo)
+	if err != nil {
+		return nvInfo, fmt.Errorf("failed to read nvInfo: %v", err)
+	}
+	return nvInfo, nil
+}
+
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth digest) error {

@@ -109,6 +109,27 @@ type PermanentFlags struct {
 	DisableFullDALogicInfo       bool
 }
 
+// NVDataPublic implements the structure of TPM_NV_DATA_PUBLIC
+// as described in TPM-Main-Part-2-TPM-Structures_v1.2_rev116_01032011, P. 142
+type NVDataPublic struct {
+	Tag          tpmutil.Tag
+	NVIndex      uint32
+	PCRInfoRead  pcrInfoShort
+	PCRInfoWrite pcrInfoShort
+	permission   NVAttributes
+	ReadSTClear  bool
+	WriteSTClear bool
+	WriteDefine  bool
+	Size         uint32
+}
+
+// NVAttributes implements struct of TPM_NV_ATTRIBUTES
+// See: TPM-Main-Part-2-TPM-Structures_v1.2_rev116_01032011, P.140
+type NVAttributes struct {
+	tag        tpmutil.Tag
+	attributes permission
+}
+
 // CloseKey flushes the key associated with the tpmutil.Handle.
 func CloseKey(rw io.ReadWriter, h tpmutil.Handle) error {
 	return flushSpecific(rw, h, rtKey)
