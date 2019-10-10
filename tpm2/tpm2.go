@@ -906,24 +906,39 @@ func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword str
 	return concat(ha, auth, params, pcrs)
 }
 
-func decodeQuote(in []byte) ([]byte, *Signature, error) {
+func decodeQuote(in []byte) ([]byte, []byte, error) {
 	buf := bytes.NewBuffer(in)
 	var paramSize uint32
-	var attest tpmutil.U16Bytes
-	if err := tpmutil.UnpackBuf(buf, &paramSize, &attest); err != nil {
+	if err := tpmutil.UnpackBuf(buf, &paramSize); err != nil {
 		return nil, nil, err
 	}
-	sig, err := DecodeSignature(buf)
-	return attest, sig, err
+	buf.Truncate(int(paramSize))
+	var attest tpmutil.U16Bytes
+	if err := tpmutil.UnpackBuf(buf, &attest); err != nil {
+		return nil, nil, err
+	}
+	return attest, buf.Bytes(), nil
 }
 
 // Quote returns a quote of PCR values. A quote is a signature of the PCR
 // values, created using a signing TPM key.
 //
-// Returns attestation data and the signature.
-//
-// Note: currently only RSA signatures are supported.
+// Returns attestation data and the decoded signature.
 func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, *Signature, error) {
+	attest, sigRaw, err := QuoteRaw(rw, signingHandle, parentPassword, ownerPassword, toQuote, sel, sigAlg)
+	if err != nil {
+		return nil, nil, err
+	}
+	sig, err := DecodeSignature(bytes.NewBuffer(sigRaw))
+	if err != nil {
+		return nil, nil, err
+	}
+	return attest, sig, nil
+}
+
+// QuoteRaw is very similar to Quote, except that it will return
+// the raw signature in a byte array without decoding.
+func QuoteRaw(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, []byte, error) {
 	cmd, err := encodeQuote(signingHandle, parentPassword, ownerPassword, toQuote, sel, sigAlg)
 	if err != nil {
 		return nil, nil, err
