@@ -15,6 +15,7 @@
 package tpm2
 
 import (
+	"crypto"
 	"crypto/elliptic"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -57,6 +58,16 @@ func (a Algorithm) HashConstructor() (func() hash.Hash, error) {
 		return nil, fmt.Errorf("algorithm not supported: 0x%x", a)
 	}
 	return c, nil
+}
+
+// HashMapping returns a crypto.Hash based on the given TPM_ALG_ID.
+// An error is returned if the given algorithm is not a hash algorithm.
+func (a Algorithm) HashMapping() (crypto.Hash, error) {
+	hash, ok := hashMapping[a]
+	if !ok {
+		return crypto.Hash(0), fmt.Errorf("algorithm not supported: 0x%x", a)
+	}
+	return hash, nil
 }
 
 // Supported Algorithms.
@@ -378,6 +389,13 @@ var hashConstructors = map[Algorithm]func() hash.Hash{
 	AlgSHA256: sha256.New,
 	AlgSHA384: sha512.New384,
 	AlgSHA512: sha512.New,
+}
+
+var hashMapping = map[Algorithm]crypto.Hash{
+	AlgSHA1:   crypto.SHA1,
+	AlgSHA256: crypto.SHA256,
+	AlgSHA384: crypto.SHA384,
+	AlgSHA512: crypto.SHA512,
 }
 
 // NVAttr is a bitmask used in Attributes field of NV indexes. Individual
