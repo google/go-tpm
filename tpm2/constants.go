@@ -17,14 +17,22 @@ package tpm2
 import (
 	"crypto"
 	"crypto/elliptic"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"fmt"
-	"hash"
+
+	// register hash algorithm
+	_ "crypto/sha1"
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 
 	"github.com/google/go-tpm/tpmutil"
 )
+
+var hashMapping = map[Algorithm]crypto.Hash{
+	AlgSHA1:   crypto.SHA1,
+	AlgSHA256: crypto.SHA256,
+	AlgSHA384: crypto.SHA384,
+	AlgSHA512: crypto.SHA512,
+}
 
 // MAX_DIGEST_BUFFER is the maximum size of []byte request or response fields.
 // Typically used for chunking of big blobs of data (such as for hashing or
@@ -49,23 +57,15 @@ func (a Algorithm) UsesHash() bool {
 	return a == AlgOAEP
 }
 
-// HashConstructor returns a function that can be used to make a
-// hash.Hash using the specified algorithm. An error is returned
-// if the algorithm is not a hash algorithm.
-func (a Algorithm) HashConstructor() (func() hash.Hash, error) {
-	c, ok := hashConstructors[a]
-	if !ok {
-		return nil, fmt.Errorf("algorithm not supported: 0x%x", a)
-	}
-	return c, nil
-}
-
-// HashMapping returns a crypto.Hash based on the given TPM_ALG_ID.
-// An error is returned if the given algorithm is not a hash algorithm.
-func (a Algorithm) HashMapping() (crypto.Hash, error) {
+// Hash returns a crypto.Hash based on the given TPM_ALG_ID.
+// An error is returned if the given algorithm is not a hash algorithm or is not available.
+func (a Algorithm) Hash() (crypto.Hash, error) {
 	hash, ok := hashMapping[a]
 	if !ok {
-		return crypto.Hash(0), fmt.Errorf("algorithm not supported: 0x%x", a)
+		return crypto.Hash(0), fmt.Errorf("hash algorithm not supported: 0x%x", a)
+	}
+	if !hash.Available() {
+		return crypto.Hash(0), fmt.Errorf("go hash algorithm #%d not available", hash)
 	}
 	return hash, nil
 }
@@ -367,36 +367,7 @@ const (
 // Regular TPM 2.0 devices use 24-bit mask (3 bytes) for PCR selection.
 const sizeOfPCRSelect = 3
 
-// digestSize returns the size of a digest for hashing algorithm alg, or 0 if
-// it's not recognized.
-func digestSize(alg Algorithm) int {
-	switch alg {
-	case AlgSHA1:
-		return sha1.Size
-	case AlgSHA256:
-		return sha256.Size
-	case AlgSHA512:
-		return sha512.Size
-	default:
-		return 0
-	}
-}
-
 const defaultRSAExponent = 1<<16 + 1
-
-var hashConstructors = map[Algorithm]func() hash.Hash{
-	AlgSHA1:   sha1.New,
-	AlgSHA256: sha256.New,
-	AlgSHA384: sha512.New384,
-	AlgSHA512: sha512.New,
-}
-
-var hashMapping = map[Algorithm]crypto.Hash{
-	AlgSHA1:   crypto.SHA1,
-	AlgSHA256: crypto.SHA256,
-	AlgSHA384: crypto.SHA384,
-	AlgSHA512: crypto.SHA512,
-}
 
 // NVAttr is a bitmask used in Attributes field of NV indexes. Individual
 // flags should be OR-ed to form a full mask.

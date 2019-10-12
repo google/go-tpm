@@ -124,11 +124,11 @@ func (p Public) Name() (Name, error) {
 	if err != nil {
 		return Name{}, err
 	}
-	hash, err := p.NameAlg.HashConstructor()
+	hash, err := p.NameAlg.Hash()
 	if err != nil {
 		return Name{}, err
 	}
-	nameHash := hash()
+	nameHash := hash.New()
 	nameHash.Write(pubEncoded)
 	return Name{
 		Digest: &HashValue{
@@ -965,11 +965,11 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 	if err := tpmutil.UnpackBuf(in, &hv.Alg); err != nil {
 		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
-	hfn, ok := hashConstructors[hv.Alg]
+	hfn, ok := hashMapping[hv.Alg]
 	if !ok {
 		return nil, fmt.Errorf("unsupported hash algorithm type 0x%x", hv.Alg)
 	}
-	hv.Value = make(tpmutil.U16Bytes, hfn().Size())
+	hv.Value = make(tpmutil.U16Bytes, hfn.Size())
 	if _, err := in.Read(hv.Value); err != nil {
 		return nil, fmt.Errorf("decoding Value: %v", err)
 	}
