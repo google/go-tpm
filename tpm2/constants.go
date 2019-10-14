@@ -19,7 +19,7 @@ import (
 	"crypto/elliptic"
 	"fmt"
 
-	// register hash algorithm
+	// Register the relevant hash implementations to prevent a runtime failure.
 	_ "crypto/sha1"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
