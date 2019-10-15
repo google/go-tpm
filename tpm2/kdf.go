@@ -27,11 +27,11 @@ import (
 // The label parameter is a non-null-terminated string.
 // The contextU & contextV parameters are optional.
 func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte, bits int) ([]byte, error) {
-	h, err := hashAlg.HashConstructor()
+	h, err := hashAlg.Hash()
 	if err != nil {
 		return nil, err
 	}
-	mac := hmac.New(h, key)
+	mac := hmac.New(h.New, key)
 
 	out := kdf(mac, bits, func() {
 		mac.Write([]byte(label))
@@ -50,11 +50,11 @@ func KDFa(hashAlg Algorithm, key []byte, label string, contextU, contextV []byte
 // The use parameter is a non-null-terminated string.
 // The partyUInfo and partyVInfo are the x coordinates of the initiators and the responders ECC points respectively.
 func KDFe(hashAlg Algorithm, z []byte, use string, partyUInfo, partyVInfo []byte, bits int) ([]byte, error) {
-	createHash, err := hashAlg.HashConstructor()
+	createHash, err := hashAlg.Hash()
 	if err != nil {
 		return nil, err
 	}
-	h := createHash()
+	h := createHash.New()
 
 	out := kdf(h, bits, func() {
 		h.Write(z)

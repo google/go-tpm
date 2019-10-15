@@ -59,7 +59,7 @@ func Generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secre
 }
 
 func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret []byte, rnd io.Reader) ([]byte, []byte, error) {
-	hashNew, err := aik.Alg.HashConstructor()
+	crypothash, err := aik.Alg.Hash()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,7 +75,7 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	// Encrypt the seed value using the provided public key.
 	// See annex B, section 10.4 of the TPM specification revision 2 part 1.
 	label := append([]byte(labelIdentity), 0)
-	encSecret, err := rsa.EncryptOAEP(hashNew(), rnd, pub, seed, label)
+	encSecret, err := rsa.EncryptOAEP(crypothash.New(), rnd, pub, seed, label)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating encrypted seed: %v", err)
 	}
@@ -107,12 +107,12 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
 	// See section 24.5 of the TPM specification revision 2 part 1.
-	macKey, err := tpm2.KDFa(aik.Alg, seed, labelIntegrity, nil, nil, hashNew().Size()*8)
+	macKey, err := tpm2.KDFa(aik.Alg, seed, labelIntegrity, nil, nil, crypothash.Size()*8)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating HMAC key: %v", err)
 	}
 
-	mac := hmac.New(hashNew, macKey)
+	mac := hmac.New(crypothash.New, macKey)
 	mac.Write(encIdentity)
 	mac.Write(aikNameEncoded)
 	integrityHMAC := mac.Sum(nil)
