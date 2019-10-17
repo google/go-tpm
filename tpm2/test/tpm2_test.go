@@ -930,6 +930,66 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 }
 
+func TestSealAndCertifyCreation(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	params := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagStorageDefault | FlagNoDA,
+		RSAParameters: &RSAParams{
+			Symmetric: &SymScheme{
+				Alg:     AlgAES,
+				KeyBits: 128,
+				Mode:    AlgCFB},
+			KeyBits:    2048,
+			ModulusRaw: make([]byte, 256),
+		},
+	}
+	keyHandle, _, _, _, _, _, err := CreatePrimaryEx(rw, HandleOwner, PCRSelection{}, emptyPassword, emptyPassword, params)
+	if err != nil {
+		t.Fatalf("CreatePrimaryEx failed: %s", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Fatalf("StartAuthSession() failed: %v", err)
+	}
+	digest, err := PolicyGetDigest(rw, sessHandle)
+	secret := []byte("test")
+	prv, pub, _, creationHash, creationTicket, err := SealCertifiedWithPCR(rw, keyHandle, "", "", digest, secret, pcrSelection7)
+	if err != nil {
+		t.Fatalf("Seal failed: %v", err)
+	}
+
+	sealedHandle, _, err := Load(rw, keyHandle, "", pub, prv)
+	attest, _, err := CertifyCreation(rw, "", sealedHandle, HandleNull, nil, creationHash, SigScheme{}, creationTicket)
+	if err != nil {
+		t.Fatalf("certify failed: %v", err)
+	}
+	att, err := DecodeAttestationData(attest)
+	if err != nil {
+		t.Fatalf("DecodeAttestationData(%v) failed: %v", attest, err)
+	}
+	if att.Type != TagAttestCreation {
+		t.Errorf("Got att.Type = %v, want TagAttestCreation", att.Type)
+	}
+	p, err := DecodePublic(pub)
+	if err != nil {
+		t.Fatalf("DecodePublic failed: %v", err)
+	}
+	match, err := att.AttestedCreationInfo.Name.MatchesPublic(p)
+	if err != nil {
+		t.Fatalf("MatchesPublic failed: %v", err)
+	}
+	if !match {
+		t.Error("Attested name does not match returned public key.")
+		t.Logf("Name: %v", att.AttestedCreationInfo.Name)
+		t.Logf("Public: %v", p)
+	}
+}
+
 func TestNVReadWrite(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()

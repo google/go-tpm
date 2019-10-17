@@ -564,6 +564,18 @@ func CreateKeyUsingAuth(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection
 // password and auth policy. Access to the parent must be available with a simple password.
 // Returns private and public portions of the created object.
 func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, objectAuthPolicy []byte, sensitiveData []byte) ([]byte, []byte, error) {
+	private, public, _, _, _, err := SealCertifiedWithPCR(rw, parentHandle, parentPassword, objectPassword, objectAuthPolicy, sensitiveData, PCRSelection{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return private, public, nil
+}
+
+// SealCertifiedWithPCR takes in a PCR selection which will allow the user to certify the PCR
+// state when sealing. In addition to the private and public (returned by Seal()), this function
+// also returns creationData, creationDataHash and a ticket for the user to certify the sealed
+// blob was created in a certain PCR state in the future.
+func SealCertifiedWithPCR(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, objectAuthPolicy []byte, sensitiveData []byte, pcrSelection PCRSelection) ([]byte, []byte, []byte, []byte, *Ticket, error) {
 	inPublic := Public{
 		Type:       AlgKeyedHash,
 		NameAlg:    AlgSHA256,
@@ -571,11 +583,11 @@ func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectP
 		AuthPolicy: objectAuthPolicy,
 	}
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentPassword)}
-	private, public, _, _, _, err := create(rw, parentHandle, auth, objectPassword, sensitiveData, inPublic, PCRSelection{})
+	private, public, creationData, creationHash, creationTicket, err := create(rw, parentHandle, auth, objectPassword, sensitiveData, inPublic, pcrSelection)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
-	return private, public, nil
+	return private, public, creationData, creationHash, &creationTicket, nil
 }
 
 func encodeImport(parentHandle tpmutil.Handle, auth AuthCommand, publicBlob, privateBlob, symSeed, encryptionKey tpmutil.U16Bytes, sym *SymScheme) ([]byte, error) {
@@ -1395,8 +1407,21 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 	var paramSize uint32
 	var attest, signature tpmutil.U16Bytes
 	var sigAlg, hashAlg Algorithm
-	if _, err := tpmutil.Unpack(resp, &paramSize, &attest, &sigAlg, &hashAlg, &signature); err != nil {
+
+	buf := bytes.NewBuffer(resp)
+	if err := tpmutil.UnpackBuf(buf, &paramSize); err != nil {
 		return nil, nil, err
+	}
+	buf.Truncate(int(paramSize))
+	if err := tpmutil.UnpackBuf(buf, &attest, &sigAlg); err != nil {
+		return nil, nil, err
+	}
+	// If sigAlg is null, there will be no hashAlg and signature,
+	// See TPM spec part4 pg227 SignAttestInfo()
+	if sigAlg != AlgNull {
+		if err := tpmutil.UnpackBuf(buf, &hashAlg, &signature); err != nil {
+			return nil, nil, err
+		}
 	}
 	return attest, signature, nil
 }
@@ -1438,6 +1463,7 @@ func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qua
 
 // CertifyCreation generates a signature of a newly-created &
 // loaded TPM object, using signer as the signing key.
+// Signing key could be tpm2.HandleNull, as a result the signature will not generated.
 func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, sigScheme SigScheme, creationTicket *Ticket) (attestation, signature []byte, err error) {
 	cmd, err := encodeCertifyCreation(objectAuth, object, signer, qualifyingData, creationHash, sigScheme, creationTicket)
 	if err != nil {
