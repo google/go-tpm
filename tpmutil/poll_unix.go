@@ -19,13 +19,12 @@ func poll(f *os.File) error {
 		timeout = 0 // No timeout
 	)
 
-	_, err := unix.Poll(fds, timeout)
-	if err != nil {
+	if _, err := unix.Poll(fds, timeout); err != nil {
 		return err
 	}
 
 	// Revents is filled in by the kernel.
-	// If the expected event happened, Revents should match events.
+	// If the expected event happened, Revents should match Events.
 	if fds[0].Revents != fds[0].Events {
 		return fmt.Errorf("unexpected poll Revents 0x%x", fds[0].Revents)
 	}
