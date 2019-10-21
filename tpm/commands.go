@@ -158,6 +158,22 @@ func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	return b, nil
 }
 
+// nvDefineSpace allocates space in NVRAM
+func nvDefineSpace(rw io.ReadWriter, nvData NVDataPublic, enc digest, ca *commandAuth) (*responseAuth, uint32, error) {
+	var ra responseAuth
+	in := []interface{}{nvData, enc}
+	if ca != nil {
+		in = append(in, ca)
+	}
+	out := []interface{}{&ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordNVDefineSpace, in, out)
+	if err != nil {
+		return nil, 0, err
+	}
+	return &ra, ret, nil
+
+}
+
 // nvReadValue reads from the NVRAM
 // If TPM isn't locked, no authentification is needed.
 // See TPM-Main-Part-3-Commands-20.4
