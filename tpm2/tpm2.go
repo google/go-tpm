@@ -1402,8 +1402,23 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 	var paramSize uint32
 	var attest, signature tpmutil.U16Bytes
 	var sigAlg, hashAlg Algorithm
-	if _, err := tpmutil.Unpack(resp, &paramSize, &attest, &sigAlg, &hashAlg, &signature); err != nil {
+
+	buf := bytes.NewBuffer(resp)
+	if err := tpmutil.UnpackBuf(buf, &paramSize); err != nil {
 		return nil, nil, err
+	}
+	buf.Truncate(int(paramSize))
+	if err := tpmutil.UnpackBuf(buf, &attest, &sigAlg); err != nil {
+		return nil, nil, err
+	}
+	// If sigAlg is AlgNull, there will be no hashAlg or signature.
+	// This will happen if AlgNull was passed in the Certify() as
+	// the signing key (no need to sign the response).
+	// See TPM2 spec part4 pg227 SignAttestInfo()
+	if sigAlg != AlgNull {
+		if err := tpmutil.UnpackBuf(buf, &hashAlg, &signature); err != nil {
+			return nil, nil, err
+		}
 	}
 	return attest, signature, nil
 }
