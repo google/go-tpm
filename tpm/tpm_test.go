@@ -200,8 +200,8 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Invalid PCR composite")
 	}
 
-	var locality byte
-	_, err = createPCRInfoLong(locality, mask, pcrs)
+	var loc Locality
+	_, err = createPCRInfoLong(loc, mask, pcrs)
 	if err != nil {
 		t.Fatal("Couldn't create a pcrInfoLong structure for these PCRs")
 	}
@@ -220,6 +220,33 @@ func TestGetRandom(t *testing.T) {
 	if len(b) != 16 {
 		t.Fatal("Couldn't get 16 bytes of randomness from the TPM")
 	}
+}
+
+func TestNVDefineSpace(t *testing.T) {
+
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+	// Address reserved for testing as described in spec
+	// TPM-Main-Part-2-TPM-Structures_v1.2_rev116_01032011, P.139
+	owner := getAuth(ownerAuthEnvVar)
+	nvIndex := uint32(0x0000F004)
+	pcrInfoRead, err := newPCRInfoShort(rwc, locZero, []int{1})
+	if err != nil {
+		t.Fatalf("Couldn't create PCRInfoRead in define space")
+	}
+	pcrInfoWrite, err := newPCRInfoShort(rwc, locZero, []int{1})
+	if err != nil {
+		t.Fatalf("Couldn't create PCRInfoWrite in define space")
+	}
+	nvAtt := &nvAttributes{tagNVAttributes, nvPerOwnerWrite}
+	nvData := NVDataPublic{tagNVDataPublic, nvIndex, *pcrInfoRead, *pcrInfoWrite, *nvAtt, true, true, false, uint32(20)}
+
+	err = NVDefineSpace(rwc, nvData, []byte(owner[:]))
+	if err != nil {
+		t.Fatalf("Couldn't define space in NV RAM %v", err)
+	}
+	t.Log(err)
+
 }
 
 func TestOIAP(t *testing.T) {
@@ -292,7 +319,7 @@ func TestSeal(t *testing.T) {
 	data[2] = 139
 
 	srkAuth := getAuth(srkAuthEnvVar)
-	sealed, err := Seal(rwc, 0 /* locality 0 */, []int{17} /* PCR 17 */, data, srkAuth[:])
+	sealed, err := Seal(rwc, locZero, []int{17} /* PCR 17 */, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}
@@ -320,7 +347,7 @@ func TestReseal(t *testing.T) {
 	pcrMap[23] = make([]byte, 20)
 	pcrMap[16] = make([]byte, 20)
 	srkAuth := getAuth(srkAuthEnvVar)
-	sealed, err := Reseal(rwc, 0 /* locality 0 */, pcrMap, data, srkAuth[:])
+	sealed, err := Reseal(rwc, locZero, pcrMap, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}

@@ -23,6 +23,8 @@ import (
 // Supported TPM commands.
 const (
 	tagPCRInfoLong     uint16 = 0x06
+	tagNVAttributes    uint16 = 0x0017
+	tagNVDataPublic    uint16 = 0x0018
 	tagRQUCommand      uint16 = 0x00C1
 	tagRQUAuth1Command uint16 = 0x00C2
 	tagRQUAuth2Command uint16 = 0x00C3
@@ -56,6 +58,7 @@ const (
 	ordReadPubEK            uint32 = 0x0000007C
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
+	ordNVDefineSpace        uint32 = 0x000000CC
 	ordPcrReset             uint32 = 0x000000C8
 	ordNVReadValue          uint32 = 0x000000CF
 )
@@ -176,7 +179,7 @@ var locaMap = map[Locality]string{
 	locFour:  "Locality 4",
 }
 
-// PrettyPrint for Localities
+// // String returns a textual representation of the set of Localities
 func (l Locality) String() string {
 	var retString strings.Builder
 	for iterator, item := range locaMap {
