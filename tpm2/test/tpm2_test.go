@@ -897,15 +897,14 @@ func TestCreateKeyWithSensitive(t *testing.T) {
 	}
 	defer FlushContext(rw, parentHandle)
 
-	secret := []byte("test_secret")
 	_, _, _, _, _, err = CreateKeyWithSensitive(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, Public{
 		Type:       AlgKeyedHash,
 		NameAlg:    AlgSHA256,
 		Attributes: FlagFixedTPM | FlagFixedParent,
 		AuthPolicy: nil,
-	}, secret)
+	}, []byte("test_secret"))
 	if err != nil {
-		t.Fatalf("CreateKeyWithSensitive failed: %s", err)
+		t.Errorf("CreateKeyWithSensitive failed: %s", err)
 	}
 }
 
