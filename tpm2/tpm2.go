@@ -560,9 +560,9 @@ func CreateKeyUsingAuth(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection
 	return create(rw, owner, auth, ownerPassword, nil /*inSensitive*/, pub, sel)
 }
 
-// CreateWithSensitive is very similar to CreateKey, except
+// CreateKeyWithSensitive is very similar to CreateKey, except
 // that it can take in a piece of sensitive data.
-func CreateWithSensitive(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public, sensitive []byte) (private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
+func CreateKeyWithSensitive(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public, sensitive []byte) (private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentPassword)}
 	return create(rw, owner, auth, ownerPassword, sensitive, pub, sel)
 }

@@ -876,6 +876,39 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 	}
 }
 
+func TestCreateKeyWithSensitive(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	parentHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagRestricted | FlagDecrypt | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
+		RSAParameters: &RSAParams{
+			Symmetric: &SymScheme{
+				Alg:     AlgAES,
+				KeyBits: 128,
+				Mode:    AlgCFB,
+			},
+			KeyBits: 2048,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %s", err)
+	}
+	defer FlushContext(rw, parentHandle)
+
+	secret := []byte("test_secret")
+	_, _, _, _, _, err = CreateKeyWithSensitive(rw, parentHandle, pcrSelection7, defaultPassword, defaultPassword, Public{
+		Type:       AlgKeyedHash,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagFixedTPM | FlagFixedParent,
+		AuthPolicy: nil,
+	}, secret)
+	if err != nil {
+		t.Fatalf("CreateKeyWithSensitive failed: %s", err)
+	}
+}
+
 func TestCreateAndCertifyCreation(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
