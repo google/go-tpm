@@ -560,6 +560,13 @@ func CreateKeyUsingAuth(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection
 	return create(rw, owner, auth, ownerPassword, nil /*inSensitive*/, pub, sel)
 }
 
+// CreateKeyWithSensitive is very similar to CreateKey, except
+// that it can take in a piece of sensitive data.
+func CreateKeyWithSensitive(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public, sensitive []byte) (private, public, creationData, creationHash []byte, creationTicket Ticket, err error) {
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentPassword)}
+	return create(rw, owner, auth, ownerPassword, sensitive, pub, sel)
+}
+
 // Seal creates a data blob object that seals the sensitive data under a parent and with a
 // password and auth policy. Access to the parent must be available with a simple password.
 // Returns private and public portions of the created object.
