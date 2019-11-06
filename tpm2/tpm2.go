@@ -421,12 +421,8 @@ func decodeCreatePrimary(in []byte) (handle tpmutil.Handle, public, creationData
 		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding handle, paramSize: %v", err)
 	}
 
-	if err := tpmutil.UnpackBuf(buf, &public, &creationData, &creationHash, &ticket); err != nil {
-		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding public, creationData, creationHash, ticket: %v", err)
-	}
-
-	if err := tpmutil.UnpackBuf(buf, &creationName); err != nil {
-		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding creationName: %v", err)
+	if err := tpmutil.UnpackBuf(buf, &public, &creationData, &creationHash, &ticket, &creationName); err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding public, creationData, creationHash, ticket, creationName: %v", err)
 	}
 
 	if _, err := DecodeCreationData(creationData); err != nil {
@@ -741,11 +737,11 @@ func decodePolicySecret(in []byte) (*Ticket, error) {
 	if err := tpmutil.UnpackBuf(buf, &paramSize, &timeout); err != nil {
 		return nil, fmt.Errorf("decoding timeout: %v", err)
 	}
-	var t *Ticket
-	if err := tpmutil.UnpackBuf(buf, t); err != nil {
+	var t Ticket
+	if err := tpmutil.UnpackBuf(buf, &t); err != nil {
 		return nil, fmt.Errorf("decoding ticket: %v", err)
 	}
-	return t, nil
+	return &t, nil
 }
 
 // PolicySecret sets a secret authorization requirement on the provided entity.
