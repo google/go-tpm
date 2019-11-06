@@ -412,30 +412,25 @@ func encodeCreate(owner tpmutil.Handle, sel PCRSelection, auth AuthCommand, owne
 	)
 }
 
-func decodeCreatePrimary(in []byte) (handle tpmutil.Handle, public, creationData, creationHash tpmutil.U16Bytes, ticket *Ticket, creationName tpmutil.U16Bytes, err error) {
+func decodeCreatePrimary(in []byte) (handle tpmutil.Handle, public, creationData, creationHash tpmutil.U16Bytes, ticket Ticket, creationName tpmutil.U16Bytes, err error) {
 	var paramSize uint32
 
 	buf := bytes.NewBuffer(in)
 	// Handle and auth data.
 	if err := tpmutil.UnpackBuf(buf, &handle, &paramSize); err != nil {
-		return 0, nil, nil, nil, nil, nil, fmt.Errorf("decoding handle, paramSize: %v", err)
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding handle, paramSize: %v", err)
 	}
 
-	if err := tpmutil.UnpackBuf(buf, &public, &creationData, &creationHash); err != nil {
-		return 0, nil, nil, nil, nil, nil, fmt.Errorf("decoding public, creationData, creationHash: %v", err)
-	}
-
-	ticket, err = decodeTicket(buf)
-	if err != nil {
-		return 0, nil, nil, nil, nil, nil, fmt.Errorf("decoding ticket: %v", err)
+	if err := tpmutil.UnpackBuf(buf, &public, &creationData, &creationHash, &ticket); err != nil {
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding public, creationData, creationHash, ticket: %v", err)
 	}
 
 	if err := tpmutil.UnpackBuf(buf, &creationName); err != nil {
-		return 0, nil, nil, nil, nil, nil, fmt.Errorf("decoding creationName: %v", err)
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("decoding creationName: %v", err)
 	}
 
 	if _, err := DecodeCreationData(creationData); err != nil {
-		return 0, nil, nil, nil, nil, nil, fmt.Errorf("parsing CreationData: %v", err)
+		return 0, nil, nil, nil, Ticket{}, nil, fmt.Errorf("parsing CreationData: %v", err)
 	}
 	return handle, public, creationData, creationHash, ticket, creationName, err
 }
@@ -464,15 +459,15 @@ func CreatePrimary(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, par
 // CreatePrimaryEx initializes the primary key in a given hierarchy.
 // This function differs from CreatePrimary in that all response elements
 // are returned, and they are returned in relatively raw form.
-func CreatePrimaryEx(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (keyHandle tpmutil.Handle, public, creationData, creationHash []byte, ticket *Ticket, creationName []byte, err error) {
+func CreatePrimaryEx(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSelection, parentPassword, ownerPassword string, pub Public) (keyHandle tpmutil.Handle, public, creationData, creationHash []byte, ticket Ticket, creationName []byte, err error) {
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentPassword)}
 	cmd, err := encodeCreate(owner, sel, auth, ownerPassword, nil /*inSensitive*/, pub)
 	if err != nil {
-		return 0, nil, nil, nil, nil, nil, err
+		return 0, nil, nil, nil, Ticket{}, nil, err
 	}
 	resp, err := runCommand(rw, TagSessions, cmdCreatePrimary, tpmutil.RawBytes(cmd))
 	if err != nil {
-		return 0, nil, nil, nil, nil, nil, err
+		return 0, nil, nil, nil, Ticket{}, nil, err
 	}
 
 	return decodeCreatePrimary(resp)
@@ -519,14 +514,12 @@ func ReadPublic(rw io.ReadWriter, handle tpmutil.Handle) (Public, []byte, []byte
 func decodeCreate(in []byte) (private, public, creationData, creationHash tpmutil.U16Bytes, creationTicket Ticket, err error) {
 	buf := bytes.NewBuffer(in)
 	var paramSize uint32
-	if err := tpmutil.UnpackBuf(buf, &paramSize, &private, &public, &creationData, &creationHash); err != nil {
-		return nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding Handle, Private, Public, CreationData, CreationHash: %v", err)
+	if err := tpmutil.UnpackBuf(buf, &paramSize, &private, &public, &creationData, &creationHash, &creationTicket); err != nil {
+		return nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding Handle, Private, Public, CreationData, CreationHash, CreationTicket: %v", err)
 	}
-	cr, err := decodeTicket(buf)
 	if err != nil {
 		return nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationTicket: %v", err)
 	}
-	creationTicket = *cr
 	if _, err := DecodeCreationData(creationData); err != nil {
 		return nil, nil, nil, nil, Ticket{}, fmt.Errorf("decoding CreationData: %v", err)
 	}
@@ -748,12 +741,11 @@ func decodePolicySecret(in []byte) (*Ticket, error) {
 	if err := tpmutil.UnpackBuf(buf, &paramSize, &timeout); err != nil {
 		return nil, fmt.Errorf("decoding timeout: %v", err)
 	}
-
-	ticket, err := decodeTicket(buf)
-	if err != nil {
+	var t *Ticket
+	if err := tpmutil.UnpackBuf(buf, t); err != nil {
 		return nil, fmt.Errorf("decoding ticket: %v", err)
 	}
-	return ticket, nil
+	return t, nil
 }
 
 // PolicySecret sets a secret authorization requirement on the provided entity.
@@ -1438,7 +1430,7 @@ func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmu
 	return decodeCertify(resp)
 }
 
-func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash tpmutil.U16Bytes, scheme SigScheme, ticket *Ticket) ([]byte, error) {
+func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash tpmutil.U16Bytes, scheme SigScheme, ticket Ticket) ([]byte, error) {
 	handles, err := tpmutil.Pack(signer, object)
 	if err != nil {
 		return nil, err
@@ -1460,7 +1452,7 @@ func encodeCertifyCreation(objectAuth string, object, signer tpmutil.Handle, qua
 
 // CertifyCreation generates a signature of a newly-created &
 // loaded TPM object, using signer as the signing key.
-func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, sigScheme SigScheme, creationTicket *Ticket) (attestation, signature []byte, err error) {
+func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil.Handle, qualifyingData, creationHash []byte, sigScheme SigScheme, creationTicket Ticket) (attestation, signature []byte, err error) {
 	cmd, err := encodeCertifyCreation(objectAuth, object, signer, qualifyingData, creationHash, sigScheme, creationTicket)
 	if err != nil {
 		return nil, nil, err
