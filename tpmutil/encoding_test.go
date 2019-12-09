@@ -364,3 +364,17 @@ func TestUnpackHandlesArea(t *testing.T) {
 		t.Errorf("Unpack(%v, %T): %T = %v, want %v", buf, &out, out, out, want)
 	}
 }
+
+func TestUnpackMalformedBytes(t *testing.T) {
+	// buf is malformed because the leading size prefix is illegally large.
+	buf := []byte{0xff, 0xff, 0xff, 0xff, 0x20}
+
+	var u32 U32Bytes
+	if _, err := Unpack(buf, &u32); err != bytes.ErrTooLarge {
+		t.Errorf("Unpack(U32Bytes{}) returned %q, want %q", err, bytes.ErrTooLarge)
+	}
+	var u16 U16Bytes
+	if _, err := Unpack(buf, &u16); err != io.ErrUnexpectedEOF {
+		t.Errorf("Unpack(U16Bytes{}) returned %q, want %q", err, io.ErrUnexpectedEOF)
+	}
+}
