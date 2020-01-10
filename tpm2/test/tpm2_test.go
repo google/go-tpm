@@ -1511,6 +1511,43 @@ func TestPlainImport(t *testing.T) {
 	}
 }
 
+func TestClear(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	err := Clear(rw, HandleLockout, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession})
+	if err != nil {
+		t.Fatalf("Clear failed: %v", err)
+	}
+}
+
+func TestHierarchyChangeAuth(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	err := Clear(rw, HandleLockout, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession})
+	if err != nil {
+		t.Fatalf("Clear failed: %v", err)
+	}
+
+	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("abcd")})
+	if err != nil {
+		t.Fatalf("HierarchyChangeAuth failed: %v", err)
+	}
+
+	// try to set again password again, without valid providing valid auth
+	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("abcd")})
+	if err == nil {
+		t.Fatal("Expected HierarchyChangeAuth to fail")
+	}
+
+	err = Clear(rw, HandleLockout, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession})
+	if err != nil {
+		t.Fatalf("Clear failed: %v", err)
+	}
+
+}
+
 func TestPolicyPCR(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()

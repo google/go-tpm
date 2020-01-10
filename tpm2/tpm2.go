@@ -1060,6 +1060,57 @@ func EvictControl(rw io.ReadWriter, ownerAuth string, owner, objectHandle, persi
 	return err
 }
 
+// Clears lockout, endorsement and owner hierarchy authorization values
+func Clear(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand) error {
+	cmd, err := encodeClear(handle, auth)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdClear, tpmutil.RawBytes(cmd))
+	return err
+}
+
+func encodeClear(handle tpmutil.Handle, auth AuthCommand) ([]byte, error) {
+	ah, err := tpmutil.Pack(handle)
+	if err != nil {
+		return nil, err
+	}
+	encodedAuth, err := encodeAuthArea(auth)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ah, encodedAuth)
+}
+
+func encodeHierarchyChangeAuth(handle tpmutil.Handle, auth, newAuth AuthCommand) ([]byte, error) {
+	ah, err := tpmutil.Pack(handle)
+	if err != nil {
+		return nil, err
+	}
+	encodedAuth, err := encodeAuthArea(auth)
+	if err != nil {
+		return nil, err
+	}
+
+	newEncodedAuth, err := encodeAuthArea(newAuth)
+	param, err := tpmutil.Pack(tpmutil.U16Bytes(newEncodedAuth))
+	if err != nil {
+		return nil, err
+	}
+
+	return concat(ah, encodedAuth, param)
+}
+
+// HierarchyChangeAuth changes the authorization values for a hierarchy or for the lockout authority
+func HierarchyChangeAuth(rw io.ReadWriter, handle tpmutil.Handle, auth, newAuth AuthCommand) error {
+	cmd, err := encodeHierarchyChangeAuth(handle, auth, newAuth)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdHierarchyChangeAuth, tpmutil.RawBytes(cmd))
+	return err
+}
+
 // ContextSave returns an encrypted version of the session, object or sequence
 // context for storage outside of the TPM. The handle references context to
 // store.
