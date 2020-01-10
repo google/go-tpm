@@ -1060,16 +1060,6 @@ func EvictControl(rw io.ReadWriter, ownerAuth string, owner, objectHandle, persi
 	return err
 }
 
-// Clears lockout, endorsement and owner hierarchy authorization values
-func Clear(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand) error {
-	cmd, err := encodeClear(handle, auth)
-	if err != nil {
-		return err
-	}
-	_, err = runCommand(rw, TagSessions, cmdClear, tpmutil.RawBytes(cmd))
-	return err
-}
-
 func encodeClear(handle tpmutil.Handle, auth AuthCommand) ([]byte, error) {
 	ah, err := tpmutil.Pack(handle)
 	if err != nil {
@@ -1080,6 +1070,16 @@ func encodeClear(handle tpmutil.Handle, auth AuthCommand) ([]byte, error) {
 		return nil, err
 	}
 	return concat(ah, encodedAuth)
+}
+
+// Clears lockout, endorsement and owner hierarchy authorization values
+func Clear(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand) error {
+	cmd, err := encodeClear(handle, auth)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdClear, tpmutil.RawBytes(cmd))
+	return err
 }
 
 func encodeHierarchyChangeAuth(handle tpmutil.Handle, auth, newAuth AuthCommand) ([]byte, error) {

@@ -1535,7 +1535,7 @@ func TestHierarchyChangeAuth(t *testing.T) {
 		t.Fatalf("HierarchyChangeAuth failed: %v", err)
 	}
 
-	// try to set again password again, without valid providing valid auth
+	// try to set again password again, without providing valid auth
 	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("abcd")})
 	if err == nil {
 		t.Fatal("Expected HierarchyChangeAuth to fail")
