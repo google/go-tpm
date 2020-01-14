@@ -1093,6 +1093,9 @@ func encodeHierarchyChangeAuth(handle tpmutil.Handle, auth, newAuth AuthCommand)
 	}
 
 	newEncodedAuth, err := encodeAuthArea(newAuth)
+	if err != nil {
+		return nil, err
+	}
 	param, err := tpmutil.Pack(tpmutil.U16Bytes(newEncodedAuth))
 	if err != nil {
 		return nil, err

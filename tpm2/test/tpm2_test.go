@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"flag"
 	"io"
 	"reflect"
 	"strings"
@@ -32,6 +33,15 @@ import (
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
+
+var (
+	runClear = flag.Bool("run-clear", false, "Set to run tests which will clear hierarchy and lockout authorizations")
+)
+
+func init() {
+	testing.Init()
+	flag.Parse()
+}
 
 func openTPM(tb testing.TB) io.ReadWriteCloser {
 	tb.Helper()
@@ -1512,6 +1522,10 @@ func TestPlainImport(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
+	if !*runClear {
+		t.Skip("Missing flag: run-clear. Test skipped")
+	}
+
 	rw := openTPM(t)
 	defer rw.Close()
 
@@ -1522,6 +1536,10 @@ func TestClear(t *testing.T) {
 }
 
 func TestHierarchyChangeAuth(t *testing.T) {
+	if !*runClear {
+		t.Skip("Missing flag: run-clear. Test skipped")
+	}
+
 	rw := openTPM(t)
 	defer rw.Close()
 
