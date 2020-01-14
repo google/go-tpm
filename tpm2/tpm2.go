@@ -1178,6 +1178,40 @@ func NVWrite(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string, 
 	return err
 }
 
+func encodeLockNV(owner, handle tpmutil.Handle, authString string) ([]byte, error) {
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)})
+	if err != nil {
+		return nil, err
+	}
+	out, err := tpmutil.Pack(owner, handle)
+	if err != nil {
+		return nil, err
+	}
+	return concat(out, auth)
+}
+
+// NVWriteLock inhibits further writes on the given NV index if at least one of
+// the AttrWriteSTClear or AttrWriteDefine bits is set.
+//
+// AttrWriteSTClear causes the index to be locked until the TPM is restarted
+// (see the Startup function).
+//
+// AttrWriteDefine causes the index to be locked permanently if data has been
+// written to the index; otherwise the lock is removed on startup.
+//
+// NVWriteLock returns an error if neither bit is set.
+//
+// It is not an error to call NVWriteLock for an index that is already locked
+// for writing.
+func NVWriteLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string) error {
+	cmd, err := encodeLockNV(owner, handle, authString)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdWriteLockNV, tpmutil.RawBytes(cmd))
+	return err
+}
+
 func decodeNVReadPublic(in []byte) (NVPublic, error) {
 	var pub NVPublic
 	var buf tpmutil.U16Bytes
@@ -1280,6 +1314,23 @@ func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password strin
 		outBuff = append(outBuff, data...)
 	}
 	return outBuff, nil
+}
+
+// NVReadLock inhibits further reads of the given NV index if AttrReadSTClear
+// is set. After the TPM is restarted the index can be read again (see the
+// Startup function).
+//
+// NVReadLock returns an error if the AttrReadSTClear bit is not set.
+//
+// It is not an error to call NVReadLock for an index that is already locked
+// for reading.
+func NVReadLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string) error {
+	cmd, err := encodeLockNV(owner, handle, authString)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdReadLockNV, tpmutil.RawBytes(cmd))
+	return err
 }
 
 // Hash computes a hash of data in buf using the TPM.

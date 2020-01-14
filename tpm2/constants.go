@@ -323,6 +323,7 @@ const (
 	cmdCreatePrimary      tpmutil.Command = 0x00000131
 	cmdIncrementNVCounter tpmutil.Command = 0x00000134
 	cmdWriteNV            tpmutil.Command = 0x00000137
+	cmdWriteLockNV        tpmutil.Command = 0x00000138
 	cmdPCREvent           tpmutil.Command = 0x0000013C
 	cmdStartup            tpmutil.Command = 0x00000144
 	cmdShutdown           tpmutil.Command = 0x00000145
@@ -330,6 +331,7 @@ const (
 	cmdCertify            tpmutil.Command = 0x00000148
 	cmdCertifyCreation    tpmutil.Command = 0x0000014A
 	cmdReadNV             tpmutil.Command = 0x0000014E
+	cmdReadLockNV         tpmutil.Command = 0x0000014F
 	// CmdPolicySecret is a command code for TPM2_PolicySecret.
 	// It's exported for computing of default AuthPolicy value.
 	CmdPolicySecret     tpmutil.Command = 0x00000151

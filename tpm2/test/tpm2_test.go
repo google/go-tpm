@@ -962,14 +962,14 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 }
 
-func TestNVReadWrite(t *testing.T) {
+func TestNVReadWriteAndLocks(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
 	var (
 		idx  tpmutil.Handle = 0x1500000
 		data                = []byte("testdata")
-		attr                = AttrOwnerWrite | AttrOwnerRead
+		attr                = AttrOwnerWrite | AttrOwnerRead | AttrWriteSTClear | AttrReadSTClear
 	)
 
 	// Undefine the space, just in case the previous run of this test failed
@@ -997,6 +997,24 @@ func TestNVReadWrite(t *testing.T) {
 		t.Fatalf("NVWrite failed: %v", err)
 	}
 
+	// Enable write lock
+	if err := NVWriteLock(rw, HandleOwner, idx, emptyPassword); err != nil {
+		t.Fatalf("NVWriteLock failed: %v", err)
+	}
+
+	// Write the data again. Should fail now because it's write-locked.
+	err := NVWrite(rw, HandleOwner, idx, emptyPassword, data, 0)
+	switch err := err.(type) {
+	case nil:
+		t.Fatal("NVWrite succeeded after NVWriteLock")
+	case Error:
+		if err.Code != RCNVLocked {
+			t.Fatalf("NVWrite: unexpected error; want RCNVLocked, got %v", err)
+		}
+	default:
+		t.Fatalf("NVWrite: unexpected error; want RCNVLocked, got %v", err)
+	}
+
 	// Make sure the public area of the index can be read
 	pub, err := NVReadPublic(rw, idx)
 	if err != nil {
@@ -1013,6 +1031,18 @@ func TestNVReadWrite(t *testing.T) {
 	}
 	if !bytes.Equal(data, outdata) {
 		t.Fatalf("data read from NV index does not match, got %x, want %x", outdata, data)
+	}
+
+	// Enable read lock
+	if err := NVReadLock(rw, HandleOwner, idx, emptyPassword); err != nil {
+		t.Fatalf("NVReadLock failed: %v (%T)", err, err)
+	}
+
+	// Read the data again. Should fail now because it's read-locked.
+	if _, err := NVReadEx(rw, idx, HandleOwner, emptyPassword, 0); err == nil {
+		t.Fatal("NVRead succeeded after NVReadLock")
+	} else if !strings.HasSuffix(err.Error(), ": NV access locked") {
+		t.Fatalf("NVRead: unexpected error; want RCNVLocked, got %v", err)
 	}
 }
 
