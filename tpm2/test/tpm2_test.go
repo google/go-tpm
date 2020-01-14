@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"flag"
 	"io"
 	"reflect"
 	"strings"
@@ -32,6 +33,15 @@ import (
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
+
+var (
+	runClear = flag.Bool("run-clear", false, "Set to run tests which will clear hierarchy and lockout authorizations")
+)
+
+func init() {
+	testing.Init()
+	flag.Parse()
+}
 
 func openTPM(tb testing.TB) io.ReadWriteCloser {
 	tb.Helper()
@@ -1539,6 +1549,51 @@ func TestPlainImport(t *testing.T) {
 	if !bytes.Equal(outBuff, inBuff) {
 		t.Errorf("Got %X, expected %X", outBuff, inBuff)
 	}
+}
+
+func TestClear(t *testing.T) {
+	if !*runClear {
+		t.Skip("Missing flag: run-clear. Test skipped")
+	}
+
+	rw := openTPM(t)
+	defer rw.Close()
+
+	err := Clear(rw, HandleLockout, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession})
+	if err != nil {
+		t.Fatalf("Clear failed: %v", err)
+	}
+}
+
+func TestHierarchyChangeAuth(t *testing.T) {
+	if !*runClear {
+		t.Skip("Missing flag: run-clear. Test skipped")
+	}
+
+	rw := openTPM(t)
+	defer rw.Close()
+
+	err := Clear(rw, HandleLockout, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession})
+	if err != nil {
+		t.Fatalf("Clear failed: %v", err)
+	}
+
+	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("abcd")})
+	if err != nil {
+		t.Fatalf("HierarchyChangeAuth failed: %v", err)
+	}
+
+	// try to set again password again, without providing valid auth
+	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("abcd")})
+	if err == nil {
+		t.Fatal("Expected HierarchyChangeAuth to fail")
+	}
+
+	err = Clear(rw, HandleLockout, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession})
+	if err != nil {
+		t.Fatalf("Clear failed: %v", err)
+	}
+
 }
 
 func TestPolicyPCR(t *testing.T) {
