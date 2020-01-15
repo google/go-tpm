@@ -1578,15 +1578,21 @@ func TestHierarchyChangeAuth(t *testing.T) {
 		t.Fatalf("Clear failed: %v", err)
 	}
 
-	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("abcd")})
+	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, "pass1")
 	if err != nil {
 		t.Fatalf("HierarchyChangeAuth failed: %v", err)
 	}
 
-	// try to set again password again, without providing valid auth
-	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("abcd")})
+	// try to set password again, providing invalid auth
+	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, "pass2")
 	if err == nil {
 		t.Fatal("Expected HierarchyChangeAuth to fail")
+	}
+
+	// set password again, providing valid auth
+	err = HierarchyChangeAuth(rw, HandleOwner, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("pass1")}, "pass3")
+	if err != nil {
+		t.Fatalf("HierarchyChangeAuth failed: %v", err)
 	}
 
 	err = Clear(rw, HandleLockout, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession})

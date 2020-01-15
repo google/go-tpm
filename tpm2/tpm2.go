@@ -1082,7 +1082,7 @@ func Clear(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand) error {
 	return err
 }
 
-func encodeHierarchyChangeAuth(handle tpmutil.Handle, auth, newAuth AuthCommand) ([]byte, error) {
+func encodeHierarchyChangeAuth(handle tpmutil.Handle, auth AuthCommand, newAuth string) ([]byte, error) {
 	ah, err := tpmutil.Pack(handle)
 	if err != nil {
 		return nil, err
@@ -1091,21 +1091,15 @@ func encodeHierarchyChangeAuth(handle tpmutil.Handle, auth, newAuth AuthCommand)
 	if err != nil {
 		return nil, err
 	}
-
-	newEncodedAuth, err := encodeAuthArea(newAuth)
+	param, err := tpmutil.Pack(tpmutil.U16Bytes(newAuth))
 	if err != nil {
 		return nil, err
 	}
-	param, err := tpmutil.Pack(tpmutil.U16Bytes(newEncodedAuth))
-	if err != nil {
-		return nil, err
-	}
-
 	return concat(ah, encodedAuth, param)
 }
 
 // HierarchyChangeAuth changes the authorization values for a hierarchy or for the lockout authority
-func HierarchyChangeAuth(rw io.ReadWriter, handle tpmutil.Handle, auth, newAuth AuthCommand) error {
+func HierarchyChangeAuth(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand, newAuth string) error {
 	cmd, err := encodeHierarchyChangeAuth(handle, auth, newAuth)
 	if err != nil {
 		return err
