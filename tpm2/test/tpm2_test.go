@@ -122,12 +122,12 @@ func TestGetCapability(t *testing.T) {
 	for _, tt := range []struct {
 		capa     Capability
 		count    uint32
-		property uint32
+		property TPMProp
 		typ      interface{}
 	}{
-		{CapabilityHandles, 1, uint32(HandleTypeTransient) << 24, tpmutil.Handle(0)},
+		{CapabilityHandles, 1, TPMProp(HandleTypeTransient) << 24, tpmutil.Handle(0)},
 		{CapabilityAlgs, 1, 0, AlgorithmDescription{}},
-		{CapabilityTPMProperties, 1, uint32(NVMaxBufferSize), TaggedProperty{}},
+		{CapabilityTPMProperties, 1, NVMaxBufferSize, TaggedProperty{}},
 	} {
 		l, _, err := GetCapability(rw, tt.capa, tt.count, tt.property)
 		if err != nil {
@@ -366,7 +366,7 @@ func skipOnUnsupportedAlg(t testing.TB, rw io.ReadWriter, alg Algorithm) {
 	for i := uint32(0); moreData; i++ {
 		var err error
 		var descs []interface{}
-		descs, moreData, err = GetCapability(rw, CapabilityAlgs, 1, i)
+		descs, moreData, err = GetCapability(rw, CapabilityAlgs, 1, TPMProp(i))
 		if err != nil {
 			t.Fatalf("Could not get TPM algorithm capability: %v", err)
 		}

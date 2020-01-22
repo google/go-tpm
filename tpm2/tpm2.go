@@ -296,7 +296,7 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 //
 // moreData is true if the TPM indicated that more data is available. Follow
 // the spec for the capability in question on how to query for more data.
-func GetCapability(rw io.ReadWriter, capa Capability, count, property uint32) (vals []interface{}, moreData bool, err error) {
+func GetCapability(rw io.ReadWriter, capa Capability, count uint32, property TPMProp) (vals []interface{}, moreData bool, err error) {
 	resp, err := runCommand(rw, TagNoSessions, cmdGetCapability, capa, property, count)
 	if err != nil {
 		return nil, false, err
@@ -306,7 +306,7 @@ func GetCapability(rw io.ReadWriter, capa Capability, count, property uint32) (v
 
 // GetManufacturer returns the manufacturer ID
 func GetManufacturer(rw io.ReadWriter) ([]byte, error) {
-	caps, _, err := GetCapability(rw, CapabilityTPMProperties, 1, uint32(Manufacturer))
+	caps, _, err := GetCapability(rw, CapabilityTPMProperties, 1, Manufacturer)
 	if err != nil {
 		return nil, err
 	}
@@ -1319,7 +1319,7 @@ func NVRead(rw io.ReadWriter, index tpmutil.Handle) ([]byte, error) {
 // value is used.
 func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password string, blockSize int) ([]byte, error) {
 	if blockSize == 0 {
-		readBuff, _, err := GetCapability(rw, CapabilityTPMProperties, 1, uint32(NVMaxBufferSize))
+		readBuff, _, err := GetCapability(rw, CapabilityTPMProperties, 1, NVMaxBufferSize)
 		if err != nil {
 			return nil, fmt.Errorf("GetCapability for TPM_PT_NV_BUFFER_MAX failed: %v", err)
 		}
