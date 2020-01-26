@@ -1695,14 +1695,14 @@ func TestDictionaryAttackParameters(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GetCapability failed: %v", err)
 			}
-			if tc.maxTries != caps[0].(TaggedProperty).Value {
-				t.Fatalf("expected %d, but got %d", tc.maxTries, caps[0].(TaggedProperty).Value)
+			if caps[0].(TaggedProperty).Value != tc.maxTries {
+				t.Fatalf("got %d, expected %d", caps[0].(TaggedProperty).Value, tc.maxTries)
 			}
-			if tc.recoveryTime != caps[1].(TaggedProperty).Value {
-				t.Fatalf("expected %d, but got %d", tc.recoveryTime, caps[1].(TaggedProperty).Value)
+			if caps[1].(TaggedProperty).Value != tc.recoveryTime {
+				t.Fatalf("got %d, expected %d", caps[1].(TaggedProperty).Value, tc.recoveryTime)
 			}
-			if tc.lockoutRecovery != caps[2].(TaggedProperty).Value {
-				t.Fatalf("expected %d, but got %d", tc.lockoutRecovery, caps[2].(TaggedProperty).Value)
+			if caps[2].(TaggedProperty).Value != tc.lockoutRecovery {
+				t.Fatalf("got %d, expected %d", caps[2].(TaggedProperty).Value, tc.lockoutRecovery)
 			}
 		})
 	}
@@ -1746,8 +1746,10 @@ func TestDictionaryAttackLockReset(t *testing.T) {
 		t.Fatalf("RSAEncrypt failed: %v", err)
 	}
 	// try RSADecrypt with bad password
-	if _, err = RSADecrypt(rw, handle, "bad password", encrypted, scheme, label); err == nil {
-		t.Fatal("RSADecrypt with bad password must fail")
+	if _, err = RSADecrypt(rw, handle, "bad password", encrypted, scheme, label); err != nil {
+		if serr, ok := err.(SessionError); !ok || serr.Code != RCAuthFail {
+			t.Fatalf("RSADecrypt fails with unexpected error: %v", err)
+		}
 	}
 
 	caps, _, err := GetCapability(rw, CapabilityTPMProperties, 1, uint32(LockoutCounter))
@@ -1755,7 +1757,7 @@ func TestDictionaryAttackLockReset(t *testing.T) {
 		t.Fatalf("GetCapability failed: %v", err)
 	}
 	if caps[0].(TaggedProperty).Value != 1 {
-		t.Fatalf("expected 1, but got %d", caps[0].(TaggedProperty).Value)
+		t.Fatalf("got %d, expected 1", caps[0].(TaggedProperty).Value)
 	}
 
 	if err = DictionaryAttackLockReset(rw, auth); err != nil {
@@ -1767,6 +1769,6 @@ func TestDictionaryAttackLockReset(t *testing.T) {
 		t.Fatalf("GetCapability failed: %v", err)
 	}
 	if caps[0].(TaggedProperty).Value != 0 {
-		t.Fatalf("expected 0, but got %d", caps[0].(TaggedProperty).Value)
+		t.Fatalf("got %d, expected 0", caps[0].(TaggedProperty).Value)
 	}
 }

@@ -167,12 +167,12 @@ const (
 		FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
 )
 
-// TPMProp represents the index of a TPM property in a call to GetCapability().
+// TPMProp represents a Property Tag (TPM_PT) used with calls to GetCapability(CapabilityTPMProperties).
 type TPMProp uint32
 
-// TPM Capability Properties, see TPM 2.0 Spec, Rev 1.38, Table 23
+// TPM Capability Properties, see TPM 2.0 Spec, Rev 1.38, Table 23.
+// Fixed TPM Properties (PT_FIXED)
 const (
-	// Fixed TPM Properties (PT_FIXED)
 	FamilyIndicator TPMProp = 0x100 + iota
 	SpecLevel
 	SpecRevision
@@ -220,25 +220,11 @@ const (
 	NVMaxBufferSize
 	TPMModes
 	CapabilityMaxBufferSize
-
-	PCRFirst           TPMProp = 0x00000000
-	HMACSessionFirst   TPMProp = 0x02000000
-	LoadedSessionFirst TPMProp = 0x02000000
-	PolicySessionFirst TPMProp = 0x03000000
-	ActiveSessionFirst TPMProp = 0x03000000
-	TransientFirst     TPMProp = 0x80000000
-	PersistentFirst    TPMProp = 0x81000000
-	PersistentLast     TPMProp = 0x81FFFFFF
-	PlatformPersistent TPMProp = 0x81800000
-	NVIndexFirst       TPMProp = 0x01000000
-	NVIndexLast        TPMProp = 0x01FFFFFF
-	PermanentFirst     TPMProp = 0x40000000
-	PermanentLast      TPMProp = 0x4000010F
 )
 
+// Variable TPM Properties (PT_VAR)
 const (
-	// Fixed TPM Properties (PT_VAR)
-	TPMAPermanent     TPMProp = 0x200 + iota
+	TPMAPermanent TPMProp = 0x200 + iota
 	TPMAStartupClear
 	HRNVIndex
 	HRLoaded
@@ -259,6 +245,24 @@ const (
 	NVWriteRecovery
 	AuditCounter0
 	AuditCounter1
+)
+
+// Allowed ranges of different kinds of Handles (TPM_HANDLE)
+// These constants have type TPMProp for backwards compatibility.
+const (
+	PCRFirst           TPMProp = 0x00000000
+	HMACSessionFirst   TPMProp = 0x02000000
+	LoadedSessionFirst TPMProp = 0x02000000
+	PolicySessionFirst TPMProp = 0x03000000
+	ActiveSessionFirst TPMProp = 0x03000000
+	TransientFirst     TPMProp = 0x80000000
+	PersistentFirst    TPMProp = 0x81000000
+	PersistentLast     TPMProp = 0x81FFFFFF
+	PlatformPersistent TPMProp = 0x81800000
+	NVIndexFirst       TPMProp = 0x01000000
+	NVIndexLast        TPMProp = 0x01FFFFFF
+	PermanentFirst     TPMProp = 0x40000000
+	PermanentLast      TPMProp = 0x4000010F
 )
 
 // Reserved Handles.
