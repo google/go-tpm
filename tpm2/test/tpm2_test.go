@@ -1656,3 +1656,119 @@ func TestPolicyPCR(t *testing.T) {
 		})
 	}
 }
+
+func TestDictionaryAttackParameters(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	testCases := []struct {
+		name            string
+		maxTries        uint32
+		recoveryTime    uint32
+		lockoutRecovery uint32
+	}{
+		{
+			name:            "0 0 0",
+			maxTries:        0,
+			recoveryTime:    0,
+			lockoutRecovery: 0,
+		},
+		{
+			name:            "5 10 10",
+			maxTries:        5,
+			recoveryTime:    10,
+			lockoutRecovery: 10,
+		},
+	}
+
+	auth := AuthCommand{
+		Session:    HandlePasswordSession,
+		Attributes: AttrContinueSession,
+		Auth:       []byte(emptyPassword),
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := DictionaryAttackParameters(rw, auth, tc.maxTries, tc.recoveryTime, tc.lockoutRecovery); err != nil {
+				t.Fatalf("DictionaryAttackParameters failed: %v", err)
+			}
+			caps, _, err := GetCapability(rw, CapabilityTPMProperties, 3, uint32(MaxAuthFail))
+			if err != nil {
+				t.Fatalf("GetCapability failed: %v", err)
+			}
+			if caps[0].(TaggedProperty).Value != tc.maxTries {
+				t.Fatalf("got %d, expected %d", caps[0].(TaggedProperty).Value, tc.maxTries)
+			}
+			if caps[1].(TaggedProperty).Value != tc.recoveryTime {
+				t.Fatalf("got %d, expected %d", caps[1].(TaggedProperty).Value, tc.recoveryTime)
+			}
+			if caps[2].(TaggedProperty).Value != tc.lockoutRecovery {
+				t.Fatalf("got %d, expected %d", caps[2].(TaggedProperty).Value, tc.lockoutRecovery)
+			}
+		})
+	}
+}
+
+func TestDictionaryAttackLockReset(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	auth := AuthCommand{
+		Session:    HandlePasswordSession,
+		Attributes: AttrContinueSession,
+		Auth:       []byte(emptyPassword),
+	}
+	err := DictionaryAttackParameters(rw, auth, 5, 60, 60)
+	if err != nil {
+		t.Fatalf("DictionaryAttackParameters failed: %v", err)
+	}
+
+	handle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagDecrypt | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgNull,
+				Hash: AlgNull,
+			},
+			KeyBits: 2048,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %s", err)
+	}
+	defer FlushContext(rw, handle)
+
+	scheme := &AsymScheme{Alg: AlgOAEP, Hash: AlgSHA256}
+	label := "label"
+	encrypted, err := RSAEncrypt(rw, handle, bytes.Repeat([]byte("a"), 190), scheme, label)
+	if err != nil {
+		t.Fatalf("RSAEncrypt failed: %v", err)
+	}
+	// try RSADecrypt with bad password
+	if _, err = RSADecrypt(rw, handle, "bad password", encrypted, scheme, label); err != nil {
+		if serr, ok := err.(SessionError); !ok || serr.Code != RCAuthFail {
+			t.Fatalf("RSADecrypt fails with unexpected error: %v", err)
+		}
+	}
+
+	caps, _, err := GetCapability(rw, CapabilityTPMProperties, 1, uint32(LockoutCounter))
+	if err != nil {
+		t.Fatalf("GetCapability failed: %v", err)
+	}
+	if caps[0].(TaggedProperty).Value != 1 {
+		t.Fatalf("got %d, expected 1", caps[0].(TaggedProperty).Value)
+	}
+
+	if err = DictionaryAttackLockReset(rw, auth); err != nil {
+		t.Fatalf("DictionaryAttackLockReset failed: %v", err)
+	}
+
+	caps, _, err = GetCapability(rw, CapabilityTPMProperties, 1, uint32(LockoutCounter))
+	if err != nil {
+		t.Fatalf("GetCapability failed: %v", err)
+	}
+	if caps[0].(TaggedProperty).Value != 0 {
+		t.Fatalf("got %d, expected 0", caps[0].(TaggedProperty).Value)
+	}
+}

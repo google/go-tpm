@@ -1838,3 +1838,50 @@ func RSADecrypt(rw io.ReadWriter, key tpmutil.Handle, password string, message [
 	}
 	return decodeRSADecrypt(resp)
 }
+
+// DictionaryAttackLockReset cancels the effect of a TPM lockout due to a number
+// of successive authorization failures, by setting the lockout counter to zero.
+// The command requires Lockout Authorization and only one lockoutAuth authorization
+// failure is allowed for this command during a lockoutRecovery interval.
+// Lockout Authorization value by default is empty and can be changed via
+// a call to HierarchyChangeAuth(HandleLockout).
+func DictionaryAttackLockReset(rw io.ReadWriter, auth AuthCommand) error {
+	ha, err := tpmutil.Pack(HandleLockout)
+	if err != nil {
+		return err
+	}
+	encodedAuth, err := encodeAuthArea(auth)
+	if err != nil {
+		return err
+	}
+	cmd, err := concat(ha, encodedAuth)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdDictionaryAttackLockReset, tpmutil.RawBytes(cmd))
+	return err
+}
+
+// DictionaryAttackParameters changes the lockout parameters.
+// The command requires Lockout Authorization and has same authorization policy
+// as in DictionaryAttackLockReset.
+func DictionaryAttackParameters(rw io.ReadWriter, auth AuthCommand, maxTries, recoveryTime, lockoutRecovery uint32) error {
+	ha, err := tpmutil.Pack(HandleLockout)
+	if err != nil {
+		return err
+	}
+	encodedAuth, err := encodeAuthArea(auth)
+	if err != nil {
+		return err
+	}
+	params, err := tpmutil.Pack(maxTries, recoveryTime, lockoutRecovery)
+	if err != nil {
+		return err
+	}
+	cmd, err := concat(ha, encodedAuth, params)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, cmdDictionaryAttackParameters, tpmutil.RawBytes(cmd))
+	return err
+}
