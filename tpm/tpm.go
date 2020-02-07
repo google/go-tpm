@@ -1360,6 +1360,12 @@ func ForceClear(rw io.ReadWriter) error {
 	in := []interface{}{}
 	out := []interface{}{}
 	_, err := submitTPMRequest(rw, tagRQUCommand, ordForceClear, in, out)
+	return err
+}
 
+// Startup starts a TPM. This is not necessary for hardware TPMs, but it is
+// sometimes needed for software emulators.
+func Startup(rw io.ReadWriter, mode StartupMode) error {
+	_, err := submitTPMRequest(rw, tagRQUCommand, ordStartup, []interface{}{mode}, nil)
 	return err
 }

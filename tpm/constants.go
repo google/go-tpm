@@ -56,6 +56,7 @@ const (
 	ordMakeIdentity         uint32 = 0x00000079
 	ordActivateIdentity     uint32 = 0x0000007A
 	ordReadPubEK            uint32 = 0x0000007C
+	ordStartup              uint32 = 0x00000099
 	ordOwnerReadInternalPub uint32 = 0x00000081
 	ordFlushSpecific        uint32 = 0x000000BA
 	ordNVDefineSpace        uint32 = 0x000000CC
@@ -288,6 +289,16 @@ const (
 	authNever       byte = 0x00
 	authAlways      byte = 0x01
 	authPrivUseOnly byte = 0x03
+)
+
+type StartupMode uint16
+
+// The startup modes for the Startup command.
+const (
+	_ StartupMode = iota
+	StartupClear
+	StartupWithState
+	StartupDeactivated
 )
 
 // fixedQuote is the fixed constant string used in quoteInfo.
