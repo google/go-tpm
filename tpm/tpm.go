@@ -952,7 +952,7 @@ func NVDefineSpace(rw io.ReadWriter, nvData NVDataPublic, ownAuth []byte) error 
 // See TPM-Main-Part-3-Commands-20.4
 func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([]byte, error) {
 	if ownAuth == nil {
-		data, _, _, err := nvReadValue(rw, index, offset, len, nil)
+		data, _, _, err := nvReadValue(rw, index, offset, len)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read from NVRAM: %v", err)
 		}
@@ -964,16 +964,16 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([
 	}
 	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
-	authIn := []interface{}{ordNVReadValue, index, offset, len}
+	authIn := []interface{}{ordNVReadValueAuth, index, offset, len}
 	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct owner auth fields: %v", err)
 	}
-	data, ra, ret, err := nvReadValue(rw, index, offset, len, ca)
+	data, ra, ret, err := nvReadValueAuth(rw, index, offset, len, ca)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from NVRAM: %v", err)
 	}
-	raIn := []interface{}{ret, ordNVReadValue, tpmutil.U32Bytes(data)}
+	raIn := []interface{}{ret, ordNVReadValueAuth, tpmutil.U32Bytes(data)}
 	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
 		return nil, fmt.Errorf("failed to verify authenticity of response: %v", err)
 	}
@@ -985,7 +985,7 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([
 // See TPM-Main-Part-3-Commands_v1.2_rev116_01032011, P216
 func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth []byte) error {
 	if ownAuth == nil {
-		if _, _, _, err := nvWriteValue(rw, index, offset, uint32(len(data)), data, nil); err != nil {
+		if _, _, _, err := nvWriteValue(rw, index, offset, uint32(len(data)), data); err != nil {
 			return fmt.Errorf("failed to write to NVRAM: %v", err)
 		}
 		return nil
@@ -996,16 +996,16 @@ func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth [
 	}
 	defer osaprOwn.Close(rw)
 	defer zeroBytes(sharedSecretOwn[:])
-	authIn := []interface{}{ordNVWriteValue, index, offset, len(data), data}
+	authIn := []interface{}{ordNVWriteValueAuth, index, offset, len(data), data}
 	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
 	if err != nil {
 		return fmt.Errorf("failed to construct owner auth fields: %v", err)
 	}
-	data, ra, ret, err := nvWriteValue(rw, index, offset, uint32(len(data)), data, ca)
+	data, ra, ret, err := nvWriteValueAuth(rw, index, offset, uint32(len(data)), data, ca)
 	if err != nil {
 		return fmt.Errorf("failed to write to NVRAM: %v", err)
 	}
-	raIn := []interface{}{ret, ordNVReadValue, tpmutil.U32Bytes(data)}
+	raIn := []interface{}{ret, ordNVWriteValueAuth, tpmutil.U32Bytes(data)}
 	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
 		return fmt.Errorf("failed to verify authenticity of response: %v", err)
 	}
