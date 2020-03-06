@@ -60,6 +60,7 @@ const (
 	ordFlushSpecific        uint32 = 0x000000BA
 	ordNVDefineSpace        uint32 = 0x000000CC
 	ordPcrReset             uint32 = 0x000000C8
+	ordNVWriteValue         uint32 = 0x000000CD
 	ordNVReadValue          uint32 = 0x000000CF
 )
 

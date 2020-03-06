@@ -981,6 +981,38 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([
 	return data, nil
 }
 
+// NVWriteValue for writing to the NVRAM. Needs a index for a defined space in NVRAM.
+// See TPM-Main-Part-3-Commands_v1.2_rev116_01032011, P216
+func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth []byte) error {
+	if ownAuth == nil {
+		if _, _, _, err := nvWriteValue(rw, index, offset, uint32(len(data)), data, nil); err != nil {
+			return fmt.Errorf("failed to write to NVRAM: %v", err)
+		}
+		return nil
+	}
+	sharedSecretOwn, osaprOwn, err := newOSAPSession(rw, etOwner, khOwner, ownAuth[:])
+	if err != nil {
+		return fmt.Errorf("failed to start new auth session: %v", err)
+	}
+	defer osaprOwn.Close(rw)
+	defer zeroBytes(sharedSecretOwn[:])
+	authIn := []interface{}{ordNVWriteValue, index, offset, len(data), data}
+	ca, err := newCommandAuth(osaprOwn.AuthHandle, osaprOwn.NonceEven, sharedSecretOwn[:], authIn)
+	if err != nil {
+		return fmt.Errorf("failed to construct owner auth fields: %v", err)
+	}
+	data, ra, ret, err := nvWriteValue(rw, index, offset, uint32(len(data)), data, ca)
+	if err != nil {
+		return fmt.Errorf("failed to write to NVRAM: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVReadValue, tpmutil.U32Bytes(data)}
+	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
+		return fmt.Errorf("failed to verify authenticity of response: %v", err)
+	}
+
+	return nil
+}
+
 // OwnerReadPubEK uses owner auth to get a blob representing the public part of the
 // endorsement key.
 func OwnerReadPubEK(rw io.ReadWriter, ownerAuth digest) ([]byte, error) {
