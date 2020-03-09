@@ -937,7 +937,7 @@ func NVDefineSpace(rw io.ReadWriter, nvData NVDataPublic, ownAuth []byte) error 
 		if err != nil {
 			return fmt.Errorf("failed to define space in NVRAM: %v", err)
 		}
-		raIn := []interface{}{ret, ordNVReadValue}
+		raIn := []interface{}{ret, ordNVDefineSpace}
 		if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
 			return fmt.Errorf("failed to verify authenticity of response: %v", err)
 		}
