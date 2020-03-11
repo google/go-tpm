@@ -1382,17 +1382,24 @@ func NVReadLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString strin
 }
 
 // Hash computes a hash of data in buf using the TPM.
-func Hash(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes) ([]byte, error) {
-	resp, err := runCommand(rw, TagNoSessions, cmdHash, buf, alg, HandleNull)
+func Hash(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes) ([]byte, []byte, error) {
+	return HashWithHeirarchy(rw, alg, HandleNull, buf)
+}
+
+// Hash computes a hash of data in buf using the TPM.
+func HashWithHeirarchy(rw io.ReadWriter, alg Algorithm, heirarchy tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, []byte, error) {
+	resp, err := runCommand(rw, TagNoSessions, cmdHash, buf, alg, heirarchy)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var digest tpmutil.U16Bytes
-	if _, err = tpmutil.Unpack(resp, &digest); err != nil {
-		return nil, err
+	if n, err := tpmutil.Unpack(resp, &digest); err != nil {
+		return nil, nil, err
+	} else if n < len(resp) {
+		return digest, resp[n:], nil
 	}
-	return digest, nil
+	return digest, nil, nil
 }
 
 // Startup initializes a TPM (usually done by the OS).
@@ -1407,12 +1414,12 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 	return err
 }
 
-func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmutil.U16Bytes, sigScheme *SigScheme) ([]byte, error) {
+func encodeSign(key tpmutil.Handle, authCmd AuthCommand, digest, hashcheck tpmutil.U16Bytes, sigScheme *SigScheme) ([]byte, error) {
 	ha, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: sessionHandle, Attributes: AttrContinueSession, Auth: []byte(password)})
+	auth, err := encodeAuthArea(authCmd)
 	if err != nil {
 		return nil, err
 	}
@@ -1424,16 +1431,20 @@ func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmut
 	if err != nil {
 		return nil, err
 	}
-	hc, err := tpmutil.Pack(TagHashCheck)
-	if err != nil {
-		return nil, err
-	}
-	params, err := tpmutil.Pack(HandleNull, tpmutil.U16Bytes(nil))
-	if err != nil {
-		return nil, err
+
+	if hashcheck == nil {
+		hc, err := tpmutil.Pack(TagHashCheck)
+		if err != nil {
+			return nil, err
+		}
+		params, err := tpmutil.Pack(HandleNull, tpmutil.U16Bytes(nil))
+		if err != nil {
+			return nil, err
+		}
+		return concat(ha, auth, d, s, hc, params)
 	}
 
-	return concat(ha, auth, d, s, hc, params)
+	return concat(ha, auth, d, s, tpmutil.RawBytes(hashcheck))
 }
 
 func decodeSign(buf []byte) (*Signature, error) {
@@ -1447,8 +1458,22 @@ func decodeSign(buf []byte) (*Signature, error) {
 
 // SignWithSession computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type. Used for keys with non-password authorization policies.
-func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
-	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme)
+func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest, hashcheck []byte, sigScheme *SigScheme) (*Signature, error) {
+	auth := AuthCommand{Session: sessionHandle, Attributes: AttrContinueSession, Auth: []byte(password)}
+	return SignWithAuth(rw, key, auth, digest, hashcheck, sigScheme)
+}
+
+// Sign computes a signature for digest using a given loaded key. Signature
+// algorithm depends on the key type.
+func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest, hashcheck []byte, sigScheme *SigScheme) (*Signature, error) {
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)}
+	return SignWithAuth(rw, key, auth, digest, hashcheck, sigScheme)
+}
+
+// SignWithAuth computes a signature for digest using a given loaded key. Signature
+// algorithm depends on the key type.
+func SignWithAuth(rw io.ReadWriter, key tpmutil.Handle, auth AuthCommand, digest, hashcheck []byte, sigScheme *SigScheme) (*Signature, error) {
+	cmd, err := encodeSign(key, auth, digest, hashcheck, sigScheme)
 	if err != nil {
 		return nil, err
 	}
@@ -1457,12 +1482,6 @@ func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, passwo
 		return nil, err
 	}
 	return decodeSign(resp)
-}
-
-// Sign computes a signature for digest using a given loaded key. Signature
-// algorithm depends on the key type.
-func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
-	return SignWithSession(rw, HandlePasswordSession, key, password, digest, sigScheme)
 }
 
 func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
