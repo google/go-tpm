@@ -16,8 +16,9 @@ package tpm
 
 import (
 	"fmt"
-	"github.com/google/go-tpm/tpmutil"
 	"strings"
+
+	"github.com/google/go-tpm/tpmutil"
 )
 
 // Supported TPM commands.
@@ -61,7 +62,9 @@ const (
 	ordNVDefineSpace        uint32 = 0x000000CC
 	ordPcrReset             uint32 = 0x000000C8
 	ordNVWriteValue         uint32 = 0x000000CD
+	ordNVWriteValueAuth     uint32 = 0x000000CE
 	ordNVReadValue          uint32 = 0x000000CF
+	ordNVReadValueAuth      uint32 = 0x000000D0
 )
 
 // Capability types.
