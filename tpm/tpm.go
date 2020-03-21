@@ -34,7 +34,7 @@ import (
 
 // GetKeys gets the list of handles for currently-loaded TPM keys.
 func GetKeys(rw io.ReadWriter) ([]tpmutil.Handle, error) {
-	b, err := GetCapability(rw, capHandle, rtKey)
+	b, err := getCapability(rw, capHandle, rtKey)
 	if err != nil {
 		return nil, err
 	}
@@ -1056,14 +1056,14 @@ func ReadPubEK(rw io.ReadWriter) ([]byte, error) {
 
 // GetManufacturer returns the manufacturer ID
 func GetManufacturer(rw io.ReadWriter) ([]byte, error) {
-	return GetCapability(rw, capProperty, tpmCapPropManufacturer)
+	return getCapability(rw, capProperty, tpmCapPropManufacturer)
 }
 
 // GetPermanentFlags returns the TPM_PERMANENT_FLAGS structure.
 func GetPermanentFlags(rw io.ReadWriter) (PermanentFlags, error) {
 	var ret PermanentFlags
 
-	raw, err := GetCapability(rw, capFlag, tpmCapFlagPermanent)
+	raw, err := getCapability(rw, capFlag, tpmCapFlagPermanent)
 	if err != nil {
 		return ret, err
 	}
@@ -1076,7 +1076,7 @@ func GetPermanentFlags(rw io.ReadWriter) (PermanentFlags, error) {
 func GetAlgs(rw io.ReadWriter) ([]Algorithm, error) {
 	var algs []Algorithm
 	for i := AlgRSA; i <= AlgXOR; i++ {
-		buf, err := GetCapability(rw, capAlg, uint32(i))
+		buf, err := getCapability(rw, capAlg, uint32(i))
 		if err != nil {
 			return nil, err
 		}
@@ -1092,7 +1092,7 @@ func GetAlgs(rw io.ReadWriter) ([]Algorithm, error) {
 // are currently allocated NV storage through TPM_NV_DefineSpace.
 func GetNVList(rw io.ReadWriter) ([]uint32, error) {
 	var nvList []uint32
-	buf, err := GetCapability(rw, capNVList, 0)
+	buf, err := getCapability(rw, capNVList, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -1106,7 +1106,7 @@ func GetNVList(rw io.ReadWriter) ([]uint32, error) {
 // See: TPM-Main-Part-2-TPM-Structures_v1.2_rev116_01032011, P.167
 func GetNVIndex(rw io.ReadWriter, nvIndex uint32) (NVDataPublic, error) {
 	var nvInfo NVDataPublic
-	buf, err := GetCapability(rw, capNVIndex, 0)
+	buf, err := getCapability(rw, capNVIndex, 0)
 	if err != nil {
 		return nvInfo, fmt.Errorf("failed to get capability NVIndex: %v", err)
 	}
@@ -1116,6 +1116,13 @@ func GetNVIndex(rw io.ReadWriter, nvIndex uint32) (NVDataPublic, error) {
 		return nvInfo, fmt.Errorf("failed to read nvInfo: %v", err)
 	}
 	return nvInfo, nil
+}
+
+// GetCapabilityRaw reads the requested capability and sub-capability from the
+// TPM and returns it as a []byte. Where possible, prefer the convenience
+// functions above, which return higher-level structs for easier handling.
+func GetCapabilityRaw(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
+	return getCapability(rw, cap, subcap)
 }
 
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
@@ -1394,19 +1401,4 @@ func ForceClear(rw io.ReadWriter) error {
 	_, err := submitTPMRequest(rw, tagRQUCommand, ordForceClear, in, out)
 
 	return err
-}
-
-// GetCapability reads the requested capability and sub-capability from NVRAM
-func GetCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
-	subCapBytes, err := tpmutil.Pack(subcap)
-	if err != nil {
-		return nil, err
-	}
-	var b tpmutil.U32Bytes
-	in := []interface{}{cap, tpmutil.U32Bytes(subCapBytes)}
-	out := []interface{}{&b}
-	if _, err := submitTPMRequest(rw, tagRQUCommand, ordGetCapability, in, out); err != nil {
-		return nil, err
-	}
-	return b, nil
 }
