@@ -981,6 +981,37 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([
 	return data, nil
 }
 
+// NVReadValueAuth returns the value from a given index, offset, and length in NVRAM.
+// See TPM-Main-Part-2-TPM-Structures 19.1.
+// If TPM is locked, authentification is mandatory.
+// See TPM-Main-Part-3-Commands-20.5
+func NVReadValueAuth(rw io.ReadWriter, index, offset, len uint32, auth []byte) ([]byte, error) {
+	if auth == nil {
+		return nil, fmt.Errorf("no auth value given but mandatory")
+	}
+	sharedSecret, osapr, err := newOSAPSession(rw, etOwner, khOwner, auth[:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to start new auth session: %v", err)
+	}
+	defer osapr.Close(rw)
+	defer zeroBytes(sharedSecret[:])
+	authIn := []interface{}{ordNVReadValueAuth, index, offset, len}
+	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct auth fields: %v", err)
+	}
+	data, ra, ret, err := nvReadValue(rw, index, offset, len, ca)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from NVRAM: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVReadValueAuth, tpmutil.U32Bytes(data)}
+	if err := ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
+		return nil, fmt.Errorf("failed to verify authenticity of response: %v", err)
+	}
+
+	return data, nil
+}
+
 // NVWriteValue for writing to the NVRAM. Needs a index for a defined space in NVRAM.
 // See TPM-Main-Part-3-Commands_v1.2_rev116_01032011, P216
 func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth []byte) error {
@@ -1005,11 +1036,41 @@ func NVWriteValue(rw io.ReadWriter, index, offset uint32, data []byte, ownAuth [
 	if err != nil {
 		return fmt.Errorf("failed to write to NVRAM: %v", err)
 	}
-	raIn := []interface{}{ret, ordNVReadValue, tpmutil.U32Bytes(data)}
+	raIn := []interface{}{ret, ordNVWriteValue, tpmutil.U32Bytes(data)}
 	if err := ra.verify(ca.NonceOdd, sharedSecretOwn[:], raIn); err != nil {
 		return fmt.Errorf("failed to verify authenticity of response: %v", err)
 	}
+	return nil
+}
 
+// NVWriteValueAuth for authenticated writing to the NVRAM.
+// Needs a index of a defined space in NVRAM.
+// See TPM-Main-Part-2-TPM-Structures 19.1.
+// If TPM is locked, authentification is mandatory.
+// See TPM-Main-Part-3-Commands_v1.2_rev116_01032011, P216
+func NVWriteValueAuth(rw io.ReadWriter, index, offset uint32, data []byte, auth []byte) error {
+	if auth == nil {
+		return fmt.Errorf("no auth value given but mandatory")
+	}
+	sharedSecret, osapr, err := newOSAPSession(rw, etOwner, khOwner, auth[:])
+	if err != nil {
+		return fmt.Errorf("failed to start new auth session: %v", err)
+	}
+	defer osapr.Close(rw)
+	defer zeroBytes(sharedSecret[:])
+	authIn := []interface{}{ordNVWriteValueAuth, index, offset, len(data), data}
+	ca, err := newCommandAuth(osapr.AuthHandle, osapr.NonceEven, sharedSecret[:], authIn)
+	if err != nil {
+		return fmt.Errorf("failed to construct auth fields: %v", err)
+	}
+	data, ra, ret, err := nvWriteValue(rw, index, offset, uint32(len(data)), data, ca)
+	if err != nil {
+		return fmt.Errorf("failed to write to NVRAM: %v", err)
+	}
+	raIn := []interface{}{ret, ordNVWriteValueAuth, tpmutil.U32Bytes(data)}
+	if err := ra.verify(ca.NonceOdd, sharedSecret[:], raIn); err != nil {
+		return fmt.Errorf("failed to verify authenticity of response: %v", err)
+	}
 	return nil
 }
 
