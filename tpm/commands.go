@@ -143,7 +143,7 @@ func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pu
 	return &pk, &ra, ret, nil
 }
 
-// getCapability reads the requested capability and sub-capability from NVRAM
+// getCapability reads the requested capability and sub-capability from the TPM
 func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	subCapBytes, err := tpmutil.Pack(subcap)
 	if err != nil {

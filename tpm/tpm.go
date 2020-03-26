@@ -1179,6 +1179,13 @@ func GetNVIndex(rw io.ReadWriter, nvIndex uint32) (NVDataPublic, error) {
 	return nvInfo, nil
 }
 
+// GetCapabilityRaw reads the requested capability and sub-capability from the
+// TPM and returns it as a []byte. Where possible, prefer the convenience
+// functions above, which return higher-level structs for easier handling.
+func GetCapabilityRaw(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
+	return getCapability(rw, cap, subcap)
+}
+
 // OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth digest) error {
