@@ -89,10 +89,10 @@ type permission uint32
 // NV Permissions and Operations
 // Note: Permissions are summable
 const (
-	nvPerPPWrite    permission = 0x00000001
-	nvPerOwnerWrite permission = 0x00000002
-	nvPerAuthWrite  permission = 0x00000004
-	nvPerWriteAll   permission = 0x00000800
+	NVPerPPWrite    permission = 0x00000001
+	NVPerOwnerWrite permission = 0x00000002
+	NVPerAuthWrite  permission = 0x00000004
+	NVPerWriteAll   permission = 0x00000800
 	// Warning: The Value 0x00001000 is
 	// defined in the spec as
 	// TPM_NV_PER_WRITEDEFINE, but it is
@@ -103,26 +103,26 @@ const (
 	// be undone in any way. Do not use
 	// this value unless you know what
 	// you're doing!
-	nvPerWriteSTClear permission = 0x00002000
-	nvPerGlobalLock   permission = 0x00004000
-	nvPerPPRead       permission = 0x00008000
-	nvPerOwnerRead    permission = 0x00100000
-	nvPerAuthRead     permission = 0x00200000
-	nvPerReadSTClear  permission = 0x80000000
+	NVPerWriteSTClear permission = 0x00002000
+	NVPerGlobalLock   permission = 0x00004000
+	NVPerPPRead       permission = 0x00008000
+	NVPerOwnerRead    permission = 0x00100000
+	NVPerAuthRead     permission = 0x00200000
+	NVPerReadSTClear  permission = 0x80000000
 )
 
 // permMap : Map of TPM_NV_Permissions to its strings for convenience
 var permMap = map[permission]string{
-	nvPerPPWrite:      "PPWrite",
-	nvPerOwnerWrite:   "OwnerWrite",
-	nvPerAuthWrite:    "AuthWrite",
-	nvPerWriteAll:     "WriteAll",
-	nvPerWriteSTClear: " WriteSTClear",
-	nvPerGlobalLock:   "GlobalLock",
-	nvPerPPRead:       "PPRead",
-	nvPerOwnerRead:    "OwnerRead",
-	nvPerAuthRead:     "AuthRead",
-	nvPerReadSTClear:  "ReadSTClear",
+	NVPerPPWrite:      "PPWrite",
+	NVPerOwnerWrite:   "OwnerWrite",
+	NVPerAuthWrite:    "AuthWrite",
+	NVPerWriteAll:     "WriteAll",
+	NVPerWriteSTClear: " WriteSTClear",
+	NVPerGlobalLock:   "GlobalLock",
+	NVPerPPRead:       "PPRead",
+	NVPerOwnerRead:    "OwnerRead",
+	NVPerAuthRead:     "AuthRead",
+	NVPerReadSTClear:  "ReadSTClear",
 }
 
 // String returns a textual representation of the set of permissions
