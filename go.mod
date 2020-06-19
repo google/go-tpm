@@ -1,4 +1,4 @@
-module github.com/chrisfenner/go-tpm
+module github.com/google/go-tpm
 
 go 1.12
 
