@@ -1008,8 +1008,28 @@ type TaggedProperty struct {
 // information.
 type Ticket struct {
 	Type      tpmutil.Tag
-	Hierarchy uint32
+	Hierarchy tpmutil.Handle
 	Digest    tpmutil.U16Bytes
+}
+
+// DecodeTicket deserializes a ticket from the TPM wire format.
+func DecodeTicket(in *bytes.Buffer) (*Ticket, error) {
+	var t Ticket
+	if err := tpmutil.UnpackBuf(in, &t.Type); err != nil {
+		return nil, fmt.Errorf("decoding Type: %v", err)
+	}
+	if err := tpmutil.UnpackBuf(in, &t.Hierarchy); err != nil {
+		return nil, fmt.Errorf("decoding Hierarchy: %v", err)
+	}
+	if err := tpmutil.UnpackBuf(in, &t.Digest); err != nil {
+		return nil, fmt.Errorf("decoding Digest: %v", err)
+	}
+	return &t, nil
+}
+
+// Encode represents the given ticket as a TPMT_TK_VERIFIED structure.
+func (t Ticket) Encode() ([]byte, error) {
+	return tpmutil.Pack(t.Type, t.Hierarchy, t.Digest)
 }
 
 // AuthCommand represents a TPMS_AUTH_COMMAND. This structure encapsulates parameters
