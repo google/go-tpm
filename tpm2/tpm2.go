@@ -1407,7 +1407,18 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 	return err
 }
 
-func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmutil.U16Bytes, sigScheme *SigScheme) ([]byte, error) {
+// nullTicket is a hard-coded null ticket of type TPMT_TK_HASHCHECK.
+// It is for Sign commands that do not require the TPM to verify that the digest
+// is not from data that started with TPM_GENERATED_VALUE.
+var nullTicket = []byte{
+	// TPM_ST_HASHCHECK
+	0x80, 0x24,
+	// TPM_RH_NULL
+	0x40, 0x00, 0x00, 0x07,
+	// Empty TPM2B_DIGEST
+	0x00, 0x00}
+
+func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmutil.U16Bytes, sigScheme *SigScheme, validation []byte) ([]byte, error) {
 	ha, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
@@ -1424,16 +1435,8 @@ func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmut
 	if err != nil {
 		return nil, err
 	}
-	hc, err := tpmutil.Pack(TagHashCheck)
-	if err != nil {
-		return nil, err
-	}
-	params, err := tpmutil.Pack(HandleNull, tpmutil.U16Bytes(nil))
-	if err != nil {
-		return nil, err
-	}
 
-	return concat(ha, auth, d, s, hc, params)
+	return concat(ha, auth, d, s, validation)
 }
 
 func decodeSign(buf []byte) (*Signature, error) {
@@ -1448,7 +1451,7 @@ func decodeSign(buf []byte) (*Signature, error) {
 // SignWithSession computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type. Used for keys with non-password authorization policies.
 func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
-	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme)
+	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme, nullTicket)
 	if err != nil {
 		return nil, err
 	}
@@ -1463,6 +1466,15 @@ func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, passwo
 // algorithm depends on the key type.
 func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
 	return SignWithSession(rw, HandlePasswordSession, key, password, digest, sigScheme)
+}
+
+// SignVerifiedHash uses the TPM to hash the input data and then signs the
+// resulting digest with the given key. Hashing the input data with the TPM
+// produces a HASHCHECK ticket, which proves that the data did not begin with
+// TPM_GENERATED_VALUE. This allows signing arbitrary data with restricted
+// siging keys, as long as the arbitrary data does not begin with
+// TPM_GENERATED_VALUE.
+func SignVerifiedHash(rw io.ReadWriter, key tpmutil.Handle, password string, data []byte, sigScheme *SigScheme) (*Signature, error) {
 }
 
 func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
