@@ -1385,16 +1385,13 @@ func NVReadLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString strin
 // validation ticket.
 func decodeHash(resp []byte) ([]byte, *Ticket, error) {
 	var digest tpmutil.U16Bytes
+	var validation Ticket
 
 	buf := bytes.NewBuffer(resp)
-	if err := tpmutil.UnpackBuf(buf, &digest); err != nil {
+	if err := tpmutil.UnpackBuf(buf, &digest, &validation); err != nil {
 		return nil, nil, err
 	}
-	validation, err := DecodeTicket(buf)
-	if err != nil {
-		return nil, nil, err
-	}
-	return digest, validation, nil
+	return digest, &validation, nil
 }
 
 // hashInternal uses TPM2_Hash to hash the data in buf and returns both the
@@ -1442,7 +1439,7 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 // is not from data that started with TPM_GENERATED_VALUE.
 var nullTicket = Ticket{
 	Type:      TagHashCheck,
-	Hierarchy: HandleNull,
+	Hierarchy: uint32(HandleNull),
 	Digest:    tpmutil.U16Bytes{},
 }
 
@@ -1463,7 +1460,7 @@ func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmut
 	if err != nil {
 		return nil, err
 	}
-	v, err := validation.Encode()
+	v, err := tpmutil.Pack(validation)
 	if err != nil {
 		return nil, err
 	}
