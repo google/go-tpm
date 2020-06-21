@@ -30,7 +30,6 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
-	"github.com/google/go-tpm/tpm2"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -384,13 +383,13 @@ func TestHashVerified(t *testing.T) {
 		}
 	}
 	t.Run("Null hierarchy", func(t *testing.T) {
-		run(t, []byte("foobarbaz"), tpm2.HandleNull, false)
+		run(t, []byte("foobarbaz"), HandleNull, false)
 	})
 	t.Run("Owner hierarchy", func(t *testing.T) {
-		run(t, []byte("foobarbaz"), tpm2.HandleOwner, true)
+		run(t, []byte("foobarbaz"), HandleOwner, true)
 	})
 	t.Run("Starts with TPM_GENERATED_VALUE", func(t *testing.T) {
-		run(t, []byte("\xffTCGbarbaz"), tpm2.HandleOwner, false)
+		run(t, []byte("\xffTCGbarbaz"), HandleOwner, false)
 	})
 }
 
@@ -751,7 +750,7 @@ func TestSignVerifiedHash(t *testing.T) {
 		if pub.ECCParameters != nil {
 			scheme = pub.ECCParameters.Sign
 		}
-		sig, err := SignVerifiedHash(rw, signerHandle, defaultPassword, data, tpm2.AlgSHA256, scheme)
+		sig, err := SignVerifiedHash(rw, signerHandle, defaultPassword, data, AlgSHA256, scheme)
 		if err != nil && !wantErr {
 			t.Fatalf("SignVerifiedHash failed unexpectedly: %s", err)
 		}
