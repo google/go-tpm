@@ -110,13 +110,14 @@ func TestGetNVIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't read NVList %v", err)
 	}
+	t.Logf("NVList: %v", nvList)
 	var nvInfo []NVDataPublic
 	for _, nvEntry := range nvList {
 		index, err := GetNVIndex(rwc, nvEntry)
 		if err != nil {
 			t.Fatalf("Can't read NVDataPublic of index: %v with: %v", nvEntry, err)
 		}
-		nvInfo = append(nvInfo, index)
+		nvInfo = append(nvInfo, *index)
 	}
 	t.Logf("NVIndices with Attributes:%v", nvInfo)
 }
@@ -636,6 +637,7 @@ func TestForceClear(t *testing.T) {
 func TestNVWriteValue(t *testing.T) {
 	mathrand.Seed(42)
 	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
 	nvList, err := GetNVList(rwc)
 	if err != nil {
 		t.Fatalf("Couldn't open TPM connection: %v", err)
@@ -661,4 +663,28 @@ func TestNVWriteValue(t *testing.T) {
 		t.Errorf("Couldn't write to index: %v with error: %v", rndIndex, err)
 	}
 
+}
+
+func TestNVReadValueNoAuth(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+	//Get NVList
+	nvList, err := GetNVList(rwc)
+	if err != nil {
+		t.Fatalf("error reading nvlist: %v", err)
+	}
+	for _, item := range nvList {
+		pubData, err := GetNVIndex(rwc, item)
+		if err != nil {
+			t.Errorf("reading index: %v has no data: %v", item, err)
+		}
+		indexvalue, err := NVReadValue(rwc, pubData.NVIndex, 0, pubData.Size, nil)
+		if err != nil {
+			t.Logf("cant read index: %v", err)
+		}
+		t.Logf("indexvalue: %v", indexvalue)
+	}
+	if len(nvList) == 0 {
+		t.Logf("no values to read in nvram")
+	}
 }
