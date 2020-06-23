@@ -349,16 +349,32 @@ func TestHash(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	val := []byte("garmonbozia")
-	got, err := Hash(rw, AlgSHA256, val)
-	if err != nil {
-		t.Fatalf("Hash failed: %v", err)
-	}
-	want := sha256.Sum256(val)
+	run := func(t *testing.T, data []byte, hierarchy tpmutil.Handle, wantValidation bool) {
+		gotDigest, gotValidation, err := Hash(rw, AlgSHA256, data, hierarchy)
+		if err != nil {
+			t.Fatalf("Hash failed: %v", err)
+		}
+		wantDigest := sha256.Sum256(data)
 
-	if !bytes.Equal(got, want[:]) {
-		t.Errorf("Hash(%q) returned %x, want %x", val, got, want)
+		if !bytes.Equal(gotDigest, wantDigest[:]) {
+			t.Errorf("Hash(%q) returned digest %x, want %x", data, gotDigest, wantDigest)
+		}
+		if wantValidation && len(gotValidation.Digest) == 0 {
+			t.Errorf("Hash(%q) unexpectedly returned empty validation ticket", data)
+		}
+		if !wantValidation && len(gotValidation.Digest) != 0 {
+			t.Errorf("Hash(%q) unexpectedly returned non-empty validation ticket", data)
+		}
 	}
+	t.Run("Null hierarchy", func(t *testing.T) {
+		run(t, []byte("foobarbaz"), HandleNull, false)
+	})
+	t.Run("Owner hierarchy", func(t *testing.T) {
+		run(t, []byte("foobarbaz"), HandleOwner, true)
+	})
+	t.Run("Starts with TPM_GENERATED_VALUE", func(t *testing.T) {
+		run(t, []byte("\xffTCGbarbaz"), HandleOwner, false)
+	})
 }
 
 func skipOnUnsupportedAlg(t testing.TB, rw io.ReadWriter, alg Algorithm) {
@@ -623,20 +639,13 @@ func TestSign(t *testing.T) {
 
 		digest := sha256.Sum256([]byte("heyo"))
 
-		var scheme *SigScheme
-		if pub.RSAParameters != nil {
-			scheme = pub.RSAParameters.Sign
-		}
-		if pub.ECCParameters != nil {
-			scheme = pub.ECCParameters.Sign
-		}
-		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], scheme)
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], nil, nil)
 		if err != nil {
 			t.Fatalf("Sign failed: %s", err)
 		}
 		switch signerPub := signerPub.(type) {
 		case *rsa.PublicKey:
-			switch scheme.Alg {
+			switch pub.RSAParameters.Sign.Alg {
 			case AlgRSASSA:
 				if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature); err != nil {
 					t.Errorf("Signature verification failed: %v", err)
@@ -646,7 +655,7 @@ func TestSign(t *testing.T) {
 					t.Errorf("Signature verification failed: %v", err)
 				}
 			default:
-				t.Errorf("unsupported signature algorithm 0x%x", scheme.Alg)
+				t.Errorf("unsupported signature algorithm 0x%x", pub.RSAParameters.Sign.Alg)
 			}
 		case *ecdsa.PublicKey:
 			if !ecdsa.Verify(signerPub, digest[:], sig.ECC.R, sig.ECC.S) {
@@ -697,6 +706,111 @@ func TestSign(t *testing.T) {
 				CurveID: CurveNISTP256,
 			},
 		})
+	})
+}
+
+func TestSignWithAttestationKey(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	run := func(t *testing.T, data []byte, wantErr bool, pub Public) {
+		signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, pub)
+		if err != nil {
+			t.Fatalf("CreatePrimary failed: %v", err)
+		}
+		defer FlushContext(rw, signerHandle)
+
+		digest, validation, err := Hash(rw, AlgSHA256, data, HandleOwner)
+		if err != nil {
+			t.Fatalf("Hash failed unexpectedly: %v", err)
+		}
+
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest, validation, nil)
+		if err != nil && !wantErr {
+			t.Fatalf("Sign failed unexpectedly: %v", err)
+		}
+		if err == nil && wantErr {
+			t.Fatalf("Sign succeeded unexpectedly: %v", sig)
+		}
+		if !wantErr {
+			switch signerPub := signerPub.(type) {
+			case *rsa.PublicKey:
+				switch pub.RSAParameters.Sign.Alg {
+				case AlgRSASSA:
+					if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature); err != nil {
+						t.Errorf("Signature verification failed: %v", err)
+					}
+				case AlgRSAPSS:
+					if err := rsa.VerifyPSS(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature, nil); err != nil {
+						t.Errorf("Signature verification failed: %v", err)
+					}
+				default:
+					t.Errorf("unsupported signature algorithm 0x%x", pub.RSAParameters.Sign.Alg)
+				}
+			case *ecdsa.PublicKey:
+				if !ecdsa.Verify(signerPub, digest[:], sig.ECC.R, sig.ECC.S) {
+					t.Error("Signature verification failed")
+				}
+			}
+		}
+	}
+
+	rsassa := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSign | FlagRestricted | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA256,
+			},
+			KeyBits: 2048,
+		},
+	}
+	rsapss := Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSign | FlagRestricted | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSAPSS,
+				Hash: AlgSHA256,
+			},
+			KeyBits: 2048,
+		},
+	}
+	ecdsa := Public{
+		Type:       AlgECC,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSign | FlagRestricted | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		ECCParameters: &ECCParams{
+			Sign: &SigScheme{
+				Alg:  AlgECDSA,
+				Hash: AlgSHA256,
+			},
+			CurveID: CurveNISTP256,
+		},
+	}
+
+	t.Run("RSA SSA", func(t *testing.T) {
+		run(t, []byte("test123"), false, rsassa)
+	})
+	t.Run("RSA PSS", func(t *testing.T) {
+		run(t, []byte("test123"), false, rsapss)
+	})
+	t.Run("ECC", func(t *testing.T) {
+		skipOnUnsupportedAlg(t, rw, AlgECC)
+		run(t, []byte("test123"), false, ecdsa)
+	})
+	t.Run("RSA SSA with TPM_GENERATED_VALUE", func(t *testing.T) {
+		run(t, []byte("\xffTCG123"), true, rsassa)
+	})
+	t.Run("RSA PSS with TPM_GENERATED_VALUE", func(t *testing.T) {
+		run(t, []byte("\xffTCG123"), true, rsapss)
+	})
+	t.Run("ECC with TPM_GENERATED_VALUE", func(t *testing.T) {
+		skipOnUnsupportedAlg(t, rw, AlgECC)
+		run(t, []byte("\xffTCG123"), true, ecdsa)
 	})
 }
 
