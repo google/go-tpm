@@ -720,20 +720,12 @@ func TestSignWithAttestationKey(t *testing.T) {
 		}
 		defer FlushContext(rw, signerHandle)
 
-		var scheme *SigScheme
-		if pub.RSAParameters != nil {
-			scheme = pub.RSAParameters.Sign
-		}
-		if pub.ECCParameters != nil {
-			scheme = pub.ECCParameters.Sign
-		}
-
 		digest, validation, err := Hash(rw, AlgSHA256, data, HandleOwner)
 		if err != nil {
 			t.Fatalf("Hash failed unexpectedly: %v", err)
 		}
 
-		sig, err := Sign(rw, signerHandle, defaultPassword, digest, validation, scheme)
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest, validation, nil)
 		if err != nil && !wantErr {
 			t.Fatalf("Sign failed unexpectedly: %v", err)
 		}
@@ -743,7 +735,7 @@ func TestSignWithAttestationKey(t *testing.T) {
 		if !wantErr {
 			switch signerPub := signerPub.(type) {
 			case *rsa.PublicKey:
-				switch scheme.Alg {
+				switch pub.RSAParameters.Sign.Alg {
 				case AlgRSASSA:
 					if err := rsa.VerifyPKCS1v15(signerPub, crypto.SHA256, digest[:], sig.RSA.Signature); err != nil {
 						t.Errorf("Signature verification failed: %v", err)
@@ -753,7 +745,7 @@ func TestSignWithAttestationKey(t *testing.T) {
 						t.Errorf("Signature verification failed: %v", err)
 					}
 				default:
-					t.Errorf("unsupported signature algorithm 0x%x", scheme.Alg)
+					t.Errorf("unsupported signature algorithm 0x%x", pub.RSAParameters.Sign.Alg)
 				}
 			case *ecdsa.PublicKey:
 				if !ecdsa.Verify(signerPub, digest[:], sig.ECC.R, sig.ECC.S) {
