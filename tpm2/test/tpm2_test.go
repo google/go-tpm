@@ -742,10 +742,10 @@ func TestSignWithAttestationKey(t *testing.T) {
 
 		sig, err := Sign(rw, signerHandle, defaultPassword, digest, scheme, validation)
 		if err != nil && !wantErr {
-			t.Fatalf("SignVerifiedHash failed unexpectedly: %v", err)
+			t.Fatalf("Sign failed unexpectedly: %v", err)
 		}
 		if err == nil && wantErr {
-			t.Fatalf("SignVerifiedHash succeeded unexpectedly: %v", sig)
+			t.Fatalf("Sign succeeded unexpectedly: %v", sig)
 		}
 		if !wantErr {
 			switch signerPub := signerPub.(type) {
