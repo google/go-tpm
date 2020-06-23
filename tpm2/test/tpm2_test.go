@@ -349,37 +349,21 @@ func TestHash(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	val := []byte("garmonbozia")
-	got, err := Hash(rw, AlgSHA256, val)
-	if err != nil {
-		t.Fatalf("Hash failed: %v", err)
-	}
-	want := sha256.Sum256(val)
-
-	if !bytes.Equal(got, want[:]) {
-		t.Errorf("Hash(%q) returned %x, want %x", val, got, want)
-	}
-}
-
-func TestHashVerified(t *testing.T) {
-	rw := openTPM(t)
-	defer rw.Close()
-
 	run := func(t *testing.T, data []byte, hierarchy tpmutil.Handle, wantValidation bool) {
-		gotDigest, gotValidation, err := HashVerified(rw, AlgSHA256, data, hierarchy)
+		gotDigest, gotValidation, err := Hash(rw, AlgSHA256, data, hierarchy)
 		if err != nil {
-			t.Fatalf("HashVerified failed: %v", err)
+			t.Fatalf("Hash failed: %v", err)
 		}
 		wantDigest := sha256.Sum256(data)
 
 		if !bytes.Equal(gotDigest, wantDigest[:]) {
-			t.Errorf("HashVerified(%q) returned digest %x, want %x", data, gotDigest, wantDigest)
+			t.Errorf("Hash(%q) returned digest %x, want %x", data, gotDigest, wantDigest)
 		}
 		if wantValidation && len(gotValidation.Digest) == 0 {
-			t.Errorf("HashVerified(%q) unexpectedly returned empty validation ticket", data)
+			t.Errorf("Hash(%q) unexpectedly returned empty validation ticket", data)
 		}
 		if !wantValidation && len(gotValidation.Digest) != 0 {
-			t.Errorf("HashVerified(%q) unexpectedly returned non-empty validation ticket", data)
+			t.Errorf("Hash(%q) unexpectedly returned non-empty validation ticket", data)
 		}
 	}
 	t.Run("Null hierarchy", func(t *testing.T) {
@@ -662,7 +646,7 @@ func TestSign(t *testing.T) {
 		if pub.ECCParameters != nil {
 			scheme = pub.ECCParameters.Sign
 		}
-		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], scheme)
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest[:], scheme, nil)
 		if err != nil {
 			t.Fatalf("Sign failed: %s", err)
 		}
@@ -732,14 +716,14 @@ func TestSign(t *testing.T) {
 	})
 }
 
-func TestSignVerifiedHash(t *testing.T) {
+func TestSignWithAttestationKey(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
 	run := func(t *testing.T, data []byte, wantErr bool, pub Public) {
 		signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, pub)
 		if err != nil {
-			t.Fatalf("CreatePrimary failed: %s", err)
+			t.Fatalf("CreatePrimary failed: %v", err)
 		}
 		defer FlushContext(rw, signerHandle)
 
@@ -750,15 +734,20 @@ func TestSignVerifiedHash(t *testing.T) {
 		if pub.ECCParameters != nil {
 			scheme = pub.ECCParameters.Sign
 		}
-		sig, err := SignVerifiedHash(rw, signerHandle, defaultPassword, data, AlgSHA256, scheme)
+
+		digest, validation, err := Hash(rw, AlgSHA256, data, HandleOwner)
+		if err != nil {
+			t.Fatalf("Hash failed unexpectedly: %v", err)
+		}
+
+		sig, err := Sign(rw, signerHandle, defaultPassword, digest, scheme, validation)
 		if err != nil && !wantErr {
-			t.Fatalf("SignVerifiedHash failed unexpectedly: %s", err)
+			t.Fatalf("SignVerifiedHash failed unexpectedly: %v", err)
 		}
 		if err == nil && wantErr {
 			t.Fatalf("SignVerifiedHash succeeded unexpectedly: %v", sig)
 		}
 		if !wantErr {
-			digest := sha256.Sum256(data)
 			switch signerPub := signerPub.(type) {
 			case *rsa.PublicKey:
 				switch scheme.Alg {

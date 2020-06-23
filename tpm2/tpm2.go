@@ -1394,32 +1394,17 @@ func decodeHash(resp []byte) ([]byte, *Ticket, error) {
 	return digest, &validation, nil
 }
 
-// hashInternal uses TPM2_Hash to hash the data in buf and returns both the
-// computed digest and the validation ticket.
-func hashInternal(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes, hierarchy tpmutil.Handle) ([]byte, *Ticket, error) {
+// Hash computes a hash of data in buf using TPM2_Hash, returning the computed
+// digest and validation ticket. The validation ticket serves as confirmation
+// from the TPM that the data in buf did not begin with TPM_GENERATED_VALUE.
+// NOTE: TPM2_Hash can only accept data up to MAX_DIGEST_BUFFER in size, which
+// is implementation-dependent, but guaranteed to be at least 1024 octets.
+func Hash(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes, hierarchy tpmutil.Handle) (digest []byte, validation *Ticket, err error) {
 	resp, err := runCommand(rw, TagNoSessions, cmdHash, buf, alg, hierarchy)
 	if err != nil {
 		return nil, nil, err
 	}
 	return decodeHash(resp)
-}
-
-// Hash computes a hash of data in buf using TPM2_Hash.
-// NOTE: TPM2_Hash can only accept data up to MAX_DIGEST_BUFFER in size, which
-// is implementation-dependent, but guaranteed to be at least 1024 octets.
-func Hash(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes) ([]byte, error) {
-	digest, _, err := hashInternal(rw, alg, buf, HandleNull)
-	return digest, err
-}
-
-// HashVerified computes a hash of data in buf using TPM2_Hash, returning the
-// validation ticket as well as the computed digest. This ticket serves as
-// confirmation from the TPM that the data in buf did not begin with
-// TPM_GENERATED_VALUE.
-// NOTE: TPM2_Hash can only accept data up to MAX_DIGEST_BUFFER in size, which
-// is implementation-dependent, but guaranteed to be at least 1024 octets.
-func HashVerified(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes, hierarchy tpmutil.Handle) (digest []byte, validation *Ticket, err error) {
-	return hashInternal(rw, alg, buf, hierarchy)
 }
 
 // Startup initializes a TPM (usually done by the OS).
@@ -1479,9 +1464,14 @@ func decodeSign(buf []byte) (*Signature, error) {
 
 // SignWithSession computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type. Used for keys with non-password authorization policies.
-// Uses a NULL ticket for the 'validation' parameter to TPM2_Sign.
-func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
-	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme, nullTicket)
+// If 'key' references a Restricted Decryption key, 'validation' must be a valid hash verification
+// ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM.
+// If 'validation' is nil, a NULL ticket is passed to TPM2_Sign.
+func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme, validation *Ticket) (*Signature, error) {
+	if validation == nil {
+		validation = &nullTicket
+	}
+	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme, *validation)
 	if err != nil {
 		return nil, err
 	}
@@ -1494,31 +1484,11 @@ func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, passwo
 
 // Sign computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type.
-// Uses a NULL ticket for the 'validation' parameter to TPM2_Sign.
-func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme) (*Signature, error) {
-	return SignWithSession(rw, HandlePasswordSession, key, password, digest, sigScheme)
-}
-
-// SignVerifiedHash uses the TPM to hash the input data and then signs the
-// resulting digest with the given key. Hashing the input data with the TPM
-// produces a HASHCHECK ticket, which proves that the data did not begin with
-// TPM_GENERATED_VALUE. This allows signing arbitrary data with restricted
-// signing keys, as long as the arbitrary data does not begin with
-// TPM_GENERATED_VALUE.
-func SignVerifiedHash(rw io.ReadWriter, key tpmutil.Handle, password string, data []byte, alg Algorithm, sigScheme *SigScheme) (*Signature, error) {
-	digest, validation, err := HashVerified(rw, alg, data, HandleOwner)
-	if err != nil {
-		return nil, err
-	}
-	cmd, err := encodeSign(HandlePasswordSession, key, password, digest, sigScheme, *validation)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := runCommand(rw, TagSessions, cmdSign, tpmutil.RawBytes(cmd))
-	if err != nil {
-		return nil, err
-	}
-	return decodeSign(resp)
+// If 'key' references a Restricted Decryption key, 'validation' must be a valid hash verification
+// ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM.
+// If 'validation' is nil, a NULL ticket is passed to TPM2_Sign.
+func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme, validation *Ticket) (*Signature, error) {
+	return SignWithSession(rw, HandlePasswordSession, key, password, digest, sigScheme, validation)
 }
 
 func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
