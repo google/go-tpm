@@ -49,7 +49,7 @@ func BenchmarkRSA2048Signing(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := Sign(rw, signerHandle, defaultPassword, digest[:], pub.RSAParameters.Sign, nil); err != nil {
+		if _, err := Sign(rw, signerHandle, defaultPassword, digest[:], nil, pub.RSAParameters.Sign); err != nil {
 			b.Fatalf("Signing failed: %v", err)
 		}
 	}
@@ -84,7 +84,7 @@ func BenchmarkECCNISTP256Signing(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := Sign(rw, signerHandle, defaultPassword, digest[:], pub.ECCParameters.Sign, nil); err != nil {
+		if _, err := Sign(rw, signerHandle, defaultPassword, digest[:], nil, pub.ECCParameters.Sign); err != nil {
 			b.Fatalf("Signing failed: %v", err)
 		}
 	}

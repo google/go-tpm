@@ -1428,7 +1428,7 @@ var nullTicket = Ticket{
 	Digest:    tpmutil.U16Bytes{},
 }
 
-func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmutil.U16Bytes, sigScheme *SigScheme, validation Ticket) ([]byte, error) {
+func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmutil.U16Bytes, sigScheme *SigScheme, validation *Ticket) ([]byte, error) {
 	ha, err := tpmutil.Pack(key)
 	if err != nil {
 		return nil, err
@@ -1444,6 +1444,9 @@ func encodeSign(sessionHandle, key tpmutil.Handle, password string, digest tpmut
 	s, err := sigScheme.encode()
 	if err != nil {
 		return nil, err
+	}
+	if validation == nil {
+		validation = &nullTicket
 	}
 	v, err := tpmutil.Pack(validation)
 	if err != nil {
@@ -1467,11 +1470,8 @@ func decodeSign(buf []byte) (*Signature, error) {
 // If 'key' references a Restricted Decryption key, 'validation' must be a valid hash verification
 // ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM.
 // If 'validation' is nil, a NULL ticket is passed to TPM2_Sign.
-func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme, validation *Ticket) (*Signature, error) {
-	if validation == nil {
-		validation = &nullTicket
-	}
-	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme, *validation)
+func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, validation *Ticket, sigScheme *SigScheme) (*Signature, error) {
+	cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme, validation)
 	if err != nil {
 		return nil, err
 	}
@@ -1487,8 +1487,8 @@ func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, passwo
 // If 'key' references a Restricted Decryption key, 'validation' must be a valid hash verification
 // ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM.
 // If 'validation' is nil, a NULL ticket is passed to TPM2_Sign.
-func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, sigScheme *SigScheme, validation *Ticket) (*Signature, error) {
-	return SignWithSession(rw, HandlePasswordSession, key, password, digest, sigScheme, validation)
+func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, validation *Ticket, sigScheme *SigScheme) (*Signature, error) {
+	return SignWithSession(rw, HandlePasswordSession, key, password, digest, validation, sigScheme)
 }
 
 func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {

@@ -450,7 +450,7 @@ func TestSignEncode(t *testing.T) {
 			t.Fatal(err)
 		}
 		digest := []byte{0x01, 0x02, 0x03}
-		cmdBytes, err := encodeSign(HandlePasswordSession, tpmutil.Handle(0x80000001), defaultPassword, digest, nil, nullTicket)
+		cmdBytes, err := encodeSign(HandlePasswordSession, tpmutil.Handle(0x80000001), defaultPassword, digest, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -468,7 +468,7 @@ func TestSignEncode(t *testing.T) {
 		cmdBytes, err := encodeSign(HandlePasswordSession, tpmutil.Handle(0x80000001), defaultPassword, digest, &SigScheme{
 			Alg:  AlgRSASSA,
 			Hash: AlgSHA256,
-		}, nullTicket)
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
