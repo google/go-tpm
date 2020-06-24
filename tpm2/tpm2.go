@@ -1424,7 +1424,7 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 // is not from data that started with TPM_GENERATED_VALUE.
 var nullTicket = Ticket{
 	Type:      TagHashCheck,
-	Hierarchy: uint32(HandleNull),
+	Hierarchy: HandleNull,
 	Digest:    tpmutil.U16Bytes{},
 }
 
