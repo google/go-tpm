@@ -1445,7 +1445,7 @@ func TestECDHKeyGen(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	// Generate my key and load the public point into the TPM
+	// Generate my key and load the public point into the TPM.
 	myPriv, myPubX, myPubY, err := elliptic.GenerateKey(elliptic.P256(), rand.Reader)
 	handle, _, err := LoadExternal(rw, Public{
 		Type:       AlgECC,
@@ -1479,10 +1479,10 @@ func TestECDHZGen(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	// Generate my key
+	// Generate our key.
 	myPriv, myPubX, myPubY, err := elliptic.GenerateKey(elliptic.P256(), rand.Reader)
 
-	// Generate a key in the TPM
+	// Generate a key in the TPM.
 	handle, _, err := CreatePrimary(rw, HandleOwner, PCRSelection{}, emptyPassword, defaultPassword, Public{
 		Type:       AlgECC,
 		NameAlg:    AlgSHA256,
@@ -1496,7 +1496,7 @@ func TestECDHZGen(t *testing.T) {
 	}
 	defer FlushContext(rw, handle)
 
-	// Read the public key from the TPM
+	// Read the public key from the TPM.
 	yourPub, _, _, err := ReadPublic(rw, handle)
 	if err != nil {
 		t.Fatalf("ReadPublic failed: %v", err)
@@ -1511,7 +1511,7 @@ func TestECDHZGen(t *testing.T) {
 		t.Fatalf("ECDHZGen failed: %v", err)
 	}
 
-	// Same calculation on our side: multiply our priv by the TPM's ephemeral pub.
+	// Same calculation on our side: multiply our priv by the TPM's pub.
 	myZX, myZY := elliptic.P256().ScalarMult(yourPub.ECCParameters.Point.X(), yourPub.ECCParameters.Point.Y(), myPriv)
 
 	if myZX.Cmp(yourZ.X()) != 0 || myZY.Cmp(yourZ.Y()) != 0 {

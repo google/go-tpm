@@ -1870,7 +1870,7 @@ func encodeECDHKeyGen(key tpmutil.Handle) ([]byte, error) {
 }
 
 func decodeECDHKeyGen(resp []byte) (*ECPoint, *ECPoint, error) {
-	// Unpack a TPM2B_ECC_POINT, which is a TPMS_ECC_POINT with a total size prepended.
+	// Unpack z and pub as TPM2B_ECC_POINT, which is a TPMS_ECC_POINT with a total size prepended.
 	var z2B, pub2B tpmutil.U16Bytes
 	_, err := tpmutil.Unpack(resp, &z2B, &pub2B)
 	if err != nil {
@@ -1916,7 +1916,7 @@ func encodeECDHZGen(key tpmutil.Handle, password string, inPoint ECPoint) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	// Pack the TPMS_ECC_POINT as a TPM2B_ECC_POINT
+	// Pack the TPMS_ECC_POINT as a TPM2B_ECC_POINT.
 	p2B, err := tpmutil.Pack(tpmutil.U16Bytes(p))
 	if err != nil {
 		return nil, err
