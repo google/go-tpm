@@ -1121,16 +1121,12 @@ func GetManufacturer(rw io.ReadWriter) ([]byte, error) {
 }
 
 // GetPermanentFlags returns the TPM_PERMANENT_FLAGS structure.
-func GetPermanentFlags(rw io.ReadWriter) (PermanentFlags, error) {
-	var ret PermanentFlags
-
+func GetPermanentFlags(rw io.ReadWriter) ([]byte, error) {
 	raw, err := getCapability(rw, capFlag, tpmCapFlagPermanent)
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
-
-	_, err = tpmutil.Unpack(raw, &ret)
-	return ret, err
+	return raw, err
 }
 
 // GetAlgs returns a list of algorithms supported by the TPM device.
