@@ -1072,7 +1072,7 @@ func encodeClear(handle tpmutil.Handle, auth AuthCommand) ([]byte, error) {
 	return concat(ah, encodedAuth)
 }
 
-// Clears lockout, endorsement and owner hierarchy authorization values
+// Clear clears lockout, endorsement and owner hierarchy authorization values
 func Clear(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand) error {
 	cmd, err := encodeClear(handle, auth)
 	if err != nil {
