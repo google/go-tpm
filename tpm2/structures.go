@@ -1008,7 +1008,7 @@ type TaggedProperty struct {
 // information.
 type Ticket struct {
 	Type      tpmutil.Tag
-	Hierarchy uint32
+	Hierarchy tpmutil.Handle
 	Digest    tpmutil.U16Bytes
 }
 
