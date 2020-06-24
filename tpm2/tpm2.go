@@ -1865,6 +1865,96 @@ func RSADecrypt(rw io.ReadWriter, key tpmutil.Handle, password string, message [
 	return decodeRSADecrypt(resp)
 }
 
+func encodeECDHKeyGen(key tpmutil.Handle) ([]byte, error) {
+	return tpmutil.Pack(key)
+}
+
+func decodeECDHKeyGen(resp []byte) (*ECPoint, *ECPoint, error) {
+	// Unpack a TPM2B_ECC_POINT, which is a TPMS_ECC_POINT with a total size prepended.
+	var z2B, pub2B tpmutil.U16Bytes
+	_, err := tpmutil.Unpack(resp, &z2B, &pub2B)
+	if err != nil {
+		return nil, nil, err
+	}
+	var zPoint, pubPoint ECPoint
+	_, err = tpmutil.Unpack(z2B, &zPoint.XRaw, &zPoint.YRaw)
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = tpmutil.Unpack(pub2B, &pubPoint.XRaw, &pubPoint.YRaw)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &zPoint, &pubPoint, nil
+}
+
+// ECDHKeyGen generates an ephemeral ECC key, calculates the ECDH point multiplcation of the
+// ephemeral private key and a loaded public key, and returns the public ephemeral point along with
+// the coordinates of the resulting point.
+func ECDHKeyGen(rw io.ReadWriter, key tpmutil.Handle) (zPoint, pubPoint *ECPoint, err error) {
+	cmd, err := encodeECDHKeyGen(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagNoSessions, cmdECDHKeyGen, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeECDHKeyGen(resp)
+}
+
+func encodeECDHZGen(key tpmutil.Handle, password string, inPoint ECPoint) ([]byte, error) {
+	ha, err := tpmutil.Pack(key)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return nil, err
+	}
+	p, err := tpmutil.Pack(inPoint)
+	if err != nil {
+		return nil, err
+	}
+	// Pack the TPMS_ECC_POINT as a TPM2B_ECC_POINT
+	p2B, err := tpmutil.Pack(tpmutil.U16Bytes(p))
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, p2B)
+}
+
+func decodeECDHZGen(resp []byte) (*ECPoint, error) {
+	var paramSize uint32
+	// Unpack a TPM2B_ECC_POINT, which is a TPMS_ECC_POINT with a total size prepended.
+	var z2B tpmutil.U16Bytes
+	_, err := tpmutil.Unpack(resp, &paramSize, &z2B)
+	if err != nil {
+		return nil, err
+	}
+	var zPoint ECPoint
+	_, err = tpmutil.Unpack(z2B, &zPoint.XRaw, &zPoint.YRaw)
+	if err != nil {
+		return nil, err
+	}
+	return &zPoint, nil
+}
+
+// ECDHZGen performs ECDH point multiplication between a private key held in the TPM and a given
+// public point, returning the coordinates of the resulting point. The key must have FlagDecrypt
+// set.
+func ECDHZGen(rw io.ReadWriter, key tpmutil.Handle, password string, inPoint ECPoint) (zPoint *ECPoint, err error) {
+	cmd, err := encodeECDHZGen(key, password, inPoint)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, cmdECDHZGen, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeECDHZGen(resp)
+}
+
 // DictionaryAttackLockReset cancels the effect of a TPM lockout due to a number
 // of successive authorization failures, by setting the lockout counter to zero.
 // The command requires Lockout Authorization and only one lockoutAuth authorization

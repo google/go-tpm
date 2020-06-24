@@ -369,6 +369,7 @@ const (
 	// It's exported for computing of default AuthPolicy value.
 	CmdPolicySecret     tpmutil.Command = 0x00000151
 	cmdCreate           tpmutil.Command = 0x00000153
+	cmdECDHZGen         tpmutil.Command = 0x00000154
 	cmdImport           tpmutil.Command = 0x00000156
 	cmdLoad             tpmutil.Command = 0x00000157
 	cmdQuote            tpmutil.Command = 0x00000158
@@ -377,6 +378,7 @@ const (
 	cmdUnseal           tpmutil.Command = 0x0000015E
 	cmdContextLoad      tpmutil.Command = 0x00000161
 	cmdContextSave      tpmutil.Command = 0x00000162
+	cmdECDHKeyGen       tpmutil.Command = 0x00000163
 	cmdEncryptDecrypt   tpmutil.Command = 0x00000164
 	cmdFlushContext     tpmutil.Command = 0x00000165
 	cmdLoadExternal     tpmutil.Command = 0x00000167
