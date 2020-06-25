@@ -198,7 +198,7 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Couldn't create PCR composite")
 	}
 
-	if len(comp) != int(digestSize) {
+	if len(comp) != int(20) {
 		t.Fatal("Invalid PCR composite")
 	}
 
