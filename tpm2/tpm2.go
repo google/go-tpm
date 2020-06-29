@@ -1072,7 +1072,7 @@ func encodeClear(handle tpmutil.Handle, auth AuthCommand) ([]byte, error) {
 	return concat(ah, encodedAuth)
 }
 
-// Clears lockout, endorsement and owner hierarchy authorization values
+// Clear clears lockout, endorsement and owner hierarchy authorization values
 func Clear(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand) error {
 	cmd, err := encodeClear(handle, auth)
 	if err != nil {
@@ -1424,7 +1424,7 @@ func Shutdown(rw io.ReadWriter, typ StartupType) error {
 // is not from data that started with TPM_GENERATED_VALUE.
 var nullTicket = Ticket{
 	Type:      TagHashCheck,
-	Hierarchy: uint32(HandleNull),
+	Hierarchy: HandleNull,
 	Digest:    tpmutil.U16Bytes{},
 }
 
