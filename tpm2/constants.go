@@ -18,6 +18,7 @@ import (
 	"crypto"
 	"crypto/elliptic"
 	"fmt"
+	"strings"
 
 	// Register the relevant hash implementations to prevent a runtime failure.
 	_ "crypto/sha1"
@@ -432,3 +433,42 @@ const (
 	AttrPlatformCreate NVAttr = 0x40000000
 	AttrReadSTClear    NVAttr = 0x80000000
 )
+
+var permMap = map[NVAttr]string{
+	AttrPPWrite:        "PPWrite",
+	AttrOwnerWrite:     "OwnerWrite",
+	AttrAuthWrite:      "AuthWrite",
+	AttrPolicyWrite:    "PolicyWrite",
+	AttrPolicyDelete:   "PolicyDelete",
+	AttrWriteLocked:    "WriteLocked",
+	AttrWriteAll:       "WriteAll",
+	AttrWriteDefine:    "WriteDefine",
+	AttrWriteSTClear:   "WriteSTClear",
+	AttrGlobalLock:     "GlobalLock",
+	AttrPPRead:         "PPRead",
+	AttrOwnerRead:      "OwnerRead",
+	AttrAuthRead:       "AuthRead",
+	AttrPolicyRead:     "PolicyRead",
+	AttrNoDA:           "No Do",
+	AttrOrderly:        "Oderly",
+	AttrClearSTClear:   "ClearSTClear",
+	AttrReadLocked:     "ReadLocked",
+	AttrWritten:        "Writte",
+	AttrPlatformCreate: "PlatformCreate",
+	AttrReadSTClear:    "ReadSTClear",
+}
+
+// String returns a textual representation of the set of NVAttr
+func (p NVAttr) String() string {
+	var retString strings.Builder
+	for iterator, item := range permMap {
+		if (p & iterator) != 0 {
+			retString.WriteString(item + " + ")
+		}
+	}
+	if retString.String() == "" {
+		return "Permission/s not found"
+	}
+	return strings.TrimSuffix(retString.String(), " + ")
+
+}
