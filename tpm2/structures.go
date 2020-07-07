@@ -31,7 +31,7 @@ import (
 type NVPublic struct {
 	NVIndex    tpmutil.Handle
 	NameAlg    Algorithm
-	Attributes KeyProp
+	Attributes NVAttr
 	AuthPolicy tpmutil.U16Bytes
 	DataSize   uint16
 }

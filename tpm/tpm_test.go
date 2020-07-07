@@ -37,8 +37,8 @@ var (
 // getAuth looks in the environment variables to find a given auth input value.
 // If the environment variable is not present, then getAuth returns the
 // well-known auth value of 20 bytes of zeros.
-func getAuth(name string) digest {
-	var auth digest
+func getAuth(name string) Digest {
+	var auth Digest
 	authInput := os.Getenv(name)
 	if authInput != "" {
 		aa := sha1.Sum([]byte(authInput))
@@ -198,7 +198,7 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Couldn't create PCR composite")
 	}
 
-	if len(comp) != int(digestSize) {
+	if len(comp) != int(20) {
 		t.Fatal("Invalid PCR composite")
 	}
 
@@ -232,15 +232,15 @@ func TestNVDefineSpace(t *testing.T) {
 	// TPM-Main-Part-2-TPM-Structures_v1.2_rev116_01032011, P.139
 	owner := getAuth(ownerAuthEnvVar)
 	nvIndex := uint32(0x0000F004)
-	pcrInfoRead, err := newPCRInfoShort(rwc, locZero, []int{1})
+	pcrInfoRead, err := newPCRInfoShort(rwc, LocZero, []int{1})
 	if err != nil {
 		t.Fatalf("Couldn't create PCRInfoRead in define space")
 	}
-	pcrInfoWrite, err := newPCRInfoShort(rwc, locZero, []int{1})
+	pcrInfoWrite, err := newPCRInfoShort(rwc, LocZero, []int{1})
 	if err != nil {
 		t.Fatalf("Couldn't create PCRInfoWrite in define space")
 	}
-	nvAtt := &nvAttributes{tagNVAttributes, nvPerOwnerWrite}
+	nvAtt := &nvAttributes{tagNVAttributes, NVPerOwnerWrite}
 	nvData := NVDataPublic{tagNVDataPublic, nvIndex, *pcrInfoRead, *pcrInfoWrite, *nvAtt, true, true, false, uint32(20)}
 
 	err = NVDefineSpace(rwc, nvData, []byte(owner[:]))
@@ -321,7 +321,7 @@ func TestSeal(t *testing.T) {
 	data[2] = 139
 
 	srkAuth := getAuth(srkAuthEnvVar)
-	sealed, err := Seal(rwc, locZero, []int{17} /* PCR 17 */, data, srkAuth[:])
+	sealed, err := Seal(rwc, LocZero, []int{17} /* PCR 17 */, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}
@@ -349,7 +349,7 @@ func TestReseal(t *testing.T) {
 	pcrMap[23] = make([]byte, 20)
 	pcrMap[16] = make([]byte, 20)
 	srkAuth := getAuth(srkAuthEnvVar)
-	sealed, err := Reseal(rwc, locZero, pcrMap, data, srkAuth[:])
+	sealed, err := Reseal(rwc, LocZero, pcrMap, data, srkAuth[:])
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}
