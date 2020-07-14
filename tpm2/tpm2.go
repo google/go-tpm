@@ -2012,3 +2012,13 @@ func DictionaryAttackParameters(rw io.ReadWriter, auth AuthCommand, maxTries, re
 	_, err = runCommand(rw, TagSessions, cmdDictionaryAttackParameters, tpmutil.RawBytes(cmd))
 	return err
 }
+
+// PolicyCommandCode indicates that the authorization will be limited to a specific command code
+func PolicyCommandCode(rw io.ReadWriter, session tpmutil.Handle, cc tpmutil.Command) error {
+	data, err := tpmutil.Pack(session, cc)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagNoSessions, cmdPolicyCommandCode, data)
+	return err
+}

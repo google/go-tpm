@@ -347,6 +347,9 @@ var toGoCurve = map[EllipticCurve]elliptic.Curve{
 
 // Supported TPM operations.
 const (
+	// CmdNVUndefineSpaceSpecial is a command code TPM2_PolicyCommandCode.
+	// It's exported to be used with that.
+	CmdNVUndefineSpaceSpecial     tpmutil.Command = 0x0000011F
 	cmdEvictControl               tpmutil.Command = 0x00000120
 	cmdUndefineSpace              tpmutil.Command = 0x00000122
 	cmdClear                      tpmutil.Command = 0x00000126
