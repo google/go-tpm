@@ -794,6 +794,17 @@ func PolicyPCR(rw io.ReadWriter, session tpmutil.Handle, expectedDigest []byte, 
 	return err
 }
 
+// PolicyOr compares PolicySession→Digest against the list of provided values.
+// If the current Session→Digest does not match any value in the list,
+// the TPM shall return TPM_RC_VALUE. Otherwise, the TPM will reset policySession→Digest
+// to a Zero Digest. Then policySession→Digest is extended by the concatenation of
+// TPM_CC_PolicyOR and the concatenation of all of the digests.
+func PolicyOr(rw io.ReadWriter, session tpmutil.Handle, digests TPMLDigest) error {
+	data, err := tpmutil.Pack(session, digests)
+	_, err = runCommand(rw, TagNoSessions, cmdPolicyOr, data)
+	return err
+}
+
 // PolicyGetDigest returns the current policyDigest of the session.
 func PolicyGetDigest(rw io.ReadWriter, handle tpmutil.Handle) ([]byte, error) {
 	resp, err := runCommand(rw, TagNoSessions, cmdPolicyGetDigest, handle)

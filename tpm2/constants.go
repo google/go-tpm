@@ -385,6 +385,7 @@ const (
 	cmdLoadExternal     tpmutil.Command = 0x00000167
 	cmdMakeCredential   tpmutil.Command = 0x00000168
 	cmdReadPublicNV     tpmutil.Command = 0x00000169
+	cmdPolicyOr         tpmutil.Command = 0x00000171
 	cmdReadPublic       tpmutil.Command = 0x00000173
 	cmdRSAEncrypt       tpmutil.Command = 0x00000174
 	cmdStartAuthSession tpmutil.Command = 0x00000176
