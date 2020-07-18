@@ -1529,8 +1529,17 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 	// the signing key (no need to sign the response).
 	// See TPM2 spec part4 pg227 SignAttestInfo()
 	if sigAlg != AlgNull {
-		if err := tpmutil.UnpackBuf(buf, &hashAlg, &signature); err != nil {
-			return nil, nil, err
+	if sigAlg != AlgNull {
+		if sigAlg == AlgECDSA {
+			var r, s tpmutil.U16Bytes
+			if err := tpmutil.UnpackBuf(buf, &hashAlg, &r, &s); err != nil {
+				return nil, nil, err
+			}
+			signature = append(r, s...)
+		} else {
+			if err := tpmutil.UnpackBuf(buf, &hashAlg, &signature); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 	return attest, signature, nil
