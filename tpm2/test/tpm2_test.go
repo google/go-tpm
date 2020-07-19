@@ -24,7 +24,9 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
+	"hash"
 	"io"
+	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -1089,16 +1091,16 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 func TestCreateAndCertifyCreationECC(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
-	params := tpm2.Public{
-		Type:       tpm2.AlgECC,
-		NameAlg:    tpm2.AlgSHA256,
-		Attributes: tpm2.FlagSignerDefault,
-		ECCParameters: &tpm2.ECCParams{
-			Sign: &tpm2.SigScheme{
-				Alg:  tpm2.AlgECDSA,
-				Hash: tpm2.AlgSHA256,
+	params := Public{
+		Type:       AlgECC,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSignerDefault,
+		ECCParameters: &ECCParams{
+			Sign: &SigScheme{
+				Alg:  AlgECDSA,
+				Hash: AlgSHA256,
 			},
-			CurveID: tpm2.CurveNISTP256,
+			CurveID: CurveNISTP256,
 		},
 	}
 	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
