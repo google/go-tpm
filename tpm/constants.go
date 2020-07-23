@@ -36,35 +36,39 @@ const (
 
 // Supported TPM operations.
 const (
-	ordOIAP                 uint32 = 0x0000000A
-	ordOSAP                 uint32 = 0x0000000B
-	ordTakeOwnership        uint32 = 0x0000000D
-	ordExtend               uint32 = 0x00000014
-	ordPCRRead              uint32 = 0x00000015
-	ordQuote                uint32 = 0x00000016
-	ordSeal                 uint32 = 0x00000017
-	ordUnseal               uint32 = 0x00000018
-	ordCreateWrapKey        uint32 = 0x0000001F
-	ordGetPubKey            uint32 = 0x00000021
-	ordSign                 uint32 = 0x0000003C
-	ordQuote2               uint32 = 0x0000003E
-	ordResetLockValue       uint32 = 0x00000040
-	ordLoadKey2             uint32 = 0x00000041
-	ordGetRandom            uint32 = 0x00000046
-	ordOwnerClear           uint32 = 0x0000005B
-	ordForceClear           uint32 = 0x0000005D
-	ordGetCapability        uint32 = 0x00000065
-	ordMakeIdentity         uint32 = 0x00000079
-	ordActivateIdentity     uint32 = 0x0000007A
-	ordReadPubEK            uint32 = 0x0000007C
-	ordOwnerReadInternalPub uint32 = 0x00000081
-	ordFlushSpecific        uint32 = 0x000000BA
-	ordNVDefineSpace        uint32 = 0x000000CC
-	ordPcrReset             uint32 = 0x000000C8
-	ordNVWriteValue         uint32 = 0x000000CD
-	ordNVWriteValueAuth     uint32 = 0x000000CE
-	ordNVReadValue          uint32 = 0x000000CF
-	ordNVReadValueAuth      uint32 = 0x000000D0
+	ordOIAP                     uint32 = 0x0000000A
+	ordOSAP                     uint32 = 0x0000000B
+	ordTakeOwnership            uint32 = 0x0000000D
+	ordExtend                   uint32 = 0x00000014
+	ordPCRRead                  uint32 = 0x00000015
+	ordQuote                    uint32 = 0x00000016
+	ordSeal                     uint32 = 0x00000017
+	ordUnseal                   uint32 = 0x00000018
+	ordCreateWrapKey            uint32 = 0x0000001F
+	ordGetPubKey                uint32 = 0x00000021
+	ordCreateMigrationBlob      uint32 = 0x00000028
+	ordAuthorizeMigrationKey    uint32 = 0x0000002b
+	ordSign                     uint32 = 0x0000003C
+	ordQuote2                   uint32 = 0x0000003E
+	ordResetLockValue           uint32 = 0x00000040
+	ordLoadKey2                 uint32 = 0x00000041
+	ordGetRandom                uint32 = 0x00000046
+	ordOwnerClear               uint32 = 0x0000005B
+	ordForceClear               uint32 = 0x0000005D
+	ordGetCapability            uint32 = 0x00000065
+	ordCreateEndorsementKeyPair uint32 = 0x00000078
+	ordMakeIdentity             uint32 = 0x00000079
+	ordActivateIdentity         uint32 = 0x0000007A
+	ordReadPubEK                uint32 = 0x0000007C
+	ordOwnerReadInternalPub     uint32 = 0x00000081
+	ordStartup                  uint32 = 0x00000099
+	ordFlushSpecific            uint32 = 0x000000BA
+	ordNVDefineSpace            uint32 = 0x000000CC
+	ordPcrReset                 uint32 = 0x000000C8
+	ordNVWriteValue             uint32 = 0x000000CD
+	ordNVWriteValueAuth         uint32 = 0x000000CE
+	ordNVReadValue              uint32 = 0x000000CF
+	ordNVReadValueAuth          uint32 = 0x000000D0
 )
 
 // Capability types.
@@ -292,6 +296,28 @@ const (
 	authNever       byte = 0x00
 	authAlways      byte = 0x01
 	authPrivUseOnly byte = 0x03
+)
+
+// KeyFlags represents TPM_KEY_FLAGS.
+type KeyFlags uint32
+
+const (
+	keyRedirection      KeyFlags = 0x00000001
+	keyMigratable       KeyFlags = 0x00000002
+	keyIsVolatile       KeyFlags = 0x00000004
+	keyPcrIgnoredOnRead KeyFlags = 0x00000008
+	keyMigrateAuthority KeyFlags = 0x00000010
+)
+
+// MigrationScheme represents TPM_MIGRATE_SCHEME.
+type MigrationScheme uint16
+
+const (
+	msMigrate         MigrationScheme = 0x0001
+	msRewrap          MigrationScheme = 0x0002
+	msMaint           MigrationScheme = 0x0003
+	msRestrictMigrate MigrationScheme = 0x0004
+	msRestrictApprove MigrationScheme = 0x0005
 )
 
 // fixedQuote is the fixed constant string used in quoteInfo.
