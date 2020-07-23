@@ -958,7 +958,7 @@ func NVDefineSpace(rw io.ReadWriter, nvData NVDataPublic, ownAuth []byte) error 
 
 // NVReadValue returns the value from a given index, offset, and length in NVRAM.
 // See TPM-Main-Part-2-TPM-Structures 19.1.
-// If TPM isn't locked, no authentification is needed.
+// If TPM isn't locked, no authentication is needed.
 // This is for platform suppliers only.
 // See TPM-Main-Part-3-Commands-20.4
 func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([]byte, error) {
@@ -994,7 +994,7 @@ func NVReadValue(rw io.ReadWriter, index, offset, len uint32, ownAuth []byte) ([
 
 // NVReadValueAuth returns the value from a given index, offset, and length in NVRAM.
 // See TPM-Main-Part-2-TPM-Structures 19.1.
-// If TPM is locked, authentification is mandatory.
+// If TPM is locked, authentication is mandatory.
 // See TPM-Main-Part-3-Commands-20.5
 func NVReadValueAuth(rw io.ReadWriter, index, offset, len uint32, auth []byte) ([]byte, error) {
 	if auth == nil {
@@ -1456,6 +1456,9 @@ func AuthorizeMigrationKey(rw io.ReadWriter, ownerAuth Digest, migrationKey cryp
 	var pub *pubKey
 	if migrationKey != nil {
 		pub, err = convertPubKey(migrationKey)
+		if err != nil {
+			return nil, err
+		}
 		// convertPubKey is designed for signing keys.
 		pub.AlgorithmParams.EncScheme = esRSAEsOAEPSHA1MGF1
 		pub.AlgorithmParams.SigScheme = ssNone

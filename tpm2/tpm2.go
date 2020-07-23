@@ -801,6 +801,9 @@ func PolicyPCR(rw io.ReadWriter, session tpmutil.Handle, expectedDigest []byte, 
 // TPM_CC_PolicyOR and the concatenation of all of the digests.
 func PolicyOr(rw io.ReadWriter, session tpmutil.Handle, digests TPMLDigest) error {
 	data, err := tpmutil.Pack(session, digests)
+	if err != nil {
+		return err
+	}
 	_, err = runCommand(rw, TagNoSessions, CmdPolicyOr, data)
 	return err
 }
@@ -1748,11 +1751,11 @@ func encryptDecryptBlockSymmetric(rw io.ReadWriteCloser, keyAuth string, key tpm
 		if ok && fmt0Err.Code == RCCommandCode {
 			// If TPM2_EncryptDecrypt2 is not supported, fall back to
 			// TPM2_EncryptDecrypt.
-			Cmd, err := encodeEncryptDecrypt(keyAuth, key, iv, data, decrypt)
+			Cmd, _ := encodeEncryptDecrypt(keyAuth, key, iv, data, decrypt)
+			resp, err = runCommand(rw, TagSessions, CmdEncryptDecrypt, tpmutil.RawBytes(Cmd))
 			if err != nil {
 				return nil, nil, err
 			}
-			resp, err = runCommand(rw, TagSessions, CmdEncryptDecrypt, tpmutil.RawBytes(Cmd))
 		}
 	}
 	if err != nil {

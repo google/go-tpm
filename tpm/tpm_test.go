@@ -729,6 +729,9 @@ func TestKeyMigration(t *testing.T) {
 		migrationAuth,
 		[]int{}, // no PCR's
 	)
+	if err != nil {
+		t.Fatalf("error creating key: %v", err)
+	}
 
 	// Migrate the key to the saved migration key.
 	encPriv, err := CreateMigrationBlob(rwc, srkAuth, migrationAuth, privkey, mb)
