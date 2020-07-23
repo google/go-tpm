@@ -209,7 +209,7 @@ func nvDefineSpace(rw io.ReadWriter, nvData NVDataPublic, enc Digest, ca *comman
 }
 
 // nvReadValue reads from the NVRAM
-// If TPM isn't locked, and for some nv permission no authentification is needed.
+// If TPM isn't locked, and for some nv permission no authentication is needed.
 // See TPM-Main-Part-3-Commands-20.4
 func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
 	var b tpmutil.U32Bytes
