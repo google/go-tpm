@@ -17,6 +17,7 @@ package tpm
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
 	"io/ioutil"
@@ -198,7 +199,7 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Couldn't create PCR composite")
 	}
 
-	if len(comp) != int(20) {
+	if len(comp) != 20 {
 		t.Fatal("Invalid PCR composite")
 	}
 
@@ -256,10 +257,11 @@ func TestOIAP(t *testing.T) {
 	defer rwc.Close()
 
 	// Get auth info from OIAP.
-	_, err := oiap(rwc)
+	oiapr, err := oiap(rwc)
 	if err != nil {
 		t.Fatal("Couldn't run OIAP:", err)
 	}
+	defer oiapr.Close(rwc)
 }
 
 func TestOSAP(t *testing.T) {
@@ -276,10 +278,11 @@ func TestOSAP(t *testing.T) {
 		t.Fatal("Couldn't get a random odd OSAP nonce")
 	}
 
-	_, err := osap(rwc, osapc)
+	osapr, err := osap(rwc, osapc)
 	if err != nil {
 		t.Fatal("Couldn't run OSAP:", err)
 	}
+	defer osapr.Close(rwc)
 }
 
 func TestResizeableSlice(t *testing.T) {
@@ -612,6 +615,12 @@ func TestTakeOwnership(t *testing.T) {
 
 	// This test assumes that the TPM has been cleared using OwnerClear.
 	pubEK, err := ReadPubEK(rwc)
+	// Create the EK if needed.
+	if err == tpmError(errNoEndorsement) {
+		if err = createEK(rwc); err == nil {
+			pubEK, err = ReadPubEK(rwc)
+		}
+	}
 	if err != nil {
 		t.Fatal("Couldn't read the public endorsement key from the TPM:", err)
 	}
@@ -686,5 +695,50 @@ func TestNVReadValueNoAuth(t *testing.T) {
 	}
 	if len(nvList) == 0 {
 		t.Logf("no values to read in nvram")
+	}
+}
+
+func TestKeyMigration(t *testing.T) {
+	rwc := openTPMOrSkip(t)
+	defer rwc.Close()
+	ownerAuth := getAuth(ownerAuthEnvVar)
+	srkAuth := getAuth(srkAuthEnvVar)
+	// Generate some random migration and usage auth values.
+	migrationAuth := Digest{}
+	usageAuth := Digest{}
+	rand.Read(migrationAuth[:])
+	rand.Read(usageAuth[:])
+
+	// First generate our private key we'll use for migration.
+	mk, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("error generating migration key: %v", err)
+	}
+
+	// Then get the key endorsed by the TPM for doing migrations.
+	mb, err := AuthorizeMigrationKey(rwc, ownerAuth, mk.Public())
+	if err != nil {
+		t.Fatalf("error authorizing migration key: %v", err)
+	}
+
+	// Create a migratable key in the TPM.
+	_, privkey, err := CreateMigratableWrapKey(
+		rwc,
+		srkAuth[:],
+		usageAuth,
+		migrationAuth,
+		[]int{}, // no PCR's
+	)
+
+	// Migrate the key to the saved migration key.
+	encPriv, err := CreateMigrationBlob(rwc, srkAuth, migrationAuth, privkey, mb)
+	if err != nil {
+		t.Fatalf("Error migrating created key: %v", err)
+	}
+
+	// Decrypt the key. Successful OAEP decryption implies successful migration.
+	_, err = rsa.DecryptOAEP(sha1.New(), nil, mk, encPriv, []byte{0x54, 0x43, 0x50, 0x41} /* 'TCPA', see TPM 1.2 spec */)
+	if err != nil {
+		t.Errorf("Error decrypting migrated key blob: %v", err)
 	}
 }
