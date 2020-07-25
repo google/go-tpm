@@ -1184,33 +1184,42 @@ func NVUndefineSpace(rw io.ReadWriter, ownerAuth string, owner, index tpmutil.Ha
 	return err
 }
 
-func encodeDefineSpace(owner, handle tpmutil.Handle, ownerAuth, authVal string, attributes NVAttr, policy tpmutil.U16Bytes, dataSize uint16) ([]byte, error) {
-	ha, err := tpmutil.Pack(owner)
-	if err != nil {
-		return nil, err
-	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
-	if err != nil {
-		return nil, err
-	}
-	publicInfo, err := tpmutil.Pack(handle, AlgSHA1, attributes, policy, dataSize)
-	if err != nil {
-		return nil, err
-	}
-	params, err := tpmutil.Pack(tpmutil.U16Bytes(authVal), tpmutil.U16Bytes(publicInfo))
-	if err != nil {
-		return nil, err
-	}
-	return concat(ha, auth, params)
-}
-
 // NVDefineSpace creates an index in TPM's NV storage.
 func NVDefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle, ownerAuth, authString string, policy []byte, attributes NVAttr, dataSize uint16) error {
-	Cmd, err := encodeDefineSpace(owner, handle, ownerAuth, authString, attributes, policy, dataSize)
+	nvPub := NVPublic{
+		NVIndex:    handle,
+		NameAlg:    AlgSHA1,
+		Attributes: attributes,
+		AuthPolicy: policy,
+		DataSize:   dataSize,
+	}
+	return NVDefineSpaceEx(rw, owner, ownerAuth, authString, nvPub)
+
+}
+
+// NVDefineSpaceEx accepts NVPublic structure and is more flexible.
+func NVDefineSpaceEx(rw io.ReadWriter, owner tpmutil.Handle, ownerAuth, authVal string, pubInfo NVPublic) error {
+	ha, err := tpmutil.Pack(owner)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagSessions, CmdDefineSpace, tpmutil.RawBytes(Cmd))
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
+	if err != nil {
+		return err
+	}
+	publicInfo, err := tpmutil.Pack(pubInfo)
+	if err != nil {
+		return err
+	}
+	params, err := tpmutil.Pack(tpmutil.U16Bytes(authVal), tpmutil.U16Bytes(publicInfo))
+	if err != nil {
+		return err
+	}
+	cmd, err := concat(ha, auth, params)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdDefineSpace, tpmutil.RawBytes(cmd))
 	return err
 }
 
