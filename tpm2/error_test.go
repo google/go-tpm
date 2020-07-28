@@ -30,7 +30,7 @@ func TestError(t *testing.T) {
 
 // nil ReadWriter handle causes tpmutil.RunCommand to return an error.
 func TestRunCommandErr(t *testing.T) {
-	if _, err := runCommand(nil, TagSessions, cmdSign); err == nil {
+	if _, err := runCommand(nil, TagSessions, CmdSign); err == nil {
 		t.Error("runCommand returned nil error on error from tpmutil.RunCommand")
 	}
 }

@@ -256,7 +256,7 @@ type symmetricKeyParams struct {
 type key struct {
 	Version         uint32
 	KeyUsage        uint16
-	KeyFlags        uint32
+	KeyFlags        KeyFlags
 	AuthDataUsage   byte
 	AlgorithmParams keyParams
 	PCRInfo         tpmutil.U32Bytes
@@ -281,6 +281,13 @@ type key12 struct {
 type pubKey struct {
 	AlgorithmParams keyParams
 	Key             tpmutil.U32Bytes
+}
+
+// A migrationKeyAuth represents the target of a migration.
+type migrationKeyAuth struct {
+	MigrationKey    pubKey
+	MigrationScheme MigrationScheme
+	Digest          Digest
 }
 
 // A symKey is a TPM representation of a symmetric key.

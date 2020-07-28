@@ -103,6 +103,40 @@ func unseal(rw io.ReadWriter, keyHandle tpmutil.Handle, sealed *tpmStoredData, c
 	return outb, &ra1, &ra2, ret, nil
 }
 
+// authorizeMigrationKey authorizes a public key for migrations.
+func authorizeMigrationKey(rw io.ReadWriter, migrationScheme MigrationScheme, migrationKey pubKey, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
+	in := []interface{}{migrationScheme, migrationKey, ca}
+	var ra responseAuth
+	var migrationAuth migrationKeyAuth
+	out := []interface{}{&migrationAuth, &ra}
+	ret, err := submitTPMRequest(rw, tagRQUAuth1Command, ordAuthorizeMigrationKey, in, out)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	authBlob, err := tpmutil.Pack(migrationAuth)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	return authBlob, &ra, ret, nil
+}
+
+// createMigrationBlob migrates a key from the TPM.
+func createMigrationBlob(rw io.ReadWriter, parentHandle tpmutil.Handle, migrationScheme MigrationScheme, migrationKey []byte, encData tpmutil.U32Bytes, ca1 *commandAuth, ca2 *commandAuth) ([]byte, []byte, *responseAuth, *responseAuth, uint32, error) {
+	in := []interface{}{parentHandle, migrationScheme, migrationKey, encData, ca1, ca2}
+	var rand tpmutil.U32Bytes
+	var outData tpmutil.U32Bytes
+	var ra1 responseAuth
+	var ra2 responseAuth
+	out := []interface{}{&rand, &outData, &ra1, &ra2}
+	ret, err := submitTPMRequest(rw, tagRQUAuth2Command, ordCreateMigrationBlob, in, out)
+	if err != nil {
+		return nil, nil, nil, nil, 0, err
+	}
+
+	return rand, outData, &ra1, &ra2, ret, nil
+}
+
 // flushSpecific removes a handle from the TPM. Note that removing a handle
 // doesn't require any authentication.
 func flushSpecific(rw io.ReadWriter, handle tpmutil.Handle, resourceType uint32) error {
@@ -175,7 +209,7 @@ func nvDefineSpace(rw io.ReadWriter, nvData NVDataPublic, enc Digest, ca *comman
 }
 
 // nvReadValue reads from the NVRAM
-// If TPM isn't locked, and for some nv permission no authentification is needed.
+// If TPM isn't locked, and for some nv permission no authentication is needed.
 // See TPM-Main-Part-3-Commands-20.4
 func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) ([]byte, *responseAuth, uint32, error) {
 	var b tpmutil.U32Bytes
