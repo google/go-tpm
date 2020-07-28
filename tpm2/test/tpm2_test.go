@@ -24,7 +24,9 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
+	"hash"
 	"io"
+	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -1083,6 +1085,74 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	hsh.Write(attestation)
 	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
 		t.Errorf("VerifyPKCS1v15 failed: %v", err)
+	}
+}
+
+func TestCreateAndCertifyCreationECC(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	params := Public{
+		Type:       AlgECC,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSignerDefault,
+		ECCParameters: &ECCParams{
+			Sign: &SigScheme{
+				Alg:  AlgECDSA,
+				Hash: AlgSHA256,
+			},
+			CurveID: CurveNISTP256,
+		},
+	}
+	keyHandle, pub, _, creationHash, tix, _, err := CreatePrimaryEx(rw, HandleEndorsement, pcrSelection7, emptyPassword, emptyPassword, params)
+	if err != nil {
+		t.Fatalf("CreatePrimaryEx failed: %s", err)
+	}
+	defer FlushContext(rw, keyHandle)
+
+	scheme := SigScheme{Alg: AlgECDSA, Hash: AlgSHA256, Count: 0}
+	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, scheme, tix)
+	if err != nil {
+		t.Fatalf("CertifyCreation failed: %s", err)
+	}
+
+	att, err := DecodeAttestationData(attestation)
+	if err != nil {
+		t.Fatalf("DecodeAttestationData(%v) failed: %v", attestation, err)
+	}
+	if att.Type != TagAttestCreation {
+		t.Errorf("Got att.Type = %v, want TagAttestCreation", att.Type)
+	}
+	p, err := DecodePublic(pub)
+	if err != nil {
+		t.Fatalf("DecodePublic failed: %v", err)
+	}
+	match, err := att.AttestedCreationInfo.Name.MatchesPublic(p)
+	if err != nil {
+		t.Fatalf("MatchesPublic failed: %v", err)
+	}
+	if !match {
+		t.Error("Attested name does not match returned public key.")
+		t.Logf("Name: %v", att.AttestedCreationInfo.Name)
+		t.Logf("Public: %v", p)
+	}
+
+	var pkEcdsa ecdsa.PublicKey
+	var hsh hash.Hash
+	pkEcdsa = ecdsa.PublicKey{Curve: elliptic.P256(), X: p.ECCParameters.Point.X(), Y: p.ECCParameters.Point.Y()}
+	signHash, err := p.ECCParameters.Sign.Hash.Hash()
+	if err != nil {
+		t.Fatalf("Hash failed: %v", err)
+	}
+	hsh = signHash.New()
+	hsh.Write(attestation)
+
+	r := new(big.Int)
+	s := new(big.Int)
+	r.SetBytes(signature[:32])
+	s.SetBytes(signature[32:])
+
+	if !ecdsa.Verify(&pkEcdsa, hsh.Sum(nil), r, s) {
+		t.Fatalf("Verify failed")
 	}
 }
 
