@@ -711,6 +711,9 @@ func ActivateIdentity(rw io.ReadWriter, aikAuth []byte, ownerAuth []byte, aik tp
 	}
 
 	cred, err := unloadTrspiCred(sym)
+	if err != nil {
+		return nil, fmt.Errorf("unloadTrspiCred failed: %v", err)
+	}
 	var (
 		block     cipher.Block
 		iv        []byte
