@@ -152,6 +152,7 @@ type KeyProp uint32
 // Key properties.
 const (
 	FlagFixedTPM            KeyProp = 0x00000002
+	FlagStClear             KeyProp = 0x00000004
 	FlagFixedParent         KeyProp = 0x00000010
 	FlagSensitiveDataOrigin KeyProp = 0x00000020
 	FlagUserWithAuth        KeyProp = 0x00000040
