@@ -29,7 +29,7 @@ func openTPMOrSkip(t *testing.T) io.ReadWriteCloser {
 		tpmPath = "/dev/tpm0"
 	}
 
-	rwc, err := OpenTPM(tpmPath)
+	rwc, err := openAndStartupTPM(tpmPath, true)
 	if err != nil {
 		t.Skipf("Skipping test, since we can't open %s for read/write: %s\n", tpmPath, err)
 	}

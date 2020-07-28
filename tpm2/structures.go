@@ -1020,3 +1020,11 @@ type AuthCommand struct {
 	Attributes SessionAttributes
 	Auth       tpmutil.U16Bytes
 }
+
+// TPMLDigest represents the TPML_Digest structure
+// It is used to convey a list of digest values.
+//This type is used in TPM2_PolicyOR() and in TPM2_PCR_Read()
+type TPMLDigest struct {
+	Count   uint32
+	Digests []tpmutil.U16Bytes
+}
