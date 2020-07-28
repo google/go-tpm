@@ -1184,6 +1184,16 @@ func NVUndefineSpace(rw io.ReadWriter, ownerAuth string, owner, index tpmutil.Ha
 	return err
 }
 
+// NVUndefineSpaceSpecial This command allows removal of a platform-created NV Index that has TPMA_NV_POLICY_DELETE SET.
+func NVUndefineSpaceSpecial(rw io.ReadWriter, index, platformPP tpmutil.Handle) error {
+	cmd, err := tpmutil.Pack(index, platformPP)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdNVUndefineSpaceSpecial, tpmutil.RawBytes(cmd))
+	return err
+}
+
 // NVDefineSpace creates an index in TPM's NV storage.
 func NVDefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle, ownerAuth, authString string, policy []byte, attributes NVAttr, dataSize uint16) error {
 	nvPub := NVPublic{
