@@ -184,11 +184,11 @@ func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
 		if len(selPCRs) == 0 {
 			break
 		}
-		Cmd, err := encodeTPMLPCRSelection(tpm2.PCRSelection{Hash: sel.Hash, PCRs: selPCRs})
+		Cmd, err := encodeTPMLPCRSelection(PCRSelection{Hash: sel.Hash, PCRs: selPCRs})
 		if err != nil {
 			return nil, err
 		}
-		resp, err := runCommand(rw, tpm2.TagNoSessions, tpm2.CmdPCRRead, tpmutil.RawBytes(Cmd))
+		resp, err := runCommand(rw, TagNoSessions, CmdPCRRead, tpmutil.RawBytes(Cmd))
 		if err != nil {
 			return nil, err
 		}
