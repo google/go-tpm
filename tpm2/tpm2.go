@@ -73,6 +73,9 @@ func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
 
 		// s[i].PCRs parameter is indexes of PCRs, convert that to set bits.
 		for _, n := range s.PCRs {
+			if n >= 8*sizeOfPCRSelect {
+				continue 
+			}
 			byteNum := n / 8
 			bytePos := byte(1 << byte(n%8))
 			ts.PCRs[byteNum] |= bytePos
