@@ -178,16 +178,29 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 
 // ReadPCRs reads PCR values from the TPM.
 func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
-	Cmd, err := encodeTPMLPCRSelection(sel)
-	if err != nil {
-		return nil, err
+	ret := make(map[int][]byte)
+	for i := 0; i <= len(sel.PCRs)/8; i++ {
+		selPCRs := sel.PCRs[i*8:]
+		if len(selPCRs) == 0 {
+			break
+		}
+		Cmd, err := encodeTPMLPCRSelection(tpm2.PCRSelection{Hash: sel.Hash, PCRs: selPCRs})
+		if err != nil {
+			return nil, err
+		}
+		resp, err := runCommand(rw, tpm2.TagNoSessions, tpm2.CmdPCRRead, tpmutil.RawBytes(Cmd))
+		if err != nil {
+			return nil, err
+		}
+		decResp, err := decodeReadPCRs(resp)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range decResp {
+			ret[k] = v
+		}
 	}
-	resp, err := runCommand(rw, TagNoSessions, CmdPCRRead, tpmutil.RawBytes(Cmd))
-	if err != nil {
-		return nil, err
-	}
-
-	return decodeReadPCRs(resp)
+	return ret, nil
 }
 
 func decodeReadClock(in []byte) (uint64, uint64, error) {
