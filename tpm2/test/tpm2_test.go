@@ -62,6 +62,7 @@ var (
 	pcrSelection0    = PCRSelection{Hash: AlgSHA1, PCRs: []int{0}}
 	pcrSelection1    = PCRSelection{Hash: AlgSHA1, PCRs: []int{1}}
 	pcrSelection7    = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
+	pcrSelectionAll  = PCRSelection{Hash: AlgSHA1, PCRs: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}}
 	defaultKeyParams = Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
@@ -79,6 +80,13 @@ var (
 	defaultPassword = "\x01\x02\x03\x04"
 	emptyPassword   = ""
 )
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func TestGetRandom(t *testing.T) {
 	rw := openTPM(t)
@@ -104,6 +112,38 @@ func TestReadPCRs(t *testing.T) {
 		if empty := make([]byte, len(val)); reflect.DeepEqual(empty, val) {
 			t.Errorf("Value of PCR %d is empty", pcr)
 		}
+	}
+}
+
+func TestReadAllPCRs(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	numPCRs := len(pcrSelectionAll.PCRs)
+	out := map[uint32][]byte{}
+
+	for i := 0; i < numPCRs; i += 8 {
+		// Build a selection structure, specifying 8 PCRs at a time
+		end := min(i+8, numPCRs)
+		pcrSel := PCRSelection{
+			Hash: pcrSelectionAll.Hash,
+			PCRs: pcrSelectionAll.PCRs[i:end],
+		}
+
+		// Ask the TPM for those PCR values.
+		ret, err := ReadPCRs(rw, pcrSel)
+		if err != nil {
+			t.Errorf("ReadPCRs(%+v) failed: %v", pcrSel, err)
+		}
+
+		// Keep track of the PCRs we were actually given.
+		for pcr, digest := range ret {
+			out[uint32(pcr)] = digest
+		}
+	}
+
+	if len(out) != numPCRs {
+		t.Errorf("Failed to read all PCRs, only read %d", len(out))
 	}
 }
 
