@@ -178,7 +178,7 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 
 // ReadPCRs reads PCR values from the TPM.
 // This is only a wrapper over TPM2_PCR_Read() call, thus can only return
-// at most 8 PCRs digests
+// at most 8 PCRs digests.
 func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
 	Cmd, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
