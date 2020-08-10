@@ -1021,10 +1021,16 @@ type AuthCommand struct {
 	Auth       tpmutil.U16Bytes
 }
 
+// BDigest implements TPM2B_DIGEST structure from TPM2 Spec, Part 2 - Structures, Page 97
+type BDigest struct {
+	Size   uint16
+	Digest []byte
+}
+
 // TPMLDigest represents the TPML_Digest structure
 // It is used to convey a list of digest values.
-//This type is used in TPM2_PolicyOR() and in TPM2_PCR_Read()
+// This type is used in TPM2_PolicyOR() and in TPM2_PCR_Read()
 type TPMLDigest struct {
 	Count   uint32
-	Digests []tpmutil.U16Bytes
+	Digests []BDigest
 }
