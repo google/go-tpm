@@ -1023,8 +1023,8 @@ type AuthCommand struct {
 
 // TPMLDigest represents the TPML_Digest structure
 // It is used to convey a list of digest values.
-//This type is used in TPM2_PolicyOR() and in TPM2_PCR_Read()
+// This type is used in TPM2_PolicyOR() and in TPM2_PCR_Read()
 type TPMLDigest struct {
 	Count   uint32
-	Digests []tpmutil.U16Bytes
+	Digests tpmutil.U16Bytes
 }
