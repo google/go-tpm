@@ -477,3 +477,45 @@ func TestSignEncode(t *testing.T) {
 		}
 	})
 }
+
+func TestTPMLDigestEncode(t *testing.T) {
+	hashA := []byte{0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 255}
+	hashB := []byte{0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 255}
+
+	hl := TPMLDigest{Digests: []tpmutil.U16Bytes{
+		hashA, hashB},
+	}
+
+	want := []byte{0, 0, 0, 2, 0, 20, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 255,
+		0, 20, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 255}
+
+	got, err := hl.Encode()
+	if err != nil {
+		t.Errorf("hl.Encode() failed: %v", err)
+	}
+	if !bytes.Equal(want, got) {
+		t.Errorf("TPMLDigest{%v}.Encode() = %v, want: %v", hl, got, want)
+	}
+}
+
+func TestTPMLDigestDecode(t *testing.T) {
+	hashA := []byte{0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 255}
+	hashB := []byte{0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 255}
+
+	want := &TPMLDigest{Digests: []tpmutil.U16Bytes{
+		hashA, hashB},
+	}
+
+	b := []byte{0, 0, 0, 2, 0, 20, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 255,
+		0, 20, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 255}
+
+	got, err := DecodeTPMLDigest(b)
+	if err != nil {
+		t.Errorf("DecodeTPMDigest(b) failed: %v", err)
+	}
+
+	if got.String() != want.String() {
+		t.Errorf("Strctures are not the same. Have: %v - Want: %v", got.String(), want.String())
+	}
+
+}
