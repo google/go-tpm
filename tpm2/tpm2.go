@@ -1546,6 +1546,26 @@ func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, 
 	return concat(ha, auth, params)
 }
 
+// This function differs from encodeCertify in that it takes the scheme
+// to be used as an additional argument.
+func encodeCertifyEx(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, scheme tpmtSigSchemegScheme) ([]byte, error) {
+	ha, err := tpmutil.Pack(object, signer)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
+	if err != nil {
+		return nil, err
+	}
+
+	params, err := tpmutil.Pack(qualifyingData, scheme)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
 func decodeCertify(resp []byte) ([]byte, []byte, error) {
 	var paramSize uint32
 	var attest, signature tpmutil.U16Bytes
@@ -1584,6 +1604,24 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 // error, if any.
 func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
 	Cmd, err := encodeCertify(parentAuth, ownerAuth, object, signer, qualifyingData)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(Cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeCertify(resp)
+}
+
+// CertifyEx generates a signature of a loaded TPM object with a signing key
+// signer. This function differs from Certify in that it takes the scheme
+// to be used as an additional argument and calls encodeCertifyEx instead
+// of encodeCertify.
+// Returned values are: attestation data (TPMS_ATTEST), signature and
+// error, if any.
+func CertifyEx(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte, scheme tpmtSigScheme) ([]byte, []byte, error) {
+	Cmd, err := encodeCertifyEx(parentAuth, ownerAuth, object, signer, qualifyingData, scheme)
 	if err != nil {
 		return nil, nil, err
 	}
