@@ -1548,7 +1548,7 @@ func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, 
 
 // This function differs from encodeCertify in that it takes the scheme
 // to be used as an additional argument.
-func encodeCertifyEx(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, scheme tpmtSigSchemegScheme) ([]byte, error) {
+func encodeCertifyEx(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, scheme tpmtSigScheme) ([]byte, error) {
 	ha, err := tpmutil.Pack(object, signer)
 	if err != nil {
 		return nil, err
