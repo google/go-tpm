@@ -1600,8 +1600,9 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 }
 
 // Certify generates a signature of a loaded TPM object with a signing key
-// signer. Returned values are: attestation data (TPMS_ATTEST), signature and
-// error, if any.
+// signer. This function calls encodeCertify which makes use of the hardcoded 
+// signing scheme {AlgRSASSA, AlgSHA256}. Returned values are: attestation data (TPMS_ATTEST), 
+// signature and error, if any.
 func Certify(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
 	Cmd, err := encodeCertify(objectAuth, signerAuth, object, signer, qualifyingData)
 	if err != nil {
