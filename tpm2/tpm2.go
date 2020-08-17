@@ -1526,13 +1526,13 @@ func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, 
 	return SignWithSession(rw, HandlePasswordSession, key, password, digest, validation, sigScheme)
 }
 
-func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
+func encodeCertify(objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
 	ha, err := tpmutil.Pack(object, signer)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(objectAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(signerAuth)})
 	if err != nil {
 		return nil, err
 	}
@@ -1548,13 +1548,13 @@ func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, 
 
 // This function differs from encodeCertify in that it takes the scheme
 // to be used as an additional argument.
-func encodeCertifyEx(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, scheme tpmtSigScheme) ([]byte, error) {
+func encodeCertifyEx(objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, scheme tpmtSigScheme) ([]byte, error) {
 	ha, err := tpmutil.Pack(object, signer)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(objectAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(signerAuth)})
 	if err != nil {
 		return nil, err
 	}
@@ -1602,8 +1602,8 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 // Certify generates a signature of a loaded TPM object with a signing key
 // signer. Returned values are: attestation data (TPMS_ATTEST), signature and
 // error, if any.
-func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
-	Cmd, err := encodeCertify(parentAuth, ownerAuth, object, signer, qualifyingData)
+func Certify(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
+	Cmd, err := encodeCertify(objectAuth, signerAuth, object, signer, qualifyingData)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1620,8 +1620,8 @@ func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmu
 // of encodeCertify.
 // Returned values are: attestation data (TPMS_ATTEST), signature and
 // error, if any.
-func CertifyEx(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte, scheme tpmtSigScheme) ([]byte, []byte, error) {
-	Cmd, err := encodeCertifyEx(parentAuth, ownerAuth, object, signer, qualifyingData, scheme)
+func CertifyEx(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData []byte, scheme tpmtSigScheme) ([]byte, []byte, error) {
+	Cmd, err := encodeCertifyEx(objectAuth, signerAuth, object, signer, qualifyingData, scheme)
 	if err != nil {
 		return nil, nil, err
 	}
