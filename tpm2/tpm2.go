@@ -1218,17 +1218,22 @@ func NVDefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle, ownerAuth, au
 		AuthPolicy: policy,
 		DataSize:   dataSize,
 	}
-	return NVDefineSpaceEx(rw, owner, ownerAuth, authString, nvPub)
+	authArea := AuthCommand{
+		Session:    HandlePasswordSession,
+		Attributes: AttrContinueSession,
+		Auth:       []byte(ownerAuth),
+	}
+	return NVDefineSpaceEx(rw, owner, authArea, "", nvPub)
 
 }
 
-// NVDefineSpaceEx accepts NVPublic structure and is more flexible.
-func NVDefineSpaceEx(rw io.ReadWriter, owner tpmutil.Handle, ownerAuth, authVal string, pubInfo NVPublic) error {
-	ha, err := tpmutil.Pack(owner)
+// NVDefineSpaceEx accepts NVPublic structure and AuthCommand, allowing more flexibility.
+func NVDefineSpaceEx(rw io.ReadWriter, handle tpmutil.Handle, authArea AuthCommand, authVal string, pubInfo NVPublic) error {
+	ha, err := tpmutil.Pack(handle)
 	if err != nil {
 		return err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
+	auth, err := encodeAuthArea(authArea)
 	if err != nil {
 		return err
 	}
