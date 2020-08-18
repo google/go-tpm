@@ -1168,25 +1168,28 @@ func NVIncrement(rw io.ReadWriter, handle tpmutil.Handle, authString string) err
 	return err
 }
 
-func encodeUndefineSpace(ownerAuth string, owner, index tpmutil.Handle) ([]byte, error) {
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
-	if err != nil {
-		return nil, err
-	}
-	out, err := tpmutil.Pack(owner, index)
-	if err != nil {
-		return nil, err
-	}
-	return concat(out, auth)
-}
-
 // NVUndefineSpace removes an index from TPM's NV storage.
 func NVUndefineSpace(rw io.ReadWriter, ownerAuth string, owner, index tpmutil.Handle) error {
-	Cmd, err := encodeUndefineSpace(ownerAuth, owner, index)
+	authArea := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)}
+	return NVUndefineSpaceEx(rw, owner, index, authArea)
+}
+
+// NVUndefineSpaceEx removes an index from NVRAM. Unlike, NVUndefineSpace(), custom command
+// authorization can be provided.
+func NVUndefineSpaceEx(rw io.ReadWriter, owner, index tpmutil.Handle, authArea AuthCommand) error {
+	out, err := tpmutil.Pack(owner, index)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagSessions, CmdUndefineSpace, tpmutil.RawBytes(Cmd))
+	auth, err := encodeAuthArea(authArea)
+	if err != nil {
+		return err
+	}
+	cmd, err := concat(out, auth)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdUndefineSpace, tpmutil.RawBytes(cmd))
 	return err
 }
 
