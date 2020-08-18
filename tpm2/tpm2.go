@@ -1559,7 +1559,16 @@ func encodeCertifyEx(objectAuth, signerAuth string, object, signer tpmutil.Handl
 		return nil, err
 	}
 
-	params, err := tpmutil.Pack(qualifyingData, scheme)
+	// TODO: This is just a temporary workaround for the special case where the scheme is AlgNull, 
+	//		 where we should only pack AlgNull with no additional following hash alg, since
+	//		 tpmtSigScheme is not a perfect representation of TPMT_SIG_SCHEME.
+	//		 See issue https://github.com/google/go-tpm/issues/215
+	var params []byte
+	if scheme.Scheme == AlgNull {
+		params, err = tpmutil.Pack(qualifyingData, AlgNull)
+	} else {
+		params, err = tpmutil.Pack(qualifyingData, scheme)
+	}
 	if err != nil {
 		return nil, err
 	}
