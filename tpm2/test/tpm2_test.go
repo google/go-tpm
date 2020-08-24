@@ -2111,3 +2111,67 @@ func TestPolicyOr(t *testing.T) {
 		t.Errorf("PolicyOr with error: %v", err)
 	}
 }
+
+func TestNVUndefineSpaceSpecial(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	// Set up trial policy session for creation of PolicyCommandCode policy. The policy will be bound as 'delete policy' to the nv index.
+	sess, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionTrial, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Errorf("StartAuthSession() for policy generation failed: %v", err)
+	}
+	err = PolicyCommandCode(rw, sess, CmdNVUndefineSpaceSpecial)
+	if err != nil {
+		t.Errorf("PolicyCommandCode() failed: %v", err)
+	}
+	pol, err := PolicyGetDigest(rw, sess)
+	if err != nil {
+		t.Errorf("PolicyGetDigest() failed: %v", err)
+	}
+	err = FlushContext(rw, sess)
+
+	// Test index with
+	pubIndex := NVPublic{
+		NVIndex:    0x1500000,
+		NameAlg:    AlgSHA256,
+		Attributes: AttrPlatformCreate | AttrPolicyDelete | AttrPolicyWrite | AttrNoDA | AttrAuthRead,
+		AuthPolicy: pol,
+		DataSize:   10,
+	}
+	// AuthCommand for platform hierarchy
+	platformAuthCmd := AuthCommand{
+		Session:    HandlePasswordSession,
+		Attributes: AttrContinueSession,
+		Auth:       EmptyAuth,
+	}
+
+	// Create the index
+	err = NVDefineSpaceEx(rw, HandlePlatform, "", pubIndex, platformAuthCmd)
+	if err != nil {
+		t.Errorf("NVDefineSpaceEx() failed: %v", err)
+	}
+
+	// Start new auth session for authentication of nv index access
+	sess, _, err = StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Errorf("StartAuthSession() for nv index auth failed: %v", err)
+	}
+
+	// Authorize UndefineSpaceSpecial by policy since it can't be authorized by auth value due to the attribute POLICY_DELETE on the index
+	err = PolicyCommandCode(rw, sess, CmdNVUndefineSpaceSpecial)
+	if err != nil {
+		t.Errorf("PolicyCommandCode() or nv index auth failed: %v", err)
+	}
+
+	indexAuthCmd := AuthCommand{
+		Session:    sess,
+		Attributes: AttrContinueSession,
+		Auth:       EmptyAuth,
+	}
+	// Delete the index
+	err = NVUndefineSpaceSpecial(rw, pubIndex.NVIndex, indexAuthCmd, platformAuthCmd)
+	if err != nil {
+		t.Errorf("NVUndefineSpaceSpecial() failed: %v", err)
+	}
+}
