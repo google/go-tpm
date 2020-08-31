@@ -1546,8 +1546,7 @@ func encodeCertify(objectAuth, signerAuth string, object, signer tpmutil.Handle,
 	return concat(ha, auth, params)
 }
 
-// This function differs from encodeCertify in that it takes the scheme
-// to be used as an additional argument.
+// This function differs from encodeCertify in that it takes the scheme to be used as an additional argument.
 func encodeCertifyEx(objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, scheme tpmtSigScheme) ([]byte, error) {
 	ha, err := tpmutil.Pack(object, signer)
 	if err != nil {
@@ -1560,9 +1559,9 @@ func encodeCertifyEx(objectAuth, signerAuth string, object, signer tpmutil.Handl
 	}
 
 	// TODO: This is just a temporary workaround for the special case where the scheme is AlgNull, 
-	//		 where we should only pack AlgNull with no additional following hash alg, since
-	//		 tpmtSigScheme is not a perfect representation of TPMT_SIG_SCHEME.
-	//		 See issue https://github.com/google/go-tpm/issues/215
+	// where we should only pack AlgNull with no additional following hash alg, since
+	// tpmtSigScheme is not a perfect representation of TPMT_SIG_SCHEME.
+	// See issue https://github.com/google/go-tpm/issues/215
 	var params []byte
 	if scheme.Scheme == AlgNull {
 		params, err = tpmutil.Pack(qualifyingData, AlgNull)
@@ -1613,11 +1612,11 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 // signing scheme {AlgRSASSA, AlgSHA256}. Returned values are: attestation data (TPMS_ATTEST), 
 // signature and error, if any.
 func Certify(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
-	Cmd, err := encodeCertify(objectAuth, signerAuth, object, signer, qualifyingData)
+	cmd, err := encodeCertify(objectAuth, signerAuth, object, signer, qualifyingData)
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(Cmd))
+	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1627,15 +1626,14 @@ func Certify(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpm
 // CertifyEx generates a signature of a loaded TPM object with a signing key
 // signer. This function differs from Certify in that it takes the scheme
 // to be used as an additional argument and calls encodeCertifyEx instead
-// of encodeCertify.
-// Returned values are: attestation data (TPMS_ATTEST), signature and
-// error, if any.
+// of encodeCertify. Returned values are: attestation data (TPMS_ATTEST), 
+// signature and error, if any.
 func CertifyEx(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData []byte, scheme tpmtSigScheme) ([]byte, []byte, error) {
-	Cmd, err := encodeCertifyEx(objectAuth, signerAuth, object, signer, qualifyingData, scheme)
+	cmd, err := encodeCertifyEx(objectAuth, signerAuth, object, signer, qualifyingData, scheme)
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(Cmd))
+	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}
