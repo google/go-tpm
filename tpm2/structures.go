@@ -618,11 +618,6 @@ func (p Private) Encode() ([]byte, error) {
 	return tpmutil.Pack(p)
 }
 
-type tpmtSigScheme struct {
-	Scheme Algorithm
-	Hash   Algorithm
-}
-
 // AttestationData contains data attested by TPM commands (like Certify).
 type AttestationData struct {
 	Magic                uint32
