@@ -581,49 +581,49 @@ func TestCertifyEx(t *testing.T) {
 
 	restrictedKeySignerFlags := FlagSignerDefault
 	unrestrictedKeySignerFlags := FlagSign | FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
-	testFlags := []struct {
+	testCases := []struct {
 		description  string
 		attributes   KeyProp
-		keyScheme    *SigScheme
+		keyScheme    SigScheme
 		passedScheme SigScheme
 		shouldPass   bool
 	}{
-		{"Null-SHA1", unrestrictedKeySignerFlags, &SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, true},
-		{"Null-SHA256", unrestrictedKeySignerFlags, &SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
-		{"Null-Null", unrestrictedKeySignerFlags, &SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgNull}, false},
-		{"SHA256-Null", restrictedKeySignerFlags, &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgNull}, true},
-		{"SHA256-SHA256", restrictedKeySignerFlags, &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
-		{"SHA256-SHA1", restrictedKeySignerFlags, &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, false},
-	}
-	params := Public{
-		Type:    AlgRSA,
-		NameAlg: AlgSHA256,
-		RSAParameters: &RSAParams{
-			KeyBits: 2048,
-		},
+		{"Null-SHA1", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, true},
+		{"Null-SHA256", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"Null-Null", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgNull}, false},
+		{"SHA256-Null", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgNull}, true},
+		{"SHA256-SHA256", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"SHA256-SHA1", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, false},
 	}
 
-	for _, flag := range testFlags {
-		params.Attributes = flag.attributes
-		params.RSAParameters.Sign = flag.keyScheme
+	for _, testCase := range testCases {
+		params := Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA256,
+			Attributes: testCase.attributes,
+			RSAParameters: &RSAParams{
+				Sign:    &testCase.keyScheme,
+				KeyBits: 2048,
+			},
+		}
 
-		t.Run(flag.description, func(t *testing.T) {
-			signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
+		t.Run(testCase.description, func(t *testing.T) {
+			signerHandle, _, err := CreatePrimary(rw, HandleOwner, PCRSelection{}, emptyPassword, defaultPassword, params)
 			if err != nil {
 				t.Fatalf("CreatePrimary(signer) failed: %s", err)
 			}
 			defer FlushContext(rw, signerHandle)
 
-			subjectHandle, _, err := CreatePrimary(rw, HandlePlatform, pcrSelection7, emptyPassword, defaultPassword, params)
+			subjectHandle, _, err := CreatePrimary(rw, HandlePlatform, PCRSelection{}, emptyPassword, defaultPassword, params)
 			if err != nil {
 				t.Fatalf("CreatePrimary(subject) failed: %s", err)
 			}
 			defer FlushContext(rw, subjectHandle)
 
-			_, _, err = CertifyEx(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, flag.passedScheme)
-			if err != nil && flag.shouldPass {
+			_, _, err = CertifyEx(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, testCase.passedScheme)
+			if err != nil && testCase.shouldPass {
 				t.Errorf("CertifyEx expected to succeed but failed: %s", err)
-			} else if err == nil && !flag.shouldPass {
+			} else if err == nil && !testCase.shouldPass {
 				t.Errorf("CertifyEx expected to fail but succeeded")
 			}
 		})
