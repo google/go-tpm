@@ -579,138 +579,55 @@ func TestCertifyEx(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
+	restrictedKeySignerFlags := FlagSignerDefault
+	unrestrictedKeySignerFlags := FlagSign | FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
+	testFlags := []struct {
+		description  string
+		attributes   KeyProp
+		keyScheme    *SigScheme
+		passedScheme SigScheme
+		shouldPass   bool
+	}{
+		{"Null-SHA1", unrestrictedKeySignerFlags, &SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, true},
+		{"Null-SHA256", unrestrictedKeySignerFlags, &SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"Null-Null", unrestrictedKeySignerFlags, &SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgNull}, false},
+		{"SHA256-Null", restrictedKeySignerFlags, &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgNull}, true},
+		{"SHA256-SHA256", restrictedKeySignerFlags, &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"SHA256-SHA1", restrictedKeySignerFlags, &SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, false},
+	}
 	params := Public{
-		Type:       AlgRSA,
-		NameAlg:    AlgSHA256,
-		Attributes: FlagSignerDefault,
+		Type:    AlgRSA,
+		NameAlg: AlgSHA256,
 		RSAParameters: &RSAParams{
-			Sign: &SigScheme{
-				Alg:  AlgRSASSA,
-				Hash: AlgSHA256,
-			},
 			KeyBits: 2048,
 		},
 	}
-	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
-	if err != nil {
-		t.Fatalf("CreatePrimary(signer) failed: %s", err)
+
+	for _, flag := range testFlags {
+		params.Attributes = flag.attributes
+		params.RSAParameters.Sign = flag.keyScheme
+
+		t.Run(flag.description, func(t *testing.T) {
+			signerHandle, _, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
+			if err != nil {
+				t.Fatalf("CreatePrimary(signer) failed: %s", err)
+			}
+			defer FlushContext(rw, signerHandle)
+
+			subjectHandle, _, err := CreatePrimary(rw, HandlePlatform, pcrSelection7, emptyPassword, defaultPassword, params)
+			if err != nil {
+				t.Fatalf("CreatePrimary(subject) failed: %s", err)
+			}
+			defer FlushContext(rw, subjectHandle)
+
+			_, _, err = CertifyEx(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, flag.passedScheme)
+			if err != nil && flag.shouldPass {
+				t.Errorf("CertifyEx expected to succeed but failed: %s", err)
+			} else if err == nil && !flag.shouldPass {
+				t.Errorf("CertifyEx expected to fail but succeeded")
+			}
+		})
 	}
-	defer FlushContext(rw, signerHandle)
-
-	subjectHandle, subjectPub, err := CreatePrimary(rw, HandlePlatform, pcrSelection7, emptyPassword, defaultPassword, params)
-	if err != nil {
-		t.Fatalf("CreatePrimary(subject) failed: %s", err)
-	}
-	defer FlushContext(rw, subjectHandle)
-
-	attest, sig, err := CertifyEx(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256, Count: 0})
-	if err != nil {
-		t.Errorf("Certify failed: %s", err)
-		return
-	}
-
-	attestHash := sha256.Sum256(attest)
-	if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig); err != nil {
-		t.Errorf("Signature verification failed: %v", err)
-	}
-
-	t.Run("DecodeAttestationData", func(t *testing.T) {
-		ad, err := DecodeAttestationData(attest)
-		if err != nil {
-			t.Fatal("DecodeAttestationData:", err)
-		}
-		params := Public{
-			Type:       AlgRSA,
-			NameAlg:    AlgSHA256,
-			Attributes: FlagSignerDefault,
-			RSAParameters: &RSAParams{
-				Sign: &SigScheme{
-					Alg:  AlgRSASSA,
-					Hash: AlgSHA256,
-				},
-				KeyBits: 2048,
-				// Note: we don't include Exponent because CreatePrimary also
-				// returns Public without it.
-				ModulusRaw: subjectPub.(*rsa.PublicKey).N.Bytes(),
-			},
-		}
-		matches, err := ad.AttestedCertifyInfo.Name.MatchesPublic(params)
-		if err != nil {
-			t.Fatalf("AttestedCertifyInfo.Name.MatchesPublic error: %v", err)
-		}
-		if !matches {
-			t.Error("Name in AttestationData doesn't match Public structure of subject")
-		}
-	})
-}
-
-func TestCertifyExAlgNull(t *testing.T) {
-	rw := openTPM(t)
-	defer rw.Close()
-
-	params := Public{
-		Type:       AlgRSA,
-		NameAlg:    AlgSHA256,
-		Attributes: FlagSignerDefault,
-		RSAParameters: &RSAParams{
-			Sign: &SigScheme{
-				Alg:  AlgRSASSA,
-				Hash: AlgSHA256,
-			},
-			KeyBits: 2048,
-		},
-	}
-	signerHandle, signerPub, err := CreatePrimary(rw, HandleOwner, pcrSelection7, emptyPassword, defaultPassword, params)
-	if err != nil {
-		t.Fatalf("CreatePrimary(signer) failed: %s", err)
-	}
-	defer FlushContext(rw, signerHandle)
-
-	subjectHandle, subjectPub, err := CreatePrimary(rw, HandlePlatform, pcrSelection7, emptyPassword, defaultPassword, params)
-	if err != nil {
-		t.Fatalf("CreatePrimary(subject) failed: %s", err)
-	}
-	defer FlushContext(rw, subjectHandle)
-
-	attest, sig, err := CertifyEx(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, SigScheme{Alg: AlgNull, Hash: AlgSHA256, Count: 0})
-	if err != nil {
-		t.Errorf("Certify failed: %s", err)
-		return
-	}
-
-	attestHash := sha256.Sum256(attest)
-	if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig); err != nil {
-		t.Errorf("Signature verification failed: %v", err)
-	}
-
-	t.Run("DecodeAttestationData", func(t *testing.T) {
-		ad, err := DecodeAttestationData(attest)
-		if err != nil {
-			t.Fatal("DecodeAttestationData:", err)
-		}
-		params := Public{
-			Type:       AlgRSA,
-			NameAlg:    AlgSHA256,
-			Attributes: FlagSignerDefault,
-			RSAParameters: &RSAParams{
-				Sign: &SigScheme{
-					Alg:  AlgRSASSA,
-					Hash: AlgSHA256,
-				},
-				KeyBits: 2048,
-				// Note: we don't include Exponent because CreatePrimary also
-				// returns Public without it.
-				ModulusRaw: subjectPub.(*rsa.PublicKey).N.Bytes(),
-			},
-		}
-		matches, err := ad.AttestedCertifyInfo.Name.MatchesPublic(params)
-		if err != nil {
-			t.Fatalf("AttestedCertifyInfo.Name.MatchesPublic error: %v", err)
-		}
-		if !matches {
-			t.Error("Name in AttestationData doesn't match Public structure of subject")
-		}
-	})
 }
 
 func TestCertifyExternalKey(t *testing.T) {
