@@ -165,7 +165,7 @@ func Quote2(rw io.ReadWriter, handle tpmutil.Handle, data []byte, pcrVals []int,
 		return nil, err
 	}
 
-	// TODO(tmroeder): use the returned capVersionInfo.
+	// TODO(tmroeder): use the returned CapVersion.
 	pcrShort, _, capBytes, sig, ra, ret, err := quote2(rw, handle, hash, pcrSel, addVersion, ca)
 	if err != nil {
 		return nil, err
@@ -1161,6 +1161,16 @@ func GetAlgs(rw io.ReadWriter) ([]Algorithm, error) {
 
 	}
 	return algs, nil
+}
+
+func GetCapVersionVal(rw io.ReadWriter) (*CapVersionInfo, error) {
+	var capVer CapVersionInfo
+	buf, err := getCapability(rw, CapVersion, 0)
+	err = capVer.Decode(buf)
+	if err != nil {
+		return nil, err
+	}
+	return &capVer, nil
 }
 
 // GetNVList returns a list of TPM_NV_INDEX values that
