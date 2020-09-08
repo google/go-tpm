@@ -1240,29 +1240,34 @@ func NVDefineSpaceEx(rw io.ReadWriter, owner tpmutil.Handle, authVal string, pub
 	return err
 }
 
-func encodeWriteNV(owner, handle tpmutil.Handle, authString string, data tpmutil.U16Bytes, offset uint16) ([]byte, error) {
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)})
-	if err != nil {
-		return nil, err
-	}
-	out, err := tpmutil.Pack(owner, handle)
-	if err != nil {
-		return nil, err
-	}
-	buf, err := tpmutil.Pack(data, offset)
-	if err != nil {
-		return nil, err
-	}
-	return concat(out, auth, buf)
+// NVWrite writes data into the TPM's NV storage.
+func NVWrite(rw io.ReadWriter, authHandle, nvIndex tpmutil.Handle, authString string, data tpmutil.U16Bytes, offset uint16) error {
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)}
+	return NVWriteEx(rw, authHandle, nvIndex, auth, data, offset)
 }
 
-// NVWrite writes data into the TPM's NV storage.
-func NVWrite(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string, data tpmutil.U16Bytes, offset uint16) error {
-	Cmd, err := encodeWriteNV(owner, handle, authString, data, offset)
+// NVWriteEx does the same as NVWrite with the exception of letting the user take care of the AuthCommand before calling the function.
+// This allows more flexibility and does not limit the AuthCommand to PasswordSession.
+func NVWriteEx(rw io.ReadWriter, authHandle, nvIndex tpmutil.Handle, authArea AuthCommand, data tpmutil.U16Bytes, offset uint16) error {
+	h, err := tpmutil.Pack(authHandle, nvIndex)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagSessions, CmdWriteNV, tpmutil.RawBytes(Cmd))
+	authEnc, err := encodeAuthArea(authArea)
+	if err != nil {
+		return err
+	}
+
+	d, err := tpmutil.Pack(data, offset)
+	if err != nil {
+		return err
+	}
+
+	b, err := concat(h, authEnc, d)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdWriteNV, tpmutil.RawBytes(b))
 	return err
 }
 
