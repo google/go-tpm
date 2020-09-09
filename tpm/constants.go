@@ -79,6 +79,7 @@ const (
 	CapNVList   uint32 = 0x0000000D
 	CapNVIndex  uint32 = 0x00000011
 	CapHandle   uint32 = 0x00000014
+	CapVersion  uint32 = 0x0000001A
 )
 
 // SubCapabilities
