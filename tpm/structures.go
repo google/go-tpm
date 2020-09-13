@@ -15,8 +15,10 @@
 package tpm
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rsa"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -67,21 +69,81 @@ type pcrInfo struct {
 	DigestAtCreation Digest
 }
 
+type capVersionByte byte
+
 // A capVersionInfo contains information about the TPM itself. Note that this
 // is deserialized specially, since it has a variable-length byte array but no
 // length. It is preceded with a length in the response to the Quote2 command.
-type capVersionInfo struct {
-	CapVersionFixed capVersionInfoFixed
-	VendorSpecific  []byte
+
+type capVersion struct {
+	Major    capVersionByte
+	Minor    capVersionByte
+	RevMajor byte
+	RevMinor byte
 }
 
-// A capVersionInfoFixed stores the fixed-length part of capVersionInfo.
-type capVersionInfoFixed struct {
-	Tag       uint16
-	Version   uint32
-	SpecLevel uint16
-	ErrataRev byte
-	VendorID  byte
+// CapVersionInfo implements TPM_CAP_VERSION_INFO from spec. Part 2 - Page 174
+type CapVersionInfo struct {
+	Tag            tpmutil.Tag
+	Version        capVersion
+	SpecLevel      uint16
+	ErrataRev      byte
+	TPMVendorID    [4]byte
+	VendorSpecific tpmutil.U16Bytes
+}
+
+func (c *CapVersionInfo) Decode(data []byte) error {
+	var cV capVersion
+	buf := bytes.NewReader(data)
+	err := binary.Read(buf, binary.LittleEndian, &c.Tag)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &cV.Major)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &cV.Minor)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &cV.RevMajor)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &cV.RevMinor)
+	if err != nil {
+		return err
+	}
+
+	c.Version = cV
+
+	err = binary.Read(buf, binary.LittleEndian, &c.SpecLevel)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &c.ErrataRev)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &c.TPMVendorID)
+	if err != nil {
+		return err
+	}
+	var venspecificLen uint16
+	err = binary.Read(buf, binary.LittleEndian, &venspecificLen)
+	if err != nil {
+		return err
+	}
+	venSpecData := make([]byte, venspecificLen)
+	err = binary.Read(buf, binary.LittleEndian, &venSpecData)
+	if err != nil {
+		return err
+	}
+	c.VendorSpecific = venSpecData
+
+	return nil
+
 }
 
 // PermanentFlags contains persistent TPM properties
