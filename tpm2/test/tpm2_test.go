@@ -2135,3 +2135,34 @@ func TestDictionaryAttackLockReset(t *testing.T) {
 		t.Fatalf("got %d, expected 0", caps[0].(TaggedProperty).Value)
 	}
 }
+
+func TestPolicyOr(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	hashAlg, err := AlgSHA256.Hash()
+	if err != nil {
+		t.Errorf("looking up hash algo with error: %v", err)
+	}
+	zeroHash := make([]byte, hashAlg.Size())
+	customHash := make([]byte, hashAlg.Size())
+
+	_, err = rand.Read(customHash)
+	if err != nil {
+		t.Errorf("random read into byte slice with error: %v", err)
+	}
+
+	tpml := TPMLDigest{Digests: []tpmutil.U16Bytes{
+		zeroHash, customHash},
+	}
+
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	defer FlushContext(rw, sessHandle)
+
+	if err != nil {
+		t.Errorf("StartAuthSession failed: %v", err)
+	}
+	err = PolicyOr(rw, sessHandle, tpml)
+	if err != nil {
+		t.Errorf("PolicyOr with error: %v", err)
+	}
+}
