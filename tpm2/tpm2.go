@@ -802,7 +802,11 @@ func PolicyPCR(rw io.ReadWriter, session tpmutil.Handle, expectedDigest []byte, 
 // to a Zero Digest. Then policySession→Digest is extended by the concatenation of
 // TPM_CC_PolicyOR and the concatenation of all of the digests.
 func PolicyOr(rw io.ReadWriter, session tpmutil.Handle, digests TPMLDigest) error {
-	data, err := tpmutil.Pack(session, digests)
+	d, err := digests.Encode()
+	if err != nil {
+		return err
+	}
+	data, err := tpmutil.Pack(session, d)
 	if err != nil {
 		return err
 	}
