@@ -393,6 +393,9 @@ const (
 	CmdGetCapability              tpmutil.Command = 0x0000017A
 	CmdGetRandom                  tpmutil.Command = 0x0000017B
 	CmdHash                       tpmutil.Command = 0x0000017D
+	CmdHashSequenceStart          tpmutil.Command = 0x00000186
+	CmdSequenceUpdate             tpmutil.Command = 0x0000015C
+	CmdSequenceComplete           tpmutil.Command = 0x0000013E
 	CmdPCRRead                    tpmutil.Command = 0x0000017E
 	CmdPolicyPCR                  tpmutil.Command = 0x0000017F
 	CmdReadClock                  tpmutil.Command = 0x00000181
