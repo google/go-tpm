@@ -1540,6 +1540,68 @@ func SequenceComplete(rw io.ReadWriter, sequenceAuth string, seqHandle, hierarch
 	return decodeSequenceComplete(resp)
 }
 
+func encodeEventSequenceComplete(auths []AuthCommand, pcrHandle, seqHandle tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(pcrHandle, seqHandle)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(auths...)
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(buf)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+func decodeEventSequenceComplete(resp []byte) ([]*HashValue, error) {
+	var paramSize uint32
+	var hashCount int32
+
+	buf := bytes.NewBuffer(resp)
+	err := tpmutil.UnpackBuf(buf, &paramSize, &hashCount)
+	if err != nil {
+		return nil, err
+	}
+	if hashCount < 0 {
+		return nil, bytes.ErrTooLarge
+	}
+
+	buf.Truncate(int(paramSize))
+	digests := make([]*HashValue, hashCount)
+	for i := int32(0); i < hashCount; i++ {
+		digests[i], err = decodeHashValue(buf)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return digests, nil
+}
+
+// EventSequenceComplete adds the last part of data, if any, to an Event
+// Sequence and returns the result in a digest list. If pcrHandle references a
+// PCR and not AlgNull, then the returned digest list is processed in the same
+// manner as the digest list input parameter to PCRExtend() with the pcrHandle
+// in each bank extended with the associated digest value.
+func EventSequenceComplete(rw io.ReadWriter, pcrAuth, sequenceAuth string, pcrHandle, seqHandle tpmutil.Handle, buffer []byte) (digests []*HashValue, err error) {
+	auth := []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(pcrAuth)},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(sequenceAuth)},
+	}
+	cmd, err := encodeEventSequenceComplete(auth, pcrHandle, seqHandle, buffer)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdEventSequenceComplete, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeEventSequenceComplete(resp)
+}
+
 // Startup initializes a TPM (usually done by the OS).
 func Startup(rw io.ReadWriter, typ StartupType) error {
 	_, err := runCommand(rw, TagNoSessions, CmdStartup, typ)
