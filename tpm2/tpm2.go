@@ -1194,12 +1194,19 @@ func NVUndefineSpaceEx(rw io.ReadWriter, owner, index tpmutil.Handle, authArea A
 }
 
 // NVUndefineSpaceSpecial This command allows removal of a platform-created NV Index that has TPMA_NV_POLICY_DELETE SET.
-func NVUndefineSpaceSpecial(rw io.ReadWriter, index, platformPP tpmutil.Handle) error {
-	cmd, err := tpmutil.Pack(index, platformPP)
+// The policy to authorize NV index access needs to be created with PolicyCommandCode(rw, sessionHandle, CmdNVUndefineSpaceSpecial) function
+// nvAuthCmd takes the session handle for the policy and the AuthValue (which can be emptyAuth) for the authorization.
+// platformAuth takes either a sessionHandle for the platform policy or HandlePasswordSession and the platformAuth value for authorization.
+func NVUndefineSpaceSpecial(rw io.ReadWriter, nvIndex tpmutil.Handle, nvAuth, platformAuth AuthCommand) error {
+	authBytes, err := encodeAuthArea(nvAuth, platformAuth)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagSessions, CmdNVUndefineSpaceSpecial, tpmutil.RawBytes(cmd))
+	auth, err := tpmutil.Pack(authBytes)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdNVUndefineSpaceSpecial, nvIndex, HandlePlatform, tpmutil.RawBytes(auth))
 	return err
 }
 
