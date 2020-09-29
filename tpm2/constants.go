@@ -361,6 +361,7 @@ const (
 	CmdDictionaryAttackLockReset  tpmutil.Command = 0x00000139
 	CmdDictionaryAttackParameters tpmutil.Command = 0x0000013A
 	CmdPCREvent                   tpmutil.Command = 0x0000013C
+	CmdSequenceComplete           tpmutil.Command = 0x0000013E
 	CmdStartup                    tpmutil.Command = 0x00000144
 	CmdShutdown                   tpmutil.Command = 0x00000145
 	CmdActivateCredential         tpmutil.Command = 0x00000147
@@ -375,6 +376,7 @@ const (
 	CmdLoad                       tpmutil.Command = 0x00000157
 	CmdQuote                      tpmutil.Command = 0x00000158
 	CmdRSADecrypt                 tpmutil.Command = 0x00000159
+	CmdSequenceUpdate             tpmutil.Command = 0x0000015C
 	CmdSign                       tpmutil.Command = 0x0000015D
 	CmdUnseal                     tpmutil.Command = 0x0000015E
 	CmdContextLoad                tpmutil.Command = 0x00000161
@@ -393,14 +395,12 @@ const (
 	CmdGetCapability              tpmutil.Command = 0x0000017A
 	CmdGetRandom                  tpmutil.Command = 0x0000017B
 	CmdHash                       tpmutil.Command = 0x0000017D
-	CmdHashSequenceStart          tpmutil.Command = 0x00000186
-	CmdSequenceUpdate             tpmutil.Command = 0x0000015C
-	CmdSequenceComplete           tpmutil.Command = 0x0000013E
-	CmdEventSequenceComplete      tpmutil.Command = 0x00000185
 	CmdPCRRead                    tpmutil.Command = 0x0000017E
 	CmdPolicyPCR                  tpmutil.Command = 0x0000017F
 	CmdReadClock                  tpmutil.Command = 0x00000181
 	CmdPCRExtend                  tpmutil.Command = 0x00000182
+	CmdEventSequenceComplete      tpmutil.Command = 0x00000185
+	CmdHashSequenceStart          tpmutil.Command = 0x00000186
 	CmdPolicyGetDigest            tpmutil.Command = 0x00000189
 	CmdPolicyPassword             tpmutil.Command = 0x0000018C
 	CmdEncryptDecrypt2            tpmutil.Command = 0x00000193
