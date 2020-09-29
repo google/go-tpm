@@ -24,6 +24,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
+	"fmt"
 	"hash"
 	"io"
 	"math/big"
@@ -32,6 +33,7 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
+	"github.com/google/go-tpm/tpm2"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -417,6 +419,79 @@ func TestHash(t *testing.T) {
 	t.Run("Starts with TPM_GENERATED_VALUE", func(t *testing.T) {
 		run(t, []byte("\xffTCGbarbaz"), HandleOwner, false)
 	})
+}
+
+func testHashSequence(t *testing.T, rw io.ReadWriter, hierarchy tpmutil.Handle, hashAlg Algorithm, data []byte) ([]byte, *Ticket) {
+	const (
+		maxDigestBuffer = 1024
+		seqAuth         = ""
+	)
+
+	seq, err := HashSequenceStart(rw, seqAuth, hashAlg)
+	if err != nil {
+		t.Fatalf("HashSequenceStart failed: %v", err)
+	}
+
+	defer tpm2.FlushContext(rw, seq)
+
+	for len(data) > maxDigestBuffer {
+		err = SequenceUpdate(rw, seqAuth, seq, data[:maxDigestBuffer])
+		if err != nil {
+			t.Fatalf("SequenceUpdate failed: %v", err)
+		}
+
+		data = data[maxDigestBuffer:]
+	}
+
+	digest, ticket, err := SequenceComplete(rw, seqAuth, seq, hierarchy, data)
+	if err != nil {
+		t.Fatalf("SequenceComplete failed: %v", err)
+	}
+
+	return digest, ticket
+}
+
+func TestHashSequence(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	run := func(t *testing.T, data []byte, hierarchy tpmutil.Handle, wantValidation bool) {
+		gotDigest, gotValidation := testHashSequence(t, rw, hierarchy, AlgSHA256, data)
+		wantDigest := sha256.Sum256(data)
+
+		if !bytes.Equal(gotDigest, wantDigest[:]) {
+			t.Errorf("Hash(%q) returned digest %x, want %x", data, gotDigest, wantDigest)
+		}
+		if wantValidation && len(gotValidation.Digest) == 0 {
+			t.Errorf("Hash(%q) unexpectedly returned empty validation ticket", data)
+		}
+		if !wantValidation && len(gotValidation.Digest) != 0 {
+			t.Errorf("Hash(%q) unexpectedly returned non-empty validation ticket", data)
+		}
+	}
+
+	bufferSizes := []int{512, 1024, 2048, 4096}
+	for _, bufferSize := range bufferSizes {
+		buffer := make([]byte, bufferSize)
+		_, err := rand.Read(buffer)
+		if err != nil {
+			t.Fatalf("rand.Read failed: %v", err)
+		}
+
+		t.Run(fmt.Sprintf("Null hierarchy [bufferSize=%d]", bufferSize), func(t *testing.T) {
+			run(t, buffer, HandleNull, false)
+		})
+		t.Run(fmt.Sprintf("Owner hierarchy [bufferSize=%d]", bufferSize), func(t *testing.T) {
+			run(t, buffer, HandleOwner, true)
+		})
+
+		// TCG generated values from now on
+		copy(buffer, []byte("\xffTCG"))
+
+		t.Run(fmt.Sprintf("Starts with TPM_GENERATED_VALUE [bufferSize=%d]", bufferSize), func(t *testing.T) {
+			run(t, buffer, HandleOwner, false)
+		})
+	}
 }
 
 func skipOnUnsupportedAlg(t testing.TB, rw io.ReadWriter, alg Algorithm) {
