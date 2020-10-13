@@ -1550,7 +1550,7 @@ func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, 
 	return SignWithSession(rw, HandlePasswordSession, key, password, digest, validation, sigScheme)
 }
 
-func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
+func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, sigAlg, hashAlg Algorithm) ([]byte, error) {
 	ha, err := tpmutil.Pack(object, signer)
 	if err != nil {
 		return nil, err
@@ -1561,7 +1561,7 @@ func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, 
 		return nil, err
 	}
 
-	scheme := tpmtSigScheme{AlgRSASSA, AlgSHA256}
+	scheme := tpmtSigScheme{sigAlg, hashAlg}
 	// Use signing key's scheme.
 	params, err := tpmutil.Pack(qualifyingData, scheme)
 	if err != nil {
@@ -1606,8 +1606,8 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 // Certify generates a signature of a loaded TPM object with a signing key
 // signer. Returned values are: attestation data (TPMS_ATTEST), signature and
 // error, if any.
-func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
-	Cmd, err := encodeCertify(parentAuth, ownerAuth, object, signer, qualifyingData)
+func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte, sigAlg, hashAlg Algorithm) ([]byte, []byte, error) {
+	Cmd, err := encodeCertify(parentAuth, ownerAuth, object, signer, qualifyingData, sigAlg, hashAlg)
 	if err != nil {
 		return nil, nil, err
 	}

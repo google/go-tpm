@@ -534,7 +534,7 @@ func TestCertify(t *testing.T) {
 	}
 	defer FlushContext(rw, subjectHandle)
 
-	attest, sig, err := Certify(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil)
+	attest, sig, err := Certify(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, AlgRSASSA, AlgSHA256)
 	if err != nil {
 		t.Errorf("Certify failed: %s", err)
 		return
@@ -605,7 +605,7 @@ func TestCertifyExternalKey(t *testing.T) {
 		}
 		defer FlushContext(rw, subjectHandle)
 
-		attest, sig, err := Certify(rw, emptyPassword, defaultPassword, subjectHandle, signerHandle, nil)
+		attest, sig, err := Certify(rw, emptyPassword, defaultPassword, subjectHandle, signerHandle, nil, AlgRSASSA, AlgSHA256)
 		if err != nil {
 			t.Errorf("Certify failed: %s", err)
 			return
