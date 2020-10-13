@@ -575,6 +575,61 @@ func TestCertify(t *testing.T) {
 	})
 }
 
+func TestCertifyEx(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	restrictedKeySignerFlags := FlagSignerDefault
+	unrestrictedKeySignerFlags := FlagSign | FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
+	testCases := []struct {
+		description  string
+		attributes   KeyProp
+		keyScheme    SigScheme
+		passedScheme SigScheme
+		shouldPass   bool
+	}{
+		{"Null-SHA1", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, true},
+		{"Null-SHA256", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"Null-Null", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgNull}, false},
+		{"SHA256-Null", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgNull}, true},
+		{"SHA256-SHA256", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"SHA256-SHA1", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, false},
+	}
+
+	for _, testCase := range testCases {
+		params := Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA256,
+			Attributes: testCase.attributes,
+			RSAParameters: &RSAParams{
+				Sign:    &testCase.keyScheme,
+				KeyBits: 2048,
+			},
+		}
+
+		t.Run(testCase.description, func(t *testing.T) {
+			signerHandle, _, err := CreatePrimary(rw, HandleOwner, PCRSelection{}, emptyPassword, defaultPassword, params)
+			if err != nil {
+				t.Fatalf("CreatePrimary(signer) failed: %s", err)
+			}
+			defer FlushContext(rw, signerHandle)
+
+			subjectHandle, _, err := CreatePrimary(rw, HandlePlatform, PCRSelection{}, emptyPassword, defaultPassword, params)
+			if err != nil {
+				t.Fatalf("CreatePrimary(subject) failed: %s", err)
+			}
+			defer FlushContext(rw, subjectHandle)
+
+			_, _, err = CertifyEx(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, testCase.passedScheme)
+			if err != nil && testCase.shouldPass {
+				t.Errorf("CertifyEx expected to succeed but failed: %s", err)
+			} else if err == nil && !testCase.shouldPass {
+				t.Errorf("CertifyEx expected to fail but succeeded")
+			}
+		})
+	}
+}
+
 func TestCertifyExternalKey(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
