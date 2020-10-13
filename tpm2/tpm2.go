@@ -1565,20 +1565,17 @@ func encodeEventSequenceComplete(auths []AuthCommand, pcrHandle, seqHandle tpmut
 
 func decodeEventSequenceComplete(resp []byte) ([]*HashValue, error) {
 	var paramSize uint32
-	var hashCount int32
+	var hashCount uint32
 
 	buf := bytes.NewBuffer(resp)
 	err := tpmutil.UnpackBuf(buf, &paramSize, &hashCount)
 	if err != nil {
 		return nil, err
 	}
-	if hashCount < 0 {
-		return nil, bytes.ErrTooLarge
-	}
 
 	buf.Truncate(int(paramSize))
 	digests := make([]*HashValue, hashCount)
-	for i := int32(0); i < hashCount; i++ {
+	for i := uint32(0); i < hashCount; i++ {
 		digests[i], err = decodeHashValue(buf)
 		if err != nil {
 			return nil, err
