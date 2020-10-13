@@ -33,7 +33,6 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
-	"github.com/google/go-tpm/tpm2"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -432,7 +431,7 @@ func testHashSequence(t *testing.T, rw io.ReadWriter, hierarchy tpmutil.Handle, 
 		t.Fatalf("HashSequenceStart failed: %v", err)
 	}
 
-	defer tpm2.FlushContext(rw, seq)
+	defer FlushContext(rw, seq)
 
 	for len(data) > maxDigestBuffer {
 		err = SequenceUpdate(rw, seqAuth, seq, data[:maxDigestBuffer])
