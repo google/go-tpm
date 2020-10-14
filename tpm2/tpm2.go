@@ -1466,6 +1466,144 @@ func Hash(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes, hierarchy tpmut
 	return decodeHash(resp)
 }
 
+// HashSequenceStart starts a hash or an event sequence. If hashAlg is an
+// implemented hash, then a hash sequence is started. If hashAlg is
+// TPM_ALG_NULL, then an event sequence is started.
+func HashSequenceStart(rw io.ReadWriter, sequenceAuth string, hashAlg Algorithm) (seqHandle tpmutil.Handle, err error) {
+	resp, err := runCommand(rw, TagNoSessions, CmdHashSequenceStart, tpmutil.U16Bytes(sequenceAuth), hashAlg)
+	if err != nil {
+		return 0, err
+	}
+	var handle tpmutil.Handle
+	_, err = tpmutil.Unpack(resp, &handle)
+	return handle, err
+}
+
+func encodeSequenceUpdate(sequenceAuth string, seqHandle tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(seqHandle)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(sequenceAuth)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(buf)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+// SequenceUpdate is used to add data to a hash or HMAC sequence.
+func SequenceUpdate(rw io.ReadWriter, sequenceAuth string, seqHandle tpmutil.Handle, buffer []byte) error {
+	cmd, err := encodeSequenceUpdate(sequenceAuth, seqHandle, buffer)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdSequenceUpdate, tpmutil.RawBytes(cmd))
+	return err
+}
+
+func decodeSequenceComplete(resp []byte) ([]byte, *Ticket, error) {
+	var digest tpmutil.U16Bytes
+	var validation Ticket
+	var paramSize uint32
+
+	if _, err := tpmutil.Unpack(resp, &paramSize, &digest, &validation); err != nil {
+		return nil, nil, err
+	}
+	return digest, &validation, nil
+}
+
+func encodeSequenceComplete(sequenceAuth string, seqHandle, hierarchy tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(seqHandle)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(sequenceAuth)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(buf, hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+// SequenceComplete adds the last part of data, if any, to a hash/HMAC sequence
+// and returns the result.
+func SequenceComplete(rw io.ReadWriter, sequenceAuth string, seqHandle, hierarchy tpmutil.Handle, buffer []byte) (digest []byte, validation *Ticket, err error) {
+	cmd, err := encodeSequenceComplete(sequenceAuth, seqHandle, hierarchy, buffer)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdSequenceComplete, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeSequenceComplete(resp)
+}
+
+func encodeEventSequenceComplete(auths []AuthCommand, pcrHandle, seqHandle tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(pcrHandle, seqHandle)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(auths...)
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(buf)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+func decodeEventSequenceComplete(resp []byte) ([]*HashValue, error) {
+	var paramSize uint32
+	var hashCount uint32
+	var err error
+
+	buf := bytes.NewBuffer(resp)
+	if err := tpmutil.UnpackBuf(buf, &paramSize, &hashCount); err != nil {
+		return nil, err
+	}
+
+	buf.Truncate(int(paramSize))
+	digests := make([]*HashValue, hashCount)
+	for i := uint32(0); i < hashCount; i++ {
+		if digests[i], err = decodeHashValue(buf); err != nil {
+			return nil, err
+		}
+	}
+
+	return digests, nil
+}
+
+// EventSequenceComplete adds the last part of data, if any, to an Event
+// Sequence and returns the result in a digest list. If pcrHandle references a
+// PCR and not AlgNull, then the returned digest list is processed in the same
+// manner as the digest list input parameter to PCRExtend() with the pcrHandle
+// in each bank extended with the associated digest value.
+func EventSequenceComplete(rw io.ReadWriter, pcrAuth, sequenceAuth string, pcrHandle, seqHandle tpmutil.Handle, buffer []byte) (digests []*HashValue, err error) {
+	auth := []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(pcrAuth)},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(sequenceAuth)},
+	}
+	cmd, err := encodeEventSequenceComplete(auth, pcrHandle, seqHandle, buffer)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdEventSequenceComplete, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeEventSequenceComplete(resp)
+}
+
 // Startup initializes a TPM (usually done by the OS).
 func Startup(rw io.ReadWriter, typ StartupType) error {
 	_, err := runCommand(rw, TagNoSessions, CmdStartup, typ)
