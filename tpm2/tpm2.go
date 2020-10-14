@@ -1510,8 +1510,7 @@ func decodeSequenceComplete(resp []byte) ([]byte, *Ticket, error) {
 	var validation Ticket
 	var paramSize uint32
 
-	_, err := tpmutil.Unpack(resp, &paramSize, &digest, &validation)
-	if err != nil {
+	if _, err := tpmutil.Unpack(resp, &paramSize, &digest, &validation); err != nil {
 		return nil, nil, err
 	}
 	return digest, &validation, nil
@@ -1566,18 +1565,17 @@ func encodeEventSequenceComplete(auths []AuthCommand, pcrHandle, seqHandle tpmut
 func decodeEventSequenceComplete(resp []byte) ([]*HashValue, error) {
 	var paramSize uint32
 	var hashCount uint32
+	var err error
 
 	buf := bytes.NewBuffer(resp)
-	err := tpmutil.UnpackBuf(buf, &paramSize, &hashCount)
-	if err != nil {
+	if err := tpmutil.UnpackBuf(buf, &paramSize, &hashCount); err != nil {
 		return nil, err
 	}
 
 	buf.Truncate(int(paramSize))
 	digests := make([]*HashValue, hashCount)
 	for i := uint32(0); i < hashCount; i++ {
-		digests[i], err = decodeHashValue(buf)
-		if err != nil {
+		if digests[i], err = decodeHashValue(buf); err != nil {
 			return nil, err
 		}
 	}

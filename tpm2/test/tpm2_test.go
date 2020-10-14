@@ -430,15 +430,12 @@ func testHashSequence(t *testing.T, rw io.ReadWriter, hierarchy tpmutil.Handle, 
 	if err != nil {
 		t.Fatalf("HashSequenceStart failed: %v", err)
 	}
-
 	defer FlushContext(rw, seq)
 
 	for len(data) > maxDigestBuffer {
-		err = SequenceUpdate(rw, seqAuth, seq, data[:maxDigestBuffer])
-		if err != nil {
+		if err = SequenceUpdate(rw, seqAuth, seq, data[:maxDigestBuffer]); err != nil {
 			t.Fatalf("SequenceUpdate failed: %v", err)
 		}
-
 		data = data[maxDigestBuffer:]
 	}
 
@@ -446,7 +443,6 @@ func testHashSequence(t *testing.T, rw io.ReadWriter, hierarchy tpmutil.Handle, 
 	if err != nil {
 		t.Fatalf("SequenceComplete failed: %v", err)
 	}
-
 	return digest, ticket
 }
 
@@ -472,8 +468,8 @@ func TestHashSequence(t *testing.T) {
 	bufferSizes := []int{512, 1024, 2048, 4096}
 	for _, bufferSize := range bufferSizes {
 		buffer := make([]byte, bufferSize)
-		_, err := rand.Read(buffer)
-		if err != nil {
+
+		if _, err := rand.Read(buffer); err != nil {
 			t.Fatalf("rand.Read failed: %v", err)
 		}
 
