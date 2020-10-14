@@ -826,7 +826,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle tpmutil.Handle) ([]byte, error) {
 	return digest, err
 }
 
-func encodeStartAuthSession(tpmKey, bindKey tpmutil.Handle, nonceCaller, secret tpmutil.U16Bytes, se SessionType, sym, hashAlg Algorithm) ([]byte, error) {
+func encodeStartAuthSession(tpmKey, bindKey tpmutil.Handle, nonceCaller, secret tpmutil.U16Bytes, se SessionType, sym *SymScheme, hashAlg Algorithm) ([]byte, error) {
 	ha, err := tpmutil.Pack(tpmKey, bindKey)
 	if err != nil {
 		return nil, err
@@ -847,9 +847,9 @@ func decodeStartAuthSession(in []byte) (tpmutil.Handle, []byte, error) {
 	return handle, nonce, nil
 }
 
-// StartAuthSession initializes a session object.
+// StartAuthSessionEx initializes a session object.
 // Returns session handle and the initial nonce from the TPM.
-func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey tpmutil.Handle, nonceCaller, secret []byte, se SessionType, sym, hashAlg Algorithm) (tpmutil.Handle, []byte, error) {
+func StartAuthSessionEx(rw io.ReadWriter, tpmKey, bindKey tpmutil.Handle, nonceCaller, secret []byte, se SessionType, sym *SymScheme, hashAlg Algorithm) (tpmutil.Handle, []byte, error) {
 	Cmd, err := encodeStartAuthSession(tpmKey, bindKey, nonceCaller, secret, se, sym, hashAlg)
 	if err != nil {
 		return 0, nil, err
@@ -859,6 +859,12 @@ func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey tpmutil.Handle, nonceCal
 		return 0, nil, err
 	}
 	return decodeStartAuthSession(resp)
+}
+
+// StartAuthSession initializes a session object.
+// Returns session handle and the initial nonce from the TPM.
+func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey tpmutil.Handle, nonceCaller, secret []byte, se SessionType, sym, hashAlg Algorithm) (tpmutil.Handle, []byte, error) {
+	return StartAuthSessionEx(rw, tpmKey, bindKey, nonceCaller, secret, se, &SymScheme{Alg: sym}, hashAlg)
 }
 
 func encodeUnseal(sessionHandle, itemHandle tpmutil.Handle, password string) ([]byte, error) {

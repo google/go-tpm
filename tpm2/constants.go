@@ -84,6 +84,7 @@ const (
 	AlgSHA384    Algorithm = 0x000C
 	AlgSHA512    Algorithm = 0x000D
 	AlgNull      Algorithm = 0x0010
+	AlgSM4       Algorithm = 0x0013
 	AlgRSASSA    Algorithm = 0x0014
 	AlgRSAES     Algorithm = 0x0015
 	AlgRSAPSS    Algorithm = 0x0016
@@ -94,6 +95,7 @@ const (
 	AlgKDF2      Algorithm = 0x0021
 	AlgECC       Algorithm = 0x0023
 	AlgSymCipher Algorithm = 0x0025
+	AlgCamellia  Algorithm = 0x0026
 	AlgCTR       Algorithm = 0x0040
 	AlgOFB       Algorithm = 0x0041
 	AlgCBC       Algorithm = 0x0042

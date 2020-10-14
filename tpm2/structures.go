@@ -22,6 +22,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"reflect"
 
@@ -456,14 +457,49 @@ type SymScheme struct {
 	Mode    Algorithm
 }
 
+func (s *SymScheme) TPMMarshal(out io.Writer) (err error) {
+	var data []byte
+	if data, err = s.encode(); err != nil {
+		return
+	}
+
+	if _, err = out.Write(data); err != nil {
+		return
+	}
+
+	return nil
+}
+
+func (s *SymScheme) TPMUnmarshal(in io.Reader) (err error) {
+	var ref *SymScheme
+	if ref, err = decodeSymScheme(in); err != nil {
+		return
+	}
+
+	*s = *ref
+	return nil
+}
+
 func (s *SymScheme) encode() ([]byte, error) {
 	if s == nil || s.Alg.IsNull() {
 		return tpmutil.Pack(AlgNull)
 	}
-	return tpmutil.Pack(s.Alg, s.KeyBits, s.Mode)
+
+	switch s.Alg {
+	case AlgAES, AlgSM4, AlgCamellia:
+		return tpmutil.Pack(s.Alg, s.KeyBits, s.Mode)
+
+	case AlgXOR:
+		return tpmutil.Pack(s.Alg, s.KeyBits)
+
+	default:
+		// FIXME: The algorithms above are the only ones accepted by TPM, an
+		// error should be returned here.
+		return tpmutil.Pack(s.Alg, s.KeyBits, s.Mode)
+	}
 }
 
-func decodeSymScheme(in *bytes.Buffer) (*SymScheme, error) {
+func decodeSymScheme(in io.Reader) (*SymScheme, error) {
 	var scheme SymScheme
 	if err := tpmutil.UnpackBuf(in, &scheme.Alg); err != nil {
 		return nil, fmt.Errorf("decoding Alg: %v", err)
