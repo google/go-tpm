@@ -286,10 +286,10 @@ func nvWriteValueAuth(rw io.ReadWriter, index, offset, len uint32, data []byte, 
 // under, the signature, auth information, and optionally information about the
 // TPM itself. Note that the input to quote2 must be exactly 20 bytes, so it is
 // normally the SHA1 hash of the data.
-func quote2(rw io.ReadWriter, keyHandle tpmutil.Handle, hash [20]byte, pcrs *pcrSelection, addVersion byte, ca *commandAuth) (*pcrInfoShort, *capVersionInfo, []byte, []byte, *responseAuth, uint32, error) {
+func quote2(rw io.ReadWriter, keyHandle tpmutil.Handle, hash [20]byte, pcrs *pcrSelection, addVersion byte, ca *commandAuth) (*pcrInfoShort, *CapVersionInfo, []byte, []byte, *responseAuth, uint32, error) {
 	in := []interface{}{keyHandle, hash, pcrs, addVersion, ca}
 	var pcrShort pcrInfoShort
-	var capInfo capVersionInfo
+	var capInfo CapVersionInfo
 	var capBytes tpmutil.U32Bytes
 	var sig tpmutil.U32Bytes
 	var ra responseAuth
@@ -304,13 +304,10 @@ func quote2(rw io.ReadWriter, keyHandle tpmutil.Handle, hash [20]byte, pcrs *pcr
 		return &pcrShort, nil, capBytes, sig, &ra, ret, nil
 	}
 
-	size := binary.Size(capInfo.CapVersionFixed)
-	capInfo.VendorSpecific = make([]byte, len([]byte(capBytes))-size)
-	if _, err := tpmutil.Unpack([]byte(capBytes)[:size], &capInfo.CapVersionFixed); err != nil {
+	err = capInfo.Decode(capBytes)
+	if err != nil {
 		return nil, nil, nil, nil, nil, 0, err
 	}
-
-	copy(capInfo.VendorSpecific, []byte(capBytes)[size:])
 
 	return &pcrShort, &capInfo, capBytes, sig, &ra, ret, nil
 }

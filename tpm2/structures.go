@@ -19,6 +19,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -618,11 +619,6 @@ func (p Private) Encode() ([]byte, error) {
 	return tpmutil.Pack(p)
 }
 
-type tpmtSigScheme struct {
-	Scheme Algorithm
-	Hash   Algorithm
-}
-
 // AttestationData contains data attested by TPM commands (like Certify).
 type AttestationData struct {
 	Magic                uint32
@@ -1023,8 +1019,45 @@ type AuthCommand struct {
 
 // TPMLDigest represents the TPML_Digest structure
 // It is used to convey a list of digest values.
-//This type is used in TPM2_PolicyOR() and in TPM2_PCR_Read()
+// This type is used in TPM2_PolicyOR() and in TPM2_PCR_Read()
 type TPMLDigest struct {
-	Count   uint32
 	Digests []tpmutil.U16Bytes
+}
+
+// Encode converts the TPMLDigest structure into a byte slice
+func (list *TPMLDigest) Encode() ([]byte, error) {
+	res, err := tpmutil.Pack(uint32(len(list.Digests)))
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range list.Digests {
+		b, err := tpmutil.Pack(item)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, b...)
+
+	}
+	return res, nil
+}
+
+// DecodeTPMLDigest decodes a TPML_Digest part of a message.
+func DecodeTPMLDigest(buf []byte) (*TPMLDigest, error) {
+	in := bytes.NewBuffer(buf)
+	var tpmld TPMLDigest
+	var count uint32
+	if err := binary.Read(in, binary.BigEndian, &count); err != nil {
+		return nil, fmt.Errorf("decoding TPML_Digest: %v", err)
+	}
+	for in.Len() > 0 {
+		var hash tpmutil.U16Bytes
+		if err := hash.TPMUnmarshal(in); err != nil {
+			return nil, err
+		}
+		tpmld.Digests = append(tpmld.Digests, hash)
+	}
+	if count != uint32(len(tpmld.Digests)) {
+		return nil, fmt.Errorf("expected size and read size does not match")
+	}
+	return &tpmld, nil
 }

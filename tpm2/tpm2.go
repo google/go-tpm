@@ -180,6 +180,8 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 }
 
 // ReadPCRs reads PCR values from the TPM.
+// This is only a wrapper over TPM2_PCR_Read() call, thus can only return
+// at most 8 PCRs digests.
 func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
 	Cmd, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
@@ -803,7 +805,11 @@ func PolicyPCR(rw io.ReadWriter, session tpmutil.Handle, expectedDigest []byte, 
 // to a Zero Digest. Then policySession→Digest is extended by the concatenation of
 // TPM_CC_PolicyOR and the concatenation of all of the digests.
 func PolicyOr(rw io.ReadWriter, session tpmutil.Handle, digests TPMLDigest) error {
-	data, err := tpmutil.Pack(session, digests)
+	d, err := digests.Encode()
+	if err != nil {
+		return err
+	}
+	data, err := tpmutil.Pack(session, d)
 	if err != nil {
 		return err
 	}
@@ -1165,35 +1171,45 @@ func NVIncrement(rw io.ReadWriter, handle tpmutil.Handle, authString string) err
 	return err
 }
 
-func encodeUndefineSpace(ownerAuth string, owner, index tpmutil.Handle) ([]byte, error) {
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
-	if err != nil {
-		return nil, err
-	}
-	out, err := tpmutil.Pack(owner, index)
-	if err != nil {
-		return nil, err
-	}
-	return concat(out, auth)
-}
-
 // NVUndefineSpace removes an index from TPM's NV storage.
 func NVUndefineSpace(rw io.ReadWriter, ownerAuth string, owner, index tpmutil.Handle) error {
-	Cmd, err := encodeUndefineSpace(ownerAuth, owner, index)
+	authArea := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)}
+	return NVUndefineSpaceEx(rw, owner, index, authArea)
+}
+
+// NVUndefineSpaceEx removes an index from NVRAM. Unlike, NVUndefineSpace(), custom command
+// authorization can be provided.
+func NVUndefineSpaceEx(rw io.ReadWriter, owner, index tpmutil.Handle, authArea AuthCommand) error {
+	out, err := tpmutil.Pack(owner, index)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagSessions, CmdUndefineSpace, tpmutil.RawBytes(Cmd))
+	auth, err := encodeAuthArea(authArea)
+	if err != nil {
+		return err
+	}
+	cmd, err := concat(out, auth)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdUndefineSpace, tpmutil.RawBytes(cmd))
 	return err
 }
 
 // NVUndefineSpaceSpecial This command allows removal of a platform-created NV Index that has TPMA_NV_POLICY_DELETE SET.
-func NVUndefineSpaceSpecial(rw io.ReadWriter, index, platformPP tpmutil.Handle) error {
-	cmd, err := tpmutil.Pack(index, platformPP)
+// The policy to authorize NV index access needs to be created with PolicyCommandCode(rw, sessionHandle, CmdNVUndefineSpaceSpecial) function
+// nvAuthCmd takes the session handle for the policy and the AuthValue (which can be emptyAuth) for the authorization.
+// platformAuth takes either a sessionHandle for the platform policy or HandlePasswordSession and the platformAuth value for authorization.
+func NVUndefineSpaceSpecial(rw io.ReadWriter, nvIndex tpmutil.Handle, nvAuth, platformAuth AuthCommand) error {
+	authBytes, err := encodeAuthArea(nvAuth, platformAuth)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagSessions, CmdNVUndefineSpaceSpecial, tpmutil.RawBytes(cmd))
+	auth, err := tpmutil.Pack(authBytes)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdNVUndefineSpaceSpecial, nvIndex, HandlePlatform, tpmutil.RawBytes(auth))
 	return err
 }
 
@@ -1206,17 +1222,22 @@ func NVDefineSpace(rw io.ReadWriter, owner, handle tpmutil.Handle, ownerAuth, au
 		AuthPolicy: policy,
 		DataSize:   dataSize,
 	}
-	return NVDefineSpaceEx(rw, owner, ownerAuth, authString, nvPub)
+	authArea := AuthCommand{
+		Session:    HandlePasswordSession,
+		Attributes: AttrContinueSession,
+		Auth:       []byte(ownerAuth),
+	}
+	return NVDefineSpaceEx(rw, owner, authString, nvPub, authArea)
 
 }
 
-// NVDefineSpaceEx accepts NVPublic structure and is more flexible.
-func NVDefineSpaceEx(rw io.ReadWriter, owner tpmutil.Handle, ownerAuth, authVal string, pubInfo NVPublic) error {
+// NVDefineSpaceEx accepts NVPublic structure and AuthCommand, allowing more flexibility.
+func NVDefineSpaceEx(rw io.ReadWriter, owner tpmutil.Handle, authVal string, pubInfo NVPublic, authArea AuthCommand) error {
 	ha, err := tpmutil.Pack(owner)
 	if err != nil {
 		return err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
+	auth, err := encodeAuthArea(authArea)
 	if err != nil {
 		return err
 	}
@@ -1236,29 +1257,34 @@ func NVDefineSpaceEx(rw io.ReadWriter, owner tpmutil.Handle, ownerAuth, authVal 
 	return err
 }
 
-func encodeWriteNV(owner, handle tpmutil.Handle, authString string, data tpmutil.U16Bytes, offset uint16) ([]byte, error) {
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)})
-	if err != nil {
-		return nil, err
-	}
-	out, err := tpmutil.Pack(owner, handle)
-	if err != nil {
-		return nil, err
-	}
-	buf, err := tpmutil.Pack(data, offset)
-	if err != nil {
-		return nil, err
-	}
-	return concat(out, auth, buf)
+// NVWrite writes data into the TPM's NV storage.
+func NVWrite(rw io.ReadWriter, authHandle, nvIndex tpmutil.Handle, authString string, data tpmutil.U16Bytes, offset uint16) error {
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)}
+	return NVWriteEx(rw, authHandle, nvIndex, auth, data, offset)
 }
 
-// NVWrite writes data into the TPM's NV storage.
-func NVWrite(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string, data tpmutil.U16Bytes, offset uint16) error {
-	Cmd, err := encodeWriteNV(owner, handle, authString, data, offset)
+// NVWriteEx does the same as NVWrite with the exception of letting the user take care of the AuthCommand before calling the function.
+// This allows more flexibility and does not limit the AuthCommand to PasswordSession.
+func NVWriteEx(rw io.ReadWriter, authHandle, nvIndex tpmutil.Handle, authArea AuthCommand, data tpmutil.U16Bytes, offset uint16) error {
+	h, err := tpmutil.Pack(authHandle, nvIndex)
 	if err != nil {
 		return err
 	}
-	_, err = runCommand(rw, TagSessions, CmdWriteNV, tpmutil.RawBytes(Cmd))
+	authEnc, err := encodeAuthArea(authArea)
+	if err != nil {
+		return err
+	}
+
+	d, err := tpmutil.Pack(data, offset)
+	if err != nil {
+		return err
+	}
+
+	b, err := concat(h, authEnc, d)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdWriteNV, tpmutil.RawBytes(b))
 	return err
 }
 
@@ -1443,6 +1469,144 @@ func Hash(rw io.ReadWriter, alg Algorithm, buf tpmutil.U16Bytes, hierarchy tpmut
 	return decodeHash(resp)
 }
 
+// HashSequenceStart starts a hash or an event sequence. If hashAlg is an
+// implemented hash, then a hash sequence is started. If hashAlg is
+// TPM_ALG_NULL, then an event sequence is started.
+func HashSequenceStart(rw io.ReadWriter, sequenceAuth string, hashAlg Algorithm) (seqHandle tpmutil.Handle, err error) {
+	resp, err := runCommand(rw, TagNoSessions, CmdHashSequenceStart, tpmutil.U16Bytes(sequenceAuth), hashAlg)
+	if err != nil {
+		return 0, err
+	}
+	var handle tpmutil.Handle
+	_, err = tpmutil.Unpack(resp, &handle)
+	return handle, err
+}
+
+func encodeSequenceUpdate(sequenceAuth string, seqHandle tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(seqHandle)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(sequenceAuth)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(buf)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+// SequenceUpdate is used to add data to a hash or HMAC sequence.
+func SequenceUpdate(rw io.ReadWriter, sequenceAuth string, seqHandle tpmutil.Handle, buffer []byte) error {
+	cmd, err := encodeSequenceUpdate(sequenceAuth, seqHandle, buffer)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdSequenceUpdate, tpmutil.RawBytes(cmd))
+	return err
+}
+
+func decodeSequenceComplete(resp []byte) ([]byte, *Ticket, error) {
+	var digest tpmutil.U16Bytes
+	var validation Ticket
+	var paramSize uint32
+
+	if _, err := tpmutil.Unpack(resp, &paramSize, &digest, &validation); err != nil {
+		return nil, nil, err
+	}
+	return digest, &validation, nil
+}
+
+func encodeSequenceComplete(sequenceAuth string, seqHandle, hierarchy tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(seqHandle)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(sequenceAuth)})
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(buf, hierarchy)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+// SequenceComplete adds the last part of data, if any, to a hash/HMAC sequence
+// and returns the result.
+func SequenceComplete(rw io.ReadWriter, sequenceAuth string, seqHandle, hierarchy tpmutil.Handle, buffer []byte) (digest []byte, validation *Ticket, err error) {
+	cmd, err := encodeSequenceComplete(sequenceAuth, seqHandle, hierarchy, buffer)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdSequenceComplete, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeSequenceComplete(resp)
+}
+
+func encodeEventSequenceComplete(auths []AuthCommand, pcrHandle, seqHandle tpmutil.Handle, buf tpmutil.U16Bytes) ([]byte, error) {
+	ha, err := tpmutil.Pack(pcrHandle, seqHandle)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(auths...)
+	if err != nil {
+		return nil, err
+	}
+	params, err := tpmutil.Pack(buf)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, params)
+}
+
+func decodeEventSequenceComplete(resp []byte) ([]*HashValue, error) {
+	var paramSize uint32
+	var hashCount uint32
+	var err error
+
+	buf := bytes.NewBuffer(resp)
+	if err := tpmutil.UnpackBuf(buf, &paramSize, &hashCount); err != nil {
+		return nil, err
+	}
+
+	buf.Truncate(int(paramSize))
+	digests := make([]*HashValue, hashCount)
+	for i := uint32(0); i < hashCount; i++ {
+		if digests[i], err = decodeHashValue(buf); err != nil {
+			return nil, err
+		}
+	}
+
+	return digests, nil
+}
+
+// EventSequenceComplete adds the last part of data, if any, to an Event
+// Sequence and returns the result in a digest list. If pcrHandle references a
+// PCR and not AlgNull, then the returned digest list is processed in the same
+// manner as the digest list input parameter to PCRExtend() with the pcrHandle
+// in each bank extended with the associated digest value.
+func EventSequenceComplete(rw io.ReadWriter, pcrAuth, sequenceAuth string, pcrHandle, seqHandle tpmutil.Handle, buffer []byte) (digests []*HashValue, err error) {
+	auth := []AuthCommand{
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(pcrAuth)},
+		{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(sequenceAuth)},
+	}
+	cmd, err := encodeEventSequenceComplete(auth, pcrHandle, seqHandle, buffer)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdEventSequenceComplete, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, err
+	}
+	return decodeEventSequenceComplete(resp)
+}
+
 // Startup initializes a TPM (usually done by the OS).
 func Startup(rw io.ReadWriter, typ StartupType) error {
 	_, err := runCommand(rw, TagNoSessions, CmdStartup, typ)
@@ -1527,24 +1691,51 @@ func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, 
 	return SignWithSession(rw, HandlePasswordSession, key, password, digest, validation, sigScheme)
 }
 
-func encodeCertify(parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
+func encodeCertify(objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes) ([]byte, error) {
 	ha, err := tpmutil.Pack(object, signer)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(ownerAuth)})
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(objectAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(signerAuth)})
 	if err != nil {
 		return nil, err
 	}
 
-	scheme := tpmtSigScheme{AlgRSASSA, AlgSHA256}
+	scheme := SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}
 	// Use signing key's scheme.
-	params, err := tpmutil.Pack(qualifyingData, scheme)
+	s, err := scheme.encode()
 	if err != nil {
 		return nil, err
 	}
-	return concat(ha, auth, params)
+	data, err := tpmutil.Pack(qualifyingData)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, data, s)
+}
+
+// This function differs from encodeCertify in that it takes the scheme to be used as an additional argument.
+func encodeCertifyEx(objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData tpmutil.U16Bytes, scheme SigScheme) ([]byte, error) {
+	ha, err := tpmutil.Pack(object, signer)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(objectAuth)}, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(signerAuth)})
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := scheme.encode()
+	if err != nil {
+		return nil, err
+	}
+	data, err := tpmutil.Pack(qualifyingData)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth, data, s)
 }
 
 func decodeCertify(resp []byte) ([]byte, []byte, error) {
@@ -1581,14 +1772,32 @@ func decodeCertify(resp []byte) ([]byte, []byte, error) {
 }
 
 // Certify generates a signature of a loaded TPM object with a signing key
-// signer. Returned values are: attestation data (TPMS_ATTEST), signature and
-// error, if any.
-func Certify(rw io.ReadWriter, parentAuth, ownerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
-	Cmd, err := encodeCertify(parentAuth, ownerAuth, object, signer, qualifyingData)
+// signer. This function calls encodeCertify which makes use of the hardcoded
+// signing scheme {AlgRSASSA, AlgSHA256}. Returned values are: attestation data (TPMS_ATTEST),
+// signature and error, if any.
+func Certify(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData []byte) ([]byte, []byte, error) {
+	cmd, err := encodeCertify(objectAuth, signerAuth, object, signer, qualifyingData)
 	if err != nil {
 		return nil, nil, err
 	}
-	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(Cmd))
+	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodeCertify(resp)
+}
+
+// CertifyEx generates a signature of a loaded TPM object with a signing key
+// signer. This function differs from Certify in that it takes the scheme
+// to be used as an additional argument and calls encodeCertifyEx instead
+// of encodeCertify. Returned values are: attestation data (TPMS_ATTEST),
+// signature and error, if any.
+func CertifyEx(rw io.ReadWriter, objectAuth, signerAuth string, object, signer tpmutil.Handle, qualifyingData []byte, scheme SigScheme) ([]byte, []byte, error) {
+	cmd, err := encodeCertifyEx(objectAuth, signerAuth, object, signer, qualifyingData, scheme)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagSessions, CmdCertify, tpmutil.RawBytes(cmd))
 	if err != nil {
 		return nil, nil, err
 	}

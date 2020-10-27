@@ -24,6 +24,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"flag"
+	"fmt"
 	"hash"
 	"io"
 	"math/big"
@@ -62,6 +63,7 @@ var (
 	pcrSelection0    = PCRSelection{Hash: AlgSHA1, PCRs: []int{0}}
 	pcrSelection1    = PCRSelection{Hash: AlgSHA1, PCRs: []int{1}}
 	pcrSelection7    = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
+	pcrSelectionAll  = PCRSelection{Hash: AlgSHA1, PCRs: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}}
 	defaultKeyParams = Public{
 		Type:       AlgRSA,
 		NameAlg:    AlgSHA1,
@@ -79,6 +81,13 @@ var (
 	defaultPassword = "\x01\x02\x03\x04"
 	emptyPassword   = ""
 )
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func TestGetRandom(t *testing.T) {
 	rw := openTPM(t)
@@ -104,6 +113,38 @@ func TestReadPCRs(t *testing.T) {
 		if empty := make([]byte, len(val)); reflect.DeepEqual(empty, val) {
 			t.Errorf("Value of PCR %d is empty", pcr)
 		}
+	}
+}
+
+func TestReadAllPCRs(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	numPCRs := len(pcrSelectionAll.PCRs)
+	out := map[uint32][]byte{}
+
+	for i := 0; i < numPCRs; i += 8 {
+		// Build a selection structure, specifying 8 PCRs at a time
+		end := min(i+8, numPCRs)
+		pcrSel := PCRSelection{
+			Hash: pcrSelectionAll.Hash,
+			PCRs: pcrSelectionAll.PCRs[i:end],
+		}
+
+		// Ask the TPM for those PCR values.
+		ret, err := ReadPCRs(rw, pcrSel)
+		if err != nil {
+			t.Errorf("ReadPCRs(%+v) failed: %v", pcrSel, err)
+		}
+
+		// Keep track of the PCRs we were actually given.
+		for pcr, digest := range ret {
+			out[uint32(pcr)] = digest
+		}
+	}
+
+	if len(out) != numPCRs {
+		t.Errorf("Failed to read all PCRs, only read %d", len(out))
 	}
 }
 
@@ -379,6 +420,75 @@ func TestHash(t *testing.T) {
 	})
 }
 
+func testHashSequence(t *testing.T, rw io.ReadWriter, hierarchy tpmutil.Handle, hashAlg Algorithm, data []byte) ([]byte, *Ticket) {
+	const (
+		maxDigestBuffer = 1024
+		seqAuth         = ""
+	)
+
+	seq, err := HashSequenceStart(rw, seqAuth, hashAlg)
+	if err != nil {
+		t.Fatalf("HashSequenceStart failed: %v", err)
+	}
+	defer FlushContext(rw, seq)
+
+	for len(data) > maxDigestBuffer {
+		if err = SequenceUpdate(rw, seqAuth, seq, data[:maxDigestBuffer]); err != nil {
+			t.Fatalf("SequenceUpdate failed: %v", err)
+		}
+		data = data[maxDigestBuffer:]
+	}
+
+	digest, ticket, err := SequenceComplete(rw, seqAuth, seq, hierarchy, data)
+	if err != nil {
+		t.Fatalf("SequenceComplete failed: %v", err)
+	}
+	return digest, ticket
+}
+
+func TestHashSequence(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	run := func(t *testing.T, data []byte, hierarchy tpmutil.Handle, wantValidation bool) {
+		gotDigest, gotValidation := testHashSequence(t, rw, hierarchy, AlgSHA256, data)
+		wantDigest := sha256.Sum256(data)
+
+		if !bytes.Equal(gotDigest, wantDigest[:]) {
+			t.Errorf("Hash(%q) returned digest %x, want %x", data, gotDigest, wantDigest)
+		}
+		if wantValidation && len(gotValidation.Digest) == 0 {
+			t.Errorf("Hash(%q) unexpectedly returned empty validation ticket", data)
+		}
+		if !wantValidation && len(gotValidation.Digest) != 0 {
+			t.Errorf("Hash(%q) unexpectedly returned non-empty validation ticket", data)
+		}
+	}
+
+	bufferSizes := []int{512, 1024, 2048, 4096}
+	for _, bufferSize := range bufferSizes {
+		buffer := make([]byte, bufferSize)
+
+		if _, err := rand.Read(buffer); err != nil {
+			t.Fatalf("rand.Read failed: %v", err)
+		}
+
+		t.Run(fmt.Sprintf("Null hierarchy [bufferSize=%d]", bufferSize), func(t *testing.T) {
+			run(t, buffer, HandleNull, false)
+		})
+		t.Run(fmt.Sprintf("Owner hierarchy [bufferSize=%d]", bufferSize), func(t *testing.T) {
+			run(t, buffer, HandleOwner, true)
+		})
+
+		// TCG generated values from now on
+		copy(buffer, []byte("\xffTCG"))
+
+		t.Run(fmt.Sprintf("Starts with TPM_GENERATED_VALUE [bufferSize=%d]", bufferSize), func(t *testing.T) {
+			run(t, buffer, HandleOwner, false)
+		})
+	}
+}
+
 func skipOnUnsupportedAlg(t testing.TB, rw io.ReadWriter, alg Algorithm) {
 	moreData := true
 	for i := uint32(0); moreData; i++ {
@@ -533,6 +643,61 @@ func TestCertify(t *testing.T) {
 			t.Error("Name in AttestationData doesn't match Public structure of subject")
 		}
 	})
+}
+
+func TestCertifyEx(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	restrictedKeySignerFlags := FlagSignerDefault
+	unrestrictedKeySignerFlags := FlagSign | FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
+	testCases := []struct {
+		description  string
+		attributes   KeyProp
+		keyScheme    SigScheme
+		passedScheme SigScheme
+		shouldPass   bool
+	}{
+		{"Null-SHA1", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, true},
+		{"Null-SHA256", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"Null-Null", unrestrictedKeySignerFlags, SigScheme{Alg: AlgNull}, SigScheme{Alg: AlgNull}, false},
+		{"SHA256-Null", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgNull}, true},
+		{"SHA256-SHA256", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, true},
+		{"SHA256-SHA1", restrictedKeySignerFlags, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256}, SigScheme{Alg: AlgRSASSA, Hash: AlgSHA1}, false},
+	}
+
+	for _, testCase := range testCases {
+		params := Public{
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA256,
+			Attributes: testCase.attributes,
+			RSAParameters: &RSAParams{
+				Sign:    &testCase.keyScheme,
+				KeyBits: 2048,
+			},
+		}
+
+		t.Run(testCase.description, func(t *testing.T) {
+			signerHandle, _, err := CreatePrimary(rw, HandleOwner, PCRSelection{}, emptyPassword, defaultPassword, params)
+			if err != nil {
+				t.Fatalf("CreatePrimary(signer) failed: %s", err)
+			}
+			defer FlushContext(rw, signerHandle)
+
+			subjectHandle, _, err := CreatePrimary(rw, HandlePlatform, PCRSelection{}, emptyPassword, defaultPassword, params)
+			if err != nil {
+				t.Fatalf("CreatePrimary(subject) failed: %s", err)
+			}
+			defer FlushContext(rw, subjectHandle)
+
+			_, _, err = CertifyEx(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil, testCase.passedScheme)
+			if err != nil && testCase.shouldPass {
+				t.Errorf("CertifyEx expected to succeed but failed: %s", err)
+			} else if err == nil && !testCase.shouldPass {
+				t.Errorf("CertifyEx expected to fail but succeeded")
+			}
+		})
+	}
 }
 
 func TestCertifyExternalKey(t *testing.T) {
@@ -2038,5 +2203,100 @@ func TestDictionaryAttackLockReset(t *testing.T) {
 	}
 	if caps[0].(TaggedProperty).Value != 0 {
 		t.Fatalf("got %d, expected 0", caps[0].(TaggedProperty).Value)
+	}
+}
+
+func TestPolicyOr(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	hashAlg, err := AlgSHA256.Hash()
+	if err != nil {
+		t.Errorf("looking up hash algo with error: %v", err)
+	}
+	zeroHash := make([]byte, hashAlg.Size())
+	customHash := make([]byte, hashAlg.Size())
+
+	_, err = rand.Read(customHash)
+	if err != nil {
+		t.Errorf("random read into byte slice with error: %v", err)
+	}
+
+	tpml := TPMLDigest{Digests: []tpmutil.U16Bytes{
+		zeroHash, customHash},
+	}
+
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	defer FlushContext(rw, sessHandle)
+
+	if err != nil {
+		t.Errorf("StartAuthSession failed: %v", err)
+	}
+	err = PolicyOr(rw, sessHandle, tpml)
+	if err != nil {
+		t.Errorf("PolicyOr with error: %v", err)
+	}
+}
+
+func TestNVUndefineSpaceSpecial(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	// Set up trial policy session for creation of PolicyCommandCode policy. The policy will be bound as 'delete policy' to the nv index.
+	sess, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionTrial, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Errorf("StartAuthSession() for policy generation failed: %v", err)
+	}
+	err = PolicyCommandCode(rw, sess, CmdNVUndefineSpaceSpecial)
+	if err != nil {
+		t.Errorf("PolicyCommandCode() failed: %v", err)
+	}
+	pol, err := PolicyGetDigest(rw, sess)
+	if err != nil {
+		t.Errorf("PolicyGetDigest() failed: %v", err)
+	}
+	err = FlushContext(rw, sess)
+
+	// Test index with
+	pubIndex := NVPublic{
+		NVIndex:    0x1500000,
+		NameAlg:    AlgSHA256,
+		Attributes: AttrPlatformCreate | AttrPolicyDelete | AttrPolicyWrite | AttrNoDA | AttrAuthRead,
+		AuthPolicy: pol,
+		DataSize:   10,
+	}
+	// AuthCommand for platform hierarchy
+	platformAuthCmd := AuthCommand{
+		Session:    HandlePasswordSession,
+		Attributes: AttrContinueSession,
+		Auth:       EmptyAuth,
+	}
+
+	// Create the index
+	err = NVDefineSpaceEx(rw, HandlePlatform, "", pubIndex, platformAuthCmd)
+	if err != nil {
+		t.Errorf("NVDefineSpaceEx() failed: %v", err)
+	}
+
+	// Start new auth session for authentication of nv index access
+	sess, _, err = StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Errorf("StartAuthSession() for nv index auth failed: %v", err)
+	}
+
+	// Authorize UndefineSpaceSpecial by policy since it can't be authorized by auth value due to the attribute POLICY_DELETE on the index
+	err = PolicyCommandCode(rw, sess, CmdNVUndefineSpaceSpecial)
+	if err != nil {
+		t.Errorf("PolicyCommandCode() or nv index auth failed: %v", err)
+	}
+
+	indexAuthCmd := AuthCommand{
+		Session:    sess,
+		Attributes: AttrContinueSession,
+		Auth:       EmptyAuth,
+	}
+	// Delete the index
+	err = NVUndefineSpaceSpecial(rw, pubIndex.NVIndex, indexAuthCmd, platformAuthCmd)
+	if err != nil {
+		t.Errorf("NVUndefineSpaceSpecial() failed: %v", err)
 	}
 }
