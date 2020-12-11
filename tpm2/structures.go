@@ -961,9 +961,9 @@ func decodeHashValue(in *bytes.Buffer) (*HashValue, error) {
 	if err := tpmutil.UnpackBuf(in, &hv.Alg); err != nil {
 		return nil, fmt.Errorf("decoding Alg: %v", err)
 	}
-	hfn, ok := hashMapping[hv.Alg]
-	if !ok {
-		return nil, fmt.Errorf("hash algorithm not supported: 0x%x", hv.Alg)
+	hfn, err := hv.Alg.Hash()
+	if err != nil {
+		return nil, err
 	}
 	hv.Value = make(tpmutil.U16Bytes, hfn.Size())
 	if _, err := in.Read(hv.Value); err != nil {
