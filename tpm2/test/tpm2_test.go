@@ -2254,7 +2254,9 @@ func TestNVUndefineSpaceSpecial(t *testing.T) {
 	if err != nil {
 		t.Errorf("PolicyGetDigest() failed: %v", err)
 	}
-	err = FlushContext(rw, sess)
+	if err := FlushContext(rw, sess); err != nil {
+		t.Errorf("FlushContext() failed: %v", err)
+	}
 
 	// Test index with
 	pubIndex := NVPublic{

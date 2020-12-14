@@ -1163,11 +1163,14 @@ func GetAlgs(rw io.ReadWriter) ([]Algorithm, error) {
 	return algs, nil
 }
 
+// GetCapVersionVal returns the decoded contents of TPM_CAP_VERSION_INFO.
 func GetCapVersionVal(rw io.ReadWriter) (*CapVersionInfo, error) {
 	var capVer CapVersionInfo
 	buf, err := getCapability(rw, CapVersion, 0)
-	err = capVer.Decode(buf)
 	if err != nil {
+		return nil, err
+	}
+	if err := capVer.Decode(buf); err != nil {
 		return nil, err
 	}
 	return &capVer, nil

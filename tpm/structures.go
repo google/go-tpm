@@ -92,6 +92,7 @@ type CapVersionInfo struct {
 	VendorSpecific tpmutil.U16Bytes
 }
 
+// Decode reads TPM_CAP_VERSION_INFO into CapVersionInfo.
 func (c *CapVersionInfo) Decode(data []byte) error {
 	var cV capVersion
 	buf := bytes.NewReader(data)
