@@ -647,7 +647,13 @@ func decodeLoad(in []byte) (tpmutil.Handle, []byte, error) {
 	if _, err := tpmutil.Unpack(in, &handle, &paramSize, &name); err != nil {
 		return 0, nil, err
 	}
-	return handle, name, nil
+
+	// Re-encode the name as a TPM2B_NAME so it can be parsed by DecodeName().
+	b := &bytes.Buffer{}
+	if err := name.TPMMarshal(b); err != nil {
+		return 0, nil, err
+	}
+	return handle, b.Bytes(), nil
 }
 
 // Load loads public/private blobs into an object in the TPM.
