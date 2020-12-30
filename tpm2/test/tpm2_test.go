@@ -199,12 +199,15 @@ func TestCombinedKeyTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
 
-	keyHandle, _, err := Load(rw, parentHandle, defaultPassword, publicBlob, privateBlob)
+	keyHandle, name, err := Load(rw, parentHandle, defaultPassword, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
 	defer FlushContext(rw, keyHandle)
 
+	if _, err := DecodeName(bytes.NewBuffer(name)); err != nil {
+		t.Errorf("DecodeName failed: %v", err)
+	}
 	if _, _, _, err := ReadPublic(rw, keyHandle); err != nil {
 		t.Fatalf("ReadPublic failed: %s", err)
 	}
@@ -225,12 +228,15 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatalf("CreateKey failed: %s", err)
 	}
 
-	keyHandle, _, err := Load(rw, parentHandle, emptyPassword, publicBlob, privateBlob)
+	keyHandle, nameData, err := Load(rw, parentHandle, emptyPassword, publicBlob, privateBlob)
 	if err != nil {
 		t.Fatalf("Load failed: %s", err)
 	}
 	defer FlushContext(rw, keyHandle)
 
+	if _, err := DecodeName(bytes.NewBuffer(nameData)); err != nil {
+		t.Errorf("DecodeName failed: %v", err)
+	}
 	_, name, _, err := ReadPublic(rw, keyHandle)
 	if err != nil {
 		t.Fatalf("ReadPublic failed: %s", err)
