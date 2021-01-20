@@ -88,6 +88,77 @@ func (a Algorithm) Hash() (crypto.Hash, error) {
 	return crypto.Hash(0), fmt.Errorf("hash algorithm not supported: 0x%x", a)
 }
 
+func (a Algorithm) String() string {
+	var s strings.Builder
+	var err error
+	switch a {
+	case AlgUnknown:
+		_, err = s.WriteString("AlgUnknown")
+	case AlgRSA:
+		_, err = s.WriteString("RSA")
+	case AlgSHA1:
+		_, err = s.WriteString("SHA1")
+	case AlgHMAC:
+		_, err = s.WriteString("HMAC")
+	case AlgAES:
+		_, err = s.WriteString("AES")
+	case AlgKeyedHash:
+		_, err = s.WriteString("KeyedHash")
+	case AlgXOR:
+		_, err = s.WriteString("XOR")
+	case AlgSHA256:
+		_, err = s.WriteString("SHA256")
+	case AlgSHA384:
+		_, err = s.WriteString("SHA384")
+	case AlgSHA512:
+		_, err = s.WriteString("SHA512")
+	case AlgNull:
+		_, err = s.WriteString("AlgNull")
+	case AlgRSASSA:
+		_, err = s.WriteString("RSASSA")
+	case AlgRSAES:
+		_, err = s.WriteString("RSAES")
+	case AlgRSAPSS:
+		_, err = s.WriteString("RSAPSS")
+	case AlgOAEP:
+		_, err = s.WriteString("OAEP")
+	case AlgECDSA:
+		_, err = s.WriteString("ECDSA")
+	case AlgECDH:
+		_, err = s.WriteString("ECDH")
+	case AlgECDAA:
+		_, err = s.WriteString("ECDAA")
+	case AlgKDF2:
+		_, err = s.WriteString("KDF2")
+	case AlgECC:
+		_, err = s.WriteString("ECC")
+	case AlgSymCipher:
+		_, err = s.WriteString("SymCipher")
+	case AlgSHA3_256:
+		_, err = s.WriteString("SHA3_256")
+	case AlgSHA3_384:
+		_, err = s.WriteString("SHA3_384")
+	case AlgSHA3_512:
+		_, err = s.WriteString("SHA3_512")
+	case AlgCTR:
+		_, err = s.WriteString("CTR")
+	case AlgOFB:
+		_, err = s.WriteString("OFB")
+	case AlgCBC:
+		_, err = s.WriteString("CBC")
+	case AlgCFB:
+		_, err = s.WriteString("CFB")
+	case AlgECB:
+		_, err = s.WriteString("ECB")
+	default:
+		return fmt.Sprintf("Alg?<%d>", int(a))
+	}
+	if err != nil {
+		return fmt.Sprintf("Writing to string builder failed: %v", err)
+	}
+	return s.String()
+}
+
 // Supported Algorithms.
 const (
 	AlgUnknown   Algorithm = 0x0000
