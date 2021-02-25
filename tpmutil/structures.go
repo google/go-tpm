@@ -145,6 +145,9 @@ type ResponseCode uint32
 // 2.0.
 const RCSuccess ResponseCode = 0x000
 
+// RCRetry is response code for TPM is busy.
+const RCRetry ResponseCode = 0x922
+
 // A responseHeader is a header for TPM responses.
 type responseHeader struct {
 	Tag  Tag
