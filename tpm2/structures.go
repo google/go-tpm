@@ -674,7 +674,7 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 			return nil, fmt.Errorf("decoding AttestedQuoteInfo: %v", err)
 		}
 	default:
-		return nil, fmt.Errorf("only Ouote, Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
+		return nil, fmt.Errorf("only Quote, Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
 	}
 
 	return &ad, nil
@@ -710,7 +710,7 @@ func (ad AttestationData) Encode() ([]byte, error) {
 			return nil, fmt.Errorf("encoding AttestedQuoteInfo: %v", err)
 		}
 	default:
-		return nil, fmt.Errorf("only Ouote, Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
+		return nil, fmt.Errorf("only Quote, Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
 	}
 
 	return concat(head, signer, tail, info)
