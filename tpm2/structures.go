@@ -814,7 +814,7 @@ func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 func (qi QuoteInfo) encode() ([]byte, error) {
 	sel, err := encodeTPMLPCRSelection(qi.PCRSelection)
 	if err != nil {
-		return nil, fmt.Errorf("encoding Name: %v", err)
+		return nil, fmt.Errorf("encoding PCRSelection: %v", err)
 	}
 
 	digest, err := tpmutil.Pack(qi.PCRDigest)
