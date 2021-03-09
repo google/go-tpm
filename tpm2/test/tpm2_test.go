@@ -23,10 +23,12 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"hash"
 	"io"
+	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -1177,6 +1179,69 @@ func TestEncodeDecodePublicDefaultRSAExponent(t *testing.T) {
 		t.Logf("\tGot:  %+v", d)
 		t.Logf("\tWant: %+v", p)
 	}
+}
+
+func TestEncodeDecodeSignature(t *testing.T) {
+	randRSASig := func() []byte {
+		// Key size 2048 bits
+		var size uint16 = 256
+		sizeU16 := make([]byte, 2)
+		binary.BigEndian.PutUint16(sizeU16, size)
+		key := make([]byte, size)
+		rand.Read(key)
+		return append(sizeU16, key...)
+	}
+
+	run := func(t *testing.T, s Signature) {
+		e, err := s.Encode()
+		if err != nil {
+			t.Fatalf("Signature{%+v}.Encode() returned error: %v", s, err)
+		}
+		d, err := DecodeSignature(bytes.NewBuffer(e))
+		if err != nil {
+			t.Fatalf("DecodeSignature{%v} returned error: %v", e, err)
+		}
+		if !reflect.DeepEqual(s, *d) {
+			t.Errorf("got decoded value:\n%v\nwant:\n%v", d, s)
+		}
+	}
+	t.Run("RSASSA", func(t *testing.T) {
+		run(t, Signature{
+			Alg: AlgRSASSA,
+			RSA: &SignatureRSA{
+				HashAlg:   AlgSHA256,
+				Signature: randRSASig(),
+			},
+		})
+	})
+	t.Run("RSAPSS", func(t *testing.T) {
+		run(t, Signature{
+			Alg: AlgRSAPSS,
+			RSA: &SignatureRSA{
+				HashAlg:   AlgSHA256,
+				Signature: randRSASig(),
+			},
+		})
+	})
+	t.Run("ECDSA", func(t *testing.T) {
+		// Key size 256 bits
+		size := 32
+		randBytes := make([]byte, size)
+		rand.Read(randBytes)
+		r := big.NewInt(0).SetBytes(randBytes)
+
+		rand.Read(randBytes)
+		s := big.NewInt(0).SetBytes(randBytes)
+
+		run(t, Signature{
+			Alg: AlgECDSA,
+			ECC: &SignatureECC{
+				HashAlg: AlgSHA256,
+				R:       r,
+				S:       s,
+			},
+		})
+	})
 }
 
 func TestCreateKeyWithSensitive(t *testing.T) {
