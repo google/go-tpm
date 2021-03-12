@@ -54,7 +54,7 @@ func TestEncodeDecodeCreationData(t *testing.T) {
 		OutsideInfo: []byte{7, 8, 9},
 	}
 
-	encoded, err := cd.encode()
+	encoded, err := cd.EncodeCreationData()
 	if err != nil {
 		t.Fatalf("error encoding CreationData: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestDecodeLoad(t *testing.T) {
 }
 
 func TestEncodeCreate(t *testing.T) {
-	testCmdBytes, err := hex.DecodeString("80020000004d00000131400000010000000940000009000001000000090004010203040001FF001a0001000400030072000000060080004300100400000100010000000000000001000403800000")
+	testCmdBytes, err := hex.DecodeString("80020000004d00000131400000010000000940000009000001000000090004010203040001ff001a000100040003007200000006008000430010040000010001000000045445535400000001000403800000")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestEncodeCreate(t *testing.T) {
 		},
 	}
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}
-	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection7, auth, defaultPassword, []byte{255} /*sensitiveData*/, params)
+	cmdBytes, err := encodeCreate(HandleOwner, pcrSelection7, auth, defaultPassword, []byte{255} /*sensitiveData*/, params, []byte("TEST") /*OutsideInfo*/)
 	if err != nil {
 		t.Fatal(err)
 	}

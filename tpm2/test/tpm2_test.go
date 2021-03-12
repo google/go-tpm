@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -610,14 +609,19 @@ func TestCertify(t *testing.T) {
 	}
 	defer FlushContext(rw, subjectHandle)
 
-	attest, sig, err := Certify(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil)
+	attest, sigRaw, err := Certify(rw, defaultPassword, defaultPassword, subjectHandle, signerHandle, nil)
 	if err != nil {
 		t.Errorf("Certify failed: %s", err)
 		return
 	}
+	sig, err := DecodeSignature(bytes.NewBuffer(sigRaw))
+	if err != nil {
+		t.Errorf("DecodeSignature failed: %s", err)
+		return
+	}
 
 	attestHash := sha256.Sum256(attest)
-	if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig); err != nil {
+	if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig.RSA.Signature); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
@@ -736,14 +740,19 @@ func TestCertifyExternalKey(t *testing.T) {
 		}
 		defer FlushContext(rw, subjectHandle)
 
-		attest, sig, err := Certify(rw, emptyPassword, defaultPassword, subjectHandle, signerHandle, nil)
+		attest, sigRaw, err := Certify(rw, emptyPassword, defaultPassword, subjectHandle, signerHandle, nil)
 		if err != nil {
 			t.Errorf("Certify failed: %s", err)
 			return
 		}
+		sig, err := DecodeSignature(bytes.NewBuffer(sigRaw))
+		if err != nil {
+			t.Errorf("DecodeSignature failed: %s", err)
+			return
+		}
 
 		attestHash := sha256.Sum256(attest)
-		if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig); err != nil {
+		if err := rsa.VerifyPKCS1v15(signerPub.(*rsa.PublicKey), crypto.SHA256, attestHash[:], sig.RSA.Signature); err != nil {
 			t.Errorf("Signature verification failed: %v", err)
 		}
 	}
@@ -1227,13 +1236,18 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	defer FlushContext(rw, keyHandle)
 
 	scheme := SigScheme{Alg: AlgRSASSA, Hash: AlgSHA256, Count: 0}
-	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, scheme, tix)
+	attestation, sigRaw, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, scheme, tix)
 	if err != nil {
 		t.Fatalf("CertifyCreation failed: %s", err)
 	}
 	att, err := DecodeAttestationData(attestation)
 	if err != nil {
 		t.Fatalf("DecodeAttestationData(%v) failed: %v", attestation, err)
+	}
+	signature, err := DecodeSignature(bytes.NewBuffer(sigRaw))
+	if err != nil {
+		t.Errorf("DecodeSignature failed: %s", err)
+		return
 	}
 	if att.Type != TagAttestCreation {
 		t.Errorf("Got att.Type = %v, want TagAttestCreation", att.Type)
@@ -1254,7 +1268,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	rsaPub := rsa.PublicKey{E: int(p.RSAParameters.Exponent()), N: p.RSAParameters.Modulus()}
 	hsh := crypto.SHA256.New()
 	hsh.Write(attestation)
-	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature); err != nil {
+	if err := rsa.VerifyPKCS1v15(&rsaPub, crypto.SHA256, hsh.Sum(nil), signature.RSA.Signature); err != nil {
 		t.Errorf("VerifyPKCS1v15 failed: %v", err)
 	}
 }
@@ -1281,7 +1295,7 @@ func TestCreateAndCertifyCreationECC(t *testing.T) {
 	defer FlushContext(rw, keyHandle)
 
 	scheme := SigScheme{Alg: AlgECDSA, Hash: AlgSHA256, Count: 0}
-	attestation, signature, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, scheme, tix)
+	attestation, sigRaw, err := CertifyCreation(rw, emptyPassword, keyHandle, keyHandle, nil, creationHash, scheme, tix)
 	if err != nil {
 		t.Fatalf("CertifyCreation failed: %s", err)
 	}
@@ -1289,6 +1303,11 @@ func TestCreateAndCertifyCreationECC(t *testing.T) {
 	att, err := DecodeAttestationData(attestation)
 	if err != nil {
 		t.Fatalf("DecodeAttestationData(%v) failed: %v", attestation, err)
+	}
+	signature, err := DecodeSignature(bytes.NewBuffer(sigRaw))
+	if err != nil {
+		t.Errorf("DecodeSignature failed: %s", err)
+		return
 	}
 	if att.Type != TagAttestCreation {
 		t.Errorf("Got att.Type = %v, want TagAttestCreation", att.Type)
@@ -1317,12 +1336,7 @@ func TestCreateAndCertifyCreationECC(t *testing.T) {
 	hsh = signHash.New()
 	hsh.Write(attestation)
 
-	r := new(big.Int)
-	s := new(big.Int)
-	r.SetBytes(signature[:32])
-	s.SetBytes(signature[32:])
-
-	if !ecdsa.Verify(&pkEcdsa, hsh.Sum(nil), r, s) {
+	if !ecdsa.Verify(&pkEcdsa, hsh.Sum(nil), signature.ECC.R, signature.ECC.S) {
 		t.Fatalf("Verify failed")
 	}
 }

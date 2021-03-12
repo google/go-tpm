@@ -674,7 +674,7 @@ func DecodeAttestationData(in []byte) (*AttestationData, error) {
 			return nil, fmt.Errorf("decoding AttestedQuoteInfo: %v", err)
 		}
 	default:
-		return nil, fmt.Errorf("only Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
+		return nil, fmt.Errorf("only Quote, Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
 	}
 
 	return &ad, nil
@@ -705,8 +705,12 @@ func (ad AttestationData) Encode() ([]byte, error) {
 		if info, err = ad.AttestedCreationInfo.encode(); err != nil {
 			return nil, fmt.Errorf("encoding AttestedCreationInfo: %v", err)
 		}
+	case TagAttestQuote:
+		if info, err = ad.AttestedQuoteInfo.encode(); err != nil {
+			return nil, fmt.Errorf("encoding AttestedQuoteInfo: %v", err)
+		}
 	default:
-		return nil, fmt.Errorf("only Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
+		return nil, fmt.Errorf("only Quote, Certify & Creation attestation structures are supported, got type 0x%x", ad.Type)
 	}
 
 	return concat(head, signer, tail, info)
@@ -807,6 +811,20 @@ func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 	return &out, nil
 }
 
+func (qi QuoteInfo) encode() ([]byte, error) {
+	sel, err := encodeTPMLPCRSelection(qi.PCRSelection)
+	if err != nil {
+		return nil, fmt.Errorf("encoding PCRSelection: %v", err)
+	}
+
+	digest, err := tpmutil.Pack(qi.PCRDigest)
+	if err != nil {
+		return nil, fmt.Errorf("encoding PCRDigest: %v", err)
+	}
+
+	return concat(sel, digest)
+}
+
 // IDObject represents an encrypted credential bound to a TPM object.
 type IDObject struct {
 	IntegrityHMAC tpmutil.U16Bytes
@@ -827,7 +845,8 @@ type CreationData struct {
 	OutsideInfo         tpmutil.U16Bytes
 }
 
-func (cd *CreationData) encode() ([]byte, error) {
+// EncodeCreationData encodes byte array to TPMS_CREATION_DATA message.
+func (cd *CreationData) EncodeCreationData() ([]byte, error) {
 	sel, err := encodeTPMLPCRSelection(cd.PCRSelection)
 	if err != nil {
 		return nil, fmt.Errorf("encoding PCRSelection: %v", err)
