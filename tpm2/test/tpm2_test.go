@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -77,8 +78,32 @@ var (
 			ExponentRaw: 1<<16 + 1,
 		},
 	}
-	defaultPassword = "\x01\x02\x03\x04"
-	emptyPassword   = ""
+	defaultPassword        = "\x01\x02\x03\x04"
+	emptyPassword          = ""
+	defaultRsaSignerParams = Public{
+		Type:       AlgRSA,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		RSAParameters: &RSAParams{
+			Sign: &SigScheme{
+				Alg:  AlgRSASSA,
+				Hash: AlgSHA256,
+			},
+			KeyBits: 2048,
+		},
+	}
+	defaultEccSignerParams = Public{
+		Type:       AlgECC,
+		NameAlg:    AlgSHA256,
+		Attributes: FlagSign | FlagSensitiveDataOrigin | FlagUserWithAuth,
+		ECCParameters: &ECCParams{
+			Sign: &SigScheme{
+				Alg:  AlgECDSA,
+				Hash: AlgSHA256,
+			},
+			CurveID: CurveNISTP256,
+		},
+	}
 )
 
 func min(a, b int) int {
@@ -1491,15 +1516,87 @@ func TestPolicySecret(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
+	_, _ = testPolicySecret(t, rw, 0)
+}
+
+func testPolicySecret(t *testing.T, rw io.ReadWriter, expiration int32) ([]byte, *Ticket) {
 	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
 	if err != nil {
 		t.Fatalf("StartAuthSession() failed: %v", err)
 	}
 	defer FlushContext(rw, sessHandle)
 
-	if _, err := PolicySecret(rw, HandleEndorsement, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, sessHandle, nil, nil, nil, 0); err != nil {
+	timeout, tkt, err := PolicySecret(rw, HandleEndorsement, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, sessHandle, nil, nil, nil, expiration)
+	if err != nil {
 		t.Fatalf("PolicySecret() failed: %v", err)
 	}
+	return timeout, tkt
+}
+
+func TestPolicySigned(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	var nullTicket = Ticket{Type: TagAuthSigned, Hierarchy: HandleNull}
+	signers := map[string]Public{
+		"RSA": defaultRsaSignerParams,
+		"ECC": defaultEccSignerParams,
+	}
+
+	expirations := []int32{math.MinInt32, math.MinInt32 + 1, -1, 0, 1, math.MaxInt32}
+	for _, expiration := range expirations {
+		for signerType, params := range signers {
+			t.Run(t.Name()+signerType+fmt.Sprint(expiration), func(t *testing.T) {
+				_, tkt := testPolicySigned(t, rw, expiration, params)
+				if expiration < 0 && len(tkt.Digest) == 0 {
+					t.Fatalf("Got empty ticket digest, expected ticket with auth expiry")
+				} else if expiration >= 0 && !reflect.DeepEqual(*tkt, nullTicket) {
+					t.Fatalf("Got ticket with non-empty digest, expected NULL ticket")
+				}
+			})
+		}
+	}
+}
+
+func testPolicySigned(t *testing.T, rw io.ReadWriter, expiration int32, signerParams Public) ([]byte, *Ticket) {
+	handle, _, err := CreatePrimary(rw, HandleOwner, PCRSelection{}, emptyPassword, emptyPassword, signerParams)
+	if err != nil {
+		t.Fatalf("CreatePrimary() failed: %s", err)
+	}
+	defer FlushContext(rw, handle)
+
+	sessHandle, nonce, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Fatalf("StartAuthSession() failed: %v", err)
+	}
+	defer FlushContext(rw, sessHandle)
+
+	// Sign the hash of the command parameters, as described in the TPM 2.0 spec, Part 3, Section 23.3.
+	// We only use expiration here.
+	expBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(expBytes, uint32(expiration))
+
+	// TPM2.0 spec, Revision 1.38, Part 3 nonce must be present if expiration is non-zero.
+	// aHash ≔ HauthAlg(nonceTPM || expiration || cpHashA || policyRef)
+	toDigest := append(nonce, expBytes...)
+
+	digest := sha256.Sum256(toDigest)
+
+	sig, err := Sign(rw, handle, emptyPassword, digest[:], nil, nil)
+	if err != nil {
+		t.Fatalf("Sign failed: %s", err)
+	}
+
+	signature, err := sig.Encode()
+	if err != nil {
+		t.Fatalf("Encode() failed: %v", err)
+	}
+
+	timeout, tkt, err := PolicySigned(rw, handle, sessHandle, nonce, nil, nil, expiration, signature)
+	if err != nil {
+		t.Fatalf("PolicySigned() failed: %v", err)
+	}
+	return timeout, tkt
 }
 
 func TestQuote(t *testing.T) {
