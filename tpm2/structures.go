@@ -64,9 +64,14 @@ type Public struct {
 
 	// Exactly one of the following fields should be set
 	// When encoding/decoding, one will be picked based on Type.
+
+	// RSAParameters contains both [rsa]parameters and [rsa]unique.
 	RSAParameters       *RSAParams
+	// ECCParameters contains both [ecc]parameters and [ecc]unique.
 	ECCParameters       *ECCParams
+	// SymCipherParameters contains both [sym]parameters and [sym]unique.
 	SymCipherParameters *SymCipherParams
+	// KeyedHashParameters contains both [keyedHash]parameters and [keyedHash]unique.
 	KeyedHashParameters *KeyedHashParams
 }
 
@@ -189,7 +194,8 @@ func DecodePublic(buf []byte) (Public, error) {
 	return pub, err
 }
 
-// RSAParams represents parameters of an RSA key pair.
+// RSAParams represents parameters of an RSA key pair:
+// both the TPMS_RSA_PARMS and the TPM2B_PUBLIC_KEY_RSA.
 //
 // Symmetric and Sign may be nil, depending on key Attributes in Public.
 //
@@ -259,7 +265,8 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 	return &params, nil
 }
 
-// ECCParams represents parameters of an ECC key pair.
+// ECCParams represents parameters of an ECC key pair:
+// both the TPMS_ECC_PARMS and the TPMS_ECC_POINT.
 //
 // Symmetric, Sign and KDF may be nil, depending on key Attributes in Public.
 type ECCParams struct {
@@ -340,7 +347,8 @@ func decodeECCParams(in *bytes.Buffer) (*ECCParams, error) {
 	return &params, nil
 }
 
-// SymCipherParams represents parameters of a symmetric block cipher TPM object.
+// SymCipherParams represents parameters of a symmetric block cipher TPM object:
+// both the TPMS_SYMCIPHER_PARMS and the TPM2B_DIGEST (hash of the key).
 type SymCipherParams struct {
 	Symmetric *SymScheme
 	Unique    tpmutil.U16Bytes
@@ -375,7 +383,8 @@ func decodeSymCipherParams(in *bytes.Buffer) (*SymCipherParams, error) {
 	return &params, nil
 }
 
-// KeyedHashParams represents parameters of a keyed hash TPM object.
+// KeyedHashParams represents parameters of a keyed hash TPM object:
+// both the TPMS_KEYEDHASH_PARMS and the TPM2B_DIGEST (hash of the key).
 type KeyedHashParams struct {
 	Alg    Algorithm
 	Hash   Algorithm
