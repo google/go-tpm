@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -1518,17 +1519,29 @@ func TestPolicySecret(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	_, _ = testPolicySecret(t, rw, 0)
+	var nullTicket = Ticket{Type: TagAuthSecret, Hierarchy: HandleNull}
+
+	expirations := []int32{math.MinInt32, math.MinInt32 + 1, -1, 0, 1, math.MaxInt32}
+	for _, expiration := range expirations {
+		t.Run(t.Name()+fmt.Sprint(expiration), func(t *testing.T) {
+			_, tkt := testPolicySecret(t, rw, expiration)
+			if expiration < 0 && len(tkt.Digest) == 0 {
+				t.Fatalf("Got empty ticket digest, expected ticket with auth expiry")
+			} else if expiration >= 0 && !reflect.DeepEqual(*tkt, nullTicket) {
+				t.Fatalf("Got ticket with non-empty digest, expected NULL ticket")
+			}
+		})
+	}
 }
 
 func testPolicySecret(t *testing.T, rw io.ReadWriter, expiration int32) ([]byte, *Ticket) {
-	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	sessHandle, nonce, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
 	if err != nil {
 		t.Fatalf("StartAuthSession() failed: %v", err)
 	}
 	defer FlushContext(rw, sessHandle)
 
-	timeout, tkt, err := PolicySecret(rw, HandleEndorsement, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, sessHandle, nil, nil, nil, expiration)
+	timeout, tkt, err := PolicySecret(rw, HandleEndorsement, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, sessHandle, nonce, nil, nil, expiration)
 	if err != nil {
 		t.Fatalf("PolicySecret() failed: %v", err)
 	}
@@ -1599,6 +1612,62 @@ func testPolicySigned(t *testing.T, rw io.ReadWriter, expiration int32, signerPa
 		t.Fatalf("PolicySigned() failed: %v", err)
 	}
 	return timeout, tkt
+}
+
+func timeoutToUint64(timeout []byte) uint64 {
+	// The MSFT TPM simulator uses the MSB to indicate
+	// whether to expire on reset. Strip this out if set.
+	timeoutUint64 := binary.BigEndian.Uint64(timeout)
+	expiryBit := uint64(1) << 63
+	if timeoutUint64&expiryBit != 0 {
+		timeoutUint64 -= expiryBit
+	}
+	return timeoutUint64
+}
+
+func authTimeoutWithinExpectedRange(expiration int32, timeout []byte) bool {
+	// This function expects the policy to not use nonceTpm.
+	// https://github.com/microsoft/ms-tpm-20-ref/blob/b94f9f92c579b723a16be72a69efbbf9c35ce44e/TPMCmd/tpm/src/command/EA/Policy_spt.c#L195
+
+	absExp := uint64(math.Abs(float64(expiration)))
+	var authTimeout uint64 = timeoutToUint64(timeout)
+
+	absExpInMs := absExp * 1000
+	if authTimeout < absExpInMs || authTimeout >= absExpInMs+1000 {
+		return false
+	}
+	return true
+}
+
+func TestComputeAuthTimeoutAbsValue(t *testing.T) {
+	// This test tests the absolue value function in
+	// https://github.com/microsoft/ms-tpm-20-ref/blob/b94f9f92c579b723a16be72a69efbbf9c35ce44e/TPMCmd/tpm/src/command/EA/Policy_spt.c#L189.
+	// ComputeAuthTimeout casts expiration to UINT64. This is undefined
+	// behavior for a negative number, either sign or zero-extended.
+	// This only invokes UB when the expiration is int32 min, as the
+	// abs value function is `expiration = -expiration`.
+
+	rw := openTPM(t)
+	defer rw.Close()
+
+	expirations := []int32{math.MinInt32, math.MinInt32 + 1}
+	for _, expiration := range expirations {
+		timeout, _ := testPolicySecret(t, rw, expiration)
+		if len(timeout) == 0 {
+			t.Fatal("Expected a non-empty timeout!")
+		}
+		if !authTimeoutWithinExpectedRange(expiration, timeout) {
+			t.Errorf("The timeout %v is not in the expected range for expiration %v!", timeoutToUint64(timeout), expiration)
+		}
+
+		timeout, _ = testPolicySigned(t, rw, expiration, defaultRsaSignerParams)
+		if len(timeout) == 0 {
+			t.Fatal("Expected a non-empty timeout!")
+		}
+		if !authTimeoutWithinExpectedRange(expiration, timeout) {
+			t.Errorf("The timeout %v is not in the expected range for expiration %v!", timeoutToUint64(timeout), expiration)
+		}
+	}
 }
 
 func TestQuote(t *testing.T) {
