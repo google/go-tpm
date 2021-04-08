@@ -1524,7 +1524,13 @@ func TestPolicySecret(t *testing.T) {
 	expirations := []int32{math.MinInt32, math.MinInt32 + 1, -1, 0, 1, math.MaxInt32}
 	for _, expiration := range expirations {
 		t.Run(t.Name()+fmt.Sprint(expiration), func(t *testing.T) {
-			_, tkt := testPolicySecret(t, rw, expiration)
+			sessHandle, nonce, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+			if err != nil {
+				t.Fatalf("StartAuthSession() failed: %v", err)
+			}
+			defer FlushContext(rw, sessHandle)
+
+			_, tkt := testPolicySecret(t, rw, sessHandle, nonce, expiration)
 			if expiration < 0 && len(tkt.Digest) == 0 {
 				t.Fatalf("Got empty ticket digest, expected ticket with auth expiry")
 			} else if expiration >= 0 && !reflect.DeepEqual(*tkt, nullTicket) {
@@ -1534,12 +1540,7 @@ func TestPolicySecret(t *testing.T) {
 	}
 }
 
-func testPolicySecret(t *testing.T, rw io.ReadWriter, expiration int32) ([]byte, *Ticket) {
-	sessHandle, nonce, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
-	if err != nil {
-		t.Fatalf("StartAuthSession() failed: %v", err)
-	}
-	defer FlushContext(rw, sessHandle)
+func testPolicySecret(t *testing.T, rw io.ReadWriter, sessHandle tpmutil.Handle, nonce []byte, expiration int32) ([]byte, *Ticket) {
 
 	timeout, tkt, err := PolicySecret(rw, HandleEndorsement, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, sessHandle, nonce, nil, nil, expiration)
 	if err != nil {
@@ -1558,11 +1559,17 @@ func TestPolicySigned(t *testing.T) {
 		"ECC": defaultEccSignerParams,
 	}
 
-	expirations := []int32{math.MinInt32, math.MinInt32 + 1, -1, 0, 1, math.MaxInt32}
+	expirations := []int32{math.MinInt32, math.MinInt32 + 1, 0, math.MaxInt32}
 	for _, expiration := range expirations {
 		for signerType, params := range signers {
 			t.Run(t.Name()+signerType+fmt.Sprint(expiration), func(t *testing.T) {
-				_, tkt := testPolicySigned(t, rw, expiration, params)
+				sessHandle, nonce, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+				if err != nil {
+					t.Fatalf("StartAuthSession() failed: %v", err)
+				}
+				defer FlushContext(rw, sessHandle)
+
+				_, tkt := testPolicySigned(t, rw, sessHandle, nonce, expiration, params)
 				if expiration < 0 && len(tkt.Digest) == 0 {
 					t.Fatalf("Got empty ticket digest, expected ticket with auth expiry")
 				} else if expiration >= 0 && !reflect.DeepEqual(*tkt, nullTicket) {
@@ -1573,18 +1580,12 @@ func TestPolicySigned(t *testing.T) {
 	}
 }
 
-func testPolicySigned(t *testing.T, rw io.ReadWriter, expiration int32, signerParams Public) ([]byte, *Ticket) {
+func testPolicySigned(t *testing.T, rw io.ReadWriter, sessHandle tpmutil.Handle, nonce []byte, expiration int32, signerParams Public) ([]byte, *Ticket) {
 	handle, _, err := CreatePrimary(rw, HandleOwner, PCRSelection{}, emptyPassword, emptyPassword, signerParams)
 	if err != nil {
 		t.Fatalf("CreatePrimary() failed: %s", err)
 	}
 	defer FlushContext(rw, handle)
-
-	sessHandle, nonce, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
-	if err != nil {
-		t.Fatalf("StartAuthSession() failed: %v", err)
-	}
-	defer FlushContext(rw, sessHandle)
 
 	// Sign the hash of the command parameters, as described in the TPM 2.0 spec, Part 3, Section 23.3.
 	// We only use expiration here.
@@ -1625,8 +1626,8 @@ func timeoutToUint64(timeout []byte) uint64 {
 	return timeoutUint64
 }
 
+// authTimeoutWithinExpectedRange expects the policy to not use nonceTpm.
 func authTimeoutWithinExpectedRange(expiration int32, timeout []byte) bool {
-	// This function expects the policy to not use nonceTpm.
 	// https://github.com/microsoft/ms-tpm-20-ref/blob/b94f9f92c579b723a16be72a69efbbf9c35ce44e/TPMCmd/tpm/src/command/EA/Policy_spt.c#L195
 
 	absExp := uint64(math.Abs(float64(expiration)))
@@ -1639,6 +1640,16 @@ func authTimeoutWithinExpectedRange(expiration int32, timeout []byte) bool {
 	return true
 }
 
+func skipOnUnsupportedRevision(t *testing.T, rw io.ReadWriter, revision uint32) {
+	props, _, err := GetCapability(rw, CapabilityTPMProperties, 3, uint32(FamilyIndicator))
+	if err != nil {
+		t.Fatalf("GetCapability failed: %v", err)
+	}
+	if props[2].(TaggedProperty).Value <= 116 {
+		t.Skipf("Test %v does not support TPM2, Revision %v", t.Name(), revision)
+	}
+}
+
 func TestComputeAuthTimeoutAbsValue(t *testing.T) {
 	// This test tests the absolue value function in
 	// https://github.com/microsoft/ms-tpm-20-ref/blob/b94f9f92c579b723a16be72a69efbbf9c35ce44e/TPMCmd/tpm/src/command/EA/Policy_spt.c#L189.
@@ -1646,13 +1657,21 @@ func TestComputeAuthTimeoutAbsValue(t *testing.T) {
 	// behavior for a negative number, either sign or zero-extended.
 	// This only invokes UB when the expiration is int32 min, as the
 	// abs value function is `expiration = -expiration`.
+	// This tests against revisions > 1.16, as ComputeAuthTimeout shows up in revisions 1.38 and 1.59.
 
 	rw := openTPM(t)
 	defer rw.Close()
+	skipOnUnsupportedRevision(t, rw, 116)
 
 	expirations := []int32{math.MinInt32, math.MinInt32 + 1}
 	for _, expiration := range expirations {
-		timeout, _ := testPolicySecret(t, rw, expiration)
+		sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+		if err != nil {
+			t.Fatalf("StartAuthSession() failed: %v", err)
+		}
+		defer FlushContext(rw, sessHandle)
+
+		timeout, _ := testPolicySecret(t, rw, sessHandle, nil, expiration)
 		if len(timeout) == 0 {
 			t.Fatal("Expected a non-empty timeout!")
 		}
@@ -1660,7 +1679,7 @@ func TestComputeAuthTimeoutAbsValue(t *testing.T) {
 			t.Errorf("The timeout %v is not in the expected range for expiration %v!", timeoutToUint64(timeout), expiration)
 		}
 
-		timeout, _ = testPolicySigned(t, rw, expiration, defaultRsaSignerParams)
+		timeout, _ = testPolicySigned(t, rw, sessHandle, nil, expiration, defaultEccSignerParams)
 		if len(timeout) == 0 {
 			t.Fatal("Expected a non-empty timeout!")
 		}
