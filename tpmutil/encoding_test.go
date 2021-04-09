@@ -27,15 +27,15 @@ type invalidPacked struct {
 	B uint32
 }
 
-func testEncodingInvalidSlices(t *testing.T, f func(io.Writer, interface{}) error) {
+func TestEncodingPackTypeInvalid(t *testing.T) {
 	d := ioutil.Discard
 
 	// The packedSize function doesn't handle slices to anything other than bytes.
 	var invalid []int
-	if err := f(d, invalid); err == nil {
+	if err := packType(d, invalid); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a slice of integers")
 	}
-	if err := f(d, &invalid); err == nil {
+	if err := packType(d, &invalid); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a pointer to a slice of integers")
 	}
 
@@ -43,24 +43,12 @@ func testEncodingInvalidSlices(t *testing.T, f func(io.Writer, interface{}) erro
 		A: make([]int, 10),
 		B: 137,
 	}
-	if err := f(d, invalid2); err == nil {
+	if err := packType(d, invalid2); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a struct that contains an integer slice")
 	}
-	if err := f(d, &invalid2); err == nil {
+	if err := packType(d, &invalid2); err == nil {
 		t.Fatal("The packing function incorrectly succeeds for a pointer to a struct that contains an integer slice")
 	}
-
-	if err := f(d, d); err == nil {
-		t.Fatal("The packing function incorrectly succeeds for a non-packable value")
-	}
-}
-
-func TestEncodingPackTypeInvalid(t *testing.T) {
-	f := func(w io.Writer, i interface{}) error {
-		return packType(w, i)
-	}
-
-	testEncodingInvalidSlices(t, f)
 }
 
 type simplePacked struct {
