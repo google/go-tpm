@@ -1341,87 +1341,195 @@ func TestCreateAndCertifyCreationECC(t *testing.T) {
 	}
 }
 
-func TestNVReadWriteAndLocks(t *testing.T) {
-	rw := openTPM(t)
-	defer rw.Close()
+var (
+	nvIdx  = tpmutil.Handle(0x1500000)
+	nvData = []byte("testdata")
+	nvAttr = AttrOwnerWrite | AttrOwnerRead | AttrAuthRead | AttrWriteSTClear | AttrReadSTClear
+)
 
-	var (
-		idx  tpmutil.Handle = 0x1500000
-		data                = []byte("testdata")
-		attr                = AttrOwnerWrite | AttrOwnerRead | AttrWriteSTClear | AttrReadSTClear
-	)
-
-	// Undefine the space, just in case the previous run of this test failed
-	// to clean up.
-	if err := NVUndefineSpace(rw, emptyPassword, HandleOwner, idx); err != nil {
-		t.Logf("(not a failure) NVUndefineSpace at index 0x%x failed: %v", idx, err)
+func nvDefine(rw io.ReadWriter) error {
+	// Undefine the space, just in case a previous test failed to clean up.
+	if err := nvUndefine(rw); err != nil {
+		// If the TPM returned RC_HANDLE, ignore this expected case
+		// (failed to undefine an index that does not exist)
+		if hErr, ok := err.(HandleError); !ok || hErr.Code != RCHandle {
+			return fmt.Errorf("could not undefine before defining: %w", err)
+		}
 	}
 
-	// Define space in NV storage and clean up afterwards or subsequent runs will fail.
-	if err := NVDefineSpace(rw,
+	return NVDefineSpace(
+		rw,
 		HandleOwner,
-		idx,
+		nvIdx,
 		emptyPassword,
 		emptyPassword,
 		nil,
-		attr,
-		uint16(len(data)),
-	); err != nil {
+		nvAttr,
+		uint16(len(nvData)),
+	)
+}
+
+func nvUndefine(rw io.ReadWriter) error {
+	return NVUndefineSpace(rw, emptyPassword, HandleOwner, nvIdx)
+}
+
+func nvWrite(rw io.ReadWriter) error {
+	return NVWrite(rw, HandleOwner, nvIdx, emptyPassword, nvData, 0)
+}
+
+func nvRead(rw io.ReadWriter) ([]byte, error) {
+	return NVRead(rw, nvIdx)
+}
+
+func TestNVDefineSpace(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	defer nvUndefine(rw)
+
+	if err := nvDefine(rw); err != nil {
+		t.Errorf("NVDefineSpace failed: %v", err)
+	}
+}
+
+func TestNVUndefineSpace(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
 		t.Fatalf("NVDefineSpace failed: %v", err)
 	}
-	defer NVUndefineSpace(rw, emptyPassword, HandleOwner, idx)
 
-	// Write the data
-	if err := NVWrite(rw, HandleOwner, idx, emptyPassword, data, 0); err != nil {
-		t.Fatalf("NVWrite failed: %v", err)
+	if err := nvUndefine(rw); err != nil {
+		t.Errorf("NVUndefineSpace failed: %v", err)
 	}
+}
 
-	// Enable write lock
-	if err := NVWriteLock(rw, HandleOwner, idx, emptyPassword); err != nil {
-		t.Fatalf("NVWriteLock failed: %v", err)
+func TestNVWrite(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
 	}
+	defer nvUndefine(rw)
 
-	// Write the data again. Should fail now because it's write-locked.
-	err := NVWrite(rw, HandleOwner, idx, emptyPassword, data, 0)
-	switch err := err.(type) {
-	case nil:
-		t.Fatal("NVWrite succeeded after NVWriteLock")
-	case Error:
-		if err.Code != RCNVLocked {
-			t.Fatalf("NVWrite: unexpected error; want RCNVLocked, got %v", err)
-		}
-	default:
-		t.Fatalf("NVWrite: unexpected error; want RCNVLocked, got %v", err)
+	if err := nvWrite(rw); err != nil {
+		t.Errorf("NVWrite failed: %v", err)
 	}
+}
 
-	// Make sure the public area of the index can be read
-	pub, err := NVReadPublic(rw, idx)
+func TestNVWriteEx(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer nvUndefine(rw)
+
+	auth := AuthCommand{
+		Session: HandlePasswordSession,
+		Attributes: AttrContinueSession,
+		Auth: []byte(emptyPassword),
+	}
+	if err := NVWriteEx(rw, HandleOwner, nvIdx, auth, nvData, 0); err != nil {
+		t.Errorf("NVWriteEx failed: %v", err)
+	}
+}
+
+func TestNVReadPublic(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer nvUndefine(rw)
+
+	pub, err := NVReadPublic(rw, nvIdx)
 	if err != nil {
 		t.Fatalf("NVReadPublic failed: %v", err)
 	}
-	if int(pub.DataSize) != len(data) {
-		t.Fatalf("public NV data size mismatch, got %d, want %d, ", pub.DataSize, len(data))
+	if int(pub.DataSize) != len(nvData) {
+		t.Errorf("public NV data size mismatch, got %d, want %d, ", pub.DataSize, len(nvData))
+	}
+}
+
+func TestNVRead(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer nvUndefine(rw)
+	if err := nvWrite(rw); err != nil {
+		t.Fatalf("NVWrite failed: %v", err)
 	}
 
-	// Read all of the data with NVReadEx and compare to what was written
-	outdata, err := NVReadEx(rw, idx, HandleOwner, emptyPassword, 0)
+	data, err := nvRead(rw)
+	if err != nil {
+		t.Fatalf("NVRead failed: %v", err)
+	}
+	if !bytes.Equal(data, nvData) {
+		t.Errorf("data read from NV index does not match, got %x, want %x", nvData, data)
+	}
+}
+
+func TestNVReadEx(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer nvUndefine(rw)
+	if err := nvWrite(rw); err != nil {
+		t.Fatalf("NVWrite failed: %v", err)
+	}
+
+	data, err := NVReadEx(rw, nvIdx, HandleOwner, "", 0)
 	if err != nil {
 		t.Fatalf("NVReadEx failed: %v", err)
 	}
-	if !bytes.Equal(data, outdata) {
-		t.Fatalf("data read from NV index does not match, got %x, want %x", outdata, data)
+	if !bytes.Equal(data, nvData) {
+		t.Errorf("data read from NV index does not match, got %x, want %x", nvData, data)
+	}
+}
+
+func TestNVReadLock(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer nvUndefine(rw)
+	if err := nvWrite(rw); err != nil {
+		t.Fatalf("NVWrite failed: %v", err)
 	}
 
-	// Enable read lock
-	if err := NVReadLock(rw, HandleOwner, idx, emptyPassword); err != nil {
+	if err := NVReadLock(rw, HandleOwner, nvIdx, emptyPassword); err != nil {
 		t.Fatalf("NVReadLock failed: %v (%T)", err, err)
 	}
-
-	// Read the data again. Should fail now because it's read-locked.
-	if _, err := NVReadEx(rw, idx, HandleOwner, emptyPassword, 0); err == nil {
-		t.Fatal("NVRead succeeded after NVReadLock")
+	// Can't compare raw fmt0 error code, because we decorate the error
+	// with cursor information in NVReadEx with fmt.Error.
+	// Instead, we look for the expected error string.
+	if _, err := nvRead(rw); err == nil {
+		t.Errorf("NVRead succeeded after NVReadLock")
 	} else if !strings.HasSuffix(err.Error(), ": NV access locked") {
-		t.Fatalf("NVRead: unexpected error; want RCNVLocked, got %v", err)
+		t.Errorf("NVRead: unexpected error; want RCNVLocked, got %v (%v)", err, reflect.TypeOf(err))
+	}
+}
+
+func TestNVWriteLock(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer nvUndefine(rw)
+
+	if err := NVWriteLock(rw, HandleOwner, nvIdx, emptyPassword); err != nil {
+		t.Fatalf("NVWriteLock failed: %v", err)
+	}
+	if err := nvWrite(rw); err == nil {
+		t.Errorf("NVRead succeeded after NVReadLock")
+	} else if hErr, ok := err.(Error); !ok || hErr.Code != RCNVLocked {
+		t.Errorf("NVRead: unexpected error; want RCNVLocked, got %v", err)
 	}
 }
 
