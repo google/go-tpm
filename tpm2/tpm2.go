@@ -1456,6 +1456,33 @@ func NVReadLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString strin
 	return err
 }
 
+// PolicyNV sets NV object state binding for authorization on a session.
+// auth and password must represent a handle and authorization value which is
+// allowed to read the NV index. For example, if the NV index has the
+// "OwnerRead" and "AuthRead" attributes, you can pass either RH_OWNER and the
+// Owner password, or the NV index and the NV's auth value.
+// This function does not support binding to NV indices which cannot be read
+// with an auth value.
+func PolicyNV(rw io.ReadWriter, auth, index, session tpmutil.Handle, password string, operandB tpmutil.U16Bytes, offset uint16, operation EO) error {
+	handles, err := tpmutil.Pack(auth, index, session)
+	if err != nil {
+		return err
+	}
+
+	authCmd, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	if err != nil {
+		return err
+	}
+
+	params, err := tpmutil.Pack(operandB, offset, operation)
+	if err != nil {
+		return err
+	}
+
+	_, err = runCommand(rw, TagSessions, CmdPolicyNV, handles, authCmd, params)
+	return err
+}
+
 // decodeHash unpacks a successful response to TPM2_Hash, returning the computed digest and
 // validation ticket.
 func decodeHash(resp []byte) ([]byte, *Ticket, error) {

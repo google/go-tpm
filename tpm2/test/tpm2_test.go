@@ -1343,7 +1343,7 @@ func TestCreateAndCertifyCreationECC(t *testing.T) {
 
 var (
 	nvIdx  = tpmutil.Handle(0x1500000)
-	nvData = []byte("testdata")
+	nvData = []byte("testdata\xff\xff\xff\xf6\x00\x00\x00\x0a")
 	nvAttr = AttrOwnerWrite | AttrOwnerRead | AttrAuthRead | AttrWriteSTClear | AttrReadSTClear
 )
 
@@ -1379,6 +1379,16 @@ func nvWrite(rw io.ReadWriter) error {
 
 func nvRead(rw io.ReadWriter) ([]byte, error) {
 	return NVRead(rw, nvIdx)
+}
+
+func policyNV(rw io.ReadWriter, offset uint16, operation EO, operand string) error {
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		return err
+	}
+	defer FlushContext(rw, sessHandle)
+
+	return PolicyNV(rw, nvIdx, nvIdx, sessHandle, "", tpmutil.U16Bytes(operand), offset, operation)
 }
 
 func TestNVDefineSpace(t *testing.T) {
@@ -1528,18 +1538,91 @@ func TestNVWriteLock(t *testing.T) {
 	}
 	if err := nvWrite(rw); err == nil {
 		t.Errorf("NVRead succeeded after NVReadLock")
-	} else if hErr, ok := err.(Error); !ok || hErr.Code != RCNVLocked {
+	} else if fmt0Err, ok := err.(Error); !ok || fmt0Err.Code != RCNVLocked {
 		t.Errorf("NVRead: unexpected error; want RCNVLocked, got %v", err)
+	}
+}
+
+func TestPolicyNV(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	if err := nvDefine(rw); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+	defer nvUndefine(rw)
+
+	// Before write, PolicyNV should fail with RC_NV_UNINITIALIZED
+	if err := policyNV(rw, 0, EOEq, "testdata"); err == nil {
+		t.Errorf("PolicyNV succeeded: %v", err)
+	} else if fmt0Err, ok := err.(Error); !ok || fmt0Err.Code != RCNVUninitialized {
+		t.Errorf("PolicyNV: unexpected error: want RCNVUninitialized, got %v", err)
+	}
+
+	if err := nvWrite(rw); err != nil {
+		t.Fatalf("NVWrite failed: %v", err)
+	}
+
+	cases := []struct{
+		offset   uint16
+		operator EO
+		operand  string
+		ok       bool
+	}{
+		{0, EOEq, "testdata", true},
+		{0, EOEq, "testbeef", false},
+		{0, EONeq, "testdata", false},
+		{0, EONeq, "testbeef", true},
+		// Several of these test cases are commented out because they
+		// fail due to a bug in the reference code used by the simulator.
+		// For more info, see https://github.com/microsoft/ms-tpm-20-ref/issues/57
+		// {8, EOSignedGt, "\xff\xff\xff\xf0", true},
+		{8, EOSignedGt, "\xff\xff\xff\xf6", false},
+		// {8, EOSignedGt, "\xff\xff\xff\xff", false},
+		{8, EOSignedGt, "\x00\x00\x00\x00", false},
+		{12, EOUnsignedGt, "\x00\x00\x00\x09", true},
+		{12, EOUnsignedGt, "\x00\x00\x00\x0a", false},
+		{8, EOSignedLt, "\x00\x00\x00\x00", true},
+		// {8, EOSignedLt, "\xff\xff\xff\xff", true},
+		{8, EOSignedLt, "\xff\xff\xff\xf6", false},
+		// {8, EOSignedLt, "\xff\xff\xff\xf0", false},
+		{12, EOUnsignedLt, "\x00\x00\x00\x0b", true},
+		{12, EOUnsignedLt, "\x00\x00\x00\x0a", false},
+		// {8, EOSignedGe, "\xff\xff\xff\xf0", true},
+		{8, EOSignedGe, "\xff\xff\xff\xf6", true},
+		// {8, EOSignedGe, "\xff\xff\xff\xff", false},
+		{8, EOSignedGe, "\x00\x00\x00\x00", false},
+		{12, EOUnsignedGe, "\x00\x00\x00\x0a", true},
+		{12, EOUnsignedGe, "\x00\x00\x00\x0b", false},
+		{8, EOSignedLe, "\x00\x00\x00\x00", true},
+		// {8, EOSignedLe, "\xff\xff\xff\xff", true},
+		{8, EOSignedLe, "\xff\xff\xff\xf6", true},
+		// {8, EOSignedLe, "\xff\xff\xff\xf0", false},
+		{12, EOUnsignedLe, "\x00\x00\x00\x0a", true},
+		{12, EOUnsignedLe, "\x00\x00\x00\x09", false},
+		{12, EOBitSet, "\x00\x00\x00\x08", true},
+		{12, EOBitSet, "\x00\x00\x00\x04", false},
+		{12, EOBitClear, "\x00\x00\x00\x05", true},
+		{12, EOBitClear, "\x00\x00\x00\x08", false},
+	}
+
+	for i, testCase := range cases {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			err := policyNV(rw, testCase.offset, testCase.operator, testCase.operand)
+			if testCase.ok && err != nil {
+				t.Errorf("PolicyNV failed: %v", err)
+			} else if fmt0Err, ok := err.(Error); !testCase.ok && (!ok || fmt0Err.Code != RCPolicy) {
+				t.Errorf("PolicyNV did not fail with expected code: want RCPolicy got %v", err)
+			}
+		})
 	}
 }
 
 func TestPolicySecret(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
-
-	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA1)
 	if err != nil {
-		t.Fatalf("StartAuthSession() failed: %v", err)
+		t.Fatalf("StartAuthSession failed: %v", err)
 	}
 	defer FlushContext(rw, sessHandle)
 

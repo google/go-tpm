@@ -457,6 +457,7 @@ const (
 	CmdShutdown                   tpmutil.Command = 0x00000145
 	CmdActivateCredential         tpmutil.Command = 0x00000147
 	CmdCertify                    tpmutil.Command = 0x00000148
+	CmdPolicyNV                   tpmutil.Command = 0x00000149
 	CmdCertifyCreation            tpmutil.Command = 0x0000014A
 	CmdReadNV                     tpmutil.Command = 0x0000014E
 	CmdReadLockNV                 tpmutil.Command = 0x0000014F
@@ -547,10 +548,10 @@ var permMap = map[NVAttr]string{
 	AttrAuthRead:       "AuthRead",
 	AttrPolicyRead:     "PolicyRead",
 	AttrNoDA:           "No Do",
-	AttrOrderly:        "Oderly",
+	AttrOrderly:        "Orderly",
 	AttrClearSTClear:   "ClearSTClear",
 	AttrReadLocked:     "ReadLocked",
-	AttrWritten:        "Writte",
+	AttrWritten:        "Written",
 	AttrPlatformCreate: "PlatformCreate",
 	AttrReadSTClear:    "ReadSTClear",
 }
@@ -568,4 +569,54 @@ func (p NVAttr) String() string {
 	}
 	return strings.TrimSuffix(retString.String(), " + ")
 
+}
+
+// EO represents an Enhanced Authorization Arithmetic Operand.
+type EO uint16
+
+// EA Arithmetic Operands
+const (
+	EOEq            EO = 0x0000
+	EONeq           EO = 0x0001
+	EOSignedGt      EO = 0x0002
+	EOUnsignedGt    EO = 0x0003
+	EOSignedLt      EO = 0x0004
+	EOUnsignedLt    EO = 0x0005
+	EOSignedGe      EO = 0x0006
+	EOUnsignedGe    EO = 0x0007
+	EOSignedLe      EO = 0x0008
+	EOUnsignedLe    EO = 0x0009
+	EOBitSet        EO = 0x000A
+	EOBitClear      EO = 0x000B
+)
+
+func (o EO) String() string {
+	switch o {
+	case EOEq:
+		return "EQ"
+	case EONeq:
+		return "NEQ"
+	case EOSignedGt:
+		return "SIGNED_GT"
+	case EOUnsignedGt:
+		return "UNSIGNED_GT"
+	case EOSignedLt:
+		return "SIGNED_LT"
+	case EOUnsignedLt:
+		return "UNSIGNED_LT"
+	case EOSignedGe:
+		return "SIGNED_GE"
+	case EOUnsignedGe:
+		return "UNSIGNED_GE"
+	case EOSignedLe:
+		return "SIGNED_LE"
+	case EOUnsignedLe:
+		return "UNSIGNED_LE"
+	case EOBitSet:
+		return "BITSET"
+	case EOBitClear:
+		return "BITCLEAR"
+	default:
+		return fmt.Sprintf("EO?<%d>", int(o))
+	}
 }
