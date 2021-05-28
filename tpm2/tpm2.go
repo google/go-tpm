@@ -572,10 +572,18 @@ func CreateKeyWithOutsideInfo(rw io.ReadWriter, owner tpmutil.Handle, sel PCRSel
 // password and auth policy. Access to the parent must be available with a simple password.
 // Returns private and public portions of the created object.
 func Seal(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, objectAuthPolicy []byte, sensitiveData []byte) ([]byte, []byte, error) {
+	return SealEx(rw, parentHandle, parentPassword, objectPassword, FlagSealDefault, objectAuthPolicy, sensitiveData)
+}
+
+// SealEx creates a data blob object that seals the sensitive data under a parent and with a
+// password and auth policy. Access to the parent must be available with a simple password.
+// It also allows to specify the object attributes.
+// Returns private and public portions of the created object.
+func SealEx(rw io.ReadWriter, parentHandle tpmutil.Handle, parentPassword, objectPassword string, attributes KeyProp, objectAuthPolicy []byte, sensitiveData []byte) ([]byte, []byte, error) {
 	inPublic := Public{
 		Type:       AlgKeyedHash,
 		NameAlg:    AlgSHA256,
-		Attributes: FlagFixedTPM | FlagFixedParent,
+		Attributes: attributes,
 		AuthPolicy: objectAuthPolicy,
 	}
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentPassword)}
