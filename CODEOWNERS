@@ -5,3 +5,4 @@
 # permissions to the repository should also be updated.
 /tpm/               @zaolin @flanfly @ChriMarMe @google/go-tpm-admin
 /examples/tpm-*/    @zaolin @flanfly @ChriMarMe @google/go-tpm-admin
+/tpm2/              @alexmwu @jkl73 @google/go-tpm-admin
