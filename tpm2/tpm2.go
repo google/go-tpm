@@ -917,12 +917,12 @@ func UnsealWithSession(rw io.ReadWriter, sessionHandle, itemHandle tpmutil.Handl
 	return decodeUnseal(resp)
 }
 
-func encodeQuote(signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote tpmutil.U16Bytes, sel PCRSelection, sigAlg Algorithm) ([]byte, error) {
+func encodeQuote(signingHandle tpmutil.Handle, signerAuth string, toQuote tpmutil.U16Bytes, sel PCRSelection, sigAlg Algorithm) ([]byte, error) {
 	ha, err := tpmutil.Pack(signingHandle)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentPassword)})
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(signerAuth)})
 	if err != nil {
 		return nil, err
 	}
@@ -955,8 +955,9 @@ func decodeQuote(in []byte) ([]byte, []byte, error) {
 // values, created using a signing TPM key.
 //
 // Returns attestation data and the decoded signature.
-func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, *Signature, error) {
-	attest, sigRaw, err := QuoteRaw(rw, signingHandle, parentPassword, ownerPassword, toQuote, sel, sigAlg)
+func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, signerAuth, unused string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, *Signature, error) {
+	// TODO: Remove "unused" parameter on next breaking change.
+	attest, sigRaw, err := QuoteRaw(rw, signingHandle, signerAuth, unused, toQuote, sel, sigAlg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -969,8 +970,9 @@ func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, owner
 
 // QuoteRaw is very similar to Quote, except that it will return
 // the raw signature in a byte array without decoding.
-func QuoteRaw(rw io.ReadWriter, signingHandle tpmutil.Handle, parentPassword, ownerPassword string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, []byte, error) {
-	Cmd, err := encodeQuote(signingHandle, parentPassword, ownerPassword, toQuote, sel, sigAlg)
+func QuoteRaw(rw io.ReadWriter, signingHandle tpmutil.Handle, signerAuth, unused string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, []byte, error) {
+	// TODO: Remove "unused" parameter on next breaking change.
+	Cmd, err := encodeQuote(signingHandle, signerAuth, toQuote, sel, sigAlg)
 	if err != nil {
 		return nil, nil, err
 	}
