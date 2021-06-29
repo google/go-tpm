@@ -59,8 +59,6 @@ func openTPM(tb testing.TB) io.ReadWriteCloser {
 
 var (
 	// PCR7 is for SecureBoot.
-	pcrSelection0    = PCRSelection{Hash: AlgSHA1, PCRs: []int{0}}
-	pcrSelection1    = PCRSelection{Hash: AlgSHA1, PCRs: []int{1}}
 	pcrSelection7    = PCRSelection{Hash: AlgSHA1, PCRs: []int{7}}
 	pcrSelectionAll  = PCRSelection{Hash: AlgSHA1, PCRs: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}}
 	defaultKeyParams = Public{
@@ -350,8 +348,7 @@ func TestCombinedContextTest(t *testing.T) {
 	}
 	FlushContext(rw, quoteHandle)
 
-	quoteHandle, err = ContextLoad(rw, saveArea)
-	if err != nil {
+	if _, err = ContextLoad(rw, saveArea); err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
 }

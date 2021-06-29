@@ -11,3 +11,21 @@ test_task:
     folder: $GOPATH/pkg/mod
   build_script: go build -v ./...
   test_script: go test -p 1 -v ./...
+
+lint_task:
+  env:
+    matrix:
+      - GOOS: linux
+      - GOOS: windows
+  lint_script:
+    golangci-lint run
+      -D errcheck
+      -E stylecheck
+      -E goimports
+      -E misspell
+      -E revive
+      --exclude-use-default=false
+      --max-same-issues=0
+      --max-issues-per-linter=0
+      ./tpmutil/...
+      ./tpm2/...

@@ -18,6 +18,8 @@ import (
 	"flag"
 	"io"
 	"testing"
+
+	. "github.com/google/go-tpm/tpm2"
 )
 
 var runTPMTests = flag.Bool("use-tbs", false, "Run integration tests against Windows TPM Base Services (TBS). Defaults to false.")

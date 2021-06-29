@@ -66,9 +66,9 @@ type Public struct {
 	// When encoding/decoding, one will be picked based on Type.
 
 	// RSAParameters contains both [rsa]parameters and [rsa]unique.
-	RSAParameters       *RSAParams
+	RSAParameters *RSAParams
 	// ECCParameters contains both [ecc]parameters and [ecc]unique.
-	ECCParameters       *ECCParams
+	ECCParameters *ECCParams
 	// SymCipherParameters contains both [sym]parameters and [sym]unique.
 	SymCipherParameters *SymCipherParams
 	// KeyedHashParameters contains both [keyedHash]parameters and [keyedHash]unique.
@@ -147,7 +147,7 @@ func (p Public) Name() (Name, error) {
 // MatchesTemplate checks if the Public area has the same algorithms and
 // parameters as the provided template. Note that this does not necessarily
 // mean that the key was created from this template, as the Unique field is
-// both provided in the template and overriden in the key creation process.
+// both provided in the template and overridden in the key creation process.
 func (p Public) MatchesTemplate(template Public) bool {
 	if p.Type != template.Type ||
 		p.NameAlg != template.NameAlg ||
