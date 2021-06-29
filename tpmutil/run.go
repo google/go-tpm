@@ -43,7 +43,7 @@ func RunCommand(rw io.ReadWriter, tag Tag, cmd Command, in ...interface{}) ([]by
 	}
 
 	// f(t) = (2^t)ms, up to 2s
-	var backoffFac uint = 0
+	var backoffFac uint
 	var rh responseHeader
 	var outb []byte
 

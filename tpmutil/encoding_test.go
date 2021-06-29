@@ -167,7 +167,6 @@ func TestEncodingCommandHeaderEncoding(t *testing.T) {
 
 func TestEncodingInvalidUnpack(t *testing.T) {
 	var i *uint32
-	i = nil
 	// The value ui is a serialization of uint32(0).
 	ui := []byte{0, 0, 0, 0}
 	uiBuf := bytes.NewBuffer(ui)
@@ -295,7 +294,7 @@ func TestEncodingUnpack(t *testing.T) {
 		t.Fatal("Couldn't unpacked a struct with a nested slice:", err)
 	}
 	if ns.A != ns2.A || !bytes.Equal(ns.S, ns2.S) {
-		t.Logf("orginal = %+v", ns)
+		t.Logf("original = %+v", ns)
 		t.Logf("decoded = %+v", ns2)
 		t.Fatal("Unpacked struct with nested slice didn't match the original")
 	}
