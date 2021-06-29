@@ -24,7 +24,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -515,7 +514,9 @@ func TestTPMLDigestDecode(t *testing.T) {
 		t.Errorf("DecodeTPMDigest(b) failed: %v", err)
 	}
 
-	if !cmp.Equal(want, got) {
+	if len(got.Digests) != len(want.Digests) ||
+		!bytes.Equal(got.Digests[0], want.Digests[0]) ||
+		!bytes.Equal(got.Digests[1], want.Digests[1]) {
 		t.Errorf("Digests are not the same.\n Have:\n %v\n - Want:\n %v", got.Digests, want.Digests)
 	}
 }
