@@ -573,6 +573,27 @@ type Signature struct {
 	ECC *SignatureECC
 }
 
+// Encode serializes a Signature structure in TPM wire format.
+func (s Signature) Encode() ([]byte, error) {
+	head, err := tpmutil.Pack(s.Alg)
+	if err != nil {
+		return nil, fmt.Errorf("encoding Alg: %v", err)
+	}
+	var signature []byte
+	switch s.Alg {
+	case AlgRSASSA, AlgRSAPSS:
+		if signature, err = tpmutil.Pack(s.RSA); err != nil {
+			return nil, fmt.Errorf("encoding RSA: %v", err)
+		}
+	case AlgECDSA:
+		signature, err = tpmutil.Pack(s.ECC.HashAlg, tpmutil.U16Bytes(s.ECC.R.Bytes()), tpmutil.U16Bytes(s.ECC.S.Bytes()))
+		if err != nil {
+			return nil, fmt.Errorf("encoding ECC: %v", err)
+		}
+	}
+	return concat(head, signature)
+}
+
 // DecodeSignature decodes a serialized TPMT_SIGNATURE structure.
 func DecodeSignature(in *bytes.Buffer) (*Signature, error) {
 	var sig Signature

@@ -747,38 +747,71 @@ func encodePolicySecret(entityHandle tpmutil.Handle, entityAuth AuthCommand, pol
 	return concat(handles, auth, params)
 }
 
-func decodePolicySecret(in []byte) (*Ticket, error) {
+func decodePolicySecret(in []byte) ([]byte, *Ticket, error) {
 	buf := bytes.NewBuffer(in)
 
 	var paramSize uint32
 	var timeout tpmutil.U16Bytes
 	if err := tpmutil.UnpackBuf(buf, &paramSize, &timeout); err != nil {
-		return nil, fmt.Errorf("decoding timeout: %v", err)
+		return nil, nil, fmt.Errorf("decoding timeout: %v", err)
 	}
 	var t Ticket
 	if err := tpmutil.UnpackBuf(buf, &t); err != nil {
-		return nil, fmt.Errorf("decoding ticket: %v", err)
+		return nil, nil, fmt.Errorf("decoding ticket: %v", err)
 	}
-	return &t, nil
+	return timeout, &t, nil
 }
 
 // PolicySecret sets a secret authorization requirement on the provided entity.
-// If expiry is non-zero, the authorization is valid for expiry seconds.
-func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) (*Ticket, error) {
+func PolicySecret(rw io.ReadWriter, entityHandle tpmutil.Handle, entityAuth AuthCommand, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32) ([]byte, *Ticket, error) {
 	Cmd, err := encodePolicySecret(entityHandle, entityAuth, policyHandle, policyNonce, cpHash, policyRef, expiry)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	resp, err := runCommand(rw, TagSessions, CmdPolicySecret, tpmutil.RawBytes(Cmd))
 	if err != nil {
+		return nil, nil, err
+	}
+	return decodePolicySecret(resp)
+}
+
+func encodePolicySigned(validationKeyHandle tpmutil.Handle, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef tpmutil.U16Bytes, expiry int32, auth []byte) ([]byte, error) {
+	handles, err := tpmutil.Pack(validationKeyHandle, policyHandle)
+	if err != nil {
 		return nil, err
 	}
-
-	// Tickets are only provided if expiry is set.
-	if expiry != 0 {
-		return decodePolicySecret(resp)
+	params, err := tpmutil.Pack(policyNonce, cpHash, policyRef, expiry, auth)
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+	return concat(handles, params)
+}
+
+func decodePolicySigned(in []byte) ([]byte, *Ticket, error) {
+	buf := bytes.NewBuffer(in)
+
+	var timeout tpmutil.U16Bytes
+	if err := tpmutil.UnpackBuf(buf, &timeout); err != nil {
+		return nil, nil, fmt.Errorf("decoding timeout: %v", err)
+	}
+	var t Ticket
+	if err := tpmutil.UnpackBuf(buf, &t); err != nil {
+		return nil, nil, fmt.Errorf("decoding ticket: %v", err)
+	}
+	return timeout, &t, nil
+}
+
+// PolicySigned sets a signed authorization requirement on the provided policy.
+func PolicySigned(rw io.ReadWriter, validationKeyHandle tpmutil.Handle, policyHandle tpmutil.Handle, policyNonce, cpHash, policyRef []byte, expiry int32, signedAuth []byte) ([]byte, *Ticket, error) {
+	Cmd, err := encodePolicySigned(validationKeyHandle, policyHandle, policyNonce, cpHash, policyRef, expiry, signedAuth)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := runCommand(rw, TagNoSessions, CmdPolicySigned, tpmutil.RawBytes(Cmd))
+	if err != nil {
+		return nil, nil, err
+	}
+	return decodePolicySigned(resp)
 }
 
 func encodePolicyPCR(session tpmutil.Handle, expectedDigest tpmutil.U16Bytes, sel PCRSelection) ([]byte, error) {
