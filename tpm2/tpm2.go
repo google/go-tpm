@@ -1303,8 +1303,8 @@ func NVWriteEx(rw io.ReadWriter, authHandle, nvIndex tpmutil.Handle, authArea Au
 	return err
 }
 
-func encodeLockNV(owner, handle tpmutil.Handle, authString string) ([]byte, error) {
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)})
+func encodeLockNV(owner, handle tpmutil.Handle, authArea AuthCommand) ([]byte, error) {
+	auth, err := encodeAuthArea(authArea)
 	if err != nil {
 		return nil, err
 	}
@@ -1329,7 +1329,13 @@ func encodeLockNV(owner, handle tpmutil.Handle, authString string) ([]byte, erro
 // It is not an error to call NVWriteLock for an index that is already locked
 // for writing.
 func NVWriteLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string) error {
-	Cmd, err := encodeLockNV(owner, handle, authString)
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)}
+	return NVWriteLockEx(rw, owner, handle, auth)
+}
+
+// NVWriteLockEx does the same as NVWriteLock except accepting AuthCommand for more authorization flexibility
+func NVWriteLockEx(rw io.ReadWriter, owner, handle tpmutil.Handle, authArea AuthCommand) error {
+	Cmd, err := encodeLockNV(owner, handle, authArea)
 	if err != nil {
 		return err
 	}
@@ -1366,12 +1372,12 @@ func decodeNVRead(in []byte) ([]byte, error) {
 	return data, nil
 }
 
-func encodeNVRead(nvIndex, authHandle tpmutil.Handle, password string, offset, dataSize uint16) ([]byte, error) {
+func encodeNVRead(nvIndex, authHandle tpmutil.Handle, authArea AuthCommand, offset, dataSize uint16) ([]byte, error) {
 	handles, err := tpmutil.Pack(authHandle, nvIndex)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(password)})
+	auth, err := encodeAuthArea(authArea)
 	if err != nil {
 		return nil, err
 	}
@@ -1387,14 +1393,17 @@ func encodeNVRead(nvIndex, authHandle tpmutil.Handle, password string, offset, d
 // NVRead reads a full data blob from an NV index. This function is
 // deprecated; use NVReadEx instead.
 func NVRead(rw io.ReadWriter, index tpmutil.Handle) ([]byte, error) {
-	return NVReadEx(rw, index, index, "", 0)
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte("")}
+	return NVReadEx(rw, index, index, auth, 0)
 }
 
 // NVReadEx reads a full data blob from an NV index, using the given
 // authorization handle. NVRead commands are done in blocks of blockSize.
 // If blockSize is 0, the TPM is queried for TPM_PT_NV_BUFFER_MAX, and that
 // value is used.
-func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password string, blockSize int) ([]byte, error) {
+// NVReadEx let the user take care of AuthCommand before calling the function to
+// support more authorization flexibility such as SessionPolicy and PasswordSession.
+func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, authArea AuthCommand, blockSize int) ([]byte, error) {
 	if blockSize == 0 {
 		readBuff, _, err := GetCapability(rw, CapabilityTPMProperties, 1, uint32(NVMaxBufferSize))
 		if err != nil {
@@ -1416,15 +1425,23 @@ func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password strin
 		return nil, fmt.Errorf("decoding NV_ReadPublic response: %v", err)
 	}
 
+	// definedSize is the number of octets to read (can be less than entity size), defined by the user.
+	// in the case the user needs to read a portion of data, the value of definedSize is blockSize
+	// or Datasize when blockSize is greater than the number of available data
+	definedSize := blockSize
+	if definedSize > int(pub.DataSize) {
+		definedSize = int(pub.DataSize)
+	}
+
 	// Read the NVRAM area in blocks.
 	outBuff := make([]byte, 0, int(pub.DataSize))
-	for len(outBuff) < int(pub.DataSize) {
+	for len(outBuff) < int(definedSize) {
 		readSize := blockSize
 		if readSize > (int(pub.DataSize) - len(outBuff)) {
 			readSize = int(pub.DataSize) - len(outBuff)
 		}
 
-		Cmd, err := encodeNVRead(index, authHandle, password, uint16(len(outBuff)), uint16(readSize))
+		Cmd, err := encodeNVRead(index, authHandle, authArea, uint16(len(outBuff)), uint16(readSize))
 		if err != nil {
 			return nil, fmt.Errorf("building NV_Read command: %v", err)
 		}
@@ -1450,7 +1467,13 @@ func NVReadEx(rw io.ReadWriter, index, authHandle tpmutil.Handle, password strin
 // It is not an error to call NVReadLock for an index that is already locked
 // for reading.
 func NVReadLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString string) error {
-	Cmd, err := encodeLockNV(owner, handle, authString)
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(authString)}
+	return NVReadLockEx(rw, owner, handle, auth)
+}
+
+// NVReadLockEx does the same as NVReadLock except accepting AuthCommand for more authorization flexibility
+func NVReadLockEx(rw io.ReadWriter, owner, handle tpmutil.Handle, authArea AuthCommand) error {
+	Cmd, err := encodeLockNV(owner, handle, authArea)
 	if err != nil {
 		return err
 	}
