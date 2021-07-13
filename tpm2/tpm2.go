@@ -1334,8 +1334,8 @@ func NVWriteLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString stri
 }
 
 // NVWriteLockEx does the same as NVWriteLock except accepting AuthCommand for more authorization flexibility
-func NVWriteLockEx(rw io.ReadWriter, owner, handle tpmutil.Handle, authArea AuthCommand) error {
-	Cmd, err := encodeLockNV(owner, handle, authArea)
+func NVWriteLockEx(rw io.ReadWriter, authHandle, handle tpmutil.Handle, authArea AuthCommand) error {
+	Cmd, err := encodeLockNV(authHandle, handle, authArea)
 	if err != nil {
 		return err
 	}
@@ -1472,8 +1472,8 @@ func NVReadLock(rw io.ReadWriter, owner, handle tpmutil.Handle, authString strin
 }
 
 // NVReadLockEx does the same as NVReadLock except accepting AuthCommand for more authorization flexibility
-func NVReadLockEx(rw io.ReadWriter, owner, handle tpmutil.Handle, authArea AuthCommand) error {
-	Cmd, err := encodeLockNV(owner, handle, authArea)
+func NVReadLockEx(rw io.ReadWriter, authHandle, handle tpmutil.Handle, authArea AuthCommand) error {
+	Cmd, err := encodeLockNV(authHandle, handle, authArea)
 	if err != nil {
 		return err
 	}

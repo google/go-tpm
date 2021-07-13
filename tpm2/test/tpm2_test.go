@@ -32,6 +32,7 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
+	"github.com/google/go-tpm/tpm2"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -1401,7 +1402,8 @@ func TestNVReadWriteAndLocks(t *testing.T) {
 	}
 
 	// Read all of the data with NVReadEx and compare to what was written
-	outdata, err := NVReadEx(rw, idx, HandleOwner, emptyPassword, 0)
+	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(emptyPassword)}
+	outdata, err := NVReadEx(rw, idx, HandleOwner, auth, 0)
 	if err != nil {
 		t.Fatalf("NVReadEx failed: %v", err)
 	}
@@ -1415,10 +1417,208 @@ func TestNVReadWriteAndLocks(t *testing.T) {
 	}
 
 	// Read the data again. Should fail now because it's read-locked.
-	if _, err := NVReadEx(rw, idx, HandleOwner, emptyPassword, 0); err == nil {
+	if _, err := NVReadEx(rw, idx, HandleOwner, auth, 0); err == nil {
 		t.Fatal("NVRead succeeded after NVReadLock")
 	} else if !strings.HasSuffix(err.Error(), ": NV access locked") {
 		t.Fatalf("NVRead: unexpected error; want RCNVLocked, got %v", err)
+	}
+}
+
+func TestNVReadWriteAndLockWithPCR(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	var (
+		idx      tpmutil.Handle = 0x1500000
+		data                    = []byte("testdata")
+		attr                    = AttrPolicyRead | AttrPolicyWrite | AttrWriteSTClear | AttrReadSTClear
+		sel                     = PCRSelection{Hash: AlgSHA256, PCRs: []int{0, 1, 2, 3}}
+		wrongSel                = PCRSelection{Hash: AlgSHA256, PCRs: []int{4, 5, 2, 3}}
+	)
+
+	// Undefine the space, just in case the previous run of this test failed
+	// to clean up.
+	if err := NVUndefineSpace(rw, emptyPassword, HandleOwner, idx); err != nil {
+		t.Logf("(not a failure) NVUndefineSpace at index 0x%x failed: %v", idx, err)
+	}
+
+	// startAuthSession for getting policy digest
+	createPolicySession, _, err := tpm2.StartAuthSession(
+		rw,               /*rw io.ReadWriter*/
+		tpm2.HandleNull,  /*tpmKey tpmutil.Handle*/
+		tpm2.HandleNull,  /*bindKey tpmutil.Handle*/
+		make([]byte, 16), /*nonceCaller []byte*/
+		nil,              /*secret []byte*/
+		SessionTrial,     /*se SessionType*/
+		tpm2.AlgNull,     /*sym Algorithm*/
+		AlgSHA256)        /*hashAlg Algorithm*/
+
+	if err != nil {
+		t.Fatalf("StartAuthSession failed: %v", err)
+	}
+
+	if err := PolicyPCR(rw, createPolicySession, nil /*expectedDigest*/, sel); err != nil {
+		t.Fatalf("PolicyPCR failed: %v", err)
+	}
+
+	authPolicy, err := PolicyGetDigest(rw, createPolicySession)
+	if err != nil {
+		t.Fatalf("Get session Digest failed: %v", err)
+	}
+	if err := FlushContext(rw, createPolicySession); err != nil {
+		t.Errorf("FlushContext() failed: %v", err)
+	}
+
+	// Define space in NV storage and clean up afterwards or subsequent runs will fail.
+	nvPub := tpm2.NVPublic{
+		NVIndex:    idx,
+		NameAlg:    AlgSHA256,
+		Attributes: attr,
+		AuthPolicy: authPolicy,
+		DataSize:   uint16(len(data)),
+	}
+	authArea := tpm2.AuthCommand{
+		Session:    tpm2.HandlePasswordSession,
+		Attributes: tpm2.AttrContinueSession,
+		Auth:       []byte(emptyPassword),
+	}
+	// create NV index
+	if err := tpm2.NVDefineSpaceEx(rw,
+		HandleOwner,
+		emptyPassword,
+		nvPub,
+		authArea,
+	); err != nil {
+		t.Fatalf("NVDefineSpace failed: %v", err)
+	}
+
+	defer NVUndefineSpaceEx(rw, HandleOwner, idx, authArea)
+
+	// Start Auth session for authentication of nv index access (like nvwrite and nvread)
+	sessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Fatalf("StartAuthSession failed: %v", err)
+	}
+	defer func() {
+		if err := tpm2.FlushContext(rw, sessHandle); err != nil {
+			t.Errorf("Unable to flush the session %v", err)
+		}
+	}()
+
+	if err := PolicyPCR(rw, sessHandle, nil /*expectedDigest*/, sel); err != nil {
+		t.Errorf("PolicyPCR failed: %v", err)
+	}
+
+	authArea = tpm2.AuthCommand{
+		Session:    sessHandle,
+		Attributes: tpm2.AttrContinueSession,
+	}
+
+	// Write into the NV entity if authorization is right
+	if err := NVWriteEx(rw, idx, idx, authArea, data, 0); err != nil {
+		t.Fatalf("NVWrite failed: %v", err)
+	}
+
+	// Try to write with wrong PCR Policy, should fail
+	wrongSessHandle, _, err := StartAuthSession(rw, HandleNull, HandleNull, make([]byte, 16), nil, SessionPolicy, AlgNull, AlgSHA256)
+	if err != nil {
+		t.Fatalf("StartAuthSession failed: %v", err)
+	}
+	defer func() {
+		if err := tpm2.FlushContext(rw, wrongSessHandle); err != nil {
+			t.Errorf("Unable to flush the session %v", err)
+		}
+	}()
+
+	if err := PolicyPCR(rw, wrongSessHandle, nil /*expectedDigest*/, wrongSel); err != nil {
+		t.Errorf("PolicyPCR failed: %v", err)
+	}
+	wrongAuthArea := tpm2.AuthCommand{
+		Session:    wrongSessHandle,
+		Attributes: tpm2.AttrContinueSession,
+	}
+
+	// Write into the NV entity with wrong Policy
+	err = NVWriteEx(rw, idx, idx, wrongAuthArea, data, 0)
+	if err == nil {
+		t.Fatal("NVWriteEx succeeded with wrong Policy PCR")
+	} else if !strings.HasSuffix(err.Error(), ": a policy check failed") {
+		t.Fatalf("NVReadEx: unexpected error; want RCPolicyFail, got %v", err)
+	}
+
+	// Read all of the data with NVReadEx and compare to what was written
+	// The authorization is based on the Policy PCR
+	if err := PolicyPCR(rw, sessHandle, nil /*expectedDigest*/, sel); err != nil {
+		t.Errorf("PolicyPCR failed: %v", err)
+	}
+	outdata, err := NVReadEx(rw, idx, idx, authArea, 0)
+	if err != nil {
+		t.Fatalf("NVReadEx failed: %v", err)
+	}
+	if !bytes.Equal(data, outdata) {
+		t.Fatalf("data read from NV index does not match, got %x, want %x", outdata, data)
+	}
+
+	// NVReadEx with wrong Policy, should fail now
+	// if it fails previousely for NVWrite then the value of digest had not been changed
+	_, err = NVReadEx(rw, idx, idx, wrongAuthArea, 0)
+	if err == nil {
+		t.Fatalf("NVReadEx successed with wrong policy: %v", err)
+	}
+
+	// Enable write lock
+	if err := PolicyPCR(rw, sessHandle, nil /*expectedDigest*/, sel); err != nil {
+		t.Errorf("PolicyPCR failed: %v", err)
+	}
+
+	if err := NVWriteLockEx(rw, idx, idx, authArea); err != nil {
+		t.Fatalf("NVWriteLockEx failed: %v", err)
+	}
+
+	// Write the data again. Should fail now because it's write-locked.
+	// The authorization is based on the Policy PCR
+	if err := PolicyPCR(rw, sessHandle, nil /*expectedDigest*/, sel); err != nil {
+		t.Errorf("PolicyPCR failed: %v", err)
+	}
+	err = NVWriteEx(rw, idx, idx, authArea, data, 0)
+	switch err := err.(type) {
+	case nil:
+		t.Fatal("NVWriteEx succeeded after NVWriteLock")
+	case Error:
+		if err.Code != RCNVLocked {
+			t.Fatalf("NVWriteEx: unexpected error; want RCNVLocked, got %v", err)
+		}
+	default:
+		t.Fatalf("NVWriteEx: unexpected error; want RCNVLocked, got %v", err)
+	}
+
+	// Make sure the public area of the index can be read
+	pub, err := NVReadPublic(rw, idx)
+	if err != nil {
+		t.Fatalf("NVReadPublic failed: %v", err)
+	}
+	if int(pub.DataSize) != len(data) {
+		t.Fatalf("public NV data size mismatch, got %d, want %d, ", pub.DataSize, len(data))
+	}
+
+	// Enable read lock with right Policy
+	// Because the last command on NV entity (NVWriteEx) failed, the value of
+	// session digest has not been changed, so no need to call PolicyPCR
+	if err := NVReadLockEx(rw, idx, idx, authArea); err != nil {
+		t.Fatalf("NVReadLockEx failed: %v (%T)", err, err)
+	}
+
+	// Read the data again. Should fail now because it's read-locked.
+	// The authorization is based on the Policy PCR, Because the last command was successfule
+	// the value of session digest has been updated
+	if err := PolicyPCR(rw, sessHandle, nil /*expectedDigest*/, sel); err != nil {
+		t.Errorf("PolicyPCR failed: %v", err)
+	}
+
+	if _, err := NVReadEx(rw, idx, idx, authArea, 0); err == nil {
+		t.Fatal("NVReadEx succeeded after NVReadLockEx")
+	} else if !strings.HasSuffix(err.Error(), ": NV access locked") {
+		t.Fatalf("NVReadEx: unexpected error; want RCNVLocked, got %v", err)
 	}
 }
 
