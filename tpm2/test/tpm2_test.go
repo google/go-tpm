@@ -32,7 +32,6 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
-	"github.com/google/go-tpm/tpm2"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
@@ -1443,14 +1442,14 @@ func TestNVReadWriteAndLockWithPCR(t *testing.T) {
 	}
 
 	// startAuthSession for getting policy digest
-	createPolicySession, _, err := tpm2.StartAuthSession(
+	createPolicySession, _, err := StartAuthSession(
 		rw,               /*rw io.ReadWriter*/
-		tpm2.HandleNull,  /*tpmKey tpmutil.Handle*/
-		tpm2.HandleNull,  /*bindKey tpmutil.Handle*/
+		HandleNull,       /*tpmKey tpmutil.Handle*/
+		HandleNull,       /*bindKey tpmutil.Handle*/
 		make([]byte, 16), /*nonceCaller []byte*/
 		nil,              /*secret []byte*/
 		SessionTrial,     /*se SessionType*/
-		tpm2.AlgNull,     /*sym Algorithm*/
+		AlgNull,          /*sym Algorithm*/
 		AlgSHA256)        /*hashAlg Algorithm*/
 
 	if err != nil {
@@ -1470,20 +1469,20 @@ func TestNVReadWriteAndLockWithPCR(t *testing.T) {
 	}
 
 	// Define space in NV storage and clean up afterwards or subsequent runs will fail.
-	nvPub := tpm2.NVPublic{
+	nvPub := NVPublic{
 		NVIndex:    idx,
 		NameAlg:    AlgSHA256,
 		Attributes: attr,
 		AuthPolicy: authPolicy,
 		DataSize:   uint16(len(data)),
 	}
-	authArea := tpm2.AuthCommand{
-		Session:    tpm2.HandlePasswordSession,
-		Attributes: tpm2.AttrContinueSession,
+	authArea := AuthCommand{
+		Session:    HandlePasswordSession,
+		Attributes: AttrContinueSession,
 		Auth:       []byte(emptyPassword),
 	}
 	// create NV index
-	if err := tpm2.NVDefineSpaceEx(rw,
+	if err := NVDefineSpaceEx(rw,
 		HandleOwner,
 		emptyPassword,
 		nvPub,
@@ -1500,7 +1499,7 @@ func TestNVReadWriteAndLockWithPCR(t *testing.T) {
 		t.Fatalf("StartAuthSession failed: %v", err)
 	}
 	defer func() {
-		if err := tpm2.FlushContext(rw, sessHandle); err != nil {
+		if err := FlushContext(rw, sessHandle); err != nil {
 			t.Errorf("Unable to flush the session %v", err)
 		}
 	}()
@@ -1509,9 +1508,9 @@ func TestNVReadWriteAndLockWithPCR(t *testing.T) {
 		t.Errorf("PolicyPCR failed: %v", err)
 	}
 
-	authArea = tpm2.AuthCommand{
+	authArea = AuthCommand{
 		Session:    sessHandle,
-		Attributes: tpm2.AttrContinueSession,
+		Attributes: AttrContinueSession,
 	}
 
 	// Write into the NV entity if authorization is right
@@ -1525,7 +1524,7 @@ func TestNVReadWriteAndLockWithPCR(t *testing.T) {
 		t.Fatalf("StartAuthSession failed: %v", err)
 	}
 	defer func() {
-		if err := tpm2.FlushContext(rw, wrongSessHandle); err != nil {
+		if err := FlushContext(rw, wrongSessHandle); err != nil {
 			t.Errorf("Unable to flush the session %v", err)
 		}
 	}()
@@ -1533,9 +1532,9 @@ func TestNVReadWriteAndLockWithPCR(t *testing.T) {
 	if err := PolicyPCR(rw, wrongSessHandle, nil /*expectedDigest*/, wrongSel); err != nil {
 		t.Errorf("PolicyPCR failed: %v", err)
 	}
-	wrongAuthArea := tpm2.AuthCommand{
+	wrongAuthArea := AuthCommand{
 		Session:    wrongSessHandle,
-		Attributes: tpm2.AttrContinueSession,
+		Attributes: AttrContinueSession,
 	}
 
 	// Write into the NV entity with wrong Policy
