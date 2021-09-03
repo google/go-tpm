@@ -400,7 +400,9 @@ const (
 	TagAttestCertify  tpmutil.Tag = 0x8017
 	TagAttestQuote    tpmutil.Tag = 0x8018
 	TagAttestCreation tpmutil.Tag = 0x801a
+	TagAuthSecret     tpmutil.Tag = 0x8023
 	TagHashCheck      tpmutil.Tag = 0x8024
+	TagAuthSigned     tpmutil.Tag = 0x8025
 )
 
 // StartupType instructs the TPM on how to handle its state during Shutdown or
@@ -470,6 +472,7 @@ const (
 	CmdSequenceUpdate             tpmutil.Command = 0x0000015C
 	CmdSign                       tpmutil.Command = 0x0000015D
 	CmdUnseal                     tpmutil.Command = 0x0000015E
+	CmdPolicySigned               tpmutil.Command = 0x00000160
 	CmdContextLoad                tpmutil.Command = 0x00000161
 	CmdContextSave                tpmutil.Command = 0x00000162
 	CmdECDHKeyGen                 tpmutil.Command = 0x00000163
