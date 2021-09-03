@@ -104,6 +104,8 @@ var (
 			CurveID: CurveNISTP256,
 		},
 	}
+	nullTicketSigned = Ticket{Type: TagAuthSigned, Hierarchy: HandleNull}
+	nullTicketSecret = Ticket{Type: TagAuthSecret, Hierarchy: HandleNull}
 )
 
 func min(a, b int) int {
@@ -1516,7 +1518,20 @@ func TestPolicySecret(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	_, _ = testPolicySecret(t, rw, 0)
+	expirations := []int32{math.MinInt32, math.MinInt32 + 1, -1, 0, 1, math.MaxInt32}
+	for _, expiration := range expirations {
+		t.Run(t.Name()+fmt.Sprint(expiration), func(t *testing.T) {
+			_, tkt := testPolicySecret(t, rw, expiration)
+			// Part 3: policyTicket is produced if the command succeeds and expiration in
+			// the command was non-zero.
+			// If expiration is non-negative, a NULL Ticket is returned.
+			if expiration < 0 && len(tkt.Digest) == 0 {
+				t.Fatalf("Got empty ticket digest, expected ticket with auth expiry")
+			} else if expiration >= 0 && !reflect.DeepEqual(*tkt, nullTicketSecret) {
+				t.Fatalf("Got ticket with non-empty digest, expected NULL ticket")
+			}
+		})
+	}
 }
 
 func testPolicySecret(t *testing.T, rw io.ReadWriter, expiration int32) ([]byte, *Ticket) {
@@ -1537,7 +1552,6 @@ func TestPolicySigned(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	var nullTicket = Ticket{Type: TagAuthSigned, Hierarchy: HandleNull}
 	signers := map[string]Public{
 		"RSA": defaultRsaSignerParams,
 		"ECC": defaultEccSignerParams,
@@ -1548,9 +1562,12 @@ func TestPolicySigned(t *testing.T) {
 		for signerType, params := range signers {
 			t.Run(t.Name()+signerType+fmt.Sprint(expiration), func(t *testing.T) {
 				_, tkt := testPolicySigned(t, rw, expiration, params)
+				// Part 3: policyTicket is produced if the command succeeds and expiration in
+				// the command was non-zero.
+				// If expiration is non-negative, a NULL Ticket is returned.
 				if expiration < 0 && len(tkt.Digest) == 0 {
 					t.Fatalf("Got empty ticket digest, expected ticket with auth expiry")
-				} else if expiration >= 0 && !reflect.DeepEqual(*tkt, nullTicket) {
+				} else if expiration >= 0 && !reflect.DeepEqual(*tkt, nullTicketSigned) {
 					t.Fatalf("Got ticket with non-empty digest, expected NULL ticket")
 				}
 			})
