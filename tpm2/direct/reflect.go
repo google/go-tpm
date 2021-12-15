@@ -747,19 +747,6 @@ func cmdAuths(cmd Command) ([]Session, error) {
 	return result, nil
 }
 
-// numAuthHandles returns the number of authorization sessions needed for the
-// command.
-func numAuthHandles(cmd Command) int {
-	result := 0
-	cmdType := reflect.TypeOf(cmd).Elem()
-	for i := 0; i < cmdType.NumField(); i++ {
-		if hasTag(cmdType.Field(i), "auth") {
-			result++
-		}
-	}
-	return result
-}
-
 // cmdHandles returns the handles area of the command.
 func cmdHandles(cmd Command) []byte {
 	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
@@ -989,8 +976,9 @@ func rspParameters(parms []byte, sess []Session, rspStruct Response) error {
 	parmsFields := taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", true)
 
 	// Use the heuristic of "does interpreting the first 2 bytes of response
-	// as a length make any sense" to attempt encrypted paramter decryption.
-	// If the command supports parameter encryption, the first paramter is
+	// as a length make any sense" to attempt encrypted parameter
+	// decryption.
+	// If the command supports parameter encryption, the first parameter is
 	// a 2B.
 	if len(parms) < 2 {
 		return nil

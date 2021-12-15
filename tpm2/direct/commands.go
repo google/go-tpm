@@ -309,7 +309,7 @@ type PCRReadResponse struct {
 // Response implements the Response interface.
 func (*PCRReadResponse) Response() TPMCC { return TPMCCPCRRead }
 
-// PolicySecret is the input to TPM2_PolicySecret.
+// PolicySecretCommand is the input to TPM2_PolicySecret.
 // See definition in Part 3, Commands, section 23.4
 type PolicySecretCommand struct {
 	// handle for an entity providing the authorization

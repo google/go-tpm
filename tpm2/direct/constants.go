@@ -428,8 +428,6 @@ const (
 	// the maximum allowed difference (unsigned) between the contextID
 	// values of two saved session contexts
 	TPMPTContextGapMax TPMPT = 0x00000114
-	// skipped
-	skippedTPMPT115 TPMPT = 0x00000115
 	// the maximum number of NV Indexes that are allowed to have the
 	// TPM_NT_COUNTER attribute
 	TPMPTNVCountersMax TPMPT = 0x00000116
