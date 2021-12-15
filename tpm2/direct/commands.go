@@ -97,7 +97,7 @@ type StartAuthSessionCommand struct {
 	AuthHash TPMIAlgHash
 }
 
-func (_ *StartAuthSessionCommand) Command() TPMCC { return TPMCCStartAuthSession }
+func (*StartAuthSessionCommand) Command() TPMCC { return TPMCCStartAuthSession }
 
 // StartAuthSessionResponse is the response from TPM2_StartAuthSession.
 type StartAuthSessionResponse struct {
@@ -107,7 +107,7 @@ type StartAuthSessionResponse struct {
 	NonceTPM TPM2BNonce
 }
 
-func (_ *StartAuthSessionResponse) Response() TPMCC { return TPMCCStartAuthSession }
+func (*StartAuthSessionResponse) Response() TPMCC { return TPMCCStartAuthSession }
 
 // CreateCommand is the input to TPM2_Create.
 // See definition in Part 3, Commands, section 12.1
@@ -126,7 +126,7 @@ type CreateCommand struct {
 	CreationPCR TPMLPCRSelection
 }
 
-func (_ *CreateCommand) Command() TPMCC { return TPMCCCreate }
+func (*CreateCommand) Command() TPMCC { return TPMCCCreate }
 
 // CreateResponse is the response from TPM2_Create.
 type CreateResponse struct {
@@ -143,7 +143,7 @@ type CreateResponse struct {
 	CreationTicket TPMTTKCreation
 }
 
-func (_ *CreateResponse) Response() TPMCC { return TPMCCCreate }
+func (*CreateResponse) Response() TPMCC { return TPMCCCreate }
 
 // LoadCommand is the input to TPM2_Load.
 // See definition in Part 3, Commands, section 12.2
@@ -156,7 +156,7 @@ type LoadCommand struct {
 	InPublic TPM2BPublic
 }
 
-func (_ *LoadCommand) Command() TPMCC { return TPMCCLoad }
+func (*LoadCommand) Command() TPMCC { return TPMCCLoad }
 
 // LoadResponse is the response from TPM2_Load.
 type LoadResponse struct {
@@ -166,7 +166,7 @@ type LoadResponse struct {
 	Name TPM2BName
 }
 
-func (_ *LoadResponse) Response() TPMCC { return TPMCCLoad }
+func (*LoadResponse) Response() TPMCC { return TPMCCLoad }
 
 // UnsealCommand is the input to TPM2_Unseal.
 // See definition in Part 3, Commands, section 12.7
@@ -174,14 +174,14 @@ type UnsealCommand struct {
 	ItemHandle AuthHandle `gotpm:"handle,auth"`
 }
 
-func (_ *UnsealCommand) Command() TPMCC { return TPMCCUnseal }
+func (*UnsealCommand) Command() TPMCC { return TPMCCUnseal }
 
 // UnsealResponse is the response from TPM2_Unseal.
 type UnsealResponse struct {
 	OutData TPM2BSensitiveData
 }
 
-func (_ *UnsealResponse) Response() TPMCC { return TPMCCUnseal }
+func (*UnsealResponse) Response() TPMCC { return TPMCCUnseal }
 
 // QuoteCommand is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
@@ -196,7 +196,7 @@ type QuoteCommand struct {
 	PCRSelect TPMLPCRSelection
 }
 
-func (_ *QuoteCommand) Command() TPMCC { return TPMCCQuote }
+func (*QuoteCommand) Command() TPMCC { return TPMCCQuote }
 
 // QuoteResponse is the response from TPM2_Quote.
 type QuoteResponse struct {
@@ -206,7 +206,7 @@ type QuoteResponse struct {
 	Signature TPMTSignature
 }
 
-func (_ *QuoteResponse) Response() TPMCC { return TPMCCQuote }
+func (*QuoteResponse) Response() TPMCC { return TPMCCQuote }
 
 // GetSessionAuditDigestCommand is the input to TPM2_GetSessionAuditDigest.
 // See definition in Part 3, Commands, section 18.5
@@ -223,7 +223,7 @@ type GetSessionAuditDigestCommand struct {
 	InScheme TPMTSigScheme
 }
 
-func (_ *GetSessionAuditDigestCommand) Command() TPMCC { return TPMCCGetSessionAuditDigest }
+func (*GetSessionAuditDigestCommand) Command() TPMCC { return TPMCCGetSessionAuditDigest }
 
 // GetSessionAuditDigestResponse is the response from
 // TPM2_GetSessionAuditDigest.
@@ -234,7 +234,7 @@ type GetSessionAuditDigestResponse struct {
 	Signature TPMTSignature
 }
 
-func (_ *GetSessionAuditDigestResponse) Response() TPMCC { return TPMCCGetSessionAuditDigest }
+func (*GetSessionAuditDigestResponse) Response() TPMCC { return TPMCCGetSessionAuditDigest }
 
 // PCRExtendCommand is the input to TPM2_PCR_Extend.
 // See definition in Part 3, Commands, section 22.2
@@ -245,13 +245,13 @@ type PCRExtendCommand struct {
 	Digests TPMLDigestValues
 }
 
-func (_ *PCRExtendCommand) Command() TPMCC { return TPMCCPCRExtend }
+func (*PCRExtendCommand) Command() TPMCC { return TPMCCPCRExtend }
 
 // PCRExtendResponse is the response from TPM2_PCR_Extend.
 type PCRExtendResponse struct {
 }
 
-func (_ *PCRExtendResponse) Response() TPMCC { return TPMCCPCRExtend }
+func (*PCRExtendResponse) Response() TPMCC { return TPMCCPCRExtend }
 
 // PCREventCommand is the input to TPM2_PCR_Event.
 // See definition in Part 3, Commands, section 22.3
@@ -262,13 +262,13 @@ type PCREventCommand struct {
 	EventData TPM2BEvent
 }
 
-func (_ *PCREventCommand) Command() TPMCC { return TPMCCPCREvent }
+func (*PCREventCommand) Command() TPMCC { return TPMCCPCREvent }
 
 // PCREventResponse is the response from TPM2_PCR_Event.
 type PCREventResponse struct {
 }
 
-func (_ *PCREventResponse) Response() TPMCC { return TPMCCPCREvent }
+func (*PCREventResponse) Response() TPMCC { return TPMCCPCREvent }
 
 // PCRReadCommand is the input to TPM2_PCR_Read.
 // See definition in Part 3, Commands, section 22.4
@@ -277,7 +277,7 @@ type PCRReadCommand struct {
 	PCRSelectionIn TPMLPCRSelection
 }
 
-func (_ *PCRReadCommand) Command() TPMCC { return TPMCCPCRRead }
+func (*PCRReadCommand) Command() TPMCC { return TPMCCPCRRead }
 
 // PCRReadResponse is the response from TPM2_PCR_Read.
 type PCRReadResponse struct {
@@ -289,7 +289,7 @@ type PCRReadResponse struct {
 	PCRValues TPMLDigest
 }
 
-func (_ *PCRReadResponse) Response() TPMCC { return TPMCCPCRRead }
+func (*PCRReadResponse) Response() TPMCC { return TPMCCPCRRead }
 
 // PolicySecret is the input to TPM2_PolicySecret.
 // See definition in Part 3, Commands, section 23.4
@@ -309,7 +309,7 @@ type PolicySecretCommand struct {
 	Expiration int32
 }
 
-func (_ *PolicySecretCommand) Command() TPMCC { return TPMCCPolicySecret }
+func (*PolicySecretCommand) Command() TPMCC { return TPMCCPolicySecret }
 
 // PolicySecretResponse is the response from TPM2_PolicySecret.
 type PolicySecretResponse struct {
@@ -319,7 +319,7 @@ type PolicySecretResponse struct {
 	PolicyTicket TPMTTKAuth
 }
 
-func (_ *PolicySecretResponse) Response() TPMCC { return TPMCCPolicySecret }
+func (*PolicySecretResponse) Response() TPMCC { return TPMCCPolicySecret }
 
 // CreatePrimaryCommand is the input to TPM2_CreatePrimary.
 // See definition in Part 3, Commands, section 24.1
@@ -339,7 +339,7 @@ type CreatePrimaryCommand struct {
 	CreationPCR TPMLPCRSelection
 }
 
-func (_ *CreatePrimaryCommand) Command() TPMCC { return TPMCCCreatePrimary }
+func (*CreatePrimaryCommand) Command() TPMCC { return TPMCCCreatePrimary }
 
 // CreatePrimaryResponse is the response from TPM2_CreatePrimary.
 type CreatePrimaryResponse struct {
@@ -358,7 +358,7 @@ type CreatePrimaryResponse struct {
 	Name TPM2BName
 }
 
-func (_ *CreatePrimaryResponse) Response() TPMCC { return TPMCCCreatePrimary }
+func (*CreatePrimaryResponse) Response() TPMCC { return TPMCCCreatePrimary }
 
 // FlushContextCommand is the input to TPM2_FlushContext.
 // See definition in Part 3, Commands, section 28.4
@@ -367,13 +367,13 @@ type FlushContextCommand struct {
 	FlushHandle TPMIDHContext
 }
 
-func (_ *FlushContextCommand) Command() TPMCC { return TPMCCFlushContext }
+func (*FlushContextCommand) Command() TPMCC { return TPMCCFlushContext }
 
 // FlushContextResponse is the response from TPM2_FlushContext.
 type FlushContextResponse struct {
 }
 
-func (_ *FlushContextResponse) Response() TPMCC { return TPMCCFlushContext }
+func (*FlushContextResponse) Response() TPMCC { return TPMCCFlushContext }
 
 // GetCapabilityCommand is the input to TPM2_GetCapability.
 // See definition in Part 3, Commands, section 30.2
@@ -386,7 +386,7 @@ type GetCapabilityCommand struct {
 	PropertyCount uint32
 }
 
-func (_ *GetCapabilityCommand) Command() TPMCC { return TPMCCGetCapability }
+func (*GetCapabilityCommand) Command() TPMCC { return TPMCCGetCapability }
 
 // GetCapabilityResponse is the response from TPM2_GetCapability.
 type GetCapabilityResponse struct {
@@ -396,4 +396,4 @@ type GetCapabilityResponse struct {
 	CapabilityData TPMSCapabilityData
 }
 
-func (_ *GetCapabilityResponse) Response() TPMCC { return TPMCCGetCapability }
+func (*GetCapabilityResponse) Response() TPMCC { return TPMCCGetCapability }
