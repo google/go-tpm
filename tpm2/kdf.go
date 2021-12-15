@@ -40,7 +40,7 @@ func KDFaHash(h crypto.Hash, key []byte, label string, contextU, contextV []byte
 	return out
 }
 
-// KDFaHash implements TPM 2.0's default key derivation function, as defined in
+// KDFa implements TPM 2.0's default key derivation function, as defined in
 // section 11.4.9.2 of the TPM revision 2 specification part 1.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 // The key & label parameters must not be zero length.
@@ -76,7 +76,7 @@ func KDFeHash(h crypto.Hash, z []byte, use string, partyUInfo, partyVInfo []byte
 	return out
 }
 
-// KDFeHash implements TPM 2.0's ECDH key derivation function, as defined in
+// KDFe implements TPM 2.0's ECDH key derivation function, as defined in
 // section 11.4.9.3 of the TPM revision 2 specification part 1.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 // The z parameter is the x coordinate of one party's private ECC key multiplied
