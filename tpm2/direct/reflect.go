@@ -1,3 +1,4 @@
+// Package direct provides 1:1 mapping to TPM 2.0 APIs.
 package direct
 
 import (

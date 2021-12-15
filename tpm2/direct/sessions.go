@@ -224,8 +224,11 @@ func Salted(handle TPMIDHObject, pub TPMTPublic) AuthOption {
 type parameterEncryptionDirection int
 
 const (
+	// EncryptIn specifies a decrypt session.
 	EncryptIn parameterEncryptionDirection = 1 + iota
+	// EncryptOut specifies an encrypt session.
 	EncryptOut
+	// EncryptInOut specifies a decrypt+encrypt session.
 	EncryptInOut
 )
 

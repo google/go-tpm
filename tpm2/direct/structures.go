@@ -302,14 +302,14 @@ type TPMACC struct {
 	Extensive bool `gotpm:"bit=23"`
 	// SET (1): The context associated with any transient handle in the command will be flushed when this command completes.
 	// CLEAR (0): No context is flushed as a side effect of this command.
-	Flushed bool `gotpm="bit=24"`
+	Flushed bool `gotpm:"bit=24"`
 	// indicates the number of the handles in the handle area for this command
-	CHandles uint8 `gotpm="bit=27:25"`
+	CHandles uint8 `gotpm:"bit=27:25"`
 	// SET (1): indicates the presence of the handle area in the response
-	RHandle bool `gotpm="bit=28"`
+	RHandle bool `gotpm:"bit=28"`
 	// SET (1): indicates that the command is vendor-specific
 	// CLEAR (0): indicates that the command is defined in a version of this specification
-	V bool `gotpm="bit=29"`
+	V bool `gotpm:"bit=29"`
 	// allocated for software; shall be zero
 	Reserved2 uint8 `gotpm:"bit=31:30"`
 }
