@@ -97,6 +97,7 @@ type StartAuthSessionCommand struct {
 	AuthHash TPMIAlgHash
 }
 
+// Command implements the Command interface.
 func (*StartAuthSessionCommand) Command() TPMCC { return TPMCCStartAuthSession }
 
 // StartAuthSessionResponse is the response from TPM2_StartAuthSession.
@@ -107,6 +108,7 @@ type StartAuthSessionResponse struct {
 	NonceTPM TPM2BNonce
 }
 
+// Response implements the Response interface.
 func (*StartAuthSessionResponse) Response() TPMCC { return TPMCCStartAuthSession }
 
 // CreateCommand is the input to TPM2_Create.
@@ -126,6 +128,7 @@ type CreateCommand struct {
 	CreationPCR TPMLPCRSelection
 }
 
+// Command implements the Command interface.
 func (*CreateCommand) Command() TPMCC { return TPMCCCreate }
 
 // CreateResponse is the response from TPM2_Create.
@@ -143,6 +146,7 @@ type CreateResponse struct {
 	CreationTicket TPMTTKCreation
 }
 
+// Response implements the Response interface.
 func (*CreateResponse) Response() TPMCC { return TPMCCCreate }
 
 // LoadCommand is the input to TPM2_Load.
@@ -156,6 +160,7 @@ type LoadCommand struct {
 	InPublic TPM2BPublic
 }
 
+// Command implements the Command interface.
 func (*LoadCommand) Command() TPMCC { return TPMCCLoad }
 
 // LoadResponse is the response from TPM2_Load.
@@ -166,6 +171,7 @@ type LoadResponse struct {
 	Name TPM2BName
 }
 
+// Response implements the Response interface.
 func (*LoadResponse) Response() TPMCC { return TPMCCLoad }
 
 // UnsealCommand is the input to TPM2_Unseal.
@@ -174,6 +180,7 @@ type UnsealCommand struct {
 	ItemHandle AuthHandle `gotpm:"handle,auth"`
 }
 
+// Command implements the Command interface.
 func (*UnsealCommand) Command() TPMCC { return TPMCCUnseal }
 
 // UnsealResponse is the response from TPM2_Unseal.
@@ -181,6 +188,7 @@ type UnsealResponse struct {
 	OutData TPM2BSensitiveData
 }
 
+// Response implements the Response interface.
 func (*UnsealResponse) Response() TPMCC { return TPMCCUnseal }
 
 // QuoteCommand is the input to TPM2_Quote.
@@ -196,6 +204,7 @@ type QuoteCommand struct {
 	PCRSelect TPMLPCRSelection
 }
 
+// Command implements the Command interface.
 func (*QuoteCommand) Command() TPMCC { return TPMCCQuote }
 
 // QuoteResponse is the response from TPM2_Quote.
@@ -206,6 +215,7 @@ type QuoteResponse struct {
 	Signature TPMTSignature
 }
 
+// Response implements the Response interface.
 func (*QuoteResponse) Response() TPMCC { return TPMCCQuote }
 
 // GetSessionAuditDigestCommand is the input to TPM2_GetSessionAuditDigest.
@@ -223,6 +233,7 @@ type GetSessionAuditDigestCommand struct {
 	InScheme TPMTSigScheme
 }
 
+// Command implements the Command interface.
 func (*GetSessionAuditDigestCommand) Command() TPMCC { return TPMCCGetSessionAuditDigest }
 
 // GetSessionAuditDigestResponse is the response from
@@ -234,6 +245,7 @@ type GetSessionAuditDigestResponse struct {
 	Signature TPMTSignature
 }
 
+// Response implements the Response interface.
 func (*GetSessionAuditDigestResponse) Response() TPMCC { return TPMCCGetSessionAuditDigest }
 
 // PCRExtendCommand is the input to TPM2_PCR_Extend.
@@ -245,12 +257,14 @@ type PCRExtendCommand struct {
 	Digests TPMLDigestValues
 }
 
+// Command implements the Command interface.
 func (*PCRExtendCommand) Command() TPMCC { return TPMCCPCRExtend }
 
 // PCRExtendResponse is the response from TPM2_PCR_Extend.
 type PCRExtendResponse struct {
 }
 
+// Response implements the Response interface.
 func (*PCRExtendResponse) Response() TPMCC { return TPMCCPCRExtend }
 
 // PCREventCommand is the input to TPM2_PCR_Event.
@@ -262,12 +276,14 @@ type PCREventCommand struct {
 	EventData TPM2BEvent
 }
 
+// Command implements the Command interface.
 func (*PCREventCommand) Command() TPMCC { return TPMCCPCREvent }
 
 // PCREventResponse is the response from TPM2_PCR_Event.
 type PCREventResponse struct {
 }
 
+// Response implements the Response interface.
 func (*PCREventResponse) Response() TPMCC { return TPMCCPCREvent }
 
 // PCRReadCommand is the input to TPM2_PCR_Read.
@@ -277,6 +293,7 @@ type PCRReadCommand struct {
 	PCRSelectionIn TPMLPCRSelection
 }
 
+// Command implements the Command interface.
 func (*PCRReadCommand) Command() TPMCC { return TPMCCPCRRead }
 
 // PCRReadResponse is the response from TPM2_PCR_Read.
@@ -289,6 +306,7 @@ type PCRReadResponse struct {
 	PCRValues TPMLDigest
 }
 
+// Response implements the Response interface.
 func (*PCRReadResponse) Response() TPMCC { return TPMCCPCRRead }
 
 // PolicySecret is the input to TPM2_PolicySecret.
@@ -309,6 +327,7 @@ type PolicySecretCommand struct {
 	Expiration int32
 }
 
+// Command implements the Command interface.
 func (*PolicySecretCommand) Command() TPMCC { return TPMCCPolicySecret }
 
 // PolicySecretResponse is the response from TPM2_PolicySecret.
@@ -319,6 +338,7 @@ type PolicySecretResponse struct {
 	PolicyTicket TPMTTKAuth
 }
 
+// Response implements the Response interface.
 func (*PolicySecretResponse) Response() TPMCC { return TPMCCPolicySecret }
 
 // CreatePrimaryCommand is the input to TPM2_CreatePrimary.
@@ -339,6 +359,7 @@ type CreatePrimaryCommand struct {
 	CreationPCR TPMLPCRSelection
 }
 
+// Command implements the Command interface.
 func (*CreatePrimaryCommand) Command() TPMCC { return TPMCCCreatePrimary }
 
 // CreatePrimaryResponse is the response from TPM2_CreatePrimary.
@@ -358,6 +379,7 @@ type CreatePrimaryResponse struct {
 	Name TPM2BName
 }
 
+// Response implements the Response interface.
 func (*CreatePrimaryResponse) Response() TPMCC { return TPMCCCreatePrimary }
 
 // FlushContextCommand is the input to TPM2_FlushContext.
@@ -367,12 +389,14 @@ type FlushContextCommand struct {
 	FlushHandle TPMIDHContext
 }
 
+// Command implements the Command interface.
 func (*FlushContextCommand) Command() TPMCC { return TPMCCFlushContext }
 
 // FlushContextResponse is the response from TPM2_FlushContext.
 type FlushContextResponse struct {
 }
 
+// Response implements the Response interface.
 func (*FlushContextResponse) Response() TPMCC { return TPMCCFlushContext }
 
 // GetCapabilityCommand is the input to TPM2_GetCapability.
@@ -386,6 +410,7 @@ type GetCapabilityCommand struct {
 	PropertyCount uint32
 }
 
+// Command implements the Command interface.
 func (*GetCapabilityCommand) Command() TPMCC { return TPMCCGetCapability }
 
 // GetCapabilityResponse is the response from TPM2_GetCapability.
@@ -396,4 +421,5 @@ type GetCapabilityResponse struct {
 	CapabilityData TPMSCapabilityData
 }
 
+// Response implements the Response interface.
 func (*GetCapabilityResponse) Response() TPMCC { return TPMCCGetCapability }

@@ -402,9 +402,9 @@ type TPMUHA struct {
 	SHA256   *[32]byte `gotpm:"selector=0x000B"` // TPM_ALG_SHA256
 	SHA384   *[48]byte `gotpm:"selector=0x000C"` // TPM_ALG_SHA384
 	SHA512   *[64]byte `gotpm:"selector=0x000D"` // TPM_ALG_SHA512
-	SHA3_256 *[32]byte `gotpm:"selector=0x0027"` // TPM_ALG_SHA3_256
-	SHA3_384 *[48]byte `gotpm:"selector=0x0028"` // TPM_ALG_SHA3_384
-	SHA3_512 *[64]byte `gotpm:"selector=0x0029"` // TPM_ALG_SHA3_512
+	SHA3x256 *[32]byte `gotpm:"selector=0x0027"` // TPM_ALG_SHA3_256
+	SHA3x384 *[48]byte `gotpm:"selector=0x0028"` // TPM_ALG_SHA3_384
+	SHA3x512 *[64]byte `gotpm:"selector=0x0029"` // TPM_ALG_SHA3_512
 }
 
 // TPMTHA represents a TPMT_HA.

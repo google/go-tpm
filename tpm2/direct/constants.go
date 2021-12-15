@@ -3,6 +3,8 @@ package direct
 import (
 	"crypto"
 	"crypto/elliptic"
+
+	// Register the relevant hash implementations.
 	_ "crypto/sha1"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
