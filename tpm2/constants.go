@@ -454,6 +454,7 @@ const (
 	CmdDictionaryAttackLockReset  tpmutil.Command = 0x00000139
 	CmdDictionaryAttackParameters tpmutil.Command = 0x0000013A
 	CmdPCREvent                   tpmutil.Command = 0x0000013C
+	CmdPCRReset                   tpmutil.Command = 0x0000013D
 	CmdSequenceComplete           tpmutil.Command = 0x0000013E
 	CmdStartup                    tpmutil.Command = 0x00000144
 	CmdShutdown                   tpmutil.Command = 0x00000145
