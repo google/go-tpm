@@ -1102,6 +1102,39 @@ func TestReadPCR(t *testing.T) {
 	}
 }
 
+func TestPCRReset(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+	allZeroBytes := make([]byte, 32)
+	debugPCR := 16
+
+	var fakeHashSum [32]byte
+	err := PCRExtend(rw, tpmutil.Handle(debugPCR), AlgSHA256, fakeHashSum[:], "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pcrVal, err := ReadPCR(rw, debugPCR, AlgSHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(allZeroBytes, pcrVal) {
+		t.Fatal("PCR shouldn't be all zeros after PCRExtend")
+	}
+
+	err = PCRReset(rw, tpmutil.Handle(debugPCR))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pcrVal, err = ReadPCR(rw, debugPCR, AlgSHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(allZeroBytes, pcrVal) {
+		t.Fatal("PCR should be all zeros after PCRReset")
+	}
+}
+
 func makeAttestationData() AttestationData {
 	signer := tpmutil.Handle(100)
 	return AttestationData{
