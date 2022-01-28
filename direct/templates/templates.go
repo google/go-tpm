@@ -1,14 +1,14 @@
-package direct
+package templates
 
 var (
 	// RSASRKTemplate contains the TCG reference RSA-2048 SRK template.
-	// https://trustedcomputinggroup.org/wp-content/uploads/TCG-TPM-v2.0-Provisioning-Guidance-Published-v1r1.pdf
-	RSASRKTemplate = TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				FixedTPM:             true,
+	// https://trustedcomputinggroup.org/wp-content/uploads/TCG-tpm.-v2.0-Provisioning-Guidance-Published-v1r1.pdf
+	RSASRKTemplate = tpm2b.Public{
+		PublicArea: tpmt.Public{
+			Type:    tpm.AlgRSA,
+			NameAlg: tpm.AlgSHA256,
+			ObjectAttributes: tpma.Object{
+				Fixedtpm.:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,
@@ -20,34 +20,34 @@ var (
 				Decrypt:              true,
 				SignEncrypt:          false,
 			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Symmetric: TPMTSymDefObject{
-						Algorithm: TPMAlgAES,
-						KeyBits: TPMUSymKeyBits{
-							AES: NewTPMKeyBits(128),
+			Parameters: tpmu.PublicParms{
+				RSADetail: &tpms.RSAParms{
+					Symmetric: tpmt.SymDefObject{
+						Algorithm: tpm.AlgAES,
+						KeyBits: tpmu.SymKeyBits{
+							AES: helpers.NewKeyBits(128),
 						},
-						Mode: TPMUSymMode{
-							AES: NewTPMAlgID(TPMAlgCFB),
+						Mode: tpmu.SymMode{
+							AES: helpers.NewAlgID(tpm.AlgCFB),
 						},
 					},
 					KeyBits: 2048,
 				},
 			},
-			Unique: TPMUPublicID{
-				RSA: &TPM2BPublicKeyRSA{
+			Unique: tpmu.PublicID{
+				RSA: &tpm2b.PublicKeyRSA{
 					Buffer: make([]byte, 256),
 				},
 			},
 		},
 	}
 	// RSAEKTemplate contains the TCG reference RSA-2048 EK template.
-	RSAEKTemplate = TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				FixedTPM:             true,
+	RSAEKTemplate = tpm2b.Public{
+		PublicArea: tpmt.Public{
+			Type:    tpm.AlgRSA,
+			NameAlg: tpm.AlgSHA256,
+			ObjectAttributes: tpma.Object{
+				Fixedtpm.:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,
@@ -59,44 +59,44 @@ var (
 				Decrypt:              true,
 				SignEncrypt:          false,
 			},
-			AuthPolicy: TPM2BDigest{
+			AuthPolicy: tpm2b.Digest{
 				Buffer: []byte{
-					// TPM2_PolicySecret(RH_ENDORSEMENT)
+					// tpm.2_PolicySecret(RH_ENDORSEMENT)
 					0x83, 0x71, 0x97, 0x67, 0x44, 0x84, 0xB3, 0xF8,
 					0x1A, 0x90, 0xCC, 0x8D, 0x46, 0xA5, 0xD7, 0x24,
 					0xFD, 0x52, 0xD7, 0x6E, 0x06, 0x52, 0x0B, 0x64,
 					0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 				},
 			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Symmetric: TPMTSymDefObject{
-						Algorithm: TPMAlgAES,
-						KeyBits: TPMUSymKeyBits{
-							AES: NewTPMKeyBits(128),
+			Parameters: tpmu.PublicParms{
+				RSADetail: &tpms.RSAParms{
+					Symmetric: tpmt.SymDefObject{
+						Algorithm: tpm.AlgAES,
+						KeyBits: tpmu.SymKeyBits{
+							AES: helpers.NewKeyBits(128),
 						},
-						Mode: TPMUSymMode{
-							AES: NewTPMAlgID(TPMAlgCFB),
+						Mode: tpmu.SymMode{
+							AES: helpers.NewAlgID(tpm.AlgCFB),
 						},
 					},
 					KeyBits: 2048,
 				},
 			},
-			Unique: TPMUPublicID{
-				RSA: &TPM2BPublicKeyRSA{
+			Unique: tpmu.PublicID{
+				RSA: &tpm2b.PublicKeyRSA{
 					Buffer: make([]byte, 256),
 				},
 			},
 		},
 	}
 	// ECCSRKTemplate contains the TCG reference ECC-P256 SRK template.
-	// https://trustedcomputinggroup.org/wp-content/uploads/TCG-TPM-v2.0-Provisioning-Guidance-Published-v1r1.pdf
-	ECCSRKTemplate = TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgECC,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				FixedTPM:             true,
+	// https://trustedcomputinggroup.org/wp-content/uploads/TCG-tpm.-v2.0-Provisioning-Guidance-Published-v1r1.pdf
+	ECCSRKTemplate = tpm2b.Public{
+		PublicArea: tpmt.Public{
+			Type:    tpm.AlgECC,
+			NameAlg: tpm.AlgSHA256,
+			ObjectAttributes: tpma.Object{
+				Fixedtpm.:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,
@@ -108,26 +108,26 @@ var (
 				Decrypt:              true,
 				SignEncrypt:          false,
 			},
-			Parameters: TPMUPublicParms{
-				ECCDetail: &TPMSECCParms{
-					Symmetric: TPMTSymDefObject{
-						Algorithm: TPMAlgAES,
-						KeyBits: TPMUSymKeyBits{
-							AES: NewTPMKeyBits(128),
+			Parameters: tpmu.PublicParms{
+				ECCDetail: &tpms.ECCParms{
+					Symmetric: tpmt.SymDefObject{
+						Algorithm: tpm.AlgAES,
+						KeyBits: tpmu.SymKeyBits{
+							AES: helpers.NewKeyBits(128),
 						},
-						Mode: TPMUSymMode{
-							AES: NewTPMAlgID(TPMAlgCFB),
+						Mode: tpmu.SymMode{
+							AES: helpers.NewAlgID(tpm.AlgCFB),
 						},
 					},
-					CurveID: TPMECCNistP256,
+					CurveID: tpm.ECCNistP256,
 				},
 			},
-			Unique: TPMUPublicID{
-				ECC: &TPMSECCPoint{
-					X: TPM2BECCParameter{
+			Unique: tpmu.PublicID{
+				ECC: &tpms.ECCPoint{
+					X: tpm2b.ECCParameter{
 						Buffer: make([]byte, 32),
 					},
-					Y: TPM2BECCParameter{
+					Y: tpm2b.ECCParameter{
 						Buffer: make([]byte, 32),
 					},
 				},
@@ -135,12 +135,12 @@ var (
 		},
 	}
 	// ECCEKTemplate contains the TCG reference ECC-P256 EK template.
-	ECCEKTemplate = TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgECC,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				FixedTPM:             true,
+	ECCEKTemplate = tpm2b.Public{
+		PublicArea: tpmt.Public{
+			Type:    tpm.AlgECC,
+			NameAlg: tpm.AlgSHA256,
+			ObjectAttributes: tpm.AObject{
+				Fixedtpm.:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,
@@ -152,35 +152,35 @@ var (
 				Decrypt:              true,
 				SignEncrypt:          false,
 			},
-			AuthPolicy: TPM2BDigest{
+			AuthPolicy: tpm2b.Digest{
 				Buffer: []byte{
-					// TPM2_PolicySecret(RH_ENDORSEMENT)
+					// tpm.2_PolicySecret(RH_ENDORSEMENT)
 					0x83, 0x71, 0x97, 0x67, 0x44, 0x84, 0xB3, 0xF8,
 					0x1A, 0x90, 0xCC, 0x8D, 0x46, 0xA5, 0xD7, 0x24,
 					0xFD, 0x52, 0xD7, 0x6E, 0x06, 0x52, 0x0B, 0x64,
 					0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 				},
 			},
-			Parameters: TPMUPublicParms{
-				ECCDetail: &TPMSECCParms{
-					Symmetric: TPMTSymDefObject{
-						Algorithm: TPMAlgAES,
-						KeyBits: TPMUSymKeyBits{
-							AES: NewTPMKeyBits(128),
+			Parameters: tpmu.PublicParms{
+				ECCDetail: &tpms.ECCParms{
+					Symmetric: tpmt.SymDefObject{
+						Algorithm: tpm.AlgAES,
+						KeyBits: tpmu.SymKeyBits{
+							AES: helpers.NewKeyBits(128),
 						},
-						Mode: TPMUSymMode{
-							AES: NewTPMAlgID(TPMAlgCFB),
+						Mode: tpmu.SymMode{
+							AES: helpers.NewAlgID(tpm.AlgCFB),
 						},
 					},
-					CurveID: TPMECCNistP256,
+					CurveID: tpm.ECCNistP256,
 				},
 			},
-			Unique: TPMUPublicID{
-				ECC: &TPMSECCPoint{
-					X: TPM2BECCParameter{
+			Unique: tpmu.PublicID{
+				ECC: &tpms.ECCPoint{
+					X: tpm2b.ECCParameter{
 						Buffer: make([]byte, 32),
 					},
-					Y: TPM2BECCParameter{
+					Y: tpm2b.ECCParameter{
 						Buffer: make([]byte, 32),
 					},
 				},

@@ -1,4 +1,5 @@
-package direct
+// package tpm2 contains TPM 2.0 commands
+package tpm2
 
 import "encoding/binary"
 
