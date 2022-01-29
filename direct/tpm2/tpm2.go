@@ -1,18 +1,28 @@
-package direct
+// package tpm2 contains TPM 2.0 commands
+package tpm2
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpmi"
+	"github.com/google/go-tpm/direct/structures/tpml"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+)
 
 // AuthHandle is a convenience type to wrap an authorized handle.
 type AuthHandle struct {
 	// The handle that is authorized.
 	// If zero, treated as TPM_RH_NULL.
-	Handle TPMIDHObject `gotpm:"nullable"`
+	Handle tpmi.DHObject `gotpm:"nullable"`
 	// The Name of the object expected at the given handle value.
 	// If Name contains a nil buffer, the effective Name will be
 	// the big-endian UINT32 representation of Handle, as in
 	// Part 1, section 16 "Names" for PCRs, sessions, and
 	// permanent values.
-	Name TPM2BName `gotpm:"skip"`
+	Name tpm2b.Name `gotpm:"skip"`
 	// The session used to authorize the object.
 	// If the 'UserWithAuth' attribute is not set on the object,
 	// must be a Policy session.
@@ -27,22 +37,22 @@ type AuthHandle struct {
 
 // effectiveHandle returns the effective handle value.
 // Returns TPM_RH_NULL if unset.
-func (a *AuthHandle) effectiveHandle() TPMIDHObject {
+func (a *AuthHandle) effectiveHandle() tpmi.DHObject {
 	if a.Handle != 0 {
 		return a.Handle
 	}
-	return TPMRHNull
+	return tpm.RHNull
 }
 
 // effectiveName returns the effective Name.
 // Returns the handle value as a name if unset.
-func (a *AuthHandle) effectiveName() TPM2BName {
+func (a *AuthHandle) effectiveName() tpm2b.Name {
 	if len(a.Name.Buffer) > 0 {
 		return a.Name
 	}
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, uint32(a.effectiveHandle()))
-	return TPM2BName{buf}
+	return tpm2b.Name{Buffer: buf}
 }
 
 // effectiveAuth returns the effective auth session.
@@ -56,9 +66,11 @@ func (a *AuthHandle) effectiveAuth() Session {
 
 // Command is a placeholder interface for TPM command structures so that they
 // can be easily distinguished from other types of structures.
+// TODO: once go-tpm requires Go 1.18, parameterize this type for compile-time
+// command/response matching.
 type Command interface {
 	// The TPM command code associated with this command.
-	Command() TPMCC
+	Command() tpm.CC
 }
 
 // Response is a placeholder interface for TPM response structures so that they
@@ -68,342 +80,450 @@ type Command interface {
 // See https://go.dev/blog/laws-of-reflection
 type Response interface {
 	// The TPM command code associated with this response.
-	Response() TPMCC
+	Response() tpm.CC
 }
 
-// StartAuthSessionCommand is the input to TPM2_StartAuthSession.
+// StartAuthSession is the input to TPM2_StartAuthSession.
 // See definition in Part 3, Commands, section 11.1
-type StartAuthSessionCommand struct {
+type StartAuthSession struct {
 	// handle of a loaded decrypt key used to encrypt salt
 	// may be TPM_RH_NULL
-	TPMKey TPMIDHObject `gotpm:"handle,nullable"`
+	TPMKey tpmi.DHObject `gotpm:"handle,nullable"`
 	// entity providing the authValue
 	// may be TPM_RH_NULL
-	Bind TPMIDHEntity `gotpm:"handle,nullable"`
+	Bind tpmi.DHEntity `gotpm:"handle,nullable"`
 	// initial nonceCaller, sets nonceTPM size for the session
 	// shall be at least 16 octets
-	NonceCaller TPM2BNonce
+	NonceCaller tpm2b.Nonce
 	// value encrypted according to the type of tpmKey
 	// If tpmKey is TPM_RH_NULL, this shall be the Empty Buffer.
-	EncryptedSalt TPM2BEncryptedSecret
+	EncryptedSalt tpm2b.EncryptedSecret
 	// indicates the type of the session; simple HMAC or policy (including
 	// a trial policy)
-	SessionType TPMSE
+	SessionType tpm.SE
 	// the algorithm and key size for parameter encryption
-	// may select TPM_ALG_NULL
-	Symmetric TPMTSymDef
+	// may select *TPM_ALG_NULL
+	Symmetric tpmt.SymDef
 	// hash algorithm to use for the session
-	// Shall be a hash algorithm supported by the TPM and not TPM_ALG_NULL
-	AuthHash TPMIAlgHash
+	// Shall be a hash algorithm supported by the TPM and not *TPM_ALG_NULL
+	AuthHash tpmi.AlgHash
 }
 
 // Command implements the Command interface.
-func (*StartAuthSessionCommand) Command() TPMCC { return TPMCCStartAuthSession }
+func (*StartAuthSession) Command() tpm.CC { return tpm.CCStartAuthSession }
+
+// Execute executes the command and returns the response.
+func (cmd *StartAuthSession) Execute(t *TPM, s ...Session) (*StartAuthSessionResponse, error) {
+	var rsp StartAuthSessionResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // StartAuthSessionResponse is the response from TPM2_StartAuthSession.
 type StartAuthSessionResponse struct {
 	// handle for the newly created session
-	SessionHandle TPMISHAuthSession `gotpm:"handle"`
+	SessionHandle tpmi.SHAuthSession `gotpm:"handle"`
 	// the initial nonce from the TPM, used in the computation of the sessionKey
-	NonceTPM TPM2BNonce
+	NonceTPM tpm2b.Nonce
 }
 
 // Response implements the Response interface.
-func (*StartAuthSessionResponse) Response() TPMCC { return TPMCCStartAuthSession }
+func (*StartAuthSessionResponse) Response() tpm.CC { return tpm.CCStartAuthSession }
 
-// CreateCommand is the input to TPM2_Create.
+// Create is the input to TPM2_Create.
 // See definition in Part 3, Commands, section 12.1
-type CreateCommand struct {
+type Create struct {
 	// handle of parent for new object
 	ParentHandle AuthHandle `gotpm:"handle,auth"`
 	// the sensitive data
-	InSensitive TPM2BSensitiveCreate
+	InSensitive tpm2b.SensitiveCreate
 	// the public template
-	InPublic TPM2BPublic
+	InPublic tpm2b.Public
 	// data that will be included in the creation data for this
 	// object to provide permanent, verifiable linkage between this
 	// object and some object owner data
-	OutsideInfo TPM2BData
+	OutsideInfo tpm2b.Data
 	// PCR that will be used in creation data
-	CreationPCR TPMLPCRSelection
+	CreationPCR tpml.PCRSelection
 }
 
 // Command implements the Command interface.
-func (*CreateCommand) Command() TPMCC { return TPMCCCreate }
+func (*Create) Command() tpm.CC { return tpm.CCCreate }
+
+// Execute executes the command and returns the response.
+func (cmd *Create) Execute(t *TPM, s ...Session) (*CreateResponse, error) {
+	var rsp CreateResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // CreateResponse is the response from TPM2_Create.
 type CreateResponse struct {
 	// the private portion of the object
-	OutPrivate TPM2BPrivate
+	OutPrivate tpm2b.Private
 	// the public portion of the created object
-	OutPublic TPM2BPublic
-	// contains a TPMS_CREATION_DATA
-	CreationData TPM2BCreationData
+	OutPublic tpm2b.Public
+	// contains a tpms._CREATION_DATA
+	CreationData tpm2b.CreationData
 	// digest of creationData using nameAlg of outPublic
-	CreationHash TPM2BDigest
+	CreationHash tpm2b.Digest
 	// ticket used by TPM2_CertifyCreation() to validate that the
 	// creation data was produced by the TPM
-	CreationTicket TPMTTKCreation
+	CreationTicket tpmt.TKCreation
 }
 
 // Response implements the Response interface.
-func (*CreateResponse) Response() TPMCC { return TPMCCCreate }
+func (*CreateResponse) Response() tpm.CC { return tpm.CCCreate }
 
-// LoadCommand is the input to TPM2_Load.
+// Load is the input to TPM2_Load.
 // See definition in Part 3, Commands, section 12.2
-type LoadCommand struct {
+type Load struct {
 	// handle of parent for new object
 	ParentHandle AuthHandle `gotpm:"handle,auth"`
 	// the private portion of the object
-	InPrivate TPM2BPrivate
+	InPrivate tpm2b.Private
 	// the public portion of the object
-	InPublic TPM2BPublic
+	InPublic tpm2b.Public
 }
 
 // Command implements the Command interface.
-func (*LoadCommand) Command() TPMCC { return TPMCCLoad }
+func (*Load) Command() tpm.CC { return tpm.CCLoad }
+
+// Execute executes the command and returns the response.
+func (cmd *Load) Execute(t *TPM, s ...Session) (*LoadResponse, error) {
+	var rsp LoadResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // LoadResponse is the response from TPM2_Load.
 type LoadResponse struct {
 	// handle of type TPM_HT_TRANSIENT for loaded object
-	ObjectHandle TPMHandle `gotpm:"handle"`
+	ObjectHandle tpm.Handle `gotpm:"handle"`
 	// Name of the loaded object
-	Name TPM2BName
+	Name tpm2b.Name
 }
 
 // Response implements the Response interface.
-func (*LoadResponse) Response() TPMCC { return TPMCCLoad }
+func (*LoadResponse) Response() tpm.CC { return tpm.CCLoad }
 
-// UnsealCommand is the input to TPM2_Unseal.
+// Unseal is the input to TPM2_Unseal.
 // See definition in Part 3, Commands, section 12.7
-type UnsealCommand struct {
+type Unseal struct {
 	ItemHandle AuthHandle `gotpm:"handle,auth"`
 }
 
 // Command implements the Command interface.
-func (*UnsealCommand) Command() TPMCC { return TPMCCUnseal }
+func (*Unseal) Command() tpm.CC { return tpm.CCUnseal }
+
+// Execute executes the command and returns the response.
+func (cmd *Unseal) Execute(t *TPM, s ...Session) (*UnsealResponse, error) {
+	var rsp UnsealResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // UnsealResponse is the response from TPM2_Unseal.
 type UnsealResponse struct {
-	OutData TPM2BSensitiveData
+	OutData tpm2b.SensitiveData
 }
 
 // Response implements the Response interface.
-func (*UnsealResponse) Response() TPMCC { return TPMCCUnseal }
+func (*UnsealResponse) Response() tpm.CC { return tpm.CCUnseal }
 
-// QuoteCommand is the input to TPM2_Quote.
+// Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
-type QuoteCommand struct {
+type Quote struct {
 	// handle of key that will perform signature
 	SignHandle AuthHandle `gotpm:"handle,auth"`
 	// data supplied by the caller
-	QualifyingData TPM2BData
+	QualifyingData tpm2b.Data
 	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
-	InScheme TPMTSigScheme
+	InScheme tpmt.SigScheme
 	// PCR set to quote
-	PCRSelect TPMLPCRSelection
+	PCRSelect tpml.PCRSelection
 }
 
 // Command implements the Command interface.
-func (*QuoteCommand) Command() TPMCC { return TPMCCQuote }
+func (*Quote) Command() tpm.CC { return tpm.CCQuote }
+
+// Execute executes the command and returns the response.
+func (cmd *Quote) Execute(t *TPM, s ...Session) (*QuoteResponse, error) {
+	var rsp QuoteResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // QuoteResponse is the response from TPM2_Quote.
 type QuoteResponse struct {
 	// the quoted information
-	Quoted TPM2BAttest
+	Quoted tpm2b.Attest
 	// the signature over quoted
-	Signature TPMTSignature
+	Signature tpmt.Signature
 }
 
 // Response implements the Response interface.
-func (*QuoteResponse) Response() TPMCC { return TPMCCQuote }
+func (*QuoteResponse) Response() tpm.CC { return tpm.CCQuote }
 
-// GetSessionAuditDigestCommand is the input to TPM2_GetSessionAuditDigest.
+// GetSessionAuditDigest is the input to TPM2_GetSessionAuditDigest.
 // See definition in Part 3, Commands, section 18.5
-type GetSessionAuditDigestCommand struct {
+type GetSessionAuditDigest struct {
 	// handle of the privacy administrator (TPM_RH_ENDORSEMENT)
 	PrivacyAdminHandle AuthHandle `gotpm:"handle,auth"`
 	// handle of the signing key
 	SignHandle AuthHandle `gotpm:"handle,auth"`
 	// handle of the audit session
-	SessionHandle TPMISHHMAC `gotpm:"handle"`
+	SessionHandle tpmi.SHHMAC `gotpm:"handle"`
 	// user-provided qualifying data – may be zero-length
-	QualifyingData TPM2BData
+	QualifyingData tpm2b.Data
 	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
-	InScheme TPMTSigScheme
+	InScheme tpmt.SigScheme
 }
 
 // Command implements the Command interface.
-func (*GetSessionAuditDigestCommand) Command() TPMCC { return TPMCCGetSessionAuditDigest }
+func (*GetSessionAuditDigest) Command() tpm.CC { return tpm.CCGetSessionAuditDigest }
+
+// Execute executes the command and returns the response.
+func (cmd *GetSessionAuditDigest) Execute(t *TPM, s ...Session) (*GetSessionAuditDigestResponse, error) {
+	var rsp GetSessionAuditDigestResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // GetSessionAuditDigestResponse is the response from
 // TPM2_GetSessionAuditDigest.
 type GetSessionAuditDigestResponse struct {
 	// the audit information that was signed
-	AuditInfo TPM2BAttest
+	AuditInfo tpm2b.Attest
 	// the signature over auditInfo
-	Signature TPMTSignature
+	Signature tpmt.Signature
 }
 
 // Response implements the Response interface.
-func (*GetSessionAuditDigestResponse) Response() TPMCC { return TPMCCGetSessionAuditDigest }
+func (*GetSessionAuditDigestResponse) Response() tpm.CC { return tpm.CCGetSessionAuditDigest }
 
-// PCRExtendCommand is the input to TPM2_PCR_Extend.
+// PCRExtend is the input to TPM2_PCR_Extend.
 // See definition in Part 3, Commands, section 22.2
-type PCRExtendCommand struct {
+type PCRExtend struct {
 	// handle of the PCR
 	PCRHandle AuthHandle `gotpm:"handle,auth"`
 	// list of tagged digest values to be extended
-	Digests TPMLDigestValues
+	Digests tpml.DigestValues
 }
 
 // Command implements the Command interface.
-func (*PCRExtendCommand) Command() TPMCC { return TPMCCPCRExtend }
+func (*PCRExtend) Command() tpm.CC { return tpm.CCPCRExtend }
+
+// Execute executes the command and returns the response.
+func (cmd *PCRExtend) Execute(t *TPM, s ...Session) (*PCRExtendResponse, error) {
+	var rsp PCRExtendResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // PCRExtendResponse is the response from TPM2_PCR_Extend.
 type PCRExtendResponse struct {
 }
 
 // Response implements the Response interface.
-func (*PCRExtendResponse) Response() TPMCC { return TPMCCPCRExtend }
+func (*PCRExtendResponse) Response() tpm.CC { return tpm.CCPCRExtend }
 
-// PCREventCommand is the input to TPM2_PCR_Event.
+// PCREvent is the input to TPM2_PCR_Event.
 // See definition in Part 3, Commands, section 22.3
-type PCREventCommand struct {
+type PCREvent struct {
 	// Handle of the PCR
 	PCRHandle AuthHandle `gotpm:"handle,auth"`
 	// Event data in sized buffer
-	EventData TPM2BEvent
+	EventData tpm2b.Event
 }
 
 // Command implements the Command interface.
-func (*PCREventCommand) Command() TPMCC { return TPMCCPCREvent }
+func (*PCREvent) Command() tpm.CC { return tpm.CCPCREvent }
+
+// Execute executes the command and returns the response.
+func (cmd *PCREvent) Execute(t *TPM, s ...Session) (*PCREventResponse, error) {
+	var rsp PCREventResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // PCREventResponse is the response from TPM2_PCR_Event.
 type PCREventResponse struct {
 }
 
 // Response implements the Response interface.
-func (*PCREventResponse) Response() TPMCC { return TPMCCPCREvent }
+func (*PCREventResponse) Response() tpm.CC { return tpm.CCPCREvent }
 
-// PCRReadCommand is the input to TPM2_PCR_Read.
+// PCRRead is the input to TPM2_PCR_Read.
 // See definition in Part 3, Commands, section 22.4
-type PCRReadCommand struct {
+type PCRRead struct {
 	// The selection of PCR to read
-	PCRSelectionIn TPMLPCRSelection
+	PCRSelectionIn tpml.PCRSelection
 }
 
 // Command implements the Command interface.
-func (*PCRReadCommand) Command() TPMCC { return TPMCCPCRRead }
+func (*PCRRead) Command() tpm.CC { return tpm.CCPCRRead }
+
+// Execute executes the command and returns the response.
+func (cmd *PCRRead) Execute(t *TPM, s ...Session) (*PCRReadResponse, error) {
+	var rsp PCRReadResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // PCRReadResponse is the response from TPM2_PCR_Read.
 type PCRReadResponse struct {
 	// the current value of the PCR update counter
 	PCRUpdateCounter uint32
 	// the PCR in the returned list
-	PCRSelectionOut TPMLPCRSelection
+	PCRSelectionOut tpml.PCRSelection
 	// the contents of the PCR indicated in pcrSelectOut-> pcrSelection[] as tagged digests
-	PCRValues TPMLDigest
+	PCRValues tpml.Digest
 }
 
 // Response implements the Response interface.
-func (*PCRReadResponse) Response() TPMCC { return TPMCCPCRRead }
+func (*PCRReadResponse) Response() tpm.CC { return tpm.CCPCRRead }
 
-// PolicySecretCommand is the input to TPM2_PolicySecret.
+// PolicySecret is the input to TPM2_PolicySecret.
 // See definition in Part 3, Commands, section 23.4
-type PolicySecretCommand struct {
+type PolicySecret struct {
 	// handle for an entity providing the authorization
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
 	// handle for the policy session being extended
-	PolicySession TPMISHPolicy `gotpm:"handle"`
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
 	// the policy nonce for the session
-	NonceTPM TPM2BNonce
+	NonceTPM tpm2b.Nonce
 	// digest of the command parameters to which this authorization is limited
-	CPHashA TPM2BDigest
+	CPHashA tpm2b.Digest
 	// a reference to a policy relating to the authorization – may be the Empty Buffer
-	PolicyRef TPM2BNonce
+	PolicyRef tpm2b.Nonce
 	// time when authorization will expire, measured in seconds from the time
 	// that nonceTPM was generated
 	Expiration int32
 }
 
 // Command implements the Command interface.
-func (*PolicySecretCommand) Command() TPMCC { return TPMCCPolicySecret }
+func (*PolicySecret) Command() tpm.CC { return tpm.CCPolicySecret }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicySecret) Execute(t *TPM, s ...Session) (*PolicySecretResponse, error) {
+	var rsp PolicySecretResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // PolicySecretResponse is the response from TPM2_PolicySecret.
 type PolicySecretResponse struct {
 	// implementation-specific time value used to indicate to the TPM when the ticket expires
-	Timeout TPM2BTimeout
+	Timeout tpm2b.Timeout
 	// produced if the command succeeds and expiration in the command was non-zero
-	PolicyTicket TPMTTKAuth
+	PolicyTicket tpmt.TKAuth
 }
 
 // Response implements the Response interface.
-func (*PolicySecretResponse) Response() TPMCC { return TPMCCPolicySecret }
+func (*PolicySecretResponse) Response() tpm.CC { return tpm.CCPolicySecret }
 
-// CreatePrimaryCommand is the input to TPM2_CreatePrimary.
+// CreatePrimary is the input to TPM2_CreatePrimary.
 // See definition in Part 3, Commands, section 24.1
-type CreatePrimaryCommand struct {
+type CreatePrimary struct {
 	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER, TPM_RH_PLATFORM+{PP},
 	// or TPM_RH_NULL
 	PrimaryHandle AuthHandle `gotpm:"handle,auth"`
 	// the sensitive data
-	InSensitive TPM2BSensitiveCreate
+	InSensitive tpm2b.SensitiveCreate
 	// the public template
-	InPublic TPM2BPublic
+	InPublic tpm2b.Public
 	// data that will be included in the creation data for this
 	// object to provide permanent, verifiable linkage between this
 	// object and some object owner data
-	OutsideInfo TPM2BData
+	OutsideInfo tpm2b.Data
 	// PCR that will be used in creation data
-	CreationPCR TPMLPCRSelection
+	CreationPCR tpml.PCRSelection
 }
 
 // Command implements the Command interface.
-func (*CreatePrimaryCommand) Command() TPMCC { return TPMCCCreatePrimary }
+func (*CreatePrimary) Command() tpm.CC { return tpm.CCCreatePrimary }
+
+// Execute executes the command and returns the response.
+func (cmd *CreatePrimary) Execute(t *TPM, s ...Session) (*CreatePrimaryResponse, error) {
+	var rsp CreatePrimaryResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // CreatePrimaryResponse is the response from TPM2_CreatePrimary.
 type CreatePrimaryResponse struct {
 	// handle of type TPM_HT_TRANSIENT for created Primary Object
-	ObjectHandle TPMHandle `gotpm:"handle"`
+	ObjectHandle tpm.Handle `gotpm:"handle"`
 	// the public portion of the created object
-	OutPublic TPM2BPublic
-	// contains a TPMS_CREATION_DATA
-	CreationData TPM2BCreationData
+	OutPublic tpm2b.Public
+	// contains a tpms._CREATION_DATA
+	CreationData tpm2b.CreationData
 	// digest of creationData using nameAlg of outPublic
-	CreationHash TPM2BDigest
+	CreationHash tpm2b.Digest
 	// ticket used by TPM2_CertifyCreation() to validate that the
 	// creation data was produced by the TPM
-	CreationTicket TPMTTKCreation
+	CreationTicket tpmt.TKCreation
 	// the name of the created object
-	Name TPM2BName
+	Name tpm2b.Name
 }
 
 // Response implements the Response interface.
-func (*CreatePrimaryResponse) Response() TPMCC { return TPMCCCreatePrimary }
+func (*CreatePrimaryResponse) Response() tpm.CC { return tpm.CCCreatePrimary }
 
-// FlushContextCommand is the input to TPM2_FlushContext.
+// FlushContext is the input to TPM2_FlushContext.
 // See definition in Part 3, Commands, section 28.4
-type FlushContextCommand struct {
+type FlushContext struct {
 	// the handle of the item to flush
-	FlushHandle TPMIDHContext
+	FlushHandle tpmi.DHContext
 }
 
 // Command implements the Command interface.
-func (*FlushContextCommand) Command() TPMCC { return TPMCCFlushContext }
+func (*FlushContext) Command() tpm.CC { return tpm.CCFlushContext }
+
+// Execute executes the command and returns the response.
+func (cmd *FlushContext) Execute(t *TPM, s ...Session) (*FlushContextResponse, error) {
+	var rsp FlushContextResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // FlushContextResponse is the response from TPM2_FlushContext.
 type FlushContextResponse struct {
 }
 
 // Response implements the Response interface.
-func (*FlushContextResponse) Response() TPMCC { return TPMCCFlushContext }
+func (*FlushContextResponse) Response() tpm.CC { return tpm.CCFlushContext }
 
-// GetCapabilityCommand is the input to TPM2_GetCapability.
+// GetCapability is the input to TPM2_GetCapability.
 // See definition in Part 3, Commands, section 30.2
-type GetCapabilityCommand struct {
+type GetCapability struct {
 	// group selection; determines the format of the response
-	Capability TPMCap
+	Capability tpm.Cap
 	// further definition of information
 	Property uint32
 	// number of properties of the indicated type to return
@@ -411,15 +531,24 @@ type GetCapabilityCommand struct {
 }
 
 // Command implements the Command interface.
-func (*GetCapabilityCommand) Command() TPMCC { return TPMCCGetCapability }
+func (*GetCapability) Command() tpm.CC { return tpm.CCGetCapability }
+
+// Execute executes the command and returns the response.
+func (cmd *GetCapability) Execute(t *TPM, s ...Session) (*GetCapabilityResponse, error) {
+	var rsp GetCapabilityResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
 
 // GetCapabilityResponse is the response from TPM2_GetCapability.
 type GetCapabilityResponse struct {
 	// flag to indicate if there are more values of this type
-	MoreData TPMIYesNo
+	MoreData tpmi.YesNo
 	// the capability data
-	CapabilityData TPMSCapabilityData
+	CapabilityData tpms.CapabilityData
 }
 
 // Response implements the Response interface.
-func (*GetCapabilityResponse) Response() TPMCC { return TPMCCGetCapability }
+func (*GetCapabilityResponse) Response() tpm.CC { return tpm.CCGetCapability }

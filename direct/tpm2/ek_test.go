@@ -1,17 +1,24 @@
-package direct
+package tpm2
 
 import (
 	"errors"
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpma"
+	"github.com/google/go-tpm/direct/structures/tpmi"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+	"github.com/google/go-tpm/direct/templates"
 )
 
 // Test creating a sealed data blob on the standard-template EK using its policy.
 func TestEKPolicy(t *testing.T) {
-	templates := map[string]TPM2BPublic{
-		"RSA": RSAEKTemplate,
-		"ECC": ECCEKTemplate,
+	templates := map[string]tpm2b.Public{
+		"RSA": templates.RSAEKTemplate,
+		"ECC": templates.ECCEKTemplate,
 	}
 
 	// Run the whole test for each of RSA and ECC EKs.
@@ -22,18 +29,18 @@ func TestEKPolicy(t *testing.T) {
 	}
 }
 
-func ekPolicy(tpm *TPM, handle TPMISHPolicy, nonceTPM TPM2BNonce) error {
-	cmd := PolicySecretCommand{
-		AuthHandle:    AuthHandle{Handle: TPMRHEndorsement},
+func ekPolicy(t *TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error {
+	cmd := PolicySecret{
+		AuthHandle:    AuthHandle{Handle: tpm.RHEndorsement},
 		PolicySession: handle,
 		NonceTPM:      nonceTPM,
 	}
-	rsp := PolicySecretResponse{}
-	return tpm.Execute(&cmd, &rsp)
+	_, err := cmd.Execute(t)
+	return err
 }
 
 // This function tests a lot of combinations of authorizing the EK policy.
-func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
+func ekTest(t *testing.T, ekTemplate tpm2b.Public) {
 	type ekTestCase struct {
 		name string
 		// Use Policy instead of PolicySession, passing the callback instead of
@@ -93,20 +100,20 @@ func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	tpm := NewTPM(sim)
-	defer tpm.Close()
+	thetpm := NewTPM(sim)
+	defer thetpm.Close()
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			// Create the EK
-			createEKCmd := CreatePrimaryCommand{
+			createEKCmd := CreatePrimary{
 				PrimaryHandle: AuthHandle{
-					Handle: TPMRHEndorsement,
+					Handle: tpm.RHEndorsement,
 				},
 				InPublic: ekTemplate,
 			}
-			var createEKRsp CreatePrimaryResponse
-			if err := tpm.Execute(&createEKCmd, &createEKRsp); err != nil {
+			createEKRsp, err := createEKCmd.Execute(thetpm)
+			if err != nil {
 				t.Fatalf("%v", err)
 			}
 			if createEKRsp.OutPublic.PublicArea.Unique.ECC != nil {
@@ -115,11 +122,8 @@ func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
 			}
 			defer func() {
 				// Flush the EK
-				flushEKCmd := FlushContextCommand{
-					FlushHandle: createEKRsp.ObjectHandle,
-				}
-				var flushEKRsp FlushContextResponse
-				if err := tpm.Execute(&flushEKCmd, &flushEKRsp); err != nil {
+				flushEKCmd := FlushContext{createEKRsp.ObjectHandle}
+				if _, err := flushEKCmd.Execute(thetpm); err != nil {
 					t.Errorf("%v", err)
 				}
 			}()
@@ -127,23 +131,23 @@ func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
 			// Exercise the EK's auth policy (PolicySecret[RH_ENDORSEMENT])
 			// by creating an object under it
 			data := []byte("secrets")
-			createBlobCmd := CreateCommand{
+			createBlobCmd := Create{
 				ParentHandle: AuthHandle{
 					Handle: createEKRsp.ObjectHandle,
 					Name:   createEKRsp.Name,
 				},
-				InSensitive: TPM2BSensitiveCreate{
-					Sensitive: TPMSSensitiveCreate{
-						Data: TPM2BData{
+				InSensitive: tpm2b.SensitiveCreate{
+					Sensitive: tpms.SensitiveCreate{
+						Data: tpm2b.Data{
 							Buffer: data,
 						},
 					},
 				},
-				InPublic: TPM2BPublic{
-					PublicArea: TPMTPublic{
-						Type:    TPMAlgKeyedHash,
-						NameAlg: TPMAlgSHA256,
-						ObjectAttributes: TPMAObject{
+				InPublic: tpm2b.Public{
+					PublicArea: tpmt.Public{
+						Type:    tpm.AlgKeyedHash,
+						NameAlg: tpm.AlgSHA256,
+						ObjectAttributes: tpma.Object{
 							FixedTPM:     true,
 							FixedParent:  true,
 							UserWithAuth: true,
@@ -152,11 +156,10 @@ func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
 					},
 				},
 			}
-			var createBlobRsp CreateResponse
 
 			var sessions []Session
 			if c.decryptAnotherSession {
-				sessions = append(sessions, HMAC(TPMAlgSHA1, 16, AESEncryption(128, EncryptIn)))
+				sessions = append(sessions, HMAC(tpm.AlgSHA1, 16, AESEncryption(128, EncryptIn)))
 			}
 
 			var options []AuthOption
@@ -173,12 +176,12 @@ func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
 			var s Session
 			if c.jitPolicySession {
 				// Use the convenience function to pass a policy callback.
-				s = Policy(TPMAlgSHA256, 16, ekPolicy, options...)
+				s = Policy(tpm.AlgSHA256, 16, ekPolicy, options...)
 			} else {
 				// Set up a session we have to execute and clean up ourselves.
 				var cleanup func() error
 				var err error
-				s, cleanup, err = PolicySession(tpm, TPMAlgSHA256, 16, options...)
+				s, cleanup, err = PolicySession(thetpm, tpm.AlgSHA256, 16, options...)
 				if err != nil {
 					t.Fatalf("creating session: %v", err)
 				}
@@ -189,26 +192,26 @@ func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
 					}
 				}()
 				// Execute the same callback ourselves.
-				if err = ekPolicy(tpm, s.Handle(), s.NonceTPM()); err != nil {
+				if err = ekPolicy(thetpm, s.Handle(), s.NonceTPM()); err != nil {
 					t.Fatalf("executing EK policy: %v", err)
 				}
 			}
 			createBlobCmd.ParentHandle.Auth = s
 
-			if err := tpm.Execute(&createBlobCmd, &createBlobRsp, sessions...); err != nil {
+			if _, err := createBlobCmd.Execute(thetpm, sessions...); err != nil {
 				t.Fatalf("%v", err)
 			}
 
 			if !c.jitPolicySession {
 				// If we're not using a "just-in-time" session with a callback,
 				// we have to re-initialize the session.
-				if err = ekPolicy(tpm, s.Handle(), s.NonceTPM()); err != nil {
+				if err = ekPolicy(thetpm, s.Handle(), s.NonceTPM()); err != nil {
 					t.Fatalf("executing EK policy: %v", err)
 				}
 			}
 
 			// Try again and make sure it succeeds again.
-			if err := tpm.Execute(&createBlobCmd, &createBlobRsp, sessions...); err != nil {
+			if _, err = createBlobCmd.Execute(thetpm, sessions...); err != nil {
 				t.Fatalf("%v", err)
 			}
 
@@ -217,14 +220,11 @@ func ekTest(t *testing.T, ekTemplate TPM2BPublic) {
 				// we don't re-initialize the session.
 				// This is because after using a policy session, it's as if
 				// PolicyRestart was called.
-				err := tpm.Execute(&createBlobCmd, &createBlobRsp, sessions...)
-				if err == nil {
-					t.Fatalf("wanted an error, got nil")
-				}
-				if !errors.Is(err, TPMRCPolicyFail) {
+				_, err = createBlobCmd.Execute(thetpm, sessions...)
+				if !errors.Is(err, tpm.RCPolicyFail) {
 					t.Errorf("want TPM_RC_POLICY_FAIL, got %v", err)
 				}
-				var fmt1 Fmt1Error
+				var fmt1 tpm.Fmt1Error
 				if !errors.As(err, &fmt1) {
 					t.Errorf("want a Fmt1Error, got %v", err)
 				} else if isSession, session := fmt1.Session(); !isSession || session != 1 {

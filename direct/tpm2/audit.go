@@ -1,25 +1,32 @@
-package direct
+package tpm2
 
 import (
 	"bytes"
 	"fmt"
 	"reflect"
+
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpmi"
 )
 
 // CommandAudit represents an audit session for attesting the execution of a
 // series of commands in the TPM. It is useful for both command and session
 // auditing.
 type CommandAudit struct {
-	hash   TPMIAlgHash
+	hash   tpmi.AlgHash
 	digest []byte
 }
 
 // NewAudit initializes a new CommandAudit with the specified hash algorithm.
-func NewAudit(hash TPMIAlgHash) CommandAudit {
-	return CommandAudit{
-		hash:   hash,
-		digest: make([]byte, hash.Hash().Size()),
+func NewAudit(hash tpmi.AlgHash) (*CommandAudit, error) {
+	h, err := hash.Hash()
+	if err != nil {
+		return nil, err
 	}
+	return &CommandAudit{
+		hash:   hash,
+		digest: make([]byte, h.Size()),
+	}, nil
 }
 
 // Extend extends the audit digest with the given command and response.
@@ -32,7 +39,11 @@ func (a *CommandAudit) Extend(cmd Command, rsp Response) error {
 	if err != nil {
 		return err
 	}
-	h := a.hash.Hash().New()
+	ha, err := a.hash.Hash()
+	if err != nil {
+		return err
+	}
+	h := ha.New()
 	h.Write(a.digest)
 	h.Write(cpHash)
 	h.Write(rpHash)
@@ -48,7 +59,7 @@ func (a *CommandAudit) Digest() []byte {
 // auditCPHash calculates the command parameter hash for a given command with
 // the given hash algorithm. The command is assumed to not have any decrypt
 // sessions.
-func auditCPHash(h TPMIAlgHash, c Command) ([]byte, error) {
+func auditCPHash(h tpmi.AlgHash, c Command) ([]byte, error) {
 	cc := c.Command()
 	names, err := cmdNames(c)
 	if err != nil {
@@ -58,13 +69,13 @@ func auditCPHash(h TPMIAlgHash, c Command) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cpHash(h, cc, names, parms), nil
+	return cpHash(h, cc, names, parms)
 }
 
 // auditRPHash calculates the response parameter hash for a given response with
 // the given hash algorithm. The command is assumed to be successful and to not
 // have any encrypt sessions.
-func auditRPHash(h TPMIAlgHash, r Response) ([]byte, error) {
+func auditRPHash(h tpmi.AlgHash, r Response) ([]byte, error) {
 	cc := r.Response()
 	var parms bytes.Buffer
 	parameters := taggedMembers(reflect.ValueOf(r).Elem(), "handle", true)
@@ -73,5 +84,5 @@ func auditRPHash(h TPMIAlgHash, r Response) ([]byte, error) {
 			return nil, fmt.Errorf("marshalling parameter %v: %w", i, err)
 		}
 	}
-	return rpHash(h, TPMRCSuccess, cc, parms.Bytes()), nil
+	return rpHash(h, tpm.RCSuccess, cc, parms.Bytes())
 }

@@ -1,10 +1,16 @@
-package direct
+package tpm2
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpma"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+	"github.com/google/go-tpm/direct/structures/tpmu"
 )
 
 func TestAuditSession(t *testing.T) {
@@ -12,26 +18,26 @@ func TestAuditSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	tpm := NewTPM(sim)
-	defer tpm.Close()
+	thetpm := NewTPM(sim)
+	defer thetpm.Close()
 
 	// Create the audit session
-	sess, cleanup, err := HMACSession(tpm, TPMAlgSHA256, 16, Audit())
+	sess, cleanup, err := HMACSession(thetpm, tpm.AlgSHA256, 16, Audit())
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 	defer cleanup()
 
 	// Create the AK for audit
-	createAKCmd := CreatePrimaryCommand{
+	createAKCmd := CreatePrimary{
 		PrimaryHandle: AuthHandle{
-			Handle: TPMRHOwner,
+			Handle: tpm.RHOwner,
 		},
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
+		InPublic: tpm2b.Public{
+			PublicArea: tpmt.Public{
+				Type:    tpm.AlgECC,
+				NameAlg: tpm.AlgSHA256,
+				ObjectAttributes: tpma.Object{
 					FixedTPM:             true,
 					STClear:              false,
 					FixedParent:          true,
@@ -44,74 +50,74 @@ func TestAuditSession(t *testing.T) {
 					Decrypt:              false,
 					SignEncrypt:          true,
 				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDSA,
-							Details: TPMUAsymScheme{
-								ECDSA: &TPMSSigSchemeECDSA{
-									HashAlg: TPMAlgSHA256,
+				Parameters: tpmu.PublicParms{
+					ECCDetail: &tpms.ECCParms{
+						Scheme: tpmt.ECCScheme{
+							Scheme: tpm.AlgECDSA,
+							Details: tpmu.AsymScheme{
+								ECDSA: &tpms.SigSchemeECDSA{
+									HashAlg: tpm.AlgSHA256,
 								},
 							},
 						},
-						CurveID: TPMECCNistP256,
+						CurveID: tpm.ECCNistP256,
 					},
 				},
 			},
 		},
 	}
-	var createAKRsp CreatePrimaryResponse
-	if err := tpm.Execute(&createAKCmd, &createAKRsp); err != nil {
+	createAKRsp, err := createAKCmd.Execute(thetpm)
+	if err != nil {
 		t.Fatalf("%v", err)
 	}
 	defer func() {
 		// Flush the AK
-		flushCmd := FlushContextCommand{
-			FlushHandle: createAKRsp.ObjectHandle,
-		}
-		var flushRsp FlushContextResponse
-		if err := tpm.Execute(&flushCmd, &flushRsp); err != nil {
+		flushCmd := FlushContext{FlushHandle: createAKRsp.ObjectHandle}
+		if _, err := flushCmd.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
 
-	audit := NewAudit(TPMAlgSHA256)
+	audit, err := NewAudit(tpm.AlgSHA256)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	// Call GetCapability a bunch of times with the audit session and make sure it extends like
 	// we expect it to.
-	props := []TPMPT{
-		TPMPTFamilyIndicator,
-		TPMPTLevel,
-		TPMPTRevision,
-		TPMPTDayofYear,
-		TPMPTYear,
-		TPMPTManufacturer,
+	props := []tpm.PT{
+		tpm.PTFamilyIndicator,
+		tpm.PTLevel,
+		tpm.PTRevision,
+		tpm.PTDayofYear,
+		tpm.PTYear,
+		tpm.PTManufacturer,
 	}
 	for _, prop := range props {
-		getCmd := GetCapabilityCommand{
-			Capability:    TPMCapTPMProperties,
+		getCmd := GetCapability{
+			Capability:    tpm.CapTPMProperties,
 			Property:      uint32(prop),
 			PropertyCount: 1,
 		}
-		var getRsp GetCapabilityResponse
-		if err := tpm.Execute(&getCmd, &getRsp, sess); err != nil {
+		getRsp, err := getCmd.Execute(thetpm, sess)
+		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		if err := audit.Extend(&getCmd, &getRsp); err != nil {
+		if err := audit.Extend(&getCmd, getRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 		// Get the audit digest signed by the AK
-		getAuditCmd := GetSessionAuditDigestCommand{
+		getAuditCmd := GetSessionAuditDigest{
 			PrivacyAdminHandle: AuthHandle{
-				Handle: TPMRHEndorsement,
+				Handle: tpm.RHEndorsement,
 			},
 			SignHandle: AuthHandle{
 				Handle: createAKRsp.ObjectHandle,
 			},
 			SessionHandle:  sess.Handle(),
-			QualifyingData: TPM2BData{[]byte("foobar")},
+			QualifyingData: tpm2b.Data{Buffer: []byte("foobar")},
 		}
-		var getAuditRsp GetSessionAuditDigestResponse
-		if err := tpm.Execute(&getAuditCmd, &getAuditRsp); err != nil {
+		getAuditRsp, err := getAuditCmd.Execute(thetpm)
+		if err != nil {
 			t.Errorf("%v", err)
 		}
 		// TODO check the signature with the AK pub

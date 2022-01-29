@@ -1,6 +1,16 @@
-package direct
+// package internal defines all the TPM 2.0 structures together to avoid import cycles
+package internal
 
-import "fmt"
+import (
+	"crypto"
+	"crypto/elliptic"
+
+	// Register the relevant hash implementations.
+	_ "crypto/sha1"
+	_ "crypto/sha256"
+	_ "crypto/sha512"
+	"fmt"
+)
 
 // TPMCmdHeader is the header structure in front of any TPM command.
 // It is described in Part 1, Architecture.
@@ -51,6 +61,11 @@ type TPMKeyBits uint16
 // See definition in Part 2: Structures, section 6.2.
 type TPMGenerated uint32
 
+// Generated values come from Part 2: Structures, section 6.2.
+const (
+	TPMGeneratedValue TPMGenerated = 0xff544347
+)
+
 // Check verifies that a TPMGenerated value is correct, and returns an error
 // otherwise.
 func (g TPMGenerated) Check() error {
@@ -67,6 +82,22 @@ type TPMAlgID uint16
 // TPMECCCurve represents a TPM_ECC_Curve.
 // See definition in Part 2: Structures, section 6.4.
 type TPMECCCurve uint16
+
+// Curve returns the elliptic.Curve associated with a TPMECCCurve.
+func (c TPMECCCurve) Curve() (elliptic.Curve, error) {
+	switch c {
+	case TPMECCNistP224:
+		return elliptic.P224(), nil
+	case TPMECCNistP256:
+		return elliptic.P256(), nil
+	case TPMECCNistP384:
+		return elliptic.P384(), nil
+	case TPMECCNistP521:
+		return elliptic.P521(), nil
+	default:
+		return nil, fmt.Errorf("unsupported ECC curve: %v", c)
+	}
+}
 
 // TPMCC represents a TPM_CC.
 // See definition in Part 2: Structures, section 6.5.2.
@@ -363,6 +394,21 @@ type TPMIRHHierarchy = TPMHandle
 // TPMIAlgHash represents a TPMI_ALG_HASH.
 // See definition in Part 2: Structures, section 9.27.
 type TPMIAlgHash = TPMAlgID
+
+// Hash returns the crypto.Hash associated with a TPMIAlgHash.
+func (a TPMIAlgHash) Hash() (crypto.Hash, error) {
+	switch TPMAlgID(a) {
+	case TPMAlgSHA1:
+		return crypto.SHA1, nil
+	case TPMAlgSHA256:
+		return crypto.SHA256, nil
+	case TPMAlgSHA384:
+		return crypto.SHA384, nil
+	case TPMAlgSHA512:
+		return crypto.SHA512, nil
+	}
+	return crypto.SHA256, fmt.Errorf("unsupported hash algorithm: %v", a)
+}
 
 // TODO: Provide a placeholder interface here so we can explicitly enumerate
 // these for compile-time protection.

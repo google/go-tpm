@@ -1,19 +1,11 @@
-package direct
+package internal
 
 import (
-	"crypto"
-	"crypto/elliptic"
 
 	// Register the relevant hash implementations.
 	_ "crypto/sha1"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-	"fmt"
-)
-
-// TPMGenerated values come from Part 2: Structures, section 6.2.
-const (
-	TPMGeneratedValue TPMGenerated = 0xff544347
 )
 
 // TPMAlgID values come from Part 2: Structures, section 6.3.
@@ -59,21 +51,6 @@ const (
 	TPMAlgECB          TPMAlgID = 0x0044
 )
 
-// Hash returns the crypto.Hash associated with a TPMIAlgHash.
-func (a TPMIAlgHash) Hash() crypto.Hash {
-	switch TPMAlgID(a) {
-	case TPMAlgSHA1:
-		return crypto.SHA1
-	case TPMAlgSHA256:
-		return crypto.SHA256
-	case TPMAlgSHA384:
-		return crypto.SHA384
-	case TPMAlgSHA512:
-		return crypto.SHA512
-	}
-	panic(fmt.Sprintf("unsupported hash algorithm: %v", a))
-}
-
 // TPMECCCurve values come from Part 2: Structures, section 6.4.
 const (
 	TPMECCNone     TPMECCCurve = 0x0000
@@ -86,22 +63,6 @@ const (
 	TPMECCBNP638   TPMECCCurve = 0x0011
 	TPMECCSM2P256  TPMECCCurve = 0x0020
 )
-
-// Curve returns the elliptic.Curve associated with a TPMECCCurve.
-func (c TPMECCCurve) Curve() (elliptic.Curve, error) {
-	switch c {
-	case TPMECCNistP224:
-		return elliptic.P224(), nil
-	case TPMECCNistP256:
-		return elliptic.P256(), nil
-	case TPMECCNistP384:
-		return elliptic.P384(), nil
-	case TPMECCNistP521:
-		return elliptic.P521(), nil
-	default:
-		return nil, fmt.Errorf("unsupported ECC curve: %v", c)
-	}
-}
 
 // TPMCC values come from Part 2: Structures, section 6.5.2.
 const (
@@ -378,7 +339,7 @@ const (
 	TPMCapACT           TPMCap = 0x0000000A
 )
 
-// TPMPTFamilyIndicator values come from Part 2: Structures, section  6.13.
+// PTFamilyIndicator values come from Part 2: Structures, section  6.13.
 const (
 	// a 4-octet character string containing the TPM Family value
 	// (TPM_SPEC_FAMILY)

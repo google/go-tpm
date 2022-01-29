@@ -1,4 +1,4 @@
-package direct
+package tpm2
 
 import (
 	"bytes"
@@ -11,7 +11,15 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/direct/helpers"
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpma"
+	"github.com/google/go-tpm/direct/structures/tpmi"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+	"github.com/google/go-tpm/direct/structures/tpmu"
+	legacy "github.com/google/go-tpm/tpm2"
 )
 
 // Session represents a session in the TPM.
@@ -27,7 +35,7 @@ type Session interface {
 	// authorize their actions without writing a lot of code.
 	CleanupFailure(tpm *TPM) error
 	// The last nonceTPM for this session.
-	NonceTPM() TPM2BNonce
+	NonceTPM() tpm2b.Nonce
 	// Updates nonceCaller to a new random value.
 	NewNonceCaller() error
 	// Computes the authorization HMAC for the session.
@@ -35,10 +43,10 @@ type Session interface {
 	// there is another session (or sessions) for parameter
 	// decryption and/or encryption, then addNonces contains the
 	// nonceTPMs from each of them, respectively (see Part 1, 19.6.5)
-	Authorize(cc TPMCC, parms, addNonces []byte, names []TPM2BName, authIndex int) (*TPMSAuthCommand, error)
+	Authorize(cc tpm.CC, parms, addNonces []byte, names []tpm2b.Name, authIndex int) (*tpms.AuthCommand, error)
 	// Validates the response for the session.
 	// Updates NonceTPM for the session.
-	Validate(rc TPMRC, cc TPMCC, parms []byte, names []TPM2BName, authIndex int, auth *TPMSAuthResponse) error
+	Validate(rc tpm.RC, cc tpm.CC, parms []byte, names []tpm2b.Name, authIndex int, auth *tpms.AuthResponse) error
 	// Returns true if this is an encryption session.
 	IsEncryption() bool
 	// Returns true if this is a decryption session.
@@ -50,29 +58,37 @@ type Session interface {
 	// parameter. Otherwise, does not modify the parameter.
 	Decrypt(parameter []byte) error
 	// Returns the handle value of this session.
-	Handle() TPMHandle
+	Handle() tpm.Handle
 }
 
 // cpHash calculates the TPM command parameter hash.
 // cpHash = hash(CC || names || parms)
-func cpHash(alg TPMIAlgHash, cc TPMCC, names []TPM2BName, parms []byte) []byte {
-	h := alg.Hash().New()
+func cpHash(alg tpmi.AlgHash, cc tpm.CC, names []tpm2b.Name, parms []byte) ([]byte, error) {
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	h := ha.New()
 	binary.Write(h, binary.BigEndian, cc)
 	for _, name := range names {
 		h.Write(name.Buffer)
 	}
 	h.Write(parms)
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 }
 
 // rpHash calculates the TPM response parameter hash.
 // rpHash = hash(RC || CC || parms)
-func rpHash(alg TPMIAlgHash, rc TPMRC, cc TPMCC, parms []byte) []byte {
-	h := alg.Hash().New()
+func rpHash(alg tpmi.AlgHash, rc tpm.RC, cc tpm.CC, parms []byte) ([]byte, error) {
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	h := ha.New()
 	binary.Write(h, binary.BigEndian, rc)
 	binary.Write(h, binary.BigEndian, cc)
 	h.Write(parms)
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 }
 
 // pwSession represents a password-pseudo-session.
@@ -96,30 +112,30 @@ func (s *pwSession) CleanupFailure(tpm *TPM) error { return nil }
 // NonceTPM normally returns the last nonceTPM value from the session.
 // Since a password session is a pseudo-session with the auth value stuffed
 // in where the HMAC should go, this is not used.
-func (s *pwSession) NonceTPM() TPM2BNonce { return TPM2BNonce{} }
+func (s *pwSession) NonceTPM() tpm2b.Nonce { return tpm2b.Nonce{} }
 
 // NewNonceCaller updates the nonceCaller for this session.
 // Password sessions don't have nonces.
 func (s *pwSession) NewNonceCaller() error { return nil }
 
 // Computes the authorization structure for the session.
-func (s *pwSession) Authorize(cc TPMCC, parms, addNonces []byte, _ []TPM2BName, _ int) (*TPMSAuthCommand, error) {
-	return &TPMSAuthCommand{
-		Handle:     TPMRSPW,
-		Nonce:      TPM2BNonce{},
-		Attributes: TPMASession{},
-		Authorization: TPM2BData{
+func (s *pwSession) Authorize(cc tpm.CC, parms, addNonces []byte, _ []tpm2b.Name, _ int) (*tpms.AuthCommand, error) {
+	return &tpms.AuthCommand{
+		Handle:     tpm.RSPW,
+		Nonce:      tpm2b.Nonce{},
+		Attributes: tpma.Session{},
+		Authorization: tpm2b.Data{
 			Buffer: s.auth,
 		},
 	}, nil
 }
 
 // Validates the response session structure for the session.
-func (s *pwSession) Validate(rc TPMRC, cc TPMCC, parms []byte, _ []TPM2BName, _ int, auth *TPMSAuthResponse) error {
+func (s *pwSession) Validate(rc tpm.RC, cc tpm.CC, parms []byte, _ []tpm2b.Name, _ int, auth *tpms.AuthResponse) error {
 	if len(auth.Nonce.Buffer) != 0 {
 		return fmt.Errorf("expected empty nonce in response auth to PW session, got %x", auth.Nonce)
 	}
-	expectedAttrs := TPMASession{
+	expectedAttrs := tpma.Session{
 		ContinueSession: true,
 	}
 	if auth.Attributes != expectedAttrs {
@@ -151,29 +167,29 @@ func (s *pwSession) Decrypt(parameter []byte) error { return nil }
 
 // Handle returns the handle value associated with this session.
 // In the case of a password session, this is always TPM_RS_PW.
-func (s *pwSession) Handle() TPMHandle { return TPMRSPW }
+func (s *pwSession) Handle() tpm.Handle { return tpm.RSPW }
 
 // sessionOptions represents extra options used when setting up an HMAC or policy session.
 type sessionOptions struct {
 	auth       []byte
 	password   bool
-	bindHandle TPMIDHEntity
-	bindName   TPM2BName
+	bindHandle tpmi.DHEntity
+	bindName   tpm2b.Name
 	bindAuth   []byte
-	saltHandle TPMIDHObject
-	saltPub    TPMTPublic
-	attrs      TPMASession
-	symmetric  TPMTSymDef
+	saltHandle tpmi.DHObject
+	saltPub    tpmt.Public
+	attrs      tpma.Session
+	symmetric  tpmt.SymDef
 }
 
 // defaultOptions represents the default options used when none are provided.
 func defaultOptions() sessionOptions {
 	return sessionOptions{
-		symmetric: TPMTSymDef{
-			Algorithm: TPMAlgNull,
+		symmetric: tpmt.SymDef{
+			Algorithm: tpm.AlgNull,
 		},
-		bindHandle: TPMRHNull,
-		saltHandle: TPMRHNull,
+		bindHandle: tpm.RHNull,
+		saltHandle: tpm.RHNull,
 	}
 }
 
@@ -201,7 +217,7 @@ func Password(auth []byte) AuthOption {
 
 // Bound specifies that this session's session key should depend on the auth
 // value of the given object.
-func Bound(handle TPMIDHEntity, name TPM2BName, auth []byte) AuthOption {
+func Bound(handle tpmi.DHEntity, name tpm2b.Name, auth []byte) AuthOption {
 	return func(o *sessionOptions) {
 		o.bindHandle = handle
 		o.bindName = name
@@ -212,7 +228,7 @@ func Bound(handle TPMIDHEntity, name TPM2BName, auth []byte) AuthOption {
 // Salted specifies that this session's session key should depend on an
 // encrypted seed value using the given public key.
 // 'handle' must refer to a loaded RSA or ECC key.
-func Salted(handle TPMIDHObject, pub TPMTPublic) AuthOption {
+func Salted(handle tpmi.DHObject, pub tpmt.Public) AuthOption {
 	return func(o *sessionOptions) {
 		o.saltHandle = handle
 		o.saltPub = pub
@@ -236,17 +252,17 @@ const (
 // the TPM.
 // Note that only commands whose first command/response parameter is a 2B can
 // support session encryption.
-func AESEncryption(keySize TPMKeyBits, dir parameterEncryptionDirection) AuthOption {
+func AESEncryption(keySize tpm.KeyBits, dir parameterEncryptionDirection) AuthOption {
 	return func(o *sessionOptions) {
 		o.attrs.Decrypt = (dir == EncryptIn || dir == EncryptInOut)
 		o.attrs.Encrypt = (dir == EncryptOut || dir == EncryptInOut)
-		o.symmetric = TPMTSymDef{
-			Algorithm: TPMAlgAES,
-			KeyBits: TPMUSymKeyBits{
-				AES: NewTPMKeyBits(keySize),
+		o.symmetric = tpmt.SymDef{
+			Algorithm: tpm.AlgAES,
+			KeyBits: tpmu.SymKeyBits{
+				AES: helpers.NewKeyBits(keySize),
 			},
-			Mode: TPMUSymMode{
-				AES: NewTPMAlgID(TPMAlgCFB),
+			Mode: tpmu.SymMode{
+				AES: helpers.NewAlgID(tpm.AlgCFB),
 			},
 		}
 	}
@@ -274,25 +290,25 @@ func AuditExclusive() AuthOption {
 // hmacSession generally implements the HMAC session.
 type hmacSession struct {
 	sessionOptions
-	hash       TPMIAlgHash
+	hash       tpmi.AlgHash
 	nonceSize  int
-	handle     TPMHandle
+	handle     tpm.Handle
 	sessionKey []byte
 	// last nonceCaller
-	nonceCaller TPM2BNonce
+	nonceCaller tpm2b.Nonce
 	// last nonceTPM
-	nonceTPM TPM2BNonce
+	nonceTPM tpm2b.Nonce
 }
 
 // HMAC sets up a just-in-time HMAC session that is used only once.
 // A real session is created, but just in time and it is flushed when used.
-func HMAC(hash TPMIAlgHash, nonceSize int, opts ...AuthOption) Session {
+func HMAC(hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) Session {
 	// Set up a one-off session that knows the auth value.
 	sess := hmacSession{
 		sessionOptions: defaultOptions(),
 		hash:           hash,
 		nonceSize:      nonceSize,
-		handle:         TPMRHNull,
+		handle:         tpm.RHNull,
 	}
 	for _, opt := range opts {
 		opt(&sess.sessionOptions)
@@ -301,13 +317,13 @@ func HMAC(hash TPMIAlgHash, nonceSize int, opts ...AuthOption) Session {
 }
 
 // HMACSession sets up a reusable HMAC session that needs to be closed.
-func HMACSession(tpm *TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
+func HMACSession(t *TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
 	// Set up a not-one-off session that knows the auth value.
 	sess := hmacSession{
 		sessionOptions: defaultOptions(),
 		hash:           hash,
 		nonceSize:      nonceSize,
-		handle:         TPMRHNull,
+		handle:         tpm.RHNull,
 	}
 	for _, opt := range opts {
 		opt(&sess.sessionOptions)
@@ -317,65 +333,67 @@ func HMACSession(tpm *TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthOption) 
 	sess.sessionOptions.attrs.ContinueSession = true
 
 	// Initialize the session.
-	if err := sess.Init(tpm); err != nil {
+	if err := sess.Init(t); err != nil {
 		return nil, nil, err
 	}
 
 	closer := func() error {
-		flushCmd := FlushContextCommand{
-			FlushHandle: sess.handle,
-		}
-		var flushRsp FlushContextResponse
-		return tpm.Execute(&flushCmd, &flushRsp)
+		fc := FlushContext{FlushHandle: sess.handle}
+		_, err := fc.Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
 }
 
 // Part 1, B.10.2
-func getEncryptedSaltRSA(nameAlg TPMIAlgHash, parms *TPMSRSAParms, pub *TPM2BPublicKeyRSA) (*TPM2BEncryptedSecret, []byte, error) {
-	rsaPub, err := rsaPub(parms, pub)
+func getEncryptedSaltRSA(nameAlg tpmi.AlgHash, parms *tpms.RSAParms, pub *tpm2b.PublicKeyRSA) (*tpm2b.EncryptedSecret, []byte, error) {
+	rsaPub, err := helpers.RSAPub(parms, pub)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not encrypt salt to RSA key: %w", err)
 	}
 	// Odd special case: the size of the salt depends on the RSA scheme's
 	// hash alg.
-	var hAlg TPMIAlgHash
+	var hAlg tpmi.AlgHash
 	switch parms.Scheme.Scheme {
-	case TPMAlgRSASSA:
+	case tpm.AlgRSASSA:
 		hAlg = parms.Scheme.Details.RSASSA.HashAlg
-	case TPMAlgRSAES:
+	case tpm.AlgRSAES:
 		hAlg = nameAlg
-	case TPMAlgRSAPSS:
+	case tpm.AlgRSAPSS:
 		hAlg = parms.Scheme.Details.RSAPSS.HashAlg
-	case TPMAlgOAEP:
+	case tpm.AlgOAEP:
 		hAlg = parms.Scheme.Details.OAEP.HashAlg
-	case TPMAlgNull:
+	case tpm.AlgNull:
 		hAlg = nameAlg
 	default:
 		return nil, nil, fmt.Errorf("unsupported RSA salt key scheme: %v", parms.Scheme.Scheme)
 	}
-	salt := make([]byte, hAlg.Hash().Size())
+	ha, err := hAlg.Hash()
+	if err != nil {
+		return nil, nil, err
+	}
+	salt := make([]byte, ha.Size())
 	if _, err := rand.Read(salt); err != nil {
 		return nil, nil, fmt.Errorf("generating random salt: %w", err)
 	}
 	// Part 1, section 4.6 specifies the trailing NULL byte for the label.
-	encSalt, err := rsa.EncryptOAEP(hAlg.Hash().New(), rand.Reader, rsaPub, salt, []byte("SECRET\x00"))
+	encSalt, err := rsa.EncryptOAEP(ha.New(), rand.Reader, rsaPub, salt, []byte("SECRET\x00"))
 	if err != nil {
 		return nil, nil, fmt.Errorf("encrypting salt: %w", err)
 	}
-	return &TPM2BEncryptedSecret{
+	return &tpm2b.EncryptedSecret{
 		Buffer: encSalt,
 	}, salt, nil
 }
 
 // Part 1, 19.6.13
-func getEncryptedSaltECC(nameAlg TPMIAlgHash, parms *TPMSECCParms, pub *TPMSECCPoint) (*TPM2BEncryptedSecret, []byte, error) {
+func getEncryptedSaltECC(nameAlg tpmi.AlgHash, parms *tpms.ECCParms, pub *tpms.ECCPoint) (*tpm2b.EncryptedSecret, []byte, error) {
 	curve, err := parms.CurveID.Curve()
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not encrypt salt to ECC key: %w", err)
 	}
-	eccPub, err := eccPub(parms, pub)
+	eccPub, err := helpers.ECCPub(parms, pub)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not encrypt salt to ECC key: %w", err)
 	}
@@ -383,31 +401,35 @@ func getEncryptedSaltECC(nameAlg TPMIAlgHash, parms *TPMSECCParms, pub *TPMSECCP
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not encrypt salt to ECC key: %w", err)
 	}
-	zx, _ := curve.Params().ScalarMult(eccPub.x, eccPub.y, ephPriv)
+	zx, _ := curve.Params().ScalarMult(eccPub.X, eccPub.Y, ephPriv)
 	// ScalarMult returns a big.Int, whose Bytes() function may return the
 	// compacted form. In our case, we want to left-pad zx to the size of
 	// the curve.
 	z := make([]byte, (curve.Params().BitSize+7)/8)
 	zx.FillBytes(z)
-	salt := tpm2.KDFeHash(nameAlg.Hash(), z, "SECRET", ephPubX.Bytes(), pub.X.Buffer, nameAlg.Hash().Size()*8)
+	ha, err := nameAlg.Hash()
+	if err != nil {
+		return nil, nil, err
+	}
+	salt := legacy.KDFeHash(ha, z, "SECRET", ephPubX.Bytes(), pub.X.Buffer, ha.Size()*8)
 
 	var encSalt bytes.Buffer
 	binary.Write(&encSalt, binary.BigEndian, uint16(len(ephPubX.Bytes())))
 	encSalt.Write(ephPubX.Bytes())
 	binary.Write(&encSalt, binary.BigEndian, uint16(len(ephPubY.Bytes())))
 	encSalt.Write(ephPubY.Bytes())
-	return &TPM2BEncryptedSecret{
+	return &tpm2b.EncryptedSecret{
 		Buffer: encSalt.Bytes(),
 	}, salt, nil
 }
 
 // getEncryptedSalt creates a salt value for salted sessions.
 // Returns the encrypted salt and plaintext salt, or an error value.
-func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
+func getEncryptedSalt(pub tpmt.Public) (*tpm2b.EncryptedSecret, []byte, error) {
 	switch pub.Type {
-	case TPMAlgRSA:
+	case tpm.AlgRSA:
 		return getEncryptedSaltRSA(pub.NameAlg, pub.Parameters.RSADetail, pub.Unique.RSA)
-	case TPMAlgECC:
+	case tpm.AlgECC:
 		return getEncryptedSaltECC(pub.NameAlg, pub.Parameters.ECCDetail, pub.Unique.ECC)
 	default:
 		return nil, nil, fmt.Errorf("salt encryption alg '%v' not supported", pub.Type)
@@ -415,15 +437,15 @@ func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
 }
 
 // Init initializes the session, just in time, if needed.
-func (s *hmacSession) Init(tpm *TPM) error {
-	if s.handle != TPMRHNull {
+func (s *hmacSession) Init(t *TPM) error {
+	if s.handle != tpm.RHNull {
 		// Session is already initialized.
 		return nil
 	}
 
 	// Get a high-quality nonceCaller for our use.
 	// Store it with the session object for later reference.
-	s.nonceCaller = TPM2BNonce{
+	s.nonceCaller = tpm2b.Nonce{
 		Buffer: make([]byte, s.nonceSize),
 	}
 	if _, err := rand.Read(s.nonceCaller.Buffer); err != nil {
@@ -431,64 +453,65 @@ func (s *hmacSession) Init(tpm *TPM) error {
 	}
 
 	// Start up the actual auth session.
-	sasCmd := StartAuthSessionCommand{
+	sasCmd := StartAuthSession{
 		TPMKey:      s.saltHandle,
 		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
-		SessionType: TPMSEHMAC,
+		SessionType: tpm.SEHMAC,
 		Symmetric:   s.symmetric,
 		AuthHash:    s.hash,
 	}
 	var salt []byte
-	if s.saltHandle != TPMRHNull {
+	if s.saltHandle != tpm.RHNull {
 		var err error
-		var encSalt *TPM2BEncryptedSecret
+		var encSalt *tpm2b.EncryptedSecret
 		encSalt, salt, err = getEncryptedSalt(s.saltPub)
 		if err != nil {
 			return err
 		}
 		sasCmd.EncryptedSalt = *encSalt
 	}
-	var sasRsp StartAuthSessionResponse
-	if err := tpm.Execute(&sasCmd, &sasRsp); err != nil {
+	sasRsp, err := sasCmd.Execute(t)
+	if err != nil {
 		return err
 	}
 	s.handle = sasRsp.SessionHandle
 	s.nonceTPM = sasRsp.NonceTPM
 	// Part 1, 19.6
-	if s.bindHandle != TPMRHNull || len(salt) != 0 {
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	if s.bindHandle != tpm.RHNull || len(salt) != 0 {
 		var authSalt []byte
 		authSalt = append(authSalt, s.bindAuth...)
 		authSalt = append(authSalt, salt...)
-		s.sessionKey = tpm2.KDFaHash(s.hash.Hash(), authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, s.hash.Hash().Size()*8)
+		s.sessionKey = legacy.KDFaHash(ha, authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, ha.Size()*8)
 	}
 	return nil
 }
 
 // Cleanup cleans up the session, if needed.
-func (s *hmacSession) CleanupFailure(tpm *TPM) error {
+func (s *hmacSession) CleanupFailure(t *TPM) error {
 	// The user is already responsible to clean up this session.
 	if s.attrs.ContinueSession {
 		return nil
 	}
-	flushCmd := FlushContextCommand{
-		FlushHandle: s.handle,
-	}
-	var flushRsp FlushContextResponse
-	if err := tpm.Execute(&flushCmd, &flushRsp); err != nil {
+	fc := FlushContext{FlushHandle: s.handle}
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
-	s.handle = TPMRHNull
+	s.handle = tpm.RHNull
 	return nil
 }
 
 // NonceTPM returns the last nonceTPM value from the session.
 // May be nil, if the session hasn't been initialized yet.
-func (s *hmacSession) NonceTPM() TPM2BNonce { return s.nonceTPM }
+func (s *hmacSession) NonceTPM() tpm2b.Nonce { return s.nonceTPM }
 
 // To avoid a circular dependency on gotpm by tpm2, implement a
-// tiny serialization by hand for TPMASession here
-func attrsToBytes(attrs TPMASession) []byte {
+// tiny serialization by hand for tpma.Session here
+func attrsToBytes(attrs tpma.Session) []byte {
 	var res byte
 	if attrs.ContinueSession {
 		res |= (1 << 0)
@@ -531,8 +554,12 @@ func attrsToBytes(attrs TPMASession) []byte {
 //   used.
 // nonceOlder in a response is the corresponding nonceCaller sent in the
 //   command.
-func computeHMAC(alg TPMIAlgHash, key, pHash, nonceNewer, nonceOlder, addNonces []byte, attrs TPMASession) ([]byte, error) {
-	mac := hmac.New(alg.Hash().New, key)
+func computeHMAC(alg tpmi.AlgHash, key, pHash, nonceNewer, nonceOlder, addNonces []byte, attrs tpma.Session) ([]byte, error) {
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	mac := hmac.New(ha.New, key)
 	mac.Write(pHash)
 	mac.Write(nonceNewer)
 	mac.Write(nonceOlder)
@@ -561,8 +588,8 @@ func (s *hmacSession) NewNonceCaller() error {
 
 // Authorize computes the authorization structure for the session.
 // Unlike the TPM spec, authIndex is zero-based.
-func (s *hmacSession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM2BName, authIndex int) (*TPMSAuthCommand, error) {
-	if s.handle == TPMRHNull {
+func (s *hmacSession) Authorize(cc tpm.CC, parms, addNonces []byte, names []tpm2b.Name, authIndex int) (*tpms.AuthCommand, error) {
+	if s.handle == tpm.RHNull {
 		// Session is not initialized.
 		return nil, fmt.Errorf("session not initialized")
 	}
@@ -577,16 +604,19 @@ func (s *hmacSession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM2B
 	}
 
 	// Compute the authorization HMAC.
-	hmac, err := computeHMAC(s.hash, hmacKey, cpHash(s.hash, cc, names, parms),
-		s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
+	cph, err := cpHash(s.hash, cc, names, parms)
 	if err != nil {
 		return nil, err
 	}
-	result := TPMSAuthCommand{
+	hmac, err := computeHMAC(s.hash, hmacKey, cph, s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
+	if err != nil {
+		return nil, err
+	}
+	result := tpms.AuthCommand{
 		Handle:     s.handle,
 		Nonce:      s.nonceCaller,
 		Attributes: s.attrs,
-		Authorization: TPM2BData{
+		Authorization: tpm2b.Data{
 			Buffer: hmac,
 		},
 	}
@@ -595,12 +625,12 @@ func (s *hmacSession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM2B
 
 // Validate validates the response session structure for the session.
 // It updates nonceTPM from the TPM's response.
-func (s *hmacSession) Validate(rc TPMRC, cc TPMCC, parms []byte, names []TPM2BName, authIndex int, auth *TPMSAuthResponse) error {
+func (s *hmacSession) Validate(rc tpm.RC, cc tpm.CC, parms []byte, names []tpm2b.Name, authIndex int, auth *tpms.AuthResponse) error {
 	// Track the new nonceTPM for the session.
 	s.nonceTPM = auth.Nonce
 	// Track the session being automatically flushed.
 	if !auth.Attributes.ContinueSession {
-		s.handle = TPMRHNull
+		s.handle = tpm.RHNull
 	}
 
 	// Part 1, 19.6
@@ -613,8 +643,11 @@ func (s *hmacSession) Validate(rc TPMRC, cc TPMCC, parms []byte, names []TPM2BNa
 	}
 
 	// Compute the authorization HMAC.
-	mac, err := computeHMAC(s.hash, hmacKey, rpHash(s.hash, rc, cc, parms),
-		s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
+	rph, err := rpHash(s.hash, rc, cc, parms)
+	if err != nil {
+		return err
+	}
+	mac, err := computeHMAC(s.hash, hmacKey, rph, s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
 	if err != nil {
 		return err
 	}
@@ -647,7 +680,11 @@ func (s *hmacSession) Encrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := tpm2.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err
@@ -670,7 +707,11 @@ func (s *hmacSession) Decrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := tpm2.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err
@@ -683,25 +724,25 @@ func (s *hmacSession) Decrypt(parameter []byte) error {
 // Handle returns the handle value of the session.
 // If the session is created with HMAC (instead of HMACSession) this will be
 // TPM_RH_NULL.
-func (s *hmacSession) Handle() TPMHandle {
+func (s *hmacSession) Handle() tpm.Handle {
 	return s.handle
 }
 
 // PolicyCallback represents an object's policy in the form of a function.
 // This function makes zero or more TPM policy commands and returns error.
-type PolicyCallback = func(tpm *TPM, handle TPMISHPolicy, nonceTPM TPM2BNonce) error
+type PolicyCallback = func(tpm *TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error
 
 // policySession generally implements the policy session.
 type policySession struct {
 	sessionOptions
-	hash       TPMIAlgHash
+	hash       tpmi.AlgHash
 	nonceSize  int
-	handle     TPMHandle
+	handle     tpm.Handle
 	sessionKey []byte
 	// last nonceCaller
-	nonceCaller TPM2BNonce
+	nonceCaller tpm2b.Nonce
 	// last nonceTPM
-	nonceTPM TPM2BNonce
+	nonceTPM tpm2b.Nonce
 	callback *PolicyCallback
 }
 
@@ -710,13 +751,13 @@ type policySession struct {
 // Each time the policy is created, the callback is invoked to authorize the
 // session.
 // A real session is created, but just in time, and it is flushed when used.
-func Policy(hash TPMIAlgHash, nonceSize int, callback PolicyCallback, opts ...AuthOption) Session {
+func Policy(hash tpmi.AlgHash, nonceSize int, callback PolicyCallback, opts ...AuthOption) Session {
 	// Set up a one-off session that knows the auth value.
 	sess := policySession{
 		sessionOptions: defaultOptions(),
 		hash:           hash,
 		nonceSize:      nonceSize,
-		handle:         TPMRHNull,
+		handle:         tpm.RHNull,
 		callback:       &callback,
 	}
 	for _, opt := range opts {
@@ -729,13 +770,13 @@ func Policy(hash TPMIAlgHash, nonceSize int, callback PolicyCallback, opts ...Au
 // The caller is responsible to call whichever policy commands they want in the
 // session.
 // Note that the TPM resets a policy session after it is successfully used.
-func PolicySession(tpm *TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
+func PolicySession(t *TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
 	// Set up a not-one-off session that knows the auth value.
 	sess := policySession{
 		sessionOptions: defaultOptions(),
 		hash:           hash,
 		nonceSize:      nonceSize,
-		handle:         TPMRHNull,
+		handle:         tpm.RHNull,
 	}
 	for _, opt := range opts {
 		opt(&sess.sessionOptions)
@@ -746,31 +787,29 @@ func PolicySession(tpm *TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthOption
 	sess.sessionOptions.attrs.ContinueSession = true
 
 	// Initialize the session.
-	if err := sess.Init(tpm); err != nil {
+	if err := sess.Init(t); err != nil {
 		return nil, nil, err
 	}
 
 	closer := func() error {
-		flushCmd := FlushContextCommand{
-			FlushHandle: sess.handle,
-		}
-		var flushRsp FlushContextResponse
-		return tpm.Execute(&flushCmd, &flushRsp)
+		fc := FlushContext{sess.handle}
+		_, err := fc.Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
 }
 
 // Init initializes the session, just in time, if needed.
-func (s *policySession) Init(tpm *TPM) error {
-	if s.handle != TPMRHNull {
+func (s *policySession) Init(t *TPM) error {
+	if s.handle != tpm.RHNull {
 		// Session is already initialized.
 		return nil
 	}
 
 	// Get a high-quality nonceCaller for our use.
 	// Store it with the session object for later reference.
-	s.nonceCaller = TPM2BNonce{
+	s.nonceCaller = tpm2b.Nonce{
 		Buffer: make([]byte, s.nonceSize),
 	}
 	if _, err := rand.Read(s.nonceCaller.Buffer); err != nil {
@@ -778,41 +817,45 @@ func (s *policySession) Init(tpm *TPM) error {
 	}
 
 	// Start up the actual auth session.
-	sasCmd := StartAuthSessionCommand{
+	sasCmd := StartAuthSession{
 		TPMKey:      s.saltHandle,
 		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
-		SessionType: TPMSEPolicy,
+		SessionType: tpm.SEPolicy,
 		Symmetric:   s.symmetric,
 		AuthHash:    s.hash,
 	}
 	var salt []byte
-	if s.saltHandle != TPMRHNull {
+	if s.saltHandle != tpm.RHNull {
 		var err error
-		var encSalt *TPM2BEncryptedSecret
+		var encSalt *tpm2b.EncryptedSecret
 		encSalt, salt, err = getEncryptedSalt(s.saltPub)
 		if err != nil {
 			return err
 		}
 		sasCmd.EncryptedSalt = *encSalt
 	}
-	var sasRsp StartAuthSessionResponse
-	if err := tpm.Execute(&sasCmd, &sasRsp); err != nil {
+	sasRsp, err := sasCmd.Execute(t)
+	if err != nil {
 		return err
 	}
 	s.handle = sasRsp.SessionHandle
 	s.nonceTPM = sasRsp.NonceTPM
 	// Part 1, 19.6
-	if s.bindHandle != TPMRHNull || len(salt) != 0 {
+	if s.bindHandle != tpm.RHNull || len(salt) != 0 {
 		var authSalt []byte
 		authSalt = append(authSalt, s.bindAuth...)
 		authSalt = append(authSalt, salt...)
-		s.sessionKey = tpm2.KDFaHash(s.hash.Hash(), authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, s.hash.Hash().Size()*8)
+		ha, err := s.hash.Hash()
+		if err != nil {
+			return err
+		}
+		s.sessionKey = legacy.KDFaHash(ha, authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, ha.Size()*8)
 	}
 
 	// Call the callback to execute the policy, if needed
 	if s.callback != nil {
-		if err := (*s.callback)(tpm, s.handle, s.nonceTPM); err != nil {
+		if err := (*s.callback)(t, s.handle, s.nonceTPM); err != nil {
 			return fmt.Errorf("executing policy: %w", err)
 		}
 	}
@@ -821,25 +864,22 @@ func (s *policySession) Init(tpm *TPM) error {
 }
 
 // CleanupFailure cleans up the session, if needed.
-func (s *policySession) CleanupFailure(tpm *TPM) error {
+func (s *policySession) CleanupFailure(t *TPM) error {
 	// The user is already responsible to clean up this session.
 	if s.attrs.ContinueSession {
 		return nil
 	}
-	flushCmd := FlushContextCommand{
-		FlushHandle: s.handle,
-	}
-	var flushRsp FlushContextResponse
-	if err := tpm.Execute(&flushCmd, &flushRsp); err != nil {
+	fc := FlushContext{FlushHandle: s.handle}
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
-	s.handle = TPMRHNull
+	s.handle = tpm.RHNull
 	return nil
 }
 
 // NonceTPM returns the last nonceTPM value from the session.
 // May be nil, if the session hasn't been initialized yet.
-func (s *policySession) NonceTPM() TPM2BNonce { return s.nonceTPM }
+func (s *policySession) NonceTPM() tpm2b.Nonce { return s.nonceTPM }
 
 // NewNonceCaller updates the nonceCaller for this session.
 func (s *policySession) NewNonceCaller() error {
@@ -848,8 +888,8 @@ func (s *policySession) NewNonceCaller() error {
 }
 
 // Authorize computes the authorization structure for the session.
-func (s *policySession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM2BName, _ int) (*TPMSAuthCommand, error) {
-	if s.handle == TPMRHNull {
+func (s *policySession) Authorize(cc tpm.CC, parms, addNonces []byte, names []tpm2b.Name, _ int) (*tpms.AuthCommand, error) {
+	if s.handle == tpm.RHNull {
 		// Session is not initialized.
 		return nil, fmt.Errorf("session not initialized")
 	}
@@ -865,19 +905,21 @@ func (s *policySession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM
 		hmacKey = append(hmacKey, hmacKeyFromAuthValue(s.auth)...)
 
 		// Compute the authorization HMAC.
-		var err error
-		hmac, err = computeHMAC(s.hash, hmacKey, cpHash(s.hash, cc, names, parms),
-			s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
+		cph, err := cpHash(s.hash, cc, names, parms)
+		if err != nil {
+			return nil, err
+		}
+		hmac, err = computeHMAC(s.hash, hmacKey, cph, s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	result := TPMSAuthCommand{
+	result := tpms.AuthCommand{
 		Handle:     s.handle,
 		Nonce:      s.nonceCaller,
 		Attributes: s.attrs,
-		Authorization: TPM2BData{
+		Authorization: tpm2b.Data{
 			Buffer: hmac,
 		},
 	}
@@ -886,12 +928,12 @@ func (s *policySession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM
 
 // Validate valitades the response session structure for the session.
 // Updates nonceTPM from the TPM's response.
-func (s *policySession) Validate(rc TPMRC, cc TPMCC, parms []byte, _ []TPM2BName, _ int, auth *TPMSAuthResponse) error {
+func (s *policySession) Validate(rc tpm.RC, cc tpm.CC, parms []byte, _ []tpm2b.Name, _ int, auth *tpms.AuthResponse) error {
 	// Track the new nonceTPM for the session.
 	s.nonceTPM = auth.Nonce
 	// Track the session being automatically flushed.
 	if !auth.Attributes.ContinueSession {
-		s.handle = TPMRHNull
+		s.handle = tpm.RHNull
 	}
 
 	if s.password {
@@ -909,8 +951,11 @@ func (s *policySession) Validate(rc TPMRC, cc TPMCC, parms []byte, _ []TPM2BName
 		hmacKey = append(hmacKey, s.sessionKey...)
 		hmacKey = append(hmacKey, hmacKeyFromAuthValue(s.auth)...)
 		// Compute the authorization HMAC.
-		mac, err := computeHMAC(s.hash, hmacKey, rpHash(s.hash, rc, cc, parms),
-			s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
+		rph, err := rpHash(s.hash, rc, cc, parms)
+		if err != nil {
+			return err
+		}
+		mac, err := computeHMAC(s.hash, hmacKey, rph, s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
 		if err != nil {
 			return err
 		}
@@ -944,7 +989,11 @@ func (s *policySession) Encrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := tpm2.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err
@@ -967,7 +1016,11 @@ func (s *policySession) Decrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := tpm2.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err
@@ -980,6 +1033,6 @@ func (s *policySession) Decrypt(parameter []byte) error {
 // Handle returns the handle value of the session.
 // If the session is created with Policy (instead of PolicySession) this will be
 // TPM_RH_NULL.
-func (s *policySession) Handle() TPMHandle {
+func (s *policySession) Handle() tpm.Handle {
 	return s.handle
 }
