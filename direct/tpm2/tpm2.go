@@ -52,7 +52,7 @@ func (a *AuthHandle) effectiveName() tpm2b.Name {
 	}
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, uint32(a.effectiveHandle()))
-	return tpm2b.Name{buf}
+	return tpm2b.Name{Buffer: buf}
 }
 
 // effectiveAuth returns the effective auth session.
