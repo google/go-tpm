@@ -43,8 +43,8 @@ func (t *TPM) Close() error {
 	return t.transport.Close()
 }
 
-// Execute sends the provided command and returns the TPM's response.
-func (t *TPM) Execute(cmd Command, rsp Response, extraSess ...Session) error {
+// execute sends the provided command and returns the TPM's response.
+func (t *TPM) execute(cmd Command, rsp Response, extraSess ...Session) error {
 	cc := cmd.Command()
 	if rsp.Response() != cc {
 		return fmt.Errorf("cmd and rsp must be for same command: %v != %v", cc, rsp.Response())

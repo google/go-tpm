@@ -29,7 +29,7 @@ func TestAuditSession(t *testing.T) {
 	defer cleanup()
 
 	// Create the AK for audit
-	createAKCmd := CreatePrimaryCommand{
+	createAKCmd := CreatePrimary{
 		PrimaryHandle: AuthHandle{
 			Handle: tpm.RHOwner,
 		},
@@ -66,17 +66,14 @@ func TestAuditSession(t *testing.T) {
 			},
 		},
 	}
-	var createAKRsp CreatePrimaryResponse
-	if err := thetpm.Execute(&createAKCmd, &createAKRsp); err != nil {
+	createAKRsp, err := createAKCmd.Execute(thetpm)
+	if err != nil {
 		t.Fatalf("%v", err)
 	}
 	defer func() {
 		// Flush the AK
-		flushCmd := FlushContextCommand{
-			FlushHandle: createAKRsp.ObjectHandle,
-		}
-		var flushRsp FlushContextResponse
-		if err := thetpm.Execute(&flushCmd, &flushRsp); err != nil {
+		flushCmd := FlushContext{FlushHandle: createAKRsp.ObjectHandle}
+		if _, err := flushCmd.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
@@ -93,20 +90,20 @@ func TestAuditSession(t *testing.T) {
 		tpm.PTManufacturer,
 	}
 	for _, prop := range props {
-		getCmd := GetCapabilityCommand{
+		getCmd := GetCapability{
 			Capability:    tpm.CapTPMProperties,
 			Property:      uint32(prop),
 			PropertyCount: 1,
 		}
-		var getRsp GetCapabilityResponse
-		if err := thetpm.Execute(&getCmd, &getRsp, sess); err != nil {
+		getRsp, err := getCmd.Execute(thetpm, sess)
+		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		if err := audit.Extend(&getCmd, &getRsp); err != nil {
+		if err := audit.Extend(&getCmd, getRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 		// Get the audit digest signed by the AK
-		getAuditCmd := GetSessionAuditDigestCommand{
+		getAuditCmd := GetSessionAuditDigest{
 			PrivacyAdminHandle: AuthHandle{
 				Handle: tpm.RHEndorsement,
 			},
@@ -116,8 +113,8 @@ func TestAuditSession(t *testing.T) {
 			SessionHandle:  sess.Handle(),
 			QualifyingData: tpm2b.Data{[]byte("foobar")},
 		}
-		var getAuditRsp GetSessionAuditDigestResponse
-		if err := thetpm.Execute(&getAuditCmd, &getAuditRsp); err != nil {
+		getAuditRsp, err := getAuditCmd.Execute(thetpm)
+		if err != nil {
 			t.Errorf("%v", err)
 		}
 		// TODO check the signature with the AK pub

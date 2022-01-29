@@ -330,11 +330,9 @@ func HMACSession(t *TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) (
 	}
 
 	closer := func() error {
-		flushCmd := FlushContextCommand{
-			FlushHandle: sess.handle,
-		}
-		var flushRsp FlushContextResponse
-		return t.Execute(&flushCmd, &flushRsp)
+		fc := FlushContext{FlushHandle: sess.handle}
+		_, err := fc.Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
@@ -439,7 +437,7 @@ func (s *hmacSession) Init(t *TPM) error {
 	}
 
 	// Start up the actual auth session.
-	sasCmd := StartAuthSessionCommand{
+	sasCmd := StartAuthSession{
 		TPMKey:      s.saltHandle,
 		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
@@ -457,8 +455,8 @@ func (s *hmacSession) Init(t *TPM) error {
 		}
 		sasCmd.EncryptedSalt = *encSalt
 	}
-	var sasRsp StartAuthSessionResponse
-	if err := t.Execute(&sasCmd, &sasRsp); err != nil {
+	sasRsp, err := sasCmd.Execute(t)
+	if err != nil {
 		return err
 	}
 	s.handle = sasRsp.SessionHandle
@@ -479,11 +477,8 @@ func (s *hmacSession) CleanupFailure(t *TPM) error {
 	if s.attrs.ContinueSession {
 		return nil
 	}
-	flushCmd := FlushContextCommand{
-		FlushHandle: s.handle,
-	}
-	var flushRsp FlushContextResponse
-	if err := t.Execute(&flushCmd, &flushRsp); err != nil {
+	fc := FlushContext{FlushHandle: s.handle}
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = tpm.RHNull
@@ -759,11 +754,9 @@ func PolicySession(t *TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption)
 	}
 
 	closer := func() error {
-		flushCmd := FlushContextCommand{
-			FlushHandle: sess.handle,
-		}
-		var flushRsp FlushContextResponse
-		return t.Execute(&flushCmd, &flushRsp)
+		fc := FlushContext{sess.handle}
+		_, err := fc.Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
@@ -786,7 +779,7 @@ func (s *policySession) Init(t *TPM) error {
 	}
 
 	// Start up the actual auth session.
-	sasCmd := StartAuthSessionCommand{
+	sasCmd := StartAuthSession{
 		TPMKey:      s.saltHandle,
 		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
@@ -804,8 +797,8 @@ func (s *policySession) Init(t *TPM) error {
 		}
 		sasCmd.EncryptedSalt = *encSalt
 	}
-	var sasRsp StartAuthSessionResponse
-	if err := t.Execute(&sasCmd, &sasRsp); err != nil {
+	sasRsp, err := sasCmd.Execute(t)
+	if err != nil {
 		return err
 	}
 	s.handle = sasRsp.SessionHandle
@@ -834,11 +827,8 @@ func (s *policySession) CleanupFailure(t *TPM) error {
 	if s.attrs.ContinueSession {
 		return nil
 	}
-	flushCmd := FlushContextCommand{
-		FlushHandle: s.handle,
-	}
-	var flushRsp FlushContextResponse
-	if err := t.Execute(&flushCmd, &flushRsp); err != nil {
+	fc := FlushContext{FlushHandle: s.handle}
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = tpm.RHNull
