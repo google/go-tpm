@@ -504,3 +504,26 @@ const (
 	RHPlatform    = internal.TPMRHPlatform
 	RHPlatformNV  = internal.TPMRHPlatformNV
 )
+
+// NT values come from Part 2: Structures, section 13.2.
+const (
+	// contains data that is opaque to the TPM that can only be modified
+	// using TPM2_NV_Write().
+	NTOrdinary = internal.TPMNTOrdinary
+	// contains an 8-octet value that is to be used as a counter and can
+	// only be modified with TPM2_NV_Increment()
+	NTCounter = internal.TPMNTCounter
+	// contains an 8-octet value to be used as a bit field and can only be
+	// modified with TPM2_NV_SetBits().
+	NTBits = internal.TPMNTBits
+	// contains a digest-sized value used like a PCR. The Index can only be
+	// modified using TPM2_NV_Extend(). The extend will use the nameAlg of
+	// the Index.
+	NTExtend = internal.TPMNTExtend
+	// contains pinCount that increments on a PIN authorization failure and
+	// a pinLimit
+	NTPinFail = internal.TPMNTPinFail
+	// contains pinCount that increments on a PIN authorization success and
+	// a pinLimit
+	NTPinPass = internal.TPMNTPinPass
+)

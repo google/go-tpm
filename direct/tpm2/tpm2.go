@@ -443,6 +443,36 @@ type PolicySecretResponse struct {
 // Response implements the Response interface.
 func (*PolicySecretResponse) Response() tpm.CC { return tpm.CCPolicySecret }
 
+// PolicyAuthorizeNV is the input to TPM2_PolicyAuthorizeNV.
+// See definition in Part 3, Commands, section 23.22.
+type PolicyAuthorizeNV struct {
+	// handle indicating the source of the authorization value
+	AuthHandle AuthHandle `gotpm:"handle,auth"`
+	// the NV Index of the area to read
+	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	// handle for the policy session being extended
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (*PolicyAuthorizeNV) Command() tpm.CC { return tpm.CCPolicyAuthorizeNV }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyAuthorizeNV) Execute(t *TPM, s ...Session) (*PolicyAuthorizeNVResponse, error) {
+	var rsp PolicyAuthorizeNVResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PolicyAuthorizeNVResponse is the response from TPM2_PolicyAuthorizeNV.
+type PolicyAuthorizeNVResponse struct {
+}
+
+// Response implements the Response interface.
+func (*PolicyAuthorizeNVResponse) Response() tpm.CC { return tpm.CCPolicyAuthorizeNV }
+
 // CreatePrimary is the input to TPM2_CreatePrimary.
 // See definition in Part 3, Commands, section 24.1
 type CreatePrimary struct {
@@ -552,3 +582,183 @@ type GetCapabilityResponse struct {
 
 // Response implements the Response interface.
 func (*GetCapabilityResponse) Response() tpm.CC { return tpm.CCGetCapability }
+
+// NVDefineSpace is the input to TPM2_NV_DefineSpace.
+// See definition in Part 3, Commands, section 31.3.
+type NVDefineSpace struct {
+	// TPM_RH_OWNER or TPM_RH_PLATFORM+{PP}
+	AuthHandle AuthHandle `gotpm:"handle,auth"`
+	// the authorization value
+	Auth tpm2b.Auth
+	// the public parameters of the NV area
+	PublicInfo tpm2b.NVPublic
+}
+
+// Command implements the Command interface.
+func (*NVDefineSpace) Command() tpm.CC { return tpm.CCNVDefineSpace }
+
+// Execute executes the command and returns the response.
+func (cmd *NVDefineSpace) Execute(t *TPM, s ...Session) (*NVDefineSpaceResponse, error) {
+	var rsp NVDefineSpaceResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVDefineSpaceResponse is the response from TPM2_NV_DefineSpace.
+type NVDefineSpaceResponse struct {
+}
+
+// Response implements the Response interface.
+func (*NVDefineSpaceResponse) Response() tpm.CC { return tpm.CCNVDefineSpace }
+
+// NVUndefineSpace is the input to TPM2_NV_UndefineSpace.
+// See definition in Part 3, Commands, section 31.4.
+type NVUndefineSpace struct {
+	// TPM_RH_OWNER or TPM_RH_PLATFORM+{PP}
+	AuthHandle AuthHandle `gotpm:"handle,auth"`
+	// the NV Index to remove from NV space
+	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (*NVUndefineSpace) Command() tpm.CC { return tpm.CCNVUndefineSpace }
+
+// Execute executes the command and returns the response.
+func (cmd *NVUndefineSpace) Execute(t *TPM, s ...Session) (*NVUndefineSpaceResponse, error) {
+	var rsp NVUndefineSpaceResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVUndefineSpaceResponse is the response from TPM2_NV_UndefineSpace.
+type NVUndefineSpaceResponse struct {
+}
+
+// Response implements the Response interface.
+func (*NVUndefineSpaceResponse) Response() tpm.CC { return tpm.CCNVUndefineSpace }
+
+// NVUndefineSpaceSpecial is the input to TPM2_NV_UndefineSpaceSpecial.
+// See definition in Part 3, Commands, section 31.5.
+type NVUndefineSpaceSpecial struct {
+	// Index to be deleted
+	NVIndex AuthHandle `gotpm:"handle,auth"`
+	// TPM_RH_PLATFORM+{PP}
+	Platform AuthHandle `gotpm:"handle,auth"`
+}
+
+// Command implements the Command interface.
+func (*NVUndefineSpaceSpecial) Command() tpm.CC { return tpm.CCNVUndefineSpaceSpecial }
+
+// Execute executes the command and returns the response.
+func (cmd *NVUndefineSpaceSpecial) Execute(t *TPM, s ...Session) (*NVUndefineSpaceSpecialResponse, error) {
+	var rsp NVUndefineSpaceSpecialResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVUndefineSpaceSpecialResponse is the response from TPM2_NV_UndefineSpaceSpecial.
+type NVUndefineSpaceSpecialResponse struct {
+}
+
+// Response implements the Response interface.
+func (*NVUndefineSpaceSpecialResponse) Response() tpm.CC { return tpm.CCNVUndefineSpaceSpecial }
+
+// NVReadPublic is the input to TPM2_NV_ReadPublic.
+// See definition in Part 3, Commands, section 31.6.
+type NVReadPublic struct {
+	// the NV index
+	NVIndex tpmi.RHNVIndex
+}
+
+// Command implements the Command interface.
+func (*NVReadPublic) Command() tpm.CC { return tpm.CCNVReadPublic }
+
+// Execute executes the command and returns the response.
+func (cmd *NVReadPublic) Execute(t *TPM, s ...Session) (*NVReadPublicResponse, error) {
+	var rsp NVReadPublicResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVReadPublicResponse is the response from TPM2_NV_ReadPublic.
+type NVReadPublicResponse struct {
+	NVPublic tpm2b.NVPublic
+	NVName   tpm2b.Name
+}
+
+// Response implements the Response interface.
+func (*NVReadPublicResponse) Response() tpm.CC { return tpm.CCNVReadPublic }
+
+// NVWrite is the input to TPM2_NV_Write.
+// See definition in Part 3, Commands, section 31.7.
+type NVWrite struct {
+	// handle indicating the source of the authorization value
+	AuthHandle AuthHandle `gotpm:"handle,auth"`
+	// the NV index of the area to write
+	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	// the data to write
+	Data tpm2b.MaxNVBuffer
+	// the octet offset into the NV Area
+	Offset uint16
+}
+
+// Command implements the Command interface.
+func (*NVWrite) Command() tpm.CC { return tpm.CCNVWrite }
+
+// Execute executes the command and returns the response.
+func (cmd *NVWrite) Execute(t *TPM, s ...Session) (*NVWriteResponse, error) {
+	var rsp NVWriteResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVWriteResponse is the response from TPM2_NV_Write.
+type NVWriteResponse struct {
+}
+
+// Response implements the Response interface.
+func (*NVWriteResponse) Response() tpm.CC { return tpm.CCNVWrite }
+
+// NVRead is the input to TPM2_NV_Read.
+// See definition in Part 3, Commands, section 31.13.
+type NVRead struct {
+	// handle indicating the source of the authorization value
+	AuthHandle AuthHandle `gotpm:"handle,auth"`
+	// the NV index to read
+	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	// number of octets to read
+	Size uint16
+	// octet offset into the NV area
+	Offset uint16
+}
+
+// Command implements the Command interface.
+func (*NVRead) Command() tpm.CC { return tpm.CCNVRead }
+
+// Execute executes the command and returns the response.
+func (cmd *NVRead) Execute(t *TPM, s ...Session) (*NVReadResponse, error) {
+	var rsp NVReadResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVReadResponse is the response from TPM2_NV_Read.
+type NVReadResponse struct {
+	// the data read
+	Data tpm2b.MaxNVBuffer
+}
+
+// Response implements the Response interface.
+func (*NVReadResponse) Response() tpm.CC { return tpm.CCNVRead }

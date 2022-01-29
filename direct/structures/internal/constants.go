@@ -562,3 +562,26 @@ const (
 	TPMRHPlatform    TPMHandle = 0x4000000C
 	TPMRHPlatformNV  TPMHandle = 0x4000000D
 )
+
+// TPMNT values come from Part 2: Structures, section 13.2.
+const (
+	// contains data that is opaque to the TPM that can only be modified
+	// using TPM2_NV_Write().
+	TPMNTOrdinary TPMNT = 0x0
+	// contains an 8-octet value that is to be used as a counter and can
+	// only be modified with TPM2_NV_Increment()
+	TPMNTCounter TPMNT = 0x1
+	// contains an 8-octet value to be used as a bit field and can only be
+	// modified with TPM2_NV_SetBits().
+	TPMNTBits TPMNT = 0x2
+	// contains a digest-sized value used like a PCR. The Index can only be
+	// modified using TPM2_NV_Extend(). The extend will use the nameAlg of
+	// the Index.
+	TPMNTExtend TPMNT = 0x4
+	// contains pinCount that increments on a PIN authorization failure and
+	// a pinLimit
+	TPMNTPinFail TPMNT = 0x8
+	// contains pinCount that increments on a PIN authorization success and
+	// a pinLimit
+	TPMNTPinPass TPMNT = 0x9
+)

@@ -28,3 +28,7 @@ type CC = internal.TPMACC
 // ACT represents a TPMA_ACT.
 // See definition in Part 2: Structures, section 8.12.
 type ACT = internal.TPMAACT
+
+// NV represents a TPMA_NV.
+// See definition in Part 2: Structures, section 13.4.
+type NV = internal.TPMANV

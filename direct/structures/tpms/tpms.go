@@ -175,6 +175,10 @@ type RSAParms = internal.TPMSRSAParms
 // See definition in Part 2: Structures, section 12.2.3.6.
 type ECCParms = internal.TPMSECCParms
 
+// NVPublic represents a TPMS_NV_PUBLIC.
+// See definition in Part 2: Structures, section 13.5.
+type NVPublic = internal.TPMSNVPublic
+
 // CreationData represents a TPMS_CREATION_DATA.
 // See definition in Part 2: Structures, section 15.1.
 type CreationData = internal.TPMSCreationData

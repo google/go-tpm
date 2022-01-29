@@ -88,3 +88,7 @@ type PTPCR = internal.TPMPTPCR
 // Handle represents a TPM_HANDLE.
 // See definition in Part 2: Structures, section 7.1.
 type Handle = internal.TPMHandle
+
+// NT represents a TPM_NT.
+// See definition in Part 2: Structures, section 13.4.
+type NT = internal.TPMNT
