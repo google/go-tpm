@@ -1,5 +1,7 @@
 package helpers
 
+import "github.com/google/go-tpm/direct/structures/tpm"
+
 // This file provides wrapper functions for concrete types used by tpm2, for
 // setting union member pointers.
 

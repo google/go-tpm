@@ -2,7 +2,13 @@
 package internal
 
 import (
+	"crypto"
 	"crypto/elliptic"
+
+	// Register the relevant hash implementations.
+	_ "crypto/sha1"
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"fmt"
 )
 
@@ -388,6 +394,21 @@ type TPMIRHHierarchy = TPMHandle
 // TPMIAlgHash represents a TPMI_ALG_HASH.
 // See definition in Part 2: Structures, section 9.27.
 type TPMIAlgHash = TPMAlgID
+
+// Hash returns the crypto.Hash associated with a TPMIAlgHash.
+func (a TPMIAlgHash) Hash() crypto.Hash {
+	switch TPMAlgID(a) {
+	case TPMAlgSHA1:
+		return crypto.SHA1
+	case TPMAlgSHA256:
+		return crypto.SHA256
+	case TPMAlgSHA384:
+		return crypto.SHA384
+	case TPMAlgSHA512:
+		return crypto.SHA512
+	}
+	panic(fmt.Sprintf("unsupported hash algorithm: %v", a))
+}
 
 // TODO: Provide a placeholder interface here so we can explicitly enumerate
 // these for compile-time protection.

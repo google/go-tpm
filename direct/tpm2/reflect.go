@@ -1,5 +1,5 @@
-// Package direct provides 1:1 mapping to TPM 2.0 APIs.
-package direct
+// Package tpm2 provides 1:1 mapping to TPM 2.0 APIs.
+package tpm2
 
 import (
 	"bytes"
@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -116,7 +119,7 @@ func (t *TPM) Execute(cmd Command, rsp Response, extraSess ...Session) error {
 		// We don't need the TPM RC here because we would have errored
 		// out from rspHeader
 		// TODO: Authenticate the error code with sessions, if desired.
-		err = rspSessions(rspBuf, TPMRCSuccess, cc, names, rspParms, sess)
+		err = rspSessions(rspBuf, tpm.RCSuccess, cc, names, rspParms, sess)
 		if err != nil {
 			return err
 		}
@@ -221,7 +224,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 		// TPMAlgNull for union selection.
 		// This allows callers to omit uninteresting scheme structures.
 		if v.Field(i).IsZero() && hasTag(v.Type().Field(i), "nullable") {
-			possibleSelectors[v.Type().Field(i).Name] = int64(TPMAlgNull)
+			possibleSelectors[v.Type().Field(i).Name] = int64(tpm.AlgNull)
 			continue
 		}
 		switch v.Field(i).Kind() {
@@ -267,7 +270,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			// as TPMHandle's zero value is TPM_RH_NULL.
 			// This allows callers to omit uninteresting handles
 			// instead of specifying them as TPM_RH_NULL.
-			if err := binary.Write(&res, binary.BigEndian, uint32(TPMRHNull)); err != nil {
+			if err := binary.Write(&res, binary.BigEndian, uint32(tpm.RHNull)); err != nil {
 				return err
 			}
 		} else if v.Field(i).IsZero() && v.Field(i).Kind() == reflect.Uint16 && hasTag(v.Type().Field(i), "nullable") {
@@ -276,7 +279,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			// This allows callers to omit uninteresting
 			// algorithms/schemes instead of specifying them as
 			// TPM_ALG_NULL.
-			if err := binary.Write(&res, binary.BigEndian, uint16(TPMAlgNull)); err != nil {
+			if err := binary.Write(&res, binary.BigEndian, uint16(tpm.AlgNull)); err != nil {
 				return err
 			}
 		} else {
@@ -340,7 +343,7 @@ func marshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 // selector. Marshals nothing if the selector is equal to TPM_ALG_NULL (0x0010).
 func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 	// Special case: TPM_ALG_NULL as a selector means marshal nothing
-	if selector == int64(TPMAlgNull) {
+	if selector == int64(tpm.AlgNull) {
 		return nil
 	}
 	for i := 0; i < v.NumField(); i++ {
@@ -614,7 +617,7 @@ func unmarshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 // selector. Unmarshals nothing if the selector is TPM_ALG_NULL (0x0010).
 func unmarshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 	// Special case: TPM_ALG_NULL as a selector means unmarshal nothing
-	if selector == int64(TPMAlgNull) {
+	if selector == int64(tpm.AlgNull) {
 		return nil
 	}
 	for i := 0; i < v.NumField(); i++ {
@@ -760,9 +763,9 @@ func cmdHandles(cmd Command) []byte {
 }
 
 // cmdNames returns the authorized names of the command.
-func cmdNames(cmd Command) ([]TPM2BName, error) {
+func cmdNames(cmd Command) ([]tpm2b.Name, error) {
 	authHandles := taggedMembers(reflect.ValueOf(cmd).Elem(), "auth", false)
-	var result []TPM2BName
+	var result []tpm2b.Name
 	for _, authHandle := range authHandles {
 		handle, ok := authHandle.Interface().(AuthHandle)
 		if !ok {
@@ -797,7 +800,7 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 				return nil, fmt.Errorf("too many decrypt sessions")
 			}
 			if len(firstParmBytes) < 2 {
-				return nil, fmt.Errorf("this command's first parameter is not a TPM2B")
+				return nil, fmt.Errorf("this command's first parameter is not a tpm2b.")
 			}
 			err := s.Encrypt(firstParmBytes[2:])
 			if err != nil {
@@ -815,7 +818,7 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 }
 
 // cmdSessions returns the authorization area of the command.
-func cmdSessions(tpm *TPM, sess []Session, cc TPMCC, names []TPM2BName, parms []byte) ([]byte, error) {
+func cmdSessions(tpm *TPM, sess []Session, cc tpm.CC, names []tpm2b.Name, parms []byte) ([]byte, error) {
 	// There is no authorization area if there are no sessions.
 	if len(sess) == 0 {
 		return nil, nil
@@ -874,12 +877,12 @@ func cmdSessions(tpm *TPM, sess []Session, cc TPMCC, names []TPM2BName, parms []
 }
 
 // cmdHeader returns the structured TPM command header.
-func cmdHeader(hasSessions bool, length int, cc TPMCC) []byte {
-	tag := TPMSTNoSessions
+func cmdHeader(hasSessions bool, length int, cc tpm.CC) []byte {
+	tag := tpm.STNoSessions
 	if hasSessions {
-		tag = TPMSTSessions
+		tag = tpm.STSessions
 	}
-	hdr := TPMCmdHeader{
+	hdr := tpm.CmdHeader{
 		Tag:         tag,
 		Length:      uint32(length),
 		CommandCode: cc,
@@ -893,11 +896,11 @@ func cmdHeader(hasSessions bool, length int, cc TPMCC) []byte {
 // returns an error here.
 // rsp is updated to point to the rest of the response after the header.
 func rspHeader(rsp *bytes.Buffer) error {
-	var hdr TPMRspHeader
+	var hdr tpm.RspHeader
 	if err := unmarshal(rsp, reflect.ValueOf(&hdr).Elem()); err != nil {
 		return fmt.Errorf("unmarshalling TPM response: %w", err)
 	}
-	if hdr.ResponseCode != TPMRCSuccess {
+	if hdr.ResponseCode != tpm.RCSuccess {
 		return hdr.ResponseCode
 	}
 	return nil
@@ -953,9 +956,9 @@ func rspParametersArea(hasSessions bool, rsp *bytes.Buffer) ([]byte, error) {
 // the sessions with it. If there is a response validation error, returns
 // an error here.
 // rsp is updated to point to the rest of the response after the sessions.
-func rspSessions(rsp *bytes.Buffer, rc TPMRC, cc TPMCC, names []TPM2BName, parms []byte, sess []Session) error {
+func rspSessions(rsp *bytes.Buffer, rc tpm.RC, cc tpm.CC, names []tpm2b.Name, parms []byte, sess []Session) error {
 	for i, s := range sess {
-		var auth TPMSAuthResponse
+		var auth tpms.AuthResponse
 		if err := unmarshal(rsp, reflect.ValueOf(&auth).Elem()); err != nil {
 			return fmt.Errorf("reading auth session %d: %w", i, err)
 		}

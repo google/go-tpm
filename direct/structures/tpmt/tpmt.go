@@ -15,6 +15,10 @@ type TKCreation = internal.TPMTTKCreation
 // See definition in Part 2: Structures, section 10.7.5.
 type TKAuth = internal.TPMTTKAuth
 
+// SymDef represents a TPMT_SYM_DEF.
+// See definition in Part 2: Structures, section 11.1.6.
+type SymDef = internal.TPMTSymDef
+
 // SymDefObject represents a TPMT_SYM_DEF_OBJECT.
 // See definition in Part 2: Structures, section 11.1.7.
 type SymDefObject = internal.TPMTSymDefObject
