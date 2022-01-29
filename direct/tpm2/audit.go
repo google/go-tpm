@@ -18,11 +18,15 @@ type CommandAudit struct {
 }
 
 // NewAudit initializes a new CommandAudit with the specified hash algorithm.
-func NewAudit(hash tpmi.AlgHash) CommandAudit {
-	return CommandAudit{
-		hash:   hash,
-		digest: make([]byte, hash.Hash().Size()),
+func NewAudit(hash tpmi.AlgHash) (*CommandAudit, error) {
+	h, err := hash.Hash()
+	if err != nil {
+		return nil, err
 	}
+	return &CommandAudit{
+		hash:   hash,
+		digest: make([]byte, h.Size()),
+	}, nil
 }
 
 // Extend extends the audit digest with the given command and response.
@@ -35,7 +39,11 @@ func (a *CommandAudit) Extend(cmd Command, rsp Response) error {
 	if err != nil {
 		return err
 	}
-	h := a.hash.Hash().New()
+	ha, err := a.hash.Hash()
+	if err != nil {
+		return err
+	}
+	h := ha.New()
 	h.Write(a.digest)
 	h.Write(cpHash)
 	h.Write(rpHash)
@@ -61,7 +69,7 @@ func auditCPHash(h tpmi.AlgHash, c Command) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cpHash(h, cc, names, parms), nil
+	return cpHash(h, cc, names, parms)
 }
 
 // auditRPHash calculates the response parameter hash for a given response with
@@ -76,5 +84,5 @@ func auditRPHash(h tpmi.AlgHash, r Response) ([]byte, error) {
 			return nil, fmt.Errorf("marshalling parameter %v: %w", i, err)
 		}
 	}
-	return rpHash(h, tpm.RCSuccess, cc, parms.Bytes()), nil
+	return rpHash(h, tpm.RCSuccess, cc, parms.Bytes())
 }

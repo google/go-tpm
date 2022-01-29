@@ -78,7 +78,10 @@ func TestAuditSession(t *testing.T) {
 		}
 	}()
 
-	audit := NewAudit(tpm.AlgSHA256)
+	audit, err := NewAudit(tpm.AlgSHA256)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	// Call GetCapability a bunch of times with the audit session and make sure it extends like
 	// we expect it to.
 	props := []tpm.PT{

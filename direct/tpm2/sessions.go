@@ -63,24 +63,32 @@ type Session interface {
 
 // cpHash calculates the TPM command parameter hash.
 // cpHash = hash(CC || names || parms)
-func cpHash(alg tpmi.AlgHash, cc tpm.CC, names []tpm2b.Name, parms []byte) []byte {
-	h := alg.Hash().New()
+func cpHash(alg tpmi.AlgHash, cc tpm.CC, names []tpm2b.Name, parms []byte) ([]byte, error) {
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	h := ha.New()
 	binary.Write(h, binary.BigEndian, cc)
 	for _, name := range names {
 		h.Write(name.Buffer)
 	}
 	h.Write(parms)
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 }
 
 // rpHash calculates the TPM response parameter hash.
 // rpHash = hash(RC || CC || parms)
-func rpHash(alg tpmi.AlgHash, rc tpm.RC, cc tpm.CC, parms []byte) []byte {
-	h := alg.Hash().New()
+func rpHash(alg tpmi.AlgHash, rc tpm.RC, cc tpm.CC, parms []byte) ([]byte, error) {
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	h := ha.New()
 	binary.Write(h, binary.BigEndian, rc)
 	binary.Write(h, binary.BigEndian, cc)
 	h.Write(parms)
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 }
 
 // pwSession represents a password-pseudo-session.
@@ -361,12 +369,16 @@ func getEncryptedSaltRSA(nameAlg tpmi.AlgHash, parms *tpms.RSAParms, pub *tpm2b.
 	default:
 		return nil, nil, fmt.Errorf("unsupported RSA salt key scheme: %v", parms.Scheme.Scheme)
 	}
-	salt := make([]byte, hAlg.Hash().Size())
+	ha, err := hAlg.Hash()
+	if err != nil {
+		return nil, nil, err
+	}
+	salt := make([]byte, ha.Size())
 	if _, err := rand.Read(salt); err != nil {
 		return nil, nil, fmt.Errorf("generating random salt: %w", err)
 	}
 	// Part 1, section 4.6 specifies the trailing NULL byte for the label.
-	encSalt, err := rsa.EncryptOAEP(hAlg.Hash().New(), rand.Reader, rsaPub, salt, []byte("SECRET\x00"))
+	encSalt, err := rsa.EncryptOAEP(ha.New(), rand.Reader, rsaPub, salt, []byte("SECRET\x00"))
 	if err != nil {
 		return nil, nil, fmt.Errorf("encrypting salt: %w", err)
 	}
@@ -395,7 +407,11 @@ func getEncryptedSaltECC(nameAlg tpmi.AlgHash, parms *tpms.ECCParms, pub *tpms.E
 	// the curve.
 	z := make([]byte, (curve.Params().BitSize+7)/8)
 	zx.FillBytes(z)
-	salt := legacy.KDFeHash(nameAlg.Hash(), z, "SECRET", ephPubX.Bytes(), pub.X.Buffer, nameAlg.Hash().Size()*8)
+	ha, err := nameAlg.Hash()
+	if err != nil {
+		return nil, nil, err
+	}
+	salt := legacy.KDFeHash(ha, z, "SECRET", ephPubX.Bytes(), pub.X.Buffer, ha.Size()*8)
 
 	var encSalt bytes.Buffer
 	binary.Write(&encSalt, binary.BigEndian, uint16(len(ephPubX.Bytes())))
@@ -462,11 +478,15 @@ func (s *hmacSession) Init(t *TPM) error {
 	s.handle = sasRsp.SessionHandle
 	s.nonceTPM = sasRsp.NonceTPM
 	// Part 1, 19.6
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
 	if s.bindHandle != tpm.RHNull || len(salt) != 0 {
 		var authSalt []byte
 		authSalt = append(authSalt, s.bindAuth...)
 		authSalt = append(authSalt, salt...)
-		s.sessionKey = legacy.KDFaHash(s.hash.Hash(), authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, s.hash.Hash().Size()*8)
+		s.sessionKey = legacy.KDFaHash(ha, authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, ha.Size()*8)
 	}
 	return nil
 }
@@ -535,7 +555,11 @@ func attrsToBytes(attrs tpma.Session) []byte {
 // nonceOlder in a response is the corresponding nonceCaller sent in the
 //   command.
 func computeHMAC(alg tpmi.AlgHash, key, pHash, nonceNewer, nonceOlder, addNonces []byte, attrs tpma.Session) ([]byte, error) {
-	mac := hmac.New(alg.Hash().New, key)
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	mac := hmac.New(ha.New, key)
 	mac.Write(pHash)
 	mac.Write(nonceNewer)
 	mac.Write(nonceOlder)
@@ -580,8 +604,11 @@ func (s *hmacSession) Authorize(cc tpm.CC, parms, addNonces []byte, names []tpm2
 	}
 
 	// Compute the authorization HMAC.
-	hmac, err := computeHMAC(s.hash, hmacKey, cpHash(s.hash, cc, names, parms),
-		s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
+	cph, err := cpHash(s.hash, cc, names, parms)
+	if err != nil {
+		return nil, err
+	}
+	hmac, err := computeHMAC(s.hash, hmacKey, cph, s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
 	if err != nil {
 		return nil, err
 	}
@@ -616,8 +643,11 @@ func (s *hmacSession) Validate(rc tpm.RC, cc tpm.CC, parms []byte, names []tpm2b
 	}
 
 	// Compute the authorization HMAC.
-	mac, err := computeHMAC(s.hash, hmacKey, rpHash(s.hash, rc, cc, parms),
-		s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
+	rph, err := rpHash(s.hash, rc, cc, parms)
+	if err != nil {
+		return err
+	}
+	mac, err := computeHMAC(s.hash, hmacKey, rph, s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
 	if err != nil {
 		return err
 	}
@@ -650,7 +680,11 @@ func (s *hmacSession) Encrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := legacy.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err
@@ -673,7 +707,11 @@ func (s *hmacSession) Decrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := legacy.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err
@@ -808,7 +846,11 @@ func (s *policySession) Init(t *TPM) error {
 		var authSalt []byte
 		authSalt = append(authSalt, s.bindAuth...)
 		authSalt = append(authSalt, salt...)
-		s.sessionKey = legacy.KDFaHash(s.hash.Hash(), authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, s.hash.Hash().Size()*8)
+		ha, err := s.hash.Hash()
+		if err != nil {
+			return err
+		}
+		s.sessionKey = legacy.KDFaHash(ha, authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, ha.Size()*8)
 	}
 
 	// Call the callback to execute the policy, if needed
@@ -863,9 +905,11 @@ func (s *policySession) Authorize(cc tpm.CC, parms, addNonces []byte, names []tp
 		hmacKey = append(hmacKey, hmacKeyFromAuthValue(s.auth)...)
 
 		// Compute the authorization HMAC.
-		var err error
-		hmac, err = computeHMAC(s.hash, hmacKey, cpHash(s.hash, cc, names, parms),
-			s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
+		cph, err := cpHash(s.hash, cc, names, parms)
+		if err != nil {
+			return nil, err
+		}
+		hmac, err = computeHMAC(s.hash, hmacKey, cph, s.nonceCaller.Buffer, s.nonceTPM.Buffer, addNonces, s.attrs)
 		if err != nil {
 			return nil, err
 		}
@@ -907,8 +951,11 @@ func (s *policySession) Validate(rc tpm.RC, cc tpm.CC, parms []byte, _ []tpm2b.N
 		hmacKey = append(hmacKey, s.sessionKey...)
 		hmacKey = append(hmacKey, hmacKeyFromAuthValue(s.auth)...)
 		// Compute the authorization HMAC.
-		mac, err := computeHMAC(s.hash, hmacKey, rpHash(s.hash, rc, cc, parms),
-			s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
+		rph, err := rpHash(s.hash, rc, cc, parms)
+		if err != nil {
+			return err
+		}
+		mac, err := computeHMAC(s.hash, hmacKey, rph, s.nonceTPM.Buffer, s.nonceCaller.Buffer, nil, auth.Attributes)
 		if err != nil {
 			return err
 		}
@@ -942,7 +989,11 @@ func (s *policySession) Encrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := legacy.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceCaller.Buffer, s.nonceTPM.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err
@@ -965,7 +1016,11 @@ func (s *policySession) Decrypt(parameter []byte) error {
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
 	sessionValue = append(sessionValue, s.auth...)
-	keyIV := legacy.KDFaHash(s.hash.Hash(), sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
+	ha, err := s.hash.Hash()
+	if err != nil {
+		return err
+	}
+	keyIV := legacy.KDFaHash(ha, sessionValue, "CFB", s.nonceTPM.Buffer, s.nonceCaller.Buffer, keyIVBytes*8)
 	key, err := aes.NewCipher(keyIV[:keyBytes])
 	if err != nil {
 		return err

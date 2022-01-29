@@ -396,18 +396,18 @@ type TPMIRHHierarchy = TPMHandle
 type TPMIAlgHash = TPMAlgID
 
 // Hash returns the crypto.Hash associated with a TPMIAlgHash.
-func (a TPMIAlgHash) Hash() crypto.Hash {
+func (a TPMIAlgHash) Hash() (crypto.Hash, error) {
 	switch TPMAlgID(a) {
 	case TPMAlgSHA1:
-		return crypto.SHA1
+		return crypto.SHA1, nil
 	case TPMAlgSHA256:
-		return crypto.SHA256
+		return crypto.SHA256, nil
 	case TPMAlgSHA384:
-		return crypto.SHA384
+		return crypto.SHA384, nil
 	case TPMAlgSHA512:
-		return crypto.SHA512
+		return crypto.SHA512, nil
 	}
-	panic(fmt.Sprintf("unsupported hash algorithm: %v", a))
+	return crypto.SHA256, fmt.Errorf("unsupported hash algorithm: %v", a)
 }
 
 // TODO: Provide a placeholder interface here so we can explicitly enumerate
