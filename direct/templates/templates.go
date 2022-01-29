@@ -1,5 +1,15 @@
 package templates
 
+import (
+	"github.com/google/go-tpm/direct/helpers"
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpma"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+	"github.com/google/go-tpm/direct/structures/tpmu"
+)
+
 var (
 	// RSASRKTemplate contains the TCG reference RSA-2048 SRK template.
 	// https://trustedcomputinggroup.org/wp-content/uploads/TCG-tpm.-v2.0-Provisioning-Guidance-Published-v1r1.pdf
@@ -8,7 +18,7 @@ var (
 			Type:    tpm.AlgRSA,
 			NameAlg: tpm.AlgSHA256,
 			ObjectAttributes: tpma.Object{
-				Fixedtpm.:             true,
+				FixedTPM:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,
@@ -47,7 +57,7 @@ var (
 			Type:    tpm.AlgRSA,
 			NameAlg: tpm.AlgSHA256,
 			ObjectAttributes: tpma.Object{
-				Fixedtpm.:             true,
+				FixedTPM:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,
@@ -96,7 +106,7 @@ var (
 			Type:    tpm.AlgECC,
 			NameAlg: tpm.AlgSHA256,
 			ObjectAttributes: tpma.Object{
-				Fixedtpm.:             true,
+				FixedTPM:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,
@@ -139,8 +149,8 @@ var (
 		PublicArea: tpmt.Public{
 			Type:    tpm.AlgECC,
 			NameAlg: tpm.AlgSHA256,
-			ObjectAttributes: tpm.AObject{
-				Fixedtpm.:             true,
+			ObjectAttributes: tpma.Object{
+				FixedTPM:             true,
 				STClear:              false,
 				FixedParent:          true,
 				SensitiveDataOrigin:  true,

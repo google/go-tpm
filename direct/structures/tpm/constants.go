@@ -323,7 +323,7 @@ const (
 	CapPPCommands    = internal.TPMCapPPCommands
 	CapAuditCommands = internal.TPMCapAuditCommands
 	CapPCRs          = internal.TPMCapPCRs
-	CapProperties    = internal.TPMCapProperties
+	CapTPMProperties = internal.TPMCapTPMProperties
 	CapPCRProperties = internal.TPMCapPCRProperties
 	CapECCCurves     = internal.TPMCapECCCurves
 	CapAuthPolicies  = internal.TPMCapAuthPolicies

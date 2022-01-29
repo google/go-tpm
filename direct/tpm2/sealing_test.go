@@ -6,13 +6,19 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm-tools/simulator"
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpma"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+	"github.com/google/go-tpm/direct/templates"
 )
 
 // Test creating and unsealing a sealed data blob with a password and HMAC.
 func TestUnseal(t *testing.T) {
-	templates := map[string]TPM2BPublic{
-		"RSA": RSASRKTemplate,
-		"ECC": ECCSRKTemplate,
+	templates := map[string]tpm2b.Public{
+		"RSA": templates.RSASRKTemplate,
+		"ECC": templates.ECCSRKTemplate,
 	}
 
 	// Run the whole test for each of RSA and ECC SRKs.
@@ -23,24 +29,24 @@ func TestUnseal(t *testing.T) {
 	}
 }
 
-func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
+func unsealingTest(t *testing.T, srkTemplate tpm2b.Public) {
 	sim, err := simulator.Get()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	tpm := NewTPM(sim)
-	defer tpm.Close()
+	thetpm := NewTPM(sim)
+	defer thetpm.Close()
 
 	// Create the SRK
 	// Put a password on the SRK to test more of the flows.
 	srkAuth := []byte("mySRK")
 	createSRKCmd := CreatePrimaryCommand{
 		PrimaryHandle: AuthHandle{
-			Handle: TPMRHOwner,
+			Handle: tpm.RHOwner,
 		},
-		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
-				UserAuth: TPM2BAuth{
+		InSensitive: tpm2b.SensitiveCreate{
+			Sensitive: tpms.SensitiveCreate{
+				UserAuth: tpm2b.Auth{
 					Buffer: srkAuth,
 				},
 			},
@@ -48,7 +54,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 		InPublic: srkTemplate,
 	}
 	var createSRKRsp CreatePrimaryResponse
-	if err := tpm.Execute(&createSRKCmd, &createSRKRsp); err != nil {
+	if err := thetpm.Execute(&createSRKCmd, &createSRKRsp); err != nil {
 		t.Fatalf("%v", err)
 	}
 	t.Logf("SRK name: %x", createSRKRsp.Name)
@@ -58,7 +64,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 			FlushHandle: createSRKRsp.ObjectHandle,
 		}
 		var flushSRKRsp FlushContextResponse
-		if err := tpm.Execute(&flushSRKCmd, &flushSRKRsp); err != nil {
+		if err := thetpm.Execute(&flushSRKCmd, &flushSRKRsp); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
@@ -74,21 +80,21 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 			Name:   createSRKRsp.Name,
 			Auth:   PasswordAuth(srkAuth),
 		},
-		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
-				UserAuth: TPM2BAuth{
+		InSensitive: tpm2b.SensitiveCreate{
+			Sensitive: tpms.SensitiveCreate{
+				UserAuth: tpm2b.Auth{
 					Buffer: auth,
 				},
-				Data: TPM2BData{
+				Data: tpm2b.Data{
 					Buffer: data,
 				},
 			},
 		},
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgKeyedHash,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
+		InPublic: tpm2b.Public{
+			PublicArea: tpmt.Public{
+				Type:    tpm.AlgKeyedHash,
+				NameAlg: tpm.AlgSHA256,
+				ObjectAttributes: tpma.Object{
 					FixedTPM:     true,
 					FixedParent:  true,
 					UserWithAuth: true,
@@ -101,7 +107,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 
 	// Create the blob with password auth, without any session encryption
 	t.Run("Create", func(t *testing.T) {
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -109,9 +115,9 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Create the blob using an hmac auth session also for audit
 	t.Run("CreateAudit", func(t *testing.T) {
 		createBlobCmd.ParentHandle.Auth =
-			HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
+			HMAC(tpm.AlgSHA256, 16, Auth(srkAuth),
 				AuditExclusive())
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -119,9 +125,9 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Create the blob, using the auth session also for decryption
 	t.Run("CreateDecrypt", func(t *testing.T) {
 		createBlobCmd.ParentHandle.Auth =
-			HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
+			HMAC(tpm.AlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptIn))
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -129,9 +135,9 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Create the blob, using the auth session also for encryption
 	t.Run("CreateEncrypt", func(t *testing.T) {
 		createBlobCmd.ParentHandle.Auth =
-			HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
+			HMAC(tpm.AlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptOut))
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -139,9 +145,9 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Create the blob, using the auth session also for decrypt and encrypt
 	t.Run("CreateDecryptEncrypt", func(t *testing.T) {
 		createBlobCmd.ParentHandle.Auth =
-			HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
+			HMAC(tpm.AlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptInOut))
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -149,10 +155,10 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Create the blob with decrypt and encrypt session
 	t.Run("CreateDecryptEncryptAudit", func(t *testing.T) {
 		createBlobCmd.ParentHandle.Auth =
-			HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
+			HMAC(tpm.AlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptInOut),
 				Audit())
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -160,49 +166,49 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Create the blob with decrypt and encrypt session bound to SRK
 	t.Run("CreateDecryptEncryptSalted", func(t *testing.T) {
 		createBlobCmd.ParentHandle.Auth =
-			HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
+			HMAC(tpm.AlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptInOut),
 				Salted(createSRKRsp.ObjectHandle, createSRKRsp.OutPublic.PublicArea))
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
 
 	// Use HMAC auth to authorize the rest of the Create commands
 	// Exercise re-using a use-once HMAC structure (which will spin up the session each time)
-	createBlobCmd.ParentHandle.Auth = HMAC(TPMAlgSHA256, 16, Auth(srkAuth))
+	createBlobCmd.ParentHandle.Auth = HMAC(tpm.AlgSHA256, 16, Auth(srkAuth))
 	// Create the blob with a separate decrypt and encrypt session
 	t.Run("CreateDecryptEncryptSeparate", func(t *testing.T) {
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp,
-			HMAC(TPMAlgSHA256, 16, AESEncryption(128, EncryptInOut))); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp,
+			HMAC(tpm.AlgSHA256, 16, AESEncryption(128, EncryptInOut))); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
 
 	// Create the blob with a separate decrypt and encrypt session, and another for audit
 	t.Run("CreateDecryptEncryptAuditSeparate", func(t *testing.T) {
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp,
-			HMAC(TPMAlgSHA256, 16, AESEncryption(128, EncryptInOut)),
-			HMAC(TPMAlgSHA256, 16, Audit())); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp,
+			HMAC(tpm.AlgSHA256, 16, AESEncryption(128, EncryptInOut)),
+			HMAC(tpm.AlgSHA256, 16, Audit())); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
 
 	// Create the blob with a separate decrypt and encrypt session, and another for exclusive audit
 	t.Run("CreateDecryptEncryptAuditExclusiveSeparate", func(t *testing.T) {
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp,
-			HMAC(TPMAlgSHA256, 16, AESEncryption(128, EncryptInOut)),
-			HMAC(TPMAlgSHA256, 16, AuditExclusive())); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp,
+			HMAC(tpm.AlgSHA256, 16, AESEncryption(128, EncryptInOut)),
+			HMAC(tpm.AlgSHA256, 16, AuditExclusive())); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
 
 	// Create the blob with separate decrypt and encrypt sessions.
 	t.Run("CreateDecryptEncrypt2Separate", func(t *testing.T) {
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp,
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp,
 			// Get weird with the algorithm and nonce choices. Mix lots of things together.
-			HMAC(TPMAlgSHA1, 20, AESEncryption(128, EncryptIn)),
-			HMAC(TPMAlgSHA384, 23, AESEncryption(128, EncryptOut))); err != nil {
+			HMAC(tpm.AlgSHA1, 20, AESEncryption(128, EncryptIn)),
+			HMAC(tpm.AlgSHA384, 23, AESEncryption(128, EncryptOut))); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -211,9 +217,9 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// (The TPM spec orders some extra nonces included in the first session in the order
 	// nonceTPM_decrypt, nonceTPM_encrypt, so this exercises that)
 	t.Run("CreateDecryptEncrypt2Separate", func(t *testing.T) {
-		if err := tpm.Execute(&createBlobCmd, &createBlobRsp,
-			HMAC(TPMAlgSHA1, 17, AESEncryption(128, EncryptOut)),
-			HMAC(TPMAlgSHA256, 32, AESEncryption(128, EncryptIn))); err != nil {
+		if err := thetpm.Execute(&createBlobCmd, &createBlobRsp,
+			HMAC(tpm.AlgSHA1, 17, AESEncryption(128, EncryptOut)),
+			HMAC(tpm.AlgSHA256, 32, AESEncryption(128, EncryptIn))); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})
@@ -223,13 +229,13 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 		ParentHandle: AuthHandle{
 			Handle: createSRKRsp.ObjectHandle,
 			Name:   createSRKRsp.Name,
-			Auth:   HMAC(TPMAlgSHA256, 16, Auth(srkAuth)),
+			Auth:   HMAC(tpm.AlgSHA256, 16, Auth(srkAuth)),
 		},
 		InPrivate: createBlobRsp.OutPrivate,
 		InPublic:  createBlobRsp.OutPublic,
 	}
 	var loadBlobRsp LoadResponse
-	if err := tpm.Execute(&loadBlobCmd, &loadBlobRsp); err != nil {
+	if err := thetpm.Execute(&loadBlobCmd, &loadBlobRsp); err != nil {
 		t.Fatalf("%v", err)
 	}
 	defer func() {
@@ -238,7 +244,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 			FlushHandle: loadBlobRsp.ObjectHandle,
 		}
 		var flushBlobRsp FlushContextResponse
-		if err := tpm.Execute(&flushBlobCmd, &flushBlobRsp); err != nil {
+		if err := thetpm.Execute(&flushBlobCmd, &flushBlobRsp); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
@@ -253,7 +259,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Unseal the blob with a password session
 	t.Run("WithPassword", func(t *testing.T) {
 		unsealCmd.ItemHandle.Auth = PasswordAuth(auth)
-		if err := tpm.Execute(&unsealCmd, &unsealRsp); err != nil {
+		if err := thetpm.Execute(&unsealCmd, &unsealRsp); err != nil {
 			t.Errorf("%v", err)
 		}
 		if !bytes.Equal(unsealRsp.OutData.Buffer, data) {
@@ -264,14 +270,14 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Unseal the blob with an incorrect password session
 	t.Run("WithWrongPassword", func(t *testing.T) {
 		unsealCmd.ItemHandle.Auth = PasswordAuth([]byte("NotThePassword"))
-		err := tpm.Execute(&unsealCmd, &unsealRsp)
+		err := thetpm.Execute(&unsealCmd, &unsealRsp)
 		if err == nil {
 			t.Errorf("want TPM_RC_BAD_AUTH, got nil")
 		}
-		if !errors.Is(err, TPMRCBadAuth) {
+		if !errors.Is(err, tpm.RCBadAuth) {
 			t.Errorf("want TPM_RC_BAD_AUTH, got %v", err)
 		}
-		var fmt1 Fmt1Error
+		var fmt1 tpm.Fmt1Error
 		if !errors.As(err, &fmt1) {
 			t.Errorf("want a Fmt1Error, got %v", err)
 		} else if isSession, session := fmt1.Session(); !isSession || session != 1 {
@@ -281,8 +287,8 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 
 	// Unseal the blob with a use-once HMAC session
 	t.Run("WithHMAC", func(t *testing.T) {
-		unsealCmd.ItemHandle.Auth = HMAC(TPMAlgSHA256, 16, Auth(auth2))
-		if err := tpm.Execute(&unsealCmd, &unsealRsp); err != nil {
+		unsealCmd.ItemHandle.Auth = HMAC(tpm.AlgSHA256, 16, Auth(auth2))
+		if err := thetpm.Execute(&unsealCmd, &unsealRsp); err != nil {
 			t.Errorf("%v", err)
 		}
 		if !bytes.Equal(unsealRsp.OutData.Buffer, data) {
@@ -292,9 +298,9 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 
 	// Unseal the blob with a use-once HMAC session with encryption
 	t.Run("WithHMACEncrypt", func(t *testing.T) {
-		unsealCmd.ItemHandle.Auth = HMAC(TPMAlgSHA256, 16, Auth(auth2),
+		unsealCmd.ItemHandle.Auth = HMAC(tpm.AlgSHA256, 16, Auth(auth2),
 			AESEncryption(128, EncryptOut))
-		if err := tpm.Execute(&unsealCmd, &unsealRsp); err != nil {
+		if err := thetpm.Execute(&unsealCmd, &unsealRsp); err != nil {
 			t.Errorf("%v", err)
 		}
 		if !bytes.Equal(unsealRsp.OutData.Buffer, data) {
@@ -304,7 +310,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 
 	// Unseal the blob with a standalone HMAC session, re-using the session.
 	t.Run("WithHMACSession", func(t *testing.T) {
-		sess, cleanup, err := HMACSession(tpm, TPMAlgSHA1, 20, Auth(auth2))
+		sess, cleanup, err := HMACSession(thetpm, tpm.AlgSHA1, 20, Auth(auth2))
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
@@ -313,7 +319,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 
 		// It should be possible to use the session multiple times.
 		for i := 0; i < 3; i++ {
-			if err := tpm.Execute(&unsealCmd, &unsealRsp); err != nil {
+			if err := thetpm.Execute(&unsealCmd, &unsealRsp); err != nil {
 				t.Errorf("%v", err)
 			}
 			if !bytes.Equal(unsealRsp.OutData.Buffer, data) {
@@ -325,7 +331,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Unseal the blob with a standalone bound HMAC session, re-using the session.
 	// Also, use session encryption.
 	t.Run("WithHMACSessionEncrypt", func(t *testing.T) {
-		sess, cleanup, err := HMACSession(tpm, TPMAlgSHA256, 16, Auth(auth2),
+		sess, cleanup, err := HMACSession(thetpm, tpm.AlgSHA256, 16, Auth(auth2),
 			AESEncryption(128, EncryptOut),
 			Bound(createSRKRsp.ObjectHandle, createSRKRsp.Name, srkAuth))
 		if err != nil {
@@ -336,7 +342,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 
 		// It should be possible to use the session multiple times.
 		for i := 0; i < 3; i++ {
-			if err := tpm.Execute(&unsealCmd, &unsealRsp); err != nil {
+			if err := thetpm.Execute(&unsealCmd, &unsealRsp); err != nil {
 				t.Errorf("%v", err)
 			}
 			if !bytes.Equal(unsealRsp.OutData.Buffer, data) {
@@ -348,12 +354,12 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 	// Unseal the blob with a standalone HMAC session, re-using the session.
 	// Spin up another bound session for encryption.
 	t.Run("WithHMACSessionEncryptSeparate", func(t *testing.T) {
-		sess1, cleanup1, err := HMACSession(tpm, TPMAlgSHA1, 16, Auth(auth2))
+		sess1, cleanup1, err := HMACSession(thetpm, tpm.AlgSHA1, 16, Auth(auth2))
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
 		defer cleanup1()
-		sess2, cleanup2, err := HMACSession(tpm, TPMAlgSHA384, 16,
+		sess2, cleanup2, err := HMACSession(thetpm, tpm.AlgSHA384, 16,
 			AESEncryption(128, EncryptOut),
 			Bound(createSRKRsp.ObjectHandle, createSRKRsp.Name, srkAuth))
 		if err != nil {
@@ -364,7 +370,7 @@ func unsealingTest(t *testing.T, srkTemplate TPM2BPublic) {
 
 		// It should be possible to use the sessions multiple times.
 		for i := 0; i < 3; i++ {
-			if err := tpm.Execute(&unsealCmd, &unsealRsp, sess2); err != nil {
+			if err := thetpm.Execute(&unsealCmd, &unsealRsp, sess2); err != nil {
 				t.Errorf("%v", err)
 			}
 			if !bytes.Equal(unsealRsp.OutData.Buffer, data) {

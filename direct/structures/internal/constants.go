@@ -332,7 +332,7 @@ const (
 	TPMCapPPCommands    TPMCap = 0x00000003
 	TPMCapAuditCommands TPMCap = 0x00000004
 	TPMCapPCRs          TPMCap = 0x00000005
-	TPMCapProperties    TPMCap = 0x00000006
+	TPMCapTPMProperties TPMCap = 0x00000006
 	TPMCapPCRProperties TPMCap = 0x00000007
 	TPMCapECCCurves     TPMCap = 0x00000008
 	TPMCapAuthPolicies  TPMCap = 0x00000009
