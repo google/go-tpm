@@ -1,588 +1,506 @@
 package tpm
 
 import (
-	"crypto"
-	"crypto/elliptic"
-
-	// Register the relevant hash implementations.
-	_ "crypto/sha1"
-	_ "crypto/sha256"
-	_ "crypto/sha512"
-	"fmt"
-)
-
-// Generated values come from Part 2: Structures, section 6.2.
-const (
-	GeneratedValue Generated = 0xff544347
+	"github.com/google/go-tpm/direct/structures/internal"
 )
 
 // AlgID values come from Part 2: Structures, section 6.3.
 const (
-	AlgRSA          AlgID = 0x0001
-	AlgTDES         AlgID = 0x0003
-	AlgSHA          AlgID = 0x0004
-	AlgSHA1                  = AlgSHA
-	AlgHMAC         AlgID = 0x0005
-	AlgAES          AlgID = 0x0006
-	AlgMGF1         AlgID = 0x0007
-	AlgKeyedHash    AlgID = 0x0008
-	AlgXOR          AlgID = 0x000A
-	AlgSHA256       AlgID = 0x000B
-	AlgSHA384       AlgID = 0x000C
-	AlgSHA512       AlgID = 0x000D
-	AlgNull         AlgID = 0x0010
-	AlgSM3256       AlgID = 0x0012
-	AlgSM4          AlgID = 0x0013
-	AlgRSASSA       AlgID = 0x0014
-	AlgRSAES        AlgID = 0x0015
-	AlgRSAPSS       AlgID = 0x0016
-	AlgOAEP         AlgID = 0x0017
-	AlgECDSA        AlgID = 0x0018
-	AlgECDH         AlgID = 0x0019
-	AlgECDAA        AlgID = 0x001A
-	AlgSM2          AlgID = 0x001B
-	AlgECSchnorr    AlgID = 0x001C
-	AlgECMQV        AlgID = 0x001D
-	AlgKDF1SP80056A AlgID = 0x0020
-	AlgKDF2         AlgID = 0x0021
-	AlgKDF1SP800108 AlgID = 0x0022
-	AlgECC          AlgID = 0x0023
-	AlgSymCipher    AlgID = 0x0025
-	AlgCamellia     AlgID = 0x0026
-	AlgSHA3256      AlgID = 0x0027
-	AlgSHA3384      AlgID = 0x0028
-	AlgSHA3512      AlgID = 0x0029
-	AlgCTR          AlgID = 0x0040
-	AlgOFB          AlgID = 0x0041
-	AlgCBC          AlgID = 0x0042
-	AlgCFB          AlgID = 0x0043
-	AlgECB          AlgID = 0x0044
+	AlgRSA          = internal.TPMAlgRSA
+	AlgTDES         = internal.TPMAlgTDES
+	AlgSHA          = internal.TPMAlgSHA
+	AlgSHA1         = internal.TPMAlgSHA1
+	AlgHMAC         = internal.TPMAlgHMAC
+	AlgAES          = internal.TPMAlgAES
+	AlgMGF1         = internal.TPMAlgMGF1
+	AlgKeyedHash    = internal.TPMAlgKeyedHash
+	AlgXOR          = internal.TPMAlgXOR
+	AlgSHA256       = internal.TPMAlgSHA256
+	AlgSHA384       = internal.TPMAlgSHA384
+	AlgSHA512       = internal.TPMAlgSHA512
+	AlgNull         = internal.TPMAlgNull
+	AlgSM3256       = internal.TPMAlgSM3256
+	AlgSM4          = internal.TPMAlgSM4
+	AlgRSASSA       = internal.TPMAlgRSASSA
+	AlgRSAES        = internal.TPMAlgRSAES
+	AlgRSAPSS       = internal.TPMAlgRSAPSS
+	AlgOAEP         = internal.TPMAlgOAEP
+	AlgECDSA        = internal.TPMAlgECDSA
+	AlgECDH         = internal.TPMAlgECDH
+	AlgECDAA        = internal.TPMAlgECDAA
+	AlgSM2          = internal.TPMAlgSM2
+	AlgECSchnorr    = internal.TPMAlgECSchnorr
+	AlgECMQV        = internal.TPMAlgECMQV
+	AlgKDF1SP80056A = internal.TPMAlgKDF1SP80056A
+	AlgKDF2         = internal.TPMAlgKDF2
+	AlgKDF1SP800108 = internal.TPMAlgKDF1SP800108
+	AlgECC          = internal.TPMAlgECC
+	AlgSymCipher    = internal.TPMAlgSymCipher
+	AlgCamellia     = internal.TPMAlgCamellia
+	AlgSHA3256      = internal.TPMAlgSHA3256
+	AlgSHA3384      = internal.TPMAlgSHA3384
+	AlgSHA3512      = internal.TPMAlgSHA3512
+	AlgCTR          = internal.TPMAlgCTR
+	AlgOFB          = internal.TPMAlgOFB
+	AlgCBC          = internal.TPMAlgCBC
+	AlgCFB          = internal.TPMAlgCFB
+	AlgECB          = internal.TPMAlgECB
 )
 
-// ECCCurve values come from Part 2: Structures, section 6.4.
+// ECCCurve = internal.TPMECCCurve
 const (
-	ECCNone     ECCCurve = 0x0000
-	ECCNistP192 ECCCurve = 0x0001
-	ECCNistP224 ECCCurve = 0x0002
-	ECCNistP256 ECCCurve = 0x0003
-	ECCNistP384 ECCCurve = 0x0004
-	ECCNistP521 ECCCurve = 0x0005
-	ECCBNP256   ECCCurve = 0x0010
-	ECCBNP638   ECCCurve = 0x0011
-	ECCSM2P256  ECCCurve = 0x0020
+	ECCNone     = internal.TPMECCNone
+	ECCNistP192 = internal.TPMECCNistP192
+	ECCNistP224 = internal.TPMECCNistP224
+	ECCNistP256 = internal.TPMECCNistP256
+	ECCNistP384 = internal.TPMECCNistP384
+	ECCNistP521 = internal.TPMECCNistP521
+	ECCBNP256   = internal.TPMECCBNP256
+	ECCBNP638   = internal.TPMECCBNP638
+	ECCSM2P256  = internal.TPMECCSM2P256
 )
 
-// Curve returns the elliptic.Curve associated with a ECCCurve.
-func (c ECCCurve) Curve() (elliptic.Curve, error) {
-	switch c {
-	case ECCNistP224:
-		return elliptic.P224(), nil
-	case ECCNistP256:
-		return elliptic.P256(), nil
-	case ECCNistP384:
-		return elliptic.P384(), nil
-	case ECCNistP521:
-		return elliptic.P521(), nil
-	default:
-		return nil, fmt.Errorf("unsupported ECC curve: %v", c)
-	}
-}
-
-// CC values come from Part 2: Structures, section 6.5.2.
+// CC = internal.TPMCC
 const (
-	CCNVUndefineSpaceSpecial     CC = 0x0000011F
-	CCEvictControl               CC = 0x00000120
-	CCHierarchyControl           CC = 0x00000121
-	CCNVUndefineSpace            CC = 0x00000122
-	CCChangeEPS                  CC = 0x00000124
-	CCChangePPS                  CC = 0x00000125
-	CCClear                      CC = 0x00000126
-	CCClearControl               CC = 0x00000127
-	CCClockSet                   CC = 0x00000128
-	CCHierarchyChanegAuth        CC = 0x00000129
-	CCNVDefineSpace              CC = 0x0000012A
-	CCPCRAllocate                CC = 0x0000012B
-	CCPCRSetAuthPolicy           CC = 0x0000012C
-	CCPPCommands                 CC = 0x0000012D
-	CCSetPrimaryPolicy           CC = 0x0000012E
-	CCFieldUpgradeStart          CC = 0x0000012F
-	CCClockRateAdjust            CC = 0x00000130
-	CCCreatePrimary              CC = 0x00000131
-	CCNVGlobalWriteLock          CC = 0x00000132
-	CCGetCommandAuditDigest      CC = 0x00000133
-	CCNVIncrement                CC = 0x00000134
-	CCNVSetBits                  CC = 0x00000135
-	CCNVExtend                   CC = 0x00000136
-	CCNVWrite                    CC = 0x00000137
-	CCNVWriteLock                CC = 0x00000138
-	CCDictionaryAttackLockReset  CC = 0x00000139
-	CCDictionaryAttackParameters CC = 0x0000013A
-	CCNVChangeAuth               CC = 0x0000013B
-	CCPCREvent                   CC = 0x0000013C
-	CCPCRReset                   CC = 0x0000013D
-	CCSequenceComplete           CC = 0x0000013E
-	CCSetAlgorithmSet            CC = 0x0000013F
-	CCSetCommandCodeAuditStatus  CC = 0x00000140
-	CCFieldUpgradeData           CC = 0x00000141
-	CCIncrementalSelfTest        CC = 0x00000142
-	CCSelfTest                   CC = 0x00000143
-	CCStartup                    CC = 0x00000144
-	CCShutdown                   CC = 0x00000145
-	CCStirRandom                 CC = 0x00000146
-	CCActivateCredential         CC = 0x00000147
-	CCCertify                    CC = 0x00000148
-	CCPolicyNV                   CC = 0x00000149
-	CCCertifyCreation            CC = 0x0000014A
-	CCDuplicate                  CC = 0x0000014B
-	CCGetTime                    CC = 0x0000014C
-	CCGetSessionAuditDigest      CC = 0x0000014D
-	CCNVRead                     CC = 0x0000014E
-	CCNVReadLock                 CC = 0x0000014F
-	CCObjectChangeAuth           CC = 0x00000150
-	CCPolicySecret               CC = 0x00000151
-	CCRewrap                     CC = 0x00000152
-	CCCreate                     CC = 0x00000153
-	CCECDHZGen                   CC = 0x00000154
-	CCHMAC                       CC = 0x00000155
-	CCMAC                        CC = CCHMAC
-	CCImport                     CC = 0x00000156
-	CCLoad                       CC = 0x00000157
-	CCQuote                      CC = 0x00000158
-	CCRSADecrypt                 CC = 0x00000159
-	CCHMACStart                  CC = 0x0000015B
-	CCMACStart                   CC = CCHMACStart
-	CCSequenceUpdate             CC = 0x0000015C
-	CCSign                       CC = 0x0000015D
-	CCUnseal                     CC = 0x0000015E
-	CCPolicySigned               CC = 0x00000160
-	CCContextLoad                CC = 0x00000161
-	CCContextSave                CC = 0x00000162
-	CCECDHKeyGen                 CC = 0x00000163
-	CCEncryptDecrypt             CC = 0x00000164
-	CCFlushContext               CC = 0x00000165
-	CCLoadExternal               CC = 0x00000167
-	CCMakeCredential             CC = 0x00000168
-	CCNVReadPublic               CC = 0x00000169
-	CCPolicyAuthorize            CC = 0x0000016A
-	CCPolicyAuthValue            CC = 0x0000016B
-	CCPolicyCommandCode          CC = 0x0000016C
-	CCPolicyCounterTimer         CC = 0x0000016D
-	CCPolicyCpHash               CC = 0x0000016E
-	CCPolicyLocality             CC = 0x0000016F
-	CCPolicyNameHash             CC = 0x00000170
-	CCPolicyOR                   CC = 0x00000171
-	CCPolicyTicket               CC = 0x00000172
-	CCReadPublic                 CC = 0x00000173
-	CCRSAEncrypt                 CC = 0x00000174
-	CCStartAuthSession           CC = 0x00000176
-	CCVerifySignature            CC = 0x00000177
-	CCECCParameters              CC = 0x00000178
-	CCFirmwareRead               CC = 0x00000179
-	CCGetCapability              CC = 0x0000017A
-	CCGetRandom                  CC = 0x0000017B
-	CCGetTestResult              CC = 0x0000017C
-	CCHash                       CC = 0x0000017D
-	CCPCRRead                    CC = 0x0000017E
-	CCPolicyPCR                  CC = 0x0000017F
-	CCPolicyRestart              CC = 0x00000180
-	CCReadClock                  CC = 0x00000181
-	CCPCRExtend                  CC = 0x00000182
-	CCPCRSetAuthValue            CC = 0x00000183
-	CCNVCertify                  CC = 0x00000184
-	CCEventSequenceComplete      CC = 0x00000185
-	CCHashSequenceStart          CC = 0x00000186
-	CCPolicyPhysicalPresence     CC = 0x00000187
-	CCPolicyDuplicationSelect    CC = 0x00000188
-	CCPolicyGetDigest            CC = 0x00000189
-	CCTestParams                 CC = 0x0000018A
-	CCCommit                     CC = 0x0000018B
-	CCPolicyPassword             CC = 0x0000018C
-	CCZGen2Phase                 CC = 0x0000018D
-	CCECEphemeral                CC = 0x0000018E
-	CCPolicyNvWritten            CC = 0x0000018F
-	CCPolicyTemplate             CC = 0x00000190
-	CCCreateLoaded               CC = 0x00000191
-	CCPolicyAuthorizeNV          CC = 0x00000192
-	CCEncryptDecrypt2            CC = 0x00000193
-	CCACGetCapability            CC = 0x00000194
-	CCACSend                     CC = 0x00000195
-	CCPolicyACSendSelect         CC = 0x00000196
-	CCCertifyX509                CC = 0x00000197
-	CCACTSetTimeout              CC = 0x00000198
+	CCNVUndefineSpaceSpecial     = internal.TPMCCNVUndefineSpaceSpecial
+	CCEvictControl               = internal.TPMCCEvictControl
+	CCHierarchyControl           = internal.TPMCCHierarchyControl
+	CCNVUndefineSpace            = internal.TPMCCNVUndefineSpace
+	CCChangeEPS                  = internal.TPMCCChangeEPS
+	CCChangePPS                  = internal.TPMCCChangePPS
+	CCClear                      = internal.TPMCCClear
+	CCClearControl               = internal.TPMCCClearControl
+	CCClockSet                   = internal.TPMCCClockSet
+	CCHierarchyChanegAuth        = internal.TPMCCHierarchyChanegAuth
+	CCNVDefineSpace              = internal.TPMCCNVDefineSpace
+	CCPCRAllocate                = internal.TPMCCPCRAllocate
+	CCPCRSetAuthPolicy           = internal.TPMCCPCRSetAuthPolicy
+	CCPPCommands                 = internal.TPMCCPPCommands
+	CCSetPrimaryPolicy           = internal.TPMCCSetPrimaryPolicy
+	CCFieldUpgradeStart          = internal.TPMCCFieldUpgradeStart
+	CCClockRateAdjust            = internal.TPMCCClockRateAdjust
+	CCCreatePrimary              = internal.TPMCCCreatePrimary
+	CCNVGlobalWriteLock          = internal.TPMCCNVGlobalWriteLock
+	CCGetCommandAuditDigest      = internal.TPMCCGetCommandAuditDigest
+	CCNVIncrement                = internal.TPMCCNVIncrement
+	CCNVSetBits                  = internal.TPMCCNVSetBits
+	CCNVExtend                   = internal.TPMCCNVExtend
+	CCNVWrite                    = internal.TPMCCNVWrite
+	CCNVWriteLock                = internal.TPMCCNVWriteLock
+	CCDictionaryAttackLockReset  = internal.TPMCCDictionaryAttackLockReset
+	CCDictionaryAttackParameters = internal.TPMCCDictionaryAttackParameters
+	CCNVChangeAuth               = internal.TPMCCNVChangeAuth
+	CCPCREvent                   = internal.TPMCCPCREvent
+	CCPCRReset                   = internal.TPMCCPCRReset
+	CCSequenceComplete           = internal.TPMCCSequenceComplete
+	CCSetAlgorithmSet            = internal.TPMCCSetAlgorithmSet
+	CCSetCommandCodeAuditStatus  = internal.TPMCCSetCommandCodeAuditStatus
+	CCFieldUpgradeData           = internal.TPMCCFieldUpgradeData
+	CCIncrementalSelfTest        = internal.TPMCCIncrementalSelfTest
+	CCSelfTest                   = internal.TPMCCSelfTest
+	CCStartup                    = internal.TPMCCStartup
+	CCShutdown                   = internal.TPMCCShutdown
+	CCStirRandom                 = internal.TPMCCStirRandom
+	CCActivateCredential         = internal.TPMCCActivateCredential
+	CCCertify                    = internal.TPMCCCertify
+	CCPolicyNV                   = internal.TPMCCPolicyNV
+	CCCertifyCreation            = internal.TPMCCCertifyCreation
+	CCDuplicate                  = internal.TPMCCDuplicate
+	CCGetTime                    = internal.TPMCCGetTime
+	CCGetSessionAuditDigest      = internal.TPMCCGetSessionAuditDigest
+	CCNVRead                     = internal.TPMCCNVRead
+	CCNVReadLock                 = internal.TPMCCNVReadLock
+	CCObjectChangeAuth           = internal.TPMCCObjectChangeAuth
+	CCPolicySecret               = internal.TPMCCPolicySecret
+	CCRewrap                     = internal.TPMCCRewrap
+	CCCreate                     = internal.TPMCCCreate
+	CCECDHZGen                   = internal.TPMCCECDHZGen
+	CCHMAC                       = internal.TPMCCHMAC
+	CCMAC                        = internal.TPMCCMAC
+	CCImport                     = internal.TPMCCImport
+	CCLoad                       = internal.TPMCCLoad
+	CCQuote                      = internal.TPMCCQuote
+	CCRSADecrypt                 = internal.TPMCCRSADecrypt
+	CCHMACStart                  = internal.TPMCCHMACStart
+	CCMACStart                   = internal.TPMCCMACStart
+	CCSequenceUpdate             = internal.TPMCCSequenceUpdate
+	CCSign                       = internal.TPMCCSign
+	CCUnseal                     = internal.TPMCCUnseal
+	CCPolicySigned               = internal.TPMCCPolicySigned
+	CCContextLoad                = internal.TPMCCContextLoad
+	CCContextSave                = internal.TPMCCContextSave
+	CCECDHKeyGen                 = internal.TPMCCECDHKeyGen
+	CCEncryptDecrypt             = internal.TPMCCEncryptDecrypt
+	CCFlushContext               = internal.TPMCCFlushContext
+	CCLoadExternal               = internal.TPMCCLoadExternal
+	CCMakeCredential             = internal.TPMCCMakeCredential
+	CCNVReadPublic               = internal.TPMCCNVReadPublic
+	CCPolicyAuthorize            = internal.TPMCCPolicyAuthorize
+	CCPolicyAuthValue            = internal.TPMCCPolicyAuthValue
+	CCPolicyCommandCode          = internal.TPMCCPolicyCommandCode
+	CCPolicyCounterTimer         = internal.TPMCCPolicyCounterTimer
+	CCPolicyCpHash               = internal.TPMCCPolicyCpHash
+	CCPolicyLocality             = internal.TPMCCPolicyLocality
+	CCPolicyNameHash             = internal.TPMCCPolicyNameHash
+	CCPolicyOR                   = internal.TPMCCPolicyOR
+	CCPolicyTicket               = internal.TPMCCPolicyTicket
+	CCReadPublic                 = internal.TPMCCReadPublic
+	CCRSAEncrypt                 = internal.TPMCCRSAEncrypt
+	CCStartAuthSession           = internal.TPMCCStartAuthSession
+	CCVerifySignature            = internal.TPMCCVerifySignature
+	CCECCParameters              = internal.TPMCCECCParameters
+	CCFirmwareRead               = internal.TPMCCFirmwareRead
+	CCGetCapability              = internal.TPMCCGetCapability
+	CCGetRandom                  = internal.TPMCCGetRandom
+	CCGetTestResult              = internal.TPMCCGetTestResult
+	CCHash                       = internal.TPMCCHash
+	CCPCRRead                    = internal.TPMCCPCRRead
+	CCPolicyPCR                  = internal.TPMCCPolicyPCR
+	CCPolicyRestart              = internal.TPMCCPolicyRestart
+	CCReadClock                  = internal.TPMCCReadClock
+	CCPCRExtend                  = internal.TPMCCPCRExtend
+	CCPCRSetAuthValue            = internal.TPMCCPCRSetAuthValue
+	CCNVCertify                  = internal.TPMCCNVCertify
+	CCEventSequenceComplete      = internal.TPMCCEventSequenceComplete
+	CCHashSequenceStart          = internal.TPMCCHashSequenceStart
+	CCPolicyPhysicalPresence     = internal.TPMCCPolicyPhysicalPresence
+	CCPolicyDuplicationSelect    = internal.TPMCCPolicyDuplicationSelect
+	CCPolicyGetDigest            = internal.TPMCCPolicyGetDigest
+	CCTestParams                 = internal.TPMCCTestParams
+	CCCommit                     = internal.TPMCCCommit
+	CCPolicyPassword             = internal.TPMCCPolicyPassword
+	CCZGen2Phase                 = internal.TPMCCZGen2Phase
+	CCECEphemeral                = internal.TPMCCECEphemeral
+	CCPolicyNvWritten            = internal.TPMCCPolicyNvWritten
+	CCPolicyTemplate             = internal.TPMCCPolicyTemplate
+	CCCreateLoaded               = internal.TPMCCCreateLoaded
+	CCPolicyAuthorizeNV          = internal.TPMCCPolicyAuthorizeNV
+	CCEncryptDecrypt2            = internal.TPMCCEncryptDecrypt2
+	CCACGetCapability            = internal.TPMCCACGetCapability
+	CCACSend                     = internal.TPMCCACSend
+	CCPolicyACSendSelect         = internal.TPMCCPolicyACSendSelect
+	CCCertifyX509                = internal.TPMCCCertifyX509
+	CCACTSetTimeout              = internal.TPMCCACTSetTimeout
 )
 
-// RC values come from Part 2: Structures, section 6.6.3.
+// RC = internal.TPMRC
 const (
-	RCSuccess RC = 0x00000000
-	rcVer1       RC = 0x00000100
+	RCSuccess = internal.TPMRCSuccess
 	// FMT0 error codes
-	RCInitialize      RC = rcVer1 + 0x000
-	RCFailure         RC = rcVer1 + 0x001
-	RCSequence        RC = rcVer1 + 0x003
-	RCPrivate         RC = rcVer1 + 0x00B
-	RCHMAC            RC = rcVer1 + 0x019
-	RCDisabled        RC = rcVer1 + 0x020
-	RCExclusive       RC = rcVer1 + 0x021
-	RCAuthType        RC = rcVer1 + 0x024
-	RCAuthMissing     RC = rcVer1 + 0x025
-	RCPolicy          RC = rcVer1 + 0x026
-	RCPCR             RC = rcVer1 + 0x027
-	RCPCRChanged      RC = rcVer1 + 0x028
-	RCUpgrade         RC = rcVer1 + 0x02D
-	RCTooManyContexts RC = rcVer1 + 0x02E
-	RCAuthUnavailable RC = rcVer1 + 0x02F
-	RCReboot          RC = rcVer1 + 0x030
-	RCUnbalanced      RC = rcVer1 + 0x031
-	RCCommandSize     RC = rcVer1 + 0x042
-	RCCommandCode     RC = rcVer1 + 0x043
-	RCAuthSize        RC = rcVer1 + 0x044
-	RCAuthContext     RC = rcVer1 + 0x045
-	RCNVRange         RC = rcVer1 + 0x046
-	RCNVSize          RC = rcVer1 + 0x047
-	RCNVLocked        RC = rcVer1 + 0x048
-	RCNVAuthorization RC = rcVer1 + 0x049
-	RCNVUninitialized RC = rcVer1 + 0x04A
-	RCNVSpace         RC = rcVer1 + 0x04B
-	RCNVDefined       RC = rcVer1 + 0x04C
-	RCBadContext      RC = rcVer1 + 0x050
-	RCCPHash          RC = rcVer1 + 0x051
-	RCParent          RC = rcVer1 + 0x052
-	RCNeedsTest       RC = rcVer1 + 0x053
-	RCNoResult        RC = rcVer1 + 0x054
-	RCSensitive       RC = rcVer1 + 0x055
-	rcFmt1               RC = 0x00000080
+	RCInitialize      = internal.TPMRCInitialize
+	RCFailure         = internal.TPMRCFailure
+	RCSequence        = internal.TPMRCSequence
+	RCPrivate         = internal.TPMRCPrivate
+	RCHMAC            = internal.TPMRCHMAC
+	RCDisabled        = internal.TPMRCDisabled
+	RCExclusive       = internal.TPMRCExclusive
+	RCAuthType        = internal.TPMRCAuthType
+	RCAuthMissing     = internal.TPMRCAuthMissing
+	RCPolicy          = internal.TPMRCPolicy
+	RCPCR             = internal.TPMRCPCR
+	RCPCRChanged      = internal.TPMRCPCRChanged
+	RCUpgrade         = internal.TPMRCUpgrade
+	RCTooManyContexts = internal.TPMRCTooManyContexts
+	RCAuthUnavailable = internal.TPMRCAuthUnavailable
+	RCReboot          = internal.TPMRCReboot
+	RCUnbalanced      = internal.TPMRCUnbalanced
+	RCCommandSize     = internal.TPMRCCommandSize
+	RCCommandCode     = internal.TPMRCCommandCode
+	RCAuthSize        = internal.TPMRCAuthSize
+	RCAuthContext     = internal.TPMRCAuthContext
+	RCNVRange         = internal.TPMRCNVRange
+	RCNVSize          = internal.TPMRCNVSize
+	RCNVLocked        = internal.TPMRCNVLocked
+	RCNVAuthorization = internal.TPMRCNVAuthorization
+	RCNVUninitialized = internal.TPMRCNVUninitialized
+	RCNVSpace         = internal.TPMRCNVSpace
+	RCNVDefined       = internal.TPMRCNVDefined
+	RCBadContext      = internal.TPMRCBadContext
+	RCCPHash          = internal.TPMRCCPHash
+	RCParent          = internal.TPMRCParent
+	RCNeedsTest       = internal.TPMRCNeedsTest
+	RCNoResult        = internal.TPMRCNoResult
+	RCSensitive       = internal.TPMRCSensitive
 	// FMT1 error codes
-	RCAsymmetric   RC = rcFmt1 + 0x001
-	RCAttributes   RC = rcFmt1 + 0x002
-	RCHash         RC = rcFmt1 + 0x003
-	RCValue        RC = rcFmt1 + 0x004
-	RCHierarchy    RC = rcFmt1 + 0x005
-	RCKeySize      RC = rcFmt1 + 0x007
-	RCMGF          RC = rcFmt1 + 0x008
-	RCMode         RC = rcFmt1 + 0x009
-	RCType         RC = rcFmt1 + 0x00A
-	RCHandle       RC = rcFmt1 + 0x00B
-	RCKDF          RC = rcFmt1 + 0x00C
-	RCRange        RC = rcFmt1 + 0x00D
-	RCAuthFail     RC = rcFmt1 + 0x00E
-	RCNonce        RC = rcFmt1 + 0x00F
-	RCPP           RC = rcFmt1 + 0x010
-	RCScheme       RC = rcFmt1 + 0x012
-	RCSize         RC = rcFmt1 + 0x015
-	RCSymmetric    RC = rcFmt1 + 0x016
-	RCTag          RC = rcFmt1 + 0x017
-	RCSelector     RC = rcFmt1 + 0x018
-	RCInsufficient RC = rcFmt1 + 0x01A
-	RCSignature    RC = rcFmt1 + 0x01B
-	RCKey          RC = rcFmt1 + 0x01C
-	RCPolicyFail   RC = rcFmt1 + 0x01D
-	RCIntegrity    RC = rcFmt1 + 0x01F
-	RCTicket       RC = rcFmt1 + 0x020
-	RCReservedBits RC = rcFmt1 + 0x021
-	RCBadAuth      RC = rcFmt1 + 0x022
-	RCExpired      RC = rcFmt1 + 0x023
-	RCPolicyCC     RC = rcFmt1 + 0x024
-	RCBinding      RC = rcFmt1 + 0x025
-	RCCurve        RC = rcFmt1 + 0x026
-	RCECCPoint     RC = rcFmt1 + 0x027
+	RCAsymmetric   = internal.TPMRCAsymmetric
+	RCAttributes   = internal.TPMRCAttributes
+	RCHash         = internal.TPMRCHash
+	RCValue        = internal.TPMRCValue
+	RCHierarchy    = internal.TPMRCHierarchy
+	RCKeySize      = internal.TPMRCKeySize
+	RCMGF          = internal.TPMRCMGF
+	RCMode         = internal.TPMRCMode
+	RCType         = internal.TPMRCType
+	RCHandle       = internal.TPMRCHandle
+	RCKDF          = internal.TPMRCKDF
+	RCRange        = internal.TPMRCRange
+	RCAuthFail     = internal.TPMRCAuthFail
+	RCNonce        = internal.TPMRCNonce
+	RCPP           = internal.TPMRCPP
+	RCScheme       = internal.TPMRCScheme
+	RCSize         = internal.TPMRCSize
+	RCSymmetric    = internal.TPMRCSymmetric
+	RCTag          = internal.TPMRCTag
+	RCSelector     = internal.TPMRCSelector
+	RCInsufficient = internal.TPMRCInsufficient
+	RCSignature    = internal.TPMRCSignature
+	RCKey          = internal.TPMRCKey
+	RCPolicyFail   = internal.TPMRCPolicyFail
+	RCIntegrity    = internal.TPMRCIntegrity
+	RCTicket       = internal.TPMRCTicket
+	RCReservedBits = internal.TPMRCReservedBits
+	RCBadAuth      = internal.TPMRCBadAuth
+	RCExpired      = internal.TPMRCExpired
+	RCPolicyCC     = internal.TPMRCPolicyCC
+	RCBinding      = internal.TPMRCBinding
+	RCCurve        = internal.TPMRCCurve
+	RCECCPoint     = internal.TPMRCECCPoint
 	// Warnings
-	rcWarn              RC = 0x00000900
-	RCContextGap     RC = rcWarn + 0x001
-	RCObjectMemory   RC = rcWarn + 0x002
-	RCSessionMemory  RC = rcWarn + 0x003
-	RCMemory         RC = rcWarn + 0x004
-	RCSessionHandles RC = rcWarn + 0x005
-	RCObjectHandles  RC = rcWarn + 0x006
-	RCLocality       RC = rcWarn + 0x007
-	RCYielded        RC = rcWarn + 0x008
-	RCCanceled       RC = rcWarn + 0x009
-	RCTesting        RC = rcWarn + 0x00A
-	RCReferenceH0    RC = rcWarn + 0x010
-	RCReferenceH1    RC = rcWarn + 0x011
-	RCReferenceH2    RC = rcWarn + 0x012
-	RCReferenceH3    RC = rcWarn + 0x013
-	RCReferenceH4    RC = rcWarn + 0x014
-	RCReferenceH5    RC = rcWarn + 0x015
-	RCReferenceH6    RC = rcWarn + 0x016
-	RCReferenceS0    RC = rcWarn + 0x018
-	RCReferenceS1    RC = rcWarn + 0x019
-	RCReferenceS2    RC = rcWarn + 0x01A
-	RCReferenceS3    RC = rcWarn + 0x01B
-	RCReferenceS4    RC = rcWarn + 0x01C
-	RCReferenceS5    RC = rcWarn + 0x01D
-	RCReferenceS6    RC = rcWarn + 0x01E
-	RCNVRate         RC = rcWarn + 0x020
-	RCLockout        RC = rcWarn + 0x021
-	RCRetry          RC = rcWarn + 0x022
-	RCNVUnavailable  RC = rcWarn + 0x023
-	rcP                 RC = 0x00000040
-	rcS                 RC = 0x00000800
+	RCContextGap     = internal.TPMRCContextGap
+	RCObjectMemory   = internal.TPMRCObjectMemory
+	RCSessionMemory  = internal.TPMRCSessionMemory
+	RCMemory         = internal.TPMRCMemory
+	RCSessionHandles = internal.TPMRCSessionHandles
+	RCObjectHandles  = internal.TPMRCObjectHandles
+	RCLocality       = internal.TPMRCLocality
+	RCYielded        = internal.TPMRCYielded
+	RCCanceled       = internal.TPMRCCanceled
+	RCTesting        = internal.TPMRCTesting
+	RCReferenceH0    = internal.TPMRCReferenceH0
+	RCReferenceH1    = internal.TPMRCReferenceH1
+	RCReferenceH2    = internal.TPMRCReferenceH2
+	RCReferenceH3    = internal.TPMRCReferenceH3
+	RCReferenceH4    = internal.TPMRCReferenceH4
+	RCReferenceH5    = internal.TPMRCReferenceH5
+	RCReferenceH6    = internal.TPMRCReferenceH6
+	RCReferenceS0    = internal.TPMRCReferenceS0
+	RCReferenceS1    = internal.TPMRCReferenceS1
+	RCReferenceS2    = internal.TPMRCReferenceS2
+	RCReferenceS3    = internal.TPMRCReferenceS3
+	RCReferenceS4    = internal.TPMRCReferenceS4
+	RCReferenceS5    = internal.TPMRCReferenceS5
+	RCReferenceS6    = internal.TPMRCReferenceS6
+	RCNVRate         = internal.TPMRCNVRate
+	RCLockout        = internal.TPMRCLockout
+	RCRetry          = internal.TPMRCRetry
+	RCNVUnavailable  = internal.TPMRCNVUnavailable
 )
 
-// ST values come from Part 2: Structures, section  6.9.
+// ST = internal.TPMST
 const (
-	STRspCommand         ST = 0x00C4
-	STNull               ST = 0x8000
-	STNoSessions         ST = 0x8001
-	STSessions           ST = 0x8002
-	STAttestNV           ST = 0x8014
-	STAttestCommandAudit ST = 0x8015
-	STAttestSessionAudit ST = 0x8016
-	STAttestCertify      ST = 0x8017
-	STAttestQuote        ST = 0x8018
-	STAttestTime         ST = 0x8019
-	STAttestCreation     ST = 0x801A
-	STAttestNVDigest     ST = 0x801C
-	STCreation           ST = 0x8021
-	STVerified           ST = 0x8022
-	STAuthSecret         ST = 0x8023
-	STHashCheck          ST = 0x8024
-	STAuthSigned         ST = 0x8025
-	STFuManifest         ST = 0x8029
+	STRspCommand         = internal.TPMSTRspCommand
+	STNull               = internal.TPMSTNull
+	STNoSessions         = internal.TPMSTNoSessions
+	STSessions           = internal.TPMSTSessions
+	STAttestNV           = internal.TPMSTAttestNV
+	STAttestCommandAudit = internal.TPMSTAttestCommandAudit
+	STAttestSessionAudit = internal.TPMSTAttestSessionAudit
+	STAttestCertify      = internal.TPMSTAttestCertify
+	STAttestQuote        = internal.TPMSTAttestQuote
+	STAttestTime         = internal.TPMSTAttestTime
+	STAttestCreation     = internal.TPMSTAttestCreation
+	STAttestNVDigest     = internal.TPMSTAttestNVDigest
+	STCreation           = internal.TPMSTCreation
+	STVerified           = internal.TPMSTVerified
+	STAuthSecret         = internal.TPMSTAuthSecret
+	STHashCheck          = internal.TPMSTHashCheck
+	STAuthSigned         = internal.TPMSTAuthSigned
+	STFuManifest         = internal.TPMSTFuManifest
 )
 
-// SE values come from Part 2: Structures, section 6.11.
+// SE = internal.TPMSE
 const (
-	SEHMAC   SE = 0x00
-	SEPolicy SE = 0x01
-	XETrial  SE = 0x03
+	SEHMAC   = internal.TPMSEHMAC
+	SEPolicy = internal.TPMSEPolicy
+	XETrial  = internal.TPMXETrial
 )
 
-// Cap values come from Part 2: Structures, section 6.12.
+// Cap = internal.TPMCap
 const (
-	CapAlgs          Cap = 0x00000000
-	CapHandles       Cap = 0x00000001
-	CapCommands      Cap = 0x00000002
-	CapPPCommands    Cap = 0x00000003
-	CapAuditCommands Cap = 0x00000004
-	CapPCRs          Cap = 0x00000005
-	CapProperties Cap = 0x00000006
-	CapPCRProperties Cap = 0x00000007
-	CapECCCurves     Cap = 0x00000008
-	CapAuthPolicies  Cap = 0x00000009
-	CapACT           Cap = 0x0000000A
+	CapAlgs          = internal.TPMCapAlgs
+	CapHandles       = internal.TPMCapHandles
+	CapCommands      = internal.TPMCapCommands
+	CapPPCommands    = internal.TPMCapPPCommands
+	CapAuditCommands = internal.TPMCapAuditCommands
+	CapPCRs          = internal.TPMCapPCRs
+	CapProperties    = internal.TPMCapProperties
+	CapPCRProperties = internal.TPMCapPCRProperties
+	CapECCCurves     = internal.TPMCapECCCurves
+	CapAuthPolicies  = internal.TPMCapAuthPolicies
+	CapACT           = internal.TPMCapACT
 )
 
 // PTFamilyIndicator values come from Part 2: Structures, section  6.13.
 const (
-	// a 4-octet character string containing the TPM Family value
-	// (TPM_SPEC_FAMILY)
-	PTFamilyIndicator PT = 0x00000100
+	// a 4-octet character string containing the  = internal.TPM
+	// (_SPEC_FAMILY= internal.TPM_SPEC_FAMILY
+	PTFamilyIndicator = internal.TPMPTFamilyIndicator
 	// the level of the specification
-	PTLevel PT = 0x00000101
+	PTLevel = internal.TPMPTLevel
 	// the specification Revision times 100
-	PTRevision PT = 0x00000102
+	PTRevision = internal.TPMPTRevision
 	// the specification day of year using TCG calendar
-	PTDayofYear PT = 0x00000103
+	PTDayofYear = internal.TPMPTDayofYear
 	// the specification year using the CE
-	PTYear PT = 0x00000104
-	// the vendor ID unique to each TPM manufacturer
-	PTManufacturer PT = 0x00000105
+	PTYear = internal.TPMPTYear
+	// the vendor ID unique to each  = internal.TPM
+	PTManufacturer = internal.TPMPTManufacturer
 	// the first four characters of the vendor ID string
-	PTVendorString1 PT = 0x00000106
+	PTVendorString1 = internal.TPMPTVendorString1
 	// the second four characters of the vendor ID string
-	PTVendorString2 PT = 0x00000107
+	PTVendorString2 = internal.TPMPTVendorString2
 	// the third four characters of the vendor ID string
-	PTVendorString3 PT = 0x00000108
+	PTVendorString3 = internal.TPMPTVendorString3
 	// the fourth four characters of the vendor ID sting
-	PTVendorString4 PT = 0x00000109
-	// vendor-defined value indicating the TPM model
-	PTVendorTPMType PT = 0x0000010A
-	// the most-significant 32 bits of a TPM vendor-specific value
+	PTVendorString4 = internal.TPMPTVendorString4
+	// vendor-defined value indicating the  = internal.TPM
+	PTVendorTPMType = internal.TPMPTVendorTPMType
+	// the most-significant 32 bits of a  = internal.TPM
 	// indicating the version number of the firmware.
-	PTFirmwareVersion1 PT = 0x0000010B
-	// the least-significant 32 bits of a TPM vendor-specific value
+	PTFirmwareVersion1 = internal.TPMPTFirmwareVersion1
+	// the least-significant 32 bits of a  = internal.TPM
 	// indicating the version number of the firmware.
-	PTFirmwareVersion2 PT = 0x0000010C
-	// the maximum size of a parameter TPM2B_MAX_BUFFER)
-	PTInputBuffer PT = 0x0000010D
-	// the minimum number of transient objects that can be held in TPM RAM
-	PTHRTransientMin PT = 0x0000010E
-	// the minimum number of persistent objects that can be held in TPM NV
-	// memory
-	PTHRPersistentMin PT = 0x0000010F
-	// the minimum number of authorization sessions that can be held in TPM
-	// RAM
-	PTHRLoadedMin PT = 0x00000110
-	// the number of authorization sessions that may be active at a time
-	PTActiveSessionsMax PT = 0x00000111
-	// the number of PCR implemented
-	PTPCRCount PT = 0x00000112
-	// the minimum number of octets in a TPMS_PCR_SELECT.sizeOfSelect
-	PTPCRSelectMin PT = 0x00000113
-	// the maximum allowed difference (unsigned) between the contextID
-	// values of two saved session contexts
-	PTContextGapMax PT = 0x00000114
-	// the maximum number of NV Indexes that are allowed to have the
-	// TPM_NT_COUNTER attribute
-	PTNVCountersMax PT = 0x00000116
-	// the maximum size of an NV Index data area
-	PTNVIndexMax PT = 0x00000117
-	// a TPMA_MEMORY indicating the memory management method for the TPM
-	PTMemory PT = 0x00000118
-	// interval, in milliseconds, between updates to the copy of
-	// TPMS_CLOCK_INFO.clock in NV
-	PTClockUpdate PT = 0x00000119
-	// the algorithm used for the integrity HMAC on saved contexts and for
-	// hashing the fuData of TPM2_FirmwareRead()
-	PTContextHash PT = 0x0000011A
-	// TPM_ALG_ID, the algorithm used for encryption of saved contexts
-	PTContextSym PT = 0x0000011B
-	// TPM_KEY_BITS, the size of the key used for encryption of saved
-	// contexts
-	PTContextSymSize PT = 0x0000011C
-	// the modulus - 1 of the count for NV update of an orderly counter
-	PTOrderlyCount PT = 0x0000011D
 	// the maximum value for commandSize in a command
-	PTMaxCommandSize PT = 0x0000011E
+	PTMaxCommandSize = internal.TPMPTMaxCommandSize
 	// the maximum value for responseSize in a response
-	PTMaxResponseSize PT = 0x0000011F
+	PTMaxResponseSize = internal.TPMPTMaxResponseSize
 	// the maximum size of a digest that can be produced by the TPM
-	PTMaxDigest PT = 0x00000120
+	PTMaxDigest = internal.TPMPTMaxDigest
 	// the maximum size of an object context that will be returned by
 	// TPM2_ContextSave
-	PTMaxObjectContext PT = 0x00000121
+	PTMaxObjectContext = internal.TPMPTMaxObjectContext
 	// the maximum size of a session context that will be returned by
 	// TPM2_ContextSave
-	PTMaxSessionContext PT = 0x00000122
+	PTMaxSessionContext = internal.TPMPTMaxSessionContext
 	// platform-specific family (a TPM_PS value)(see Table 25)
-	PTPSFamilyIndicator PT = 0x00000123
-	// the level of the platform-specific specification
-	PTPSLevel PT = 0x00000124
-	// a platform specific value
-	PTPSRevision PT = 0x00000125
-	// the platform-specific TPM specification day of year using TCG
-	// calendar
-	PTPSDayOfYear PT = 0x00000126
-	// the platform-specific TPM specification year using the CE
-	PTPSYear PT = 0x00000127
+	PTPSFamilyIndicator = internal.TPMPTPSFamilyIndicator
 	// the number of split signing operations supported by the TPM
-	PTSplitMax PT = 0x00000128
+	PTSplitMax = internal.TPMPTSplitMax
 	// total number of commands implemented in the TPM
-	PTTotalCommands PT = 0x00000129
+	PTTotalCommands = internal.TPMPTTotalCommands
 	// number of commands from the TPM library that are implemented
-	PTLibraryCommands PT = 0x0000012A
+	PTLibraryCommands = internal.TPMPTLibraryCommands
 	// number of vendor commands that are implemented
-	PTVendorCommands PT = 0x0000012B
+	PTVendorCommands = internal.TPMPTVendorCommands
 	// the maximum data size in one NV write, NV read, NV extend, or NV
 	// certify command
-	PTNVBufferMax PT = 0x0000012C
+	PTNVBufferMax = internal.TPMPTNVBufferMax
 	// a TPMA_MODES value, indicating that the TPM is designed for these
 	// modes.
-	PTModes PT = 0x0000012D
+	PTModes = internal.TPMPTModes
 	// the maximum size of a TPMS_CAPABILITY_DATA structure returned in
 	// TPM2_GetCapability().
-	PTMaxCapBuffer PT = 0x0000012E
+	PTMaxCapBuffer = internal.TPMPTMaxCapBuffer
 	// TPMA_PERMANENT
-	PTPermanent PT = 0x00000200
+	PTPermanent = internal.TPMPTPermanent
 	// TPMA_STARTUP_CLEAR
-	PTStartupClear PT = 0x00000201
+	PTStartupClear = internal.TPMPTStartupClear
 	// the number of NV Indexes currently defined
-	PTHRNVIndex PT = 0x00000202
+	PTHRNVIndex = internal.TPMPTHRNVIndex
 	// the number of authorization sessions currently loaded into TPM RAM
-	PTHRLoaded PT = 0x00000203
+	PTHRLoaded = internal.TPMPTHRLoaded
 	// the number of additional authorization sessions, of any type, that
 	// could be loaded into TPM RAM
-	PTHRLoadedAvail PT = 0x00000204
+	PTHRLoadedAvail = internal.TPMPTHRLoadedAvail
 	// the number of active authorization sessions currently being tracked
 	// by the TPM
-	PTHRActive PT = 0x00000205
+	PTHRActive = internal.TPMPTHRActive
 	// the number of additional authorization sessions, of any type, that
 	// could be created
-	PTHRActiveAvail PT = 0x00000206
+	PTHRActiveAvail = internal.TPMPTHRActiveAvail
 	// estimate of the number of additional transient objects that could be
 	// loaded into TPM RAM
-	PTHRTransientAvail PT = 0x00000207
+	PTHRTransientAvail = internal.TPMPTHRTransientAvail
 	// the number of persistent objects currently loaded into TPM NV memory
-	PTHRPersistent PT = 0x00000208
+	PTHRPersistent = internal.TPMPTHRPersistent
 	// the number of additional persistent objects that could be loaded into
 	// NV memory
-	PTHRPersistentAvail PT = 0x00000209
+	PTHRPersistentAvail = internal.TPMPTHRPersistentAvail
 	// the number of defined NV Indexes that have NV the TPM_NT_COUNTER
 	// attribute
-	PTNVCounters PT = 0x0000020A
+	PTNVCounters = internal.TPMPTNVCounters
 	// the number of additional NV Indexes that can be defined with their
 	// TPM_NT of TPM_NV_COUNTER and the TPMA_NV_ORDERLY attribute SET
-	PTNVCountersAvail PT = 0x0000020B
+	PTNVCountersAvail = internal.TPMPTNVCountersAvail
 	// code that limits the algorithms that may be used with the TPM
-	PTAlgorithmSet PT = 0x0000020C
+	PTAlgorithmSet = internal.TPMPTAlgorithmSet
 	// the number of loaded ECC curves
-	PTLoadedCurves PT = 0x0000020D
+	PTLoadedCurves = internal.TPMPTLoadedCurves
 	// the current value of the lockout counter (failedTries)
-	PTLockoutCounter PT = 0x0000020E
+	PTLockoutCounter = internal.TPMPTLockoutCounter
 	// the number of authorization failures before DA lockout is invoked
-	PTMaxAuthFail PT = 0x0000020F
+	PTMaxAuthFail = internal.TPMPTMaxAuthFail
 	// the number of seconds before the value reported by
 	// TPM_PT_LOCKOUT_COUNTER is decremented
-	PTLockoutInterval PT = 0x00000210
+	PTLockoutInterval = internal.TPMPTLockoutInterval
 	// the number of seconds after a lockoutAuth failure before use of
 	// lockoutAuth may be attempted again
-	PTLockoutRecovery PT = 0x00000211
+	PTLockoutRecovery = internal.TPMPTLockoutRecovery
 	// number of milliseconds before the TPM will accept another command
 	// that will modify NV
-	PTNVWriteRecovery PT = 0x00000212
+	PTNVWriteRecovery = internal.TPMPTNVWriteRecovery
 	// the high-order 32 bits of the command audit counter
-	PTAuditCounter0 PT = 0x00000213
+	PTAuditCounter0 = internal.TPMPTAuditCounter0
 	// the low-order 32 bits of the command audit counter
-	PTAuditCounter1 PT = 0x00000214
+	PTAuditCounter1 = internal.TPMPTAuditCounter1
 )
 
-// PTPCR values come from Part 2: Structures, section 6.14.
+// TPMPTPCR values come from Part 2: Structures, section 6.14.
 const (
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR is saved and
 	// restored by TPM_SU_STATE
-	PTPCRSave PTPCR = 0x00000000
+	PTPCRSave = internal.TPMPTPCRSave
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be
 	// extended from locality 0
-	PTPCRExtendL0 PTPCR = 0x00000001
+	PTPCRExtendL0 = internal.TPMPTPCRExtendL0
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be reset
 	// by TPM2_PCR_Reset() from locality 0
-	PTPCRResetL0 PTPCR = 0x00000002
+	PTPCRResetL0 = internal.TPMPTPCRResetL0
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be
 	// extended from locality 1
-	PTPCRExtendL1 PTPCR = 0x00000003
+	PTPCRExtendL1 = internal.TPMPTPCRExtendL1
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be reset
 	// by TPM2_PCR_Reset() from locality 1
-	PTPCRResetL1 PTPCR = 0x00000004
+	PTPCRResetL1 = internal.TPMPTPCRResetL1
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be
 	// extended from locality 2
-	PTPCRExtendL2 PTPCR = 0x00000005
+	PTPCRExtendL2 = internal.TPMPTPCRExtendL2
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be reset
 	// by TPM2_PCR_Reset() from locality 2
-	PTPCRResetL2 PTPCR = 0x00000006
+	PTPCRResetL2 = internal.TPMPTPCRResetL2
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be
 	// extended from locality 3
-	PTPCRExtendL3 PTPCR = 0x00000007
+	PTPCRExtendL3 = internal.TPMPTPCRExtendL3
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be reset
 	// by TPM2_PCR_Reset() from locality 3
-	PTPCRResetL3 PTPCR = 0x00000008
+	PTPCRResetL3 = internal.TPMPTPCRResetL3
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be
 	// extended from locality 4
-	PTPCRExtendL4 PTPCR = 0x00000009
+	PTPCRExtendL4 = internal.TPMPTPCRExtendL4
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR may be reset
 	// by TPM2_PCR_Reset() from locality 4
-	PTPCRResetL4 PTPCR = 0x0000000A
+	PTPCRResetL4 = internal.TPMPTPCRResetL4
 	// a SET bit in the TPMS_PCR_SELECT indicates that modifications to this
 	// PCR (reset or Extend) will not increment the pcrUpdateCounter
-	PTPCRNoIncrement PTPCR = 0x00000011
+	PTPCRNoIncrement = internal.TPMPTPCRNoIncrement
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR is reset by a
 	// D-RTM event
-	PTPCRDRTMRest PTPCR = 0x00000012
+	PTPCRDRTMRest = internal.TPMPTPCRDRTMRest
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR is controlled
 	// by policy
-	PTPCRPolicy PTPCR = 0x00000013
+	PTPCRPolicy = internal.TPMPTPCRPolicy
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR is controlled
 	// by an authorization value
-	PTPCRAuth PTPCR = 0x00000014
+	PTPCRAuth = internal.TPMPTPCRAuth
 )
 
-// Handle values come from Part 2: Structures, section 7.4.
+// TPMHandle values come from Part 2: Structures, section 7.4.
 const (
-	RHOwner       Handle = 0x40000001
-	RHNull        Handle = 0x40000007
-	RSPW          Handle = 0x40000009
-	RHLockout     Handle = 0x4000000A
-	RHEndorsement Handle = 0x4000000B
-	RHPlatform    Handle = 0x4000000C
-	RHPlatformNV  Handle = 0x4000000D
+	RHOwner       = internal.TPMRHOwner
+	RHNull        = internal.TPMRHNull
+	RSPW          = internal.TPMRSPW
+	RHLockout     = internal.TPMRHLockout
+	RHEndorsement = internal.TPMRHEndorsement
+	RHPlatform    = internal.TPMRHPlatform
+	RHPlatformNV  = internal.TPMRHPlatformNV
 )
