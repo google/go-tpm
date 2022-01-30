@@ -83,6 +83,58 @@ type Response interface {
 	Response() tpm.CC
 }
 
+// Shutdown is the input to TPM2_Shutdown.
+// See definition in Part 3, Commands, section 9.4.
+type Shutdown struct {
+	// TPM_SU_CLEAR or TPM_SU_STATE
+	ShutdownType tpm.SU
+}
+
+// Command implements the Command interface.
+func (*Shutdown) Command() tpm.CC { return tpm.CCShutdown }
+
+// Execute executes the command and returns the response.
+func (cmd *Shutdown) Execute(t *TPM, s ...Session) (*ShutdownResponse, error) {
+	var rsp ShutdownResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ShutdownResponse is the response from TPM2_Shutdown.
+type ShutdownResponse struct {
+}
+
+// Response implements the Response interface.
+func (*ShutdownResponse) Response() tpm.CC { return tpm.CCShutdown }
+
+// Startup is the input to TPM2_Startup.
+// See definition in Part 3, Commands, section 9.3.
+type Startup struct {
+	// TPM_SU_CLEAR or TPM_SU_STATE
+	StartupType tpm.SU
+}
+
+// Command implements the Command interface.
+func (*Startup) Command() tpm.CC { return tpm.CCStartup }
+
+// Execute executes the command and returns the response.
+func (cmd *Startup) Execute(t *TPM, s ...Session) (*StartupResponse, error) {
+	var rsp StartupResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// StartupResponse is the response from TPM2_Startup.
+type StartupResponse struct {
+}
+
+// Response implements the Response interface.
+func (*StartupResponse) Response() tpm.CC { return tpm.CCStartup }
+
 // StartAuthSession is the input to TPM2_StartAuthSession.
 // See definition in Part 3, Commands, section 11.1
 type StartAuthSession struct {

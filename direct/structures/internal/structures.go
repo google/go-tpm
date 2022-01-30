@@ -111,6 +111,10 @@ type TPMRC uint32
 // See definition in Part 2: Structures, section 6.9.
 type TPMST uint16
 
+// TPMSU represents a TPM_SU.
+// See definition in Part 2: Structures, section 6.10.
+type TPMSU uint16
+
 // TPMSE represents a TPM_SE.
 // See definition in Part 2: Structures, section 6.11.
 type TPMSE uint8

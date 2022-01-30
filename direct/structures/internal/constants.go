@@ -317,6 +317,12 @@ const (
 	TPMSTFuManifest         TPMST = 0x8029
 )
 
+// TPMSU values come from Part 2: Structures, section  6.10.
+const (
+	TPMSUClear TPMSU = 0x0000
+	TPMSUState TPMSU = 0x0001
+)
+
 // TPMSE values come from Part 2: Structures, section 6.11.
 const (
 	TPMSEHMAC   TPMSE = 0x00

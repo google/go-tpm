@@ -69,6 +69,10 @@ type Fmt1Error = internal.TPMFmt1Error
 // See definition in Part 2: Structures, section 6.9.
 type ST = internal.TPMST
 
+// SU represents a TPM_SU.
+// See definition in Part 2: Structures, section 6.10.
+type SU = internal.TPMSU
+
 // SE represents a TPM_SE.
 // See definition in Part 2: Structures, section 6.11.
 type SE = internal.TPMSE
