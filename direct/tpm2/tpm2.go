@@ -920,6 +920,36 @@ type NVWriteResponse struct {
 // Response implements the Response interface.
 func (*NVWriteResponse) Response() tpm.CC { return tpm.CCNVWrite }
 
+// NVWriteLock is the input to TPM2_NV_WriteLock.
+// See definition in Part 3, Commands, section 31.11.
+type NVWriteLock struct {
+	// handle indicating the source of the authorization value
+	AuthHandle AuthHandle `gotpm:"handle,auth"`
+	// the NV index of the area to lock
+	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (*NVWriteLock) Command() tpm.CC { return tpm.CCNVWriteLock }
+
+// Execute executes the command and returns the response.
+func (cmd *NVWriteLock) Execute(t *TPM, s ...Session) (*NVWriteLockResponse, error) {
+	var rsp NVWriteLockResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVWriteLockResponse is the response from TPM2_NV_WriteLock.
+type NVWriteLockResponse struct {
+	// the data read
+	Data tpm2b.MaxNVBuffer
+}
+
+// Response implements the Response interface.
+func (*NVWriteLockResponse) Response() tpm.CC { return tpm.CCNVWriteLock }
+
 // NVRead is the input to TPM2_NV_Read.
 // See definition in Part 3, Commands, section 31.13.
 type NVRead struct {
