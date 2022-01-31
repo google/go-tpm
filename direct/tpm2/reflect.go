@@ -208,7 +208,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 				}
 			}
 			if bitwise != thisBitwise {
-				return fmt.Errorf("struct '%v' has mixture of bitwise and non-bitwise members", v.Type().Name())
+				return fmt.Errorf("struct '%v' has mixture of bitwise and non-bitwise members (%v)", v.Type().Name(), v.Type().Field(i).Name)
 			}
 		}
 		if bitwise {
@@ -788,7 +788,9 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 
 	// Marshal the first parameter for in-place session encryption.
 	var firstParm bytes.Buffer
-	marshal(&firstParm, parms[0])
+	if err := marshal(&firstParm, parms[0]); err != nil {
+		return nil, err
+	}
 	firstParmBytes := firstParm.Bytes()
 
 	// Encrypt the first parameter if there are any decryption sessions.
@@ -813,7 +815,9 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 	var result bytes.Buffer
 	result.Write(firstParmBytes)
 	// Write the rest of the parameters normally.
-	marshal(&result, parms[1:]...)
+	if err := marshal(&result, parms[1:]...); err != nil {
+		return nil, err
+	}
 	return result.Bytes(), nil
 }
 
