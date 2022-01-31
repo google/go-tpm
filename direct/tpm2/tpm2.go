@@ -634,6 +634,35 @@ type PolicyAuthorizeResponse struct {
 // Response implements the Response interface.
 func (*PolicyAuthorizeResponse) Response() tpm.CC { return tpm.CCPolicyAuthorize }
 
+// PolicyNVWritten is the input to TPM2_PolicyNvWritten.
+// See definition in Part 3, Commands, section 23.20.
+type PolicyNVWritten struct {
+	// handle for the policy session being extended
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	// YES if NV Index is required to have been written
+	// NO if NV Index is required not to have been written
+	WrittenSet tpmi.YesNo
+}
+
+// Command implements the Command interface.
+func (*PolicyNVWritten) Command() tpm.CC { return tpm.CCPolicyNvWritten }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyNVWritten) Execute(t *TPM, s ...Session) (*PolicyNVWrittenResponse, error) {
+	var rsp PolicyNVWrittenResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PolicyNVWrittenResponse is the response from TPM2_PolicyNvWritten.
+type PolicyNVWrittenResponse struct {
+}
+
+// Response implements the Response interface.
+func (*PolicyNVWrittenResponse) Response() tpm.CC { return tpm.CCPolicyNvWritten }
+
 // PolicyAuthorizeNV is the input to TPM2_PolicyAuthorizeNV.
 // See definition in Part 3, Commands, section 23.22.
 type PolicyAuthorizeNV struct {
