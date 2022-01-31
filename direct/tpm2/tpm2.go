@@ -366,6 +366,40 @@ type GetSessionAuditDigestResponse struct {
 // Response implements the Response interface.
 func (*GetSessionAuditDigestResponse) Response() tpm.CC { return tpm.CCGetSessionAuditDigest }
 
+// VerifySignature is the input to TPM2_VerifySignature.
+// See definition in Part 3, Commands, section 20.1
+type VerifySignature struct {
+	// handle of public key that will be used in the validation
+	KeyHandle tpmi.DHObject `gotpm:"handle"`
+	// digest of the signed message
+	Digest tpm2b.Digest
+	// signature to be tested
+	Signature tpmt.Signature
+}
+
+// Command implements the Command interface.
+func (*VerifySignature) Command() tpm.CC { return tpm.CCVerifySignature }
+
+// Execute executes the command and returns the response.
+func (cmd *VerifySignature) Execute(t *TPM, s ...Session) (*VerifySignatureResponse, error) {
+	var rsp VerifySignatureResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// VerifySignatureResponse is the response from TPM2_VerifySignature.
+type VerifySignatureResponse struct {
+	// the audit information that was signed
+	AuditInfo tpm2b.Attest
+	// the signature over auditInfo
+	Signature tpmt.Signature
+}
+
+// Response implements the Response interface.
+func (*VerifySignatureResponse) Response() tpm.CC { return tpm.CCVerifySignature }
+
 // PCRExtend is the input to TPM2_PCR_Extend.
 // See definition in Part 3, Commands, section 22.2
 type PCRExtend struct {
@@ -454,8 +488,51 @@ type PCRReadResponse struct {
 // Response implements the Response interface.
 func (*PCRReadResponse) Response() tpm.CC { return tpm.CCPCRRead }
 
+// PolicySigned is the input to TPM2_PolicySigned.
+// See definition in Part 3, Commands, section 23.3.
+type PolicySigned struct {
+	// handle for an entity providing the authorization
+	AuthObject tpmi.DHObject `gotpm:"handle"`
+	// handle for the policy session being extended
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	// the policy nonce for the session
+	NonceTPM tpm2b.Nonce
+	// digest of the command parameters to which this authorization is limited
+	CPHashA tpm2b.Digest
+	// a reference to a policy relating to the authorization – may be the Empty Buffer
+	PolicyRef tpm2b.Nonce
+	// time when authorization will expire, measured in seconds from the time
+	// that nonceTPM was generated
+	Expiration int32
+	// signed authorization (not optional)
+	Auth tpmt.Signature
+}
+
+// Command implements the Command interface.
+func (*PolicySigned) Command() tpm.CC { return tpm.CCPolicySigned }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicySigned) Execute(t *TPM, s ...Session) (*PolicySignedResponse, error) {
+	var rsp PolicySignedResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PolicySignedResponse is the response from TPM2_PolicySigned.
+type PolicySignedResponse struct {
+	// implementation-specific time value used to indicate to the TPM when the ticket expires
+	Timeout tpm2b.Timeout
+	// produced if the command succeeds and expiration in the command was non-zero
+	PolicyTicket tpmt.TKAuth
+}
+
+// Response implements the Response interface.
+func (*PolicySignedResponse) Response() tpm.CC { return tpm.CCPolicySigned }
+
 // PolicySecret is the input to TPM2_PolicySecret.
-// See definition in Part 3, Commands, section 23.4
+// See definition in Part 3, Commands, section 23.4.
 type PolicySecret struct {
 	// handle for an entity providing the authorization
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
@@ -494,6 +571,68 @@ type PolicySecretResponse struct {
 
 // Response implements the Response interface.
 func (*PolicySecretResponse) Response() tpm.CC { return tpm.CCPolicySecret }
+
+// PolicyCPHash is the input to TPM2_PolicyCpHash.
+// See definition in Part 3, Commands, section 23.13.
+type PolicyCPHash struct {
+	// handle for the policy session being extended
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	// the cpHash added to the policy
+	CPHashA tpm2b.Digest
+}
+
+// Command implements the Command interface.
+func (*PolicyCPHash) Command() tpm.CC { return tpm.CCPolicyCpHash }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyCPHash) Execute(t *TPM, s ...Session) (*PolicyCPHashResponse, error) {
+	var rsp PolicyCPHashResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PolicyCPHashResponse is the response from TPM2_PolicyCpHash.
+type PolicyCPHashResponse struct {
+}
+
+// Response implements the Response interface.
+func (*PolicyCPHashResponse) Response() tpm.CC { return tpm.CCPolicyCpHash }
+
+// PolicyAuthorize is the input to TPM2_PolicySigned.
+// See definition in Part 3, Commands, section 23.16.
+type PolicyAuthorize struct {
+	// handle for the policy session being extended
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	// digest of the policy being approved
+	ApprovedPolicy tpm2b.Digest
+	// a policy qualifier
+	PolicyRef tpm2b.Digest
+	// Name of a key that can sign a policy addition
+	KeySign tpm2b.Name
+	// ticket validating that approvedPolicy and policyRef were signed by keySign
+	CheckTicket tpmt.TKVerified
+}
+
+// Command implements the Command interface.
+func (*PolicyAuthorize) Command() tpm.CC { return tpm.CCPolicyAuthorize }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyAuthorize) Execute(t *TPM, s ...Session) (*PolicyAuthorizeResponse, error) {
+	var rsp PolicyAuthorizeResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PolicyAuthorizeResponse is the response from TPM2_PolicyAuthorize.
+type PolicyAuthorizeResponse struct {
+}
+
+// Response implements the Response interface.
+func (*PolicyAuthorizeResponse) Response() tpm.CC { return tpm.CCPolicyAuthorize }
 
 // PolicyAuthorizeNV is the input to TPM2_PolicyAuthorizeNV.
 // See definition in Part 3, Commands, section 23.22.

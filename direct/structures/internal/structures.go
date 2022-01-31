@@ -574,6 +574,17 @@ type TPMTTKCreation struct {
 	Digest TPM2BDigest
 }
 
+// TPMTTVerified represents a TPMT_TK_Verified.
+// See definition in Part 2: Structures, section 10.7.4.
+type TPMTTKVerified struct {
+	// ticket structure tag
+	Tag TPMST
+	// the hierarchy containing keyName
+	Hierarchy TPMIRHHierarchy
+	// This shall be the HMAC produced using a proof value of hierarchy.
+	Digest TPM2BDigest
+}
+
 // TPMTTKAuth represents a TPMT_TK_AUTH.
 // See definition in Part 2: Structures, section 10.7.5.
 type TPMTTKAuth struct {
