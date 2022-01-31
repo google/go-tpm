@@ -1426,7 +1426,7 @@ type TPMANV struct {
 	// Index authPolicy.
 	PolicyRead bool `gotpm:"bit=19"`
 	// shall be zero
-	Reserved1 uint16 `gotpm:"bit=24:20'`
+	Reserved1 uint16 `gotpm:"bit=24:20"`
 	// SET (1): Authorization failures of the Index do not affect the DA
 	// logic and authorization of the Index is not blocked when the TPM is
 	// in Lockout mode.
