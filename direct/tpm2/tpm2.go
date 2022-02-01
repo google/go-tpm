@@ -634,6 +634,34 @@ type PolicyAuthorizeResponse struct {
 // Response implements the Response interface.
 func (*PolicyAuthorizeResponse) Response() tpm.CC { return tpm.CCPolicyAuthorize }
 
+// PolicyGetDigest is the input to TPM2_PolicyGetDigest.
+// See definition in Part 3, Commands, section 23.19.
+type PolicyGetDigest struct {
+	// handle for the policy session
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (*PolicyGetDigest) Command() tpm.CC { return tpm.CCPolicyGetDigest }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyGetDigest) Execute(t *TPM, s ...Session) (*PolicyGetDigestResponse, error) {
+	var rsp PolicyGetDigestResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PolicyGetDigestResponse is the response from TPM2_PolicyGetDigest.
+type PolicyGetDigestResponse struct {
+	// the current value of the policySession→policyDigest
+	PolicyDigest tpm2b.Digest
+}
+
+// Response implements the Response interface.
+func (*PolicyGetDigestResponse) Response() tpm.CC { return tpm.CCPolicyGetDigest }
+
 // PolicyNVWritten is the input to TPM2_PolicyNvWritten.
 // See definition in Part 3, Commands, section 23.20.
 type PolicyNVWritten struct {
