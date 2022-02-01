@@ -192,15 +192,16 @@ func (s *pwSession) Handle() tpm.Handle { return tpm.RSPW }
 
 // sessionOptions represents extra options used when setting up an HMAC or policy session.
 type sessionOptions struct {
-	auth       []byte
-	password   bool
-	bindHandle tpmi.DHEntity
-	bindName   tpm2b.Name
-	bindAuth   []byte
-	saltHandle tpmi.DHObject
-	saltPub    tpmt.Public
-	attrs      tpma.Session
-	symmetric  tpmt.SymDef
+	auth        []byte
+	password    bool
+	bindHandle  tpmi.DHEntity
+	bindName    tpm2b.Name
+	bindAuth    []byte
+	saltHandle  tpmi.DHObject
+	saltPub     tpmt.Public
+	attrs       tpma.Session
+	symmetric   tpmt.SymDef
+	trialPolicy bool
 }
 
 // defaultOptions represents the default options used when none are provided.
@@ -305,6 +306,15 @@ func AuditExclusive() AuthOption {
 	return func(o *sessionOptions) {
 		o.attrs.Audit = true
 		o.attrs.AuditExclusive = true
+	}
+}
+
+// Trial indicates that the policy session should be in tral-mode.
+// This allows using the TPM to calculate policy hashes.
+// This option has no effect on non-Policy sessions.
+func Trial() AuthOption {
+	return func(o *sessionOptions) {
+		o.trialPolicy = true
 	}
 }
 
@@ -837,12 +847,17 @@ func (s *policySession) Init(t *TPM) error {
 		return err
 	}
 
+	sessType := tpm.SEPolicy
+	if s.sessionOptions.trialPolicy {
+		sessType = tpm.SETrial
+	}
+
 	// Start up the actual auth session.
 	sasCmd := StartAuthSession{
 		TPMKey:      s.saltHandle,
 		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
-		SessionType: tpm.SEPolicy,
+		SessionType: sessType,
 		Symmetric:   s.symmetric,
 		AuthHash:    s.hash,
 	}

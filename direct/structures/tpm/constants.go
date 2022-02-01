@@ -318,7 +318,7 @@ const (
 const (
 	SEHMAC   = internal.TPMSEHMAC
 	SEPolicy = internal.TPMSEPolicy
-	XETrial  = internal.TPMXETrial
+	SETrial  = internal.TPMSETrial
 )
 
 // Cap values come from Part 2: Structures, section 6.12.

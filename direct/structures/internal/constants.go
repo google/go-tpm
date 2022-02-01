@@ -327,7 +327,7 @@ const (
 const (
 	TPMSEHMAC   TPMSE = 0x00
 	TPMSEPolicy TPMSE = 0x01
-	TPMXETrial  TPMSE = 0x03
+	TPMSETrial  TPMSE = 0x03
 )
 
 // TPMCap values come from Part 2: Structures, section 6.12.
