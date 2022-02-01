@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/chrisfenner/tpmdirect/tpm2"
 	"github.com/google/go-tpm/direct/helpers"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
@@ -59,6 +60,27 @@ type Session interface {
 	Decrypt(parameter []byte) error
 	// Returns the handle value of this session.
 	Handle() tpm.Handle
+}
+
+// CPHash calculates the TPM command parameter hash for a given Command.
+// N.B. Authorization sessions on handles are ignored, but names aren't.
+func CPHash(alg tpmi.AlgHash, cmd tpm2.Command) (*tpm2b.Digest, error) {
+	cc := cmd.Command()
+	names, err := cmdNames(cmd)
+	if err != nil {
+		return nil, err
+	}
+	parms, err := cmdParameters(cmd)
+	if err != nil {
+		return nil, err
+	}
+	digest, err := cpHash(alg, cc, names, parms)
+	if err != nil {
+		return nil, err
+	}
+	return &tpm2b.Digest{
+		Buffer: digest,
+	}, nil
 }
 
 // cpHash calculates the TPM command parameter hash.
