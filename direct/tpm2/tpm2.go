@@ -2,8 +2,6 @@
 package tpm2
 
 import (
-	"encoding/binary"
-
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpmi"
@@ -50,9 +48,7 @@ func (a *AuthHandle) effectiveName() tpm2b.Name {
 	if len(a.Name.Buffer) > 0 {
 		return a.Name
 	}
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, uint32(a.effectiveHandle()))
-	return tpm2b.Name{Buffer: buf}
+	return HandleName(a.effectiveHandle())
 }
 
 // effectiveAuth returns the effective auth session.
