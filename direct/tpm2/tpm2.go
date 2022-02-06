@@ -568,6 +568,33 @@ type PolicySecretResponse struct {
 // Response implements the Response interface.
 func (*PolicySecretResponse) Response() tpm.CC { return tpm.CCPolicySecret }
 
+// PolicyOr is the input to TPM2_PolicyOR.
+// See definition in Part 3, Commands, section 23.6.
+type PolicyOr struct {
+	// handle for the policy session being extended
+	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	// the list of hashes to check for a match
+	PHashList tpml.Digest
+}
+
+// Command implements the Command interface.
+func (*PolicyOr) Command() tpm.CC { return tpm.CCPolicyOR }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyOr) Execute(t *TPM, s ...Session) (*PolicyOrResponse, error) {
+	var rsp PolicyOrResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PolicyOrResponse is the response from TPM2_PolicyOr.
+type PolicyOrResponse struct{}
+
+// Response implements the Response interface.
+func (*PolicyOrResponse) Response() tpm.CC { return tpm.CCPolicyOR }
+
 // PolicyCPHash is the input to TPM2_PolicyCpHash.
 // See definition in Part 3, Commands, section 23.13.
 type PolicyCPHash struct {
