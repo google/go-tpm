@@ -981,7 +981,7 @@ func (*NVUndefineSpaceSpecialResponse) Response() tpm.CC { return tpm.CCNVUndefi
 // See definition in Part 3, Commands, section 31.6.
 type NVReadPublic struct {
 	// the NV index
-	NVIndex tpmi.RHNVIndex
+	NVIndex Handle `gotpm:"handle"`
 }
 
 // Command implements the Command interface.
