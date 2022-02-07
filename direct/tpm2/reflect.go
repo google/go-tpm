@@ -764,16 +764,13 @@ func cmdHandles(cmd Command) []byte {
 
 // cmdNames returns the names of objects in the handles area of the command.
 func cmdNames(cmd Command) ([]tpm2b.Name, error) {
-	fmt.Printf("Names for TPM command %v\n", cmd.Command())
 	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
 	var result []tpm2b.Name
 	for _, h := range handles {
 		switch handle := h.Interface().(type) {
 		case Handle:
-			fmt.Printf("  %x\n", handle.effectiveName().Buffer)
 			result = append(result, handle.effectiveName())
 		case AuthHandle:
-			fmt.Printf("  %x\n", handle.effectiveName().Buffer)
 			result = append(result, handle.effectiveName())
 		default:
 			return nil, fmt.Errorf("'handle'-tagged member of %v was of type %v instead of tpm2.handle",
@@ -787,7 +784,6 @@ func cmdNames(cmd Command) ([]tpm2b.Name, error) {
 // cmdParameters returns the parameters area of the command.
 // The first parameter may be encrypted by one of the sessions.
 func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
-	fmt.Printf("Parameters for TPM command %v\n", cmd.Command())
 	parms := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", true)
 	if len(parms) == 0 {
 		return nil, nil
@@ -825,7 +821,6 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 	if err := marshal(&result, parms[1:]...); err != nil {
 		return nil, err
 	}
-	fmt.Printf("  %x\n", result.Bytes())
 	return result.Bytes(), nil
 }
 
