@@ -485,8 +485,8 @@ func (s *hmacSession) Init(t *TPM) error {
 
 	// Start up the actual auth session.
 	sasCmd := StartAuthSession{
-		TPMKey:      s.saltHandle,
-		Bind:        s.bindHandle,
+		TPMKey:      Handle{Handle: s.saltHandle},
+		Bind:        Handle{Handle: s.bindHandle},
 		NonceCaller: s.nonceCaller,
 		SessionType: tpm.SEHMAC,
 		Symmetric:   s.symmetric,
@@ -854,8 +854,8 @@ func (s *policySession) Init(t *TPM) error {
 
 	// Start up the actual auth session.
 	sasCmd := StartAuthSession{
-		TPMKey:      s.saltHandle,
-		Bind:        s.bindHandle,
+		TPMKey:      Handle{Handle: s.saltHandle},
+		Bind:        Handle{Handle: s.bindHandle},
 		NonceCaller: s.nonceCaller,
 		SessionType: sessType,
 		Symmetric:   s.symmetric,

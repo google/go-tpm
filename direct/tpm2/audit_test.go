@@ -113,7 +113,7 @@ func TestAuditSession(t *testing.T) {
 			SignHandle: AuthHandle{
 				Handle: createAKRsp.ObjectHandle,
 			},
-			SessionHandle:  sess.Handle(),
+			SessionHandle:  Handle{Handle: sess.Handle()},
 			QualifyingData: tpm2b.Data{Buffer: []byte("foobar")},
 		}
 		getAuditRsp, err := getAuditCmd.Execute(thetpm)

@@ -10,6 +10,12 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpmt"
 )
 
+// handle is an interface for both authorized and unauthorized handles.
+type handle interface {
+	effectiveHandle() tpmi.DHObject
+	effectiveName() tpm2b.Name
+}
+
 // AuthHandle is a convenience type to wrap an authorized handle.
 type AuthHandle struct {
 	// The handle that is authorized.
@@ -58,6 +64,37 @@ func (a *AuthHandle) effectiveAuth() Session {
 		return PasswordAuth(nil)
 	}
 	return a.Auth
+}
+
+// Handle is a convenience type to wrap an (unauthorized) handle.
+type Handle struct {
+	// The handle that is authorized.
+	// If zero, treated as TPM_RH_NULL.
+	Handle tpmi.DHObject `gotpm:"nullable"`
+	// The Name of the object expected at the given handle value.
+	// If Name contains a nil buffer, the effective Name will be
+	// the big-endian UINT32 representation of Handle, as in
+	// Part 1, section 16 "Names" for PCRs, sessions, and
+	// permanent values.
+	Name tpm2b.Name `gotpm:"skip"`
+}
+
+// effectiveHandle returns the effective handle value.
+// Returns TPM_RH_NULL if unset.
+func (h *Handle) effectiveHandle() tpmi.DHObject {
+	if h.Handle != 0 {
+		return h.Handle
+	}
+	return tpm.RHNull
+}
+
+// effectiveName returns the effective Name.
+// Returns the handle value as a name if unset.
+func (h *Handle) effectiveName() tpm2b.Name {
+	if len(h.Name.Buffer) > 0 {
+		return h.Name
+	}
+	return HandleName(h.effectiveHandle())
 }
 
 // Command is a placeholder interface for TPM command structures so that they
@@ -136,10 +173,10 @@ func (*StartupResponse) Response() tpm.CC { return tpm.CCStartup }
 type StartAuthSession struct {
 	// handle of a loaded decrypt key used to encrypt salt
 	// may be TPM_RH_NULL
-	TPMKey tpmi.DHObject `gotpm:"handle,nullable"`
+	TPMKey Handle `gotpm:"handle"`
 	// entity providing the authValue
 	// may be TPM_RH_NULL
-	Bind tpmi.DHEntity `gotpm:"handle,nullable"`
+	Bind Handle `gotpm:"handle"`
 	// initial nonceCaller, sets nonceTPM size for the session
 	// shall be at least 16 octets
 	NonceCaller tpm2b.Nonce
@@ -331,7 +368,7 @@ type GetSessionAuditDigest struct {
 	// handle of the signing key
 	SignHandle AuthHandle `gotpm:"handle,auth"`
 	// handle of the audit session
-	SessionHandle tpmi.SHHMAC `gotpm:"handle"`
+	SessionHandle Handle `gotpm:"handle"`
 	// user-provided qualifying data – may be zero-length
 	QualifyingData tpm2b.Data
 	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
@@ -366,7 +403,7 @@ func (*GetSessionAuditDigestResponse) Response() tpm.CC { return tpm.CCGetSessio
 // See definition in Part 3, Commands, section 20.1
 type VerifySignature struct {
 	// handle of public key that will be used in the validation
-	KeyHandle tpmi.DHObject `gotpm:"handle"`
+	KeyHandle handle `gotpm:"handle"`
 	// digest of the signed message
 	Digest tpm2b.Digest
 	// signature to be tested
@@ -488,9 +525,9 @@ func (*PCRReadResponse) Response() tpm.CC { return tpm.CCPCRRead }
 // See definition in Part 3, Commands, section 23.3.
 type PolicySigned struct {
 	// handle for an entity providing the authorization
-	AuthObject tpmi.DHObject `gotpm:"handle"`
+	AuthObject Handle `gotpm:"handle"`
 	// handle for the policy session being extended
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 	// the policy nonce for the session
 	NonceTPM tpm2b.Nonce
 	// digest of the command parameters to which this authorization is limited
@@ -533,7 +570,7 @@ type PolicySecret struct {
 	// handle for an entity providing the authorization
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
 	// handle for the policy session being extended
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 	// the policy nonce for the session
 	NonceTPM tpm2b.Nonce
 	// digest of the command parameters to which this authorization is limited
@@ -572,7 +609,7 @@ func (*PolicySecretResponse) Response() tpm.CC { return tpm.CCPolicySecret }
 // See definition in Part 3, Commands, section 23.6.
 type PolicyOr struct {
 	// handle for the policy session being extended
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 	// the list of hashes to check for a match
 	PHashList tpml.Digest
 }
@@ -599,7 +636,7 @@ func (*PolicyOrResponse) Response() tpm.CC { return tpm.CCPolicyOR }
 // See definition in Part 3, Commands, section 23.13.
 type PolicyCPHash struct {
 	// handle for the policy session being extended
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 	// the cpHash added to the policy
 	CPHashA tpm2b.Digest
 }
@@ -627,7 +664,7 @@ func (*PolicyCPHashResponse) Response() tpm.CC { return tpm.CCPolicyCpHash }
 // See definition in Part 3, Commands, section 23.16.
 type PolicyAuthorize struct {
 	// handle for the policy session being extended
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 	// digest of the policy being approved
 	ApprovedPolicy tpm2b.Digest
 	// a policy qualifier
@@ -689,7 +726,7 @@ func (*PolicyGetDigestResponse) Response() tpm.CC { return tpm.CCPolicyGetDigest
 // See definition in Part 3, Commands, section 23.20.
 type PolicyNVWritten struct {
 	// handle for the policy session being extended
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 	// YES if NV Index is required to have been written
 	// NO if NV Index is required not to have been written
 	WrittenSet tpmi.YesNo
@@ -720,9 +757,9 @@ type PolicyAuthorizeNV struct {
 	// handle indicating the source of the authorization value
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
 	// the NV Index of the area to read
-	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	NVIndex Handle `gotpm:"handle"`
 	// handle for the policy session being extended
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 }
 
 // Command implements the Command interface.
@@ -890,7 +927,7 @@ type NVUndefineSpace struct {
 	// TPM_RH_OWNER or TPM_RH_PLATFORM+{PP}
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
 	// the NV Index to remove from NV space
-	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	NVIndex Handle `gotpm:"handle"`
 }
 
 // Command implements the Command interface.
@@ -974,7 +1011,7 @@ type NVWrite struct {
 	// handle indicating the source of the authorization value
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
 	// the NV index of the area to write
-	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	NVIndex Handle `gotpm:"handle"`
 	// the data to write
 	Data tpm2b.MaxNVBuffer
 	// the octet offset into the NV Area
@@ -1006,7 +1043,7 @@ type NVWriteLock struct {
 	// handle indicating the source of the authorization value
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
 	// the NV index of the area to lock
-	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	NVIndex Handle `gotpm:"handle"`
 }
 
 // Command implements the Command interface.
@@ -1036,7 +1073,7 @@ type NVRead struct {
 	// handle indicating the source of the authorization value
 	AuthHandle AuthHandle `gotpm:"handle,auth"`
 	// the NV index to read
-	NVIndex tpmi.RHNVIndex `gotpm:"handle"`
+	NVIndex Handle `gotpm:"handle"`
 	// number of octets to read
 	Size uint16
 	// octet offset into the NV area

@@ -32,7 +32,7 @@ func TestEKPolicy(t *testing.T) {
 func ekPolicy(t *TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error {
 	cmd := PolicySecret{
 		AuthHandle:    AuthHandle{Handle: tpm.RHEndorsement},
-		PolicySession: handle,
+		PolicySession: Handle{Handle: handle},
 		NonceTPM:      nonceTPM,
 	}
 	_, err := cmd.Execute(t)
