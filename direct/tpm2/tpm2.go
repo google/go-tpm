@@ -698,7 +698,7 @@ func (*PolicyAuthorizeResponse) Response() tpm.CC { return tpm.CCPolicyAuthorize
 // See definition in Part 3, Commands, section 23.19.
 type PolicyGetDigest struct {
 	// handle for the policy session
-	PolicySession tpmi.SHPolicy `gotpm:"handle"`
+	PolicySession Handle `gotpm:"handle"`
 }
 
 // Command implements the Command interface.
