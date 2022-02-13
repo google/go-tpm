@@ -62,7 +62,7 @@ func TestNVAuthWrite(t *testing.T) {
 	}
 
 	read := NVReadPublic{
-		NVIndex: def.PublicInfo.NVPublic.NVIndex,
+		NVIndex: Handle{Handle: def.PublicInfo.NVPublic.NVIndex},
 	}
 	readRsp, err := read.Execute(thetpm)
 	if err != nil {

@@ -2,6 +2,8 @@
 package tpm2
 
 import (
+	"bytes"
+
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpmi"
@@ -114,6 +116,13 @@ type Command interface {
 type Response interface {
 	// The TPM command code associated with this response.
 	Response() tpm.CC
+}
+
+// PolicyCommand is a TPM command that can be part of a TPM policy.
+type PolicyCommand interface {
+	// Update updates the given policy hash according to the command
+	// parameters.
+	Update(policy *PolicyCalculator)
 }
 
 // Shutdown is the input to TPM2_Shutdown.
@@ -553,6 +562,18 @@ func (cmd *PolicySigned) Execute(t *TPM, s ...Session) (*PolicySignedResponse, e
 	return &rsp, nil
 }
 
+// policyUpdate implements the PolicyUpdate helper for the several TPM policy
+// commands as described in Part 3, 23.2.3.
+func policyUpdate(policy *PolicyCalculator, cc tpm.CC, arg2, arg3 []byte) {
+	policy.Update(cc, arg2)
+	policy.Update(arg3)
+}
+
+// Update implements the PolicyCommand interface.
+func (p *PolicySigned) Update(policy *PolicyCalculator) {
+	policyUpdate(policy, tpm.CCPolicySigned, p.AuthObject.Name.Buffer, p.PolicyRef.Buffer)
+}
+
 // PolicySignedResponse is the response from TPM2_PolicySigned.
 type PolicySignedResponse struct {
 	// implementation-specific time value used to indicate to the TPM when the ticket expires
@@ -594,6 +615,11 @@ func (cmd *PolicySecret) Execute(t *TPM, s ...Session) (*PolicySecretResponse, e
 	return &rsp, nil
 }
 
+// Update implements the PolicyCommand interface.
+func (p *PolicySecret) Update(policy *PolicyCalculator) {
+	policyUpdate(policy, tpm.CCPolicySecret, p.AuthHandle.Name.Buffer, p.PolicyRef.Buffer)
+}
+
 // PolicySecretResponse is the response from TPM2_PolicySecret.
 type PolicySecretResponse struct {
 	// implementation-specific time value used to indicate to the TPM when the ticket expires
@@ -626,6 +652,16 @@ func (cmd *PolicyOr) Execute(t *TPM, s ...Session) (*PolicyOrResponse, error) {
 	return &rsp, nil
 }
 
+// Update implements the PolicyCommand interface.
+func (p *PolicyOr) Update(policy *PolicyCalculator) {
+	policy.Reset()
+	var digests bytes.Buffer
+	for _, digest := range p.PHashList.Digests {
+		digests.Write(digest.Buffer)
+	}
+	policy.Update(tpm.CCPolicyOR, digests.Bytes())
+}
+
 // PolicyOrResponse is the response from TPM2_PolicyOr.
 type PolicyOrResponse struct{}
 
@@ -651,6 +687,11 @@ func (cmd *PolicyCPHash) Execute(t *TPM, s ...Session) (*PolicyCPHashResponse, e
 		return nil, err
 	}
 	return &rsp, nil
+}
+
+// Update implements the PolicyCommand interface.
+func (p *PolicyCPHash) Update(policy *PolicyCalculator) {
+	policy.Update(tpm.CCPolicyCpHash, p.CPHashA.Buffer)
 }
 
 // PolicyCPHashResponse is the response from TPM2_PolicyCpHash.
@@ -685,6 +726,11 @@ func (cmd *PolicyAuthorize) Execute(t *TPM, s ...Session) (*PolicyAuthorizeRespo
 		return nil, err
 	}
 	return &rsp, nil
+}
+
+// Update implements the PolicyCommand interface.
+func (p *PolicyAuthorize) Update(policy *PolicyCalculator) {
+	policyUpdate(policy, tpm.CCPolicyAuthorize, p.KeySign.Buffer, p.PolicyRef.Buffer)
 }
 
 // PolicyAuthorizeResponse is the response from TPM2_PolicyAuthorize.
@@ -744,6 +790,11 @@ func (cmd *PolicyNVWritten) Execute(t *TPM, s ...Session) (*PolicyNVWrittenRespo
 	return &rsp, nil
 }
 
+// Update implements the PolicyCommand interface.
+func (p *PolicyNVWritten) Update(policy *PolicyCalculator) {
+	policy.Update(tpm.CCPolicyNvWritten, p.WrittenSet)
+}
+
 // PolicyNVWrittenResponse is the response from TPM2_PolicyNvWritten.
 type PolicyNVWrittenResponse struct {
 }
@@ -772,6 +823,12 @@ func (cmd *PolicyAuthorizeNV) Execute(t *TPM, s ...Session) (*PolicyAuthorizeNVR
 		return nil, err
 	}
 	return &rsp, nil
+}
+
+// Update implements the PolicyCommand interface.
+func (p *PolicyAuthorizeNV) Update(policy *PolicyCalculator) {
+	policy.Reset()
+	policy.Update(tpm.CCPolicyAuthorizeNV, p.NVIndex.Name.Buffer)
 }
 
 // PolicyAuthorizeNVResponse is the response from TPM2_PolicyAuthorizeNV.

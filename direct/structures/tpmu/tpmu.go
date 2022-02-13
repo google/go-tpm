@@ -3,10 +3,6 @@ package tpmu
 
 import "github.com/google/go-tpm/direct/structures/internal"
 
-// HA represents a TPMU_HA.
-// See definition in Part 2: Structures, section 10.3.1.
-type HA = internal.TPMUHA
-
 // Capabilities represents a TPMU_CAPABILITIES.
 // See definition in Part 2: Structures, section 10.10.1.
 type Capabilities = internal.TPMUCapabilities

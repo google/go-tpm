@@ -84,7 +84,7 @@ func TestNVName(t *testing.T) {
 	}
 
 	readPublic := NVReadPublic{
-		NVIndex: public.NVPublic.NVIndex,
+		NVIndex: Handle{Handle: public.NVPublic.NVIndex},
 	}
 	rsp, err := readPublic.Execute(thetpm)
 	if err != nil {

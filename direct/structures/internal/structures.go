@@ -497,25 +497,14 @@ type TPMISTCommandTag = TPMST
 // See definition in Part 2: Structures, section 10.1.
 type TPMSEmpty = struct{}
 
-// TPMUHA represents a TPMU_HA.
-// See definition in Part 2: Structures, section 10.3.1.
-type TPMUHA struct {
-	SHA1     *[20]byte `gotpm:"selector=0x0004"` // TPM_ALG_SHA1
-	SHA256   *[32]byte `gotpm:"selector=0x000B"` // TPM_ALG_SHA256
-	SHA384   *[48]byte `gotpm:"selector=0x000C"` // TPM_ALG_SHA384
-	SHA512   *[64]byte `gotpm:"selector=0x000D"` // TPM_ALG_SHA512
-	SHA3x256 *[32]byte `gotpm:"selector=0x0027"` // TPM_ALG_SHA3_256
-	SHA3x384 *[48]byte `gotpm:"selector=0x0028"` // TPM_ALG_SHA3_384
-	SHA3x512 *[64]byte `gotpm:"selector=0x0029"` // TPM_ALG_SHA3_512
-}
-
 // TPMTHA represents a TPMT_HA.
 // See definition in Part 2: Structures, section 10.3.2.
 type TPMTHA struct {
 	// selector of the hash contained in the digest that implies the size of the digest
 	HashAlg TPMIAlgHash `gotpm:"nullable"`
 	// the digest data
-	Digest TPMUHA `gotpm:"tag=HashAlg"`
+	// NOTE: For convenience, this is not implemented as a union.
+	Digest []byte
 }
 
 // TPM2BDigest represents a TPM2B_DIGEST.
