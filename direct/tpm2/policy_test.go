@@ -496,3 +496,52 @@ func TestPolicyAuthorizeNVUpdate(t *testing.T) {
 		t.Errorf("PolicyAuthorizeNV.Hash() = %x,\nwant %x", got.Digest, want.PolicyDigest.Buffer)
 	}
 }
+
+func TestPolicyCommandCodeUpdate(t *testing.T) {
+	sim, err := simulator.Get()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	thetpm := NewTPM(sim)
+	defer thetpm.Close()
+
+	// Use a trial session to calculate this policy
+	sess, cleanup2, err := PolicySession(thetpm, tpm.AlgSHA256, 16, Trial())
+	if err != nil {
+		t.Fatalf("setting up policy session: %v", err)
+	}
+	defer func() {
+		t.Helper()
+		if err := cleanup2(); err != nil {
+			t.Errorf("cleaning up policy session: %v", err)
+		}
+	}()
+
+	pcc := PolicyCommandCode{
+		PolicySession: Handle{Handle: sess.Handle()},
+		Code:          tpm.CCCreate,
+	}
+	if _, err := pcc.Execute(thetpm); err != nil {
+		t.Fatalf("executing PolicyCommandCode: %v", err)
+	}
+
+	pgd := PolicyGetDigest{
+		PolicySession: Handle{Handle: sess.Handle()},
+	}
+	want, err := pgd.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("executing PolicyGetDigest: %v", err)
+	}
+
+	// Use the policy helper to calculate the same policy
+	pol, err := NewPolicyCalculator(tpm.AlgSHA256)
+	if err != nil {
+		t.Fatalf("creating policy calculator: %v", err)
+	}
+	pcc.Update(pol)
+	got := pol.Hash()
+
+	if !bytes.Equal(got.Digest, want.PolicyDigest.Buffer) {
+		t.Errorf("PolicyCommandCode.Hash() = %x,\nwant %x", got.Digest, want.PolicyDigest.Buffer)
+	}
+}

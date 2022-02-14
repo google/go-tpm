@@ -668,6 +668,38 @@ type PolicyOrResponse struct{}
 // Response implements the Response interface.
 func (*PolicyOrResponse) Response() tpm.CC { return tpm.CCPolicyOR }
 
+// PolicyCommandCode is the input to TPM2_PolicyCommandCode.
+// See definition in Part 3, Commands, section 23.11.
+type PolicyCommandCode struct {
+	// handle for the policy session being extended
+	PolicySession Handle `gotpm:"handle"`
+	// the allowed commandCode
+	Code tpm.CC
+}
+
+// Command implements the Command interface.
+func (*PolicyCommandCode) Command() tpm.CC { return tpm.CCPolicyCommandCode }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyCommandCode) Execute(t *TPM, s ...Session) (*PolicyCommandCodeResponse, error) {
+	var rsp PolicyCommandCodeResponse
+	if err := t.execute(cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// Update implements the PolicyCommand interface.
+func (p *PolicyCommandCode) Update(policy *PolicyCalculator) {
+	policy.Update(tpm.CCPolicyCommandCode, p.Code)
+}
+
+// PolicyCommandCodeResponse is the response from TPM2_PolicyCommandCode.
+type PolicyCommandCodeResponse struct{}
+
+// Response implements the Response interface.
+func (*PolicyCommandCodeResponse) Response() tpm.CC { return tpm.CCPolicyCommandCode }
+
 // PolicyCPHash is the input to TPM2_PolicyCpHash.
 // See definition in Part 3, Commands, section 23.13.
 type PolicyCPHash struct {
