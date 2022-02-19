@@ -4,21 +4,20 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/google/go-tpm-tools/simulator"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpmt"
 	"github.com/google/go-tpm/direct/structures/tpmu"
+	"github.com/google/go-tpm/direct/transport/simulator"
 )
 
 func TestAuditSession(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	// Create the audit session
@@ -30,9 +29,7 @@ func TestAuditSession(t *testing.T) {
 
 	// Create the AK for audit
 	createAKCmd := CreatePrimary{
-		PrimaryHandle: AuthHandle{
-			Handle: tpm.RHOwner,
-		},
+		PrimaryHandle: tpm.RHOwner,
 		InPublic: tpm2b.Public{
 			PublicArea: tpmt.Public{
 				Type:    tpm.AlgECC,
@@ -107,18 +104,17 @@ func TestAuditSession(t *testing.T) {
 		}
 		// Get the audit digest signed by the AK
 		getAuditCmd := GetSessionAuditDigest{
-			PrivacyAdminHandle: AuthHandle{
-				Handle: tpm.RHEndorsement,
-			},
-			SignHandle: AuthHandle{
+			PrivacyAdminHandle: tpm.RHEndorsement,
+			SignHandle: NamedHandle{
 				Handle: createAKRsp.ObjectHandle,
+				Name:   createAKRsp.Name,
 			},
-			SessionHandle:  Handle{Handle: sess.Handle()},
+			SessionHandle:  sess.Handle(),
 			QualifyingData: tpm2b.Data{Buffer: []byte("foobar")},
 		}
 		getAuditRsp, err := getAuditCmd.Execute(thetpm)
 		if err != nil {
-			t.Errorf("%v", err)
+			t.Fatalf("%v", err)
 		}
 		// TODO check the signature with the AK pub
 		aud := getAuditRsp.AuditInfo.AttestationData.Attested.SessionAudit

@@ -4,6 +4,10 @@ package internal
 import (
 	"crypto"
 	"crypto/elliptic"
+<<<<<<< HEAD
+=======
+	"encoding/binary"
+>>>>>>> 0b55c34 (Introduce Direct TPM2 API (#266))
 
 	// Register the relevant hash implementations.
 	_ "crypto/sha1"
@@ -135,9 +139,31 @@ type TPMPTPCR uint32
 // See definition in Part 2: Structures, section 7.1.
 type TPMHandle uint32
 
+// HandleValue returns the handle value. This behavior is intended to satisfy
+// an interface that can be implemented by other, more complex types as well.
+func (h TPMHandle) HandleValue() uint32 {
+	return uint32(h)
+}
+
+// KnownName returns the TPM Name associated with the handle, if it can be known
+// based only on the handle. This depends upon the value of the handle:
+// only PCR, session, and permanent values have known constant Names.
+// See definition in part 1: Architecture, section 16.
+func (h TPMHandle) KnownName() *TPM2BName {
+	switch (byte)(h >> 24) {
+	case 0x00, 0x02, 0x03, 0x40:
+		result := make([]byte, 4)
+		binary.BigEndian.PutUint32(result, h.HandleValue())
+		return &TPM2BName{Buffer: result}
+	default:
+		return nil
+	}
+}
+
 // TPMAAlgorithm represents a TPMA_ALGORITHM.
 // See definition in Part 2: Structures, section 8.2.
 type TPMAAlgorithm struct {
+	bitfield32
 	// SET (1): an asymmetric algorithm with public and private portions
 	// CLEAR (0): not an asymmetric algorithm
 	Asymmetric bool `gotpm:"bit=0"`
@@ -149,8 +175,7 @@ type TPMAAlgorithm struct {
 	Hash bool `gotpm:"bit=2"`
 	// SET (1): an algorithm that may be used as an object type
 	// CLEAR (0): an algorithm that is not used as an object type
-	Object    bool  `gotpm:"bit=3"`
-	Reserved1 uint8 `gotpm:"bit=7:4"`
+	Object bool `gotpm:"bit=3"`
 	// SET (1): a signing algorithm. The setting of asymmetric,
 	// symmetric, and hash will indicate the type of signing algorithm.
 	// CLEAR (0): not a signing algorithm
@@ -162,15 +187,13 @@ type TPMAAlgorithm struct {
 	Encrypting bool `gotpm:"bit=9"`
 	// SET (1): a method such as a key derivative function (KDF)
 	// CLEAR (0): not a method
-	Method    bool   `gotpm:"bit=10"`
-	Reserved2 uint32 `gotpm:"bit=31:11"`
+	Method bool `gotpm:"bit=10"`
 }
 
 // TPMAObject represents a TPMA_OBJECT.
 // See definition in Part 2: Structures, section 8.3.2.
 type TPMAObject struct {
-	// shall be zero
-	Reserved1 uint8 `gotpm:"bit=0"`
+	bitfield32
 	// SET (1): The hierarchy of the object, as indicated by its
 	// Qualified Name, may not change.
 	// CLEAR (0): The hierarchy of the object may change as a result
@@ -182,8 +205,6 @@ type TPMAObject struct {
 	// CLEAR (0): Saved contexts of this object may be used after a
 	// Shutdown(STATE) and subsequent Startup().
 	STClear bool `gotpm:"bit=2"`
-	// shall be zero
-	Reserved2 uint8 `gotpm:"bit=3"`
 	// SET (1): The parent of the object may not change.
 	// CLEAR (0): The parent of the object may change as the result of
 	// a TPM2_Duplicate() of the object.
@@ -206,8 +227,6 @@ type TPMAObject struct {
 	// be with an HMAC session or with a password using the authValue
 	// of the object or a policy session.
 	AdminWithPolicy bool `gotpm:"bit=7"`
-	// shall be zero
-	Reserved3 uint8 `gotpm:"bit=9:8"`
 	// SET (1): The object is not subject to dictionary attack
 	// protections.
 	// CLEAR (0): The object is subject to dictionary attack
@@ -220,8 +239,6 @@ type TPMAObject struct {
 	// wrapper on the private portion of the object and the new parent
 	// may be TPM_RH_NULL.
 	EncryptedDuplication bool `gotpm:"bit=11"`
-	// shall be zero
-	Reserved4 uint8 `gotpm:"bit=15:12"`
 	// SET (1): Key usage is restricted to manipulate structures of
 	// known format; the parent of this key shall have restricted SET.
 	// CLEAR (0): Key usage is not restricted to use on special
@@ -242,13 +259,12 @@ type TPMAObject struct {
 	// if sign is SET
 	// NOTE: This attribute only has significance if sign is SET.
 	X509Sign bool `gotpm:"bit=19"`
-	// shall be zero
-	Reserved5 uint16 `gotpm:"bit=31:20"`
 }
 
 // TPMASession represents a TPMA_SESSION.
 // See definition in Part 2: Structures, section 8.4.
 type TPMASession struct {
+	bitfield8
 	// SET (1): In a command, this setting indicates that the session
 	// is to remain active after successful completion of the command.
 	// In a response, it indicates that the session is still active.
@@ -277,10 +293,6 @@ type TPMASession struct {
 	// CLEAR (0): In a command, indicates that the audit digest should not
 	// be initialized. This bit is always CLEAR in a response.
 	AuditReset bool `gotpm:"bit=2"`
-	// shall be CLEAR
-	Reserved1 bool `gotpm:"bit=3"`
-	// shall be CLEAR
-	Reserved2 bool `gotpm:"bit=4"`
 	// SET (1): In a command, this setting indicates that the first
 	// parameter in the command is symmetrically encrypted using the
 	// parameter encryption scheme described in TPM 2.0 Part 1. The TPM will
@@ -313,6 +325,7 @@ type TPMASession struct {
 // TPMALocality represents a TPMA_LOCALITY.
 // See definition in Part 2: Structures, section 8.5.
 type TPMALocality struct {
+	bitfield8
 	TPMLocZero  bool `gotpm:"bit=0"`
 	TPMLocOne   bool `gotpm:"bit=1"`
 	TPMLocTwo   bool `gotpm:"bit=2"`
@@ -325,10 +338,9 @@ type TPMALocality struct {
 // TPMACC represents a TPMA_CC.
 // See definition in Part 2: Structures, section 8.9.
 type TPMACC struct {
+	bitfield32
 	// indicates the command being selected
 	CommandIndex uint16 `gotpm:"bit=15:0"`
-	// shall be zero
-	Reserved1 uint16 `gotpm:"bit=21:16"`
 	// SET (1): indicates that the command may write to NV
 	// CLEAR (0): indicates that the command does not write to NV
 	NV bool `gotpm:"bit=22"`
@@ -345,21 +357,18 @@ type TPMACC struct {
 	// SET (1): indicates that the command is vendor-specific
 	// CLEAR (0): indicates that the command is defined in a version of this specification
 	V bool `gotpm:"bit=29"`
-	// allocated for software; shall be zero
-	Reserved2 uint8 `gotpm:"bit=31:30"`
 }
 
 // TPMAACT represents a TPMA_ACT.
 // See definition in Part 2: Structures, section 8.12.
 type TPMAACT struct {
+	bitfield32
 	// SET (1): The ACT has signaled
 	// CLEAR (0): The ACT has not signaled
 	Signaled bool `gotpm:"bit=0"`
 	// SET (1): The ACT signaled bit is preserved over a power cycle
 	// CLEAR (0): The ACT signaled bit is not preserved over a power cycle
 	PreserveSignaled bool `gotpm:"bit=1"`
-	// shall be zero
-	Reserved uint32 `gotpm:"bit=31:2"`
 }
 
 // TPMIYesNo represents a TPMI_YES_NO.
@@ -1343,6 +1352,7 @@ type TPMNT uint8
 // TPMANV represents a TPMA_NV.
 // See definition in Part 2: Structures, section 13.4.
 type TPMANV struct {
+	bitfield32
 	// SET (1): The Index data can be written if Platform Authorization is
 	// provided.
 	// CLEAR (0): Writing of the Index data cannot be authorized with
@@ -1365,8 +1375,6 @@ type TPMANV struct {
 	PolicyWrite bool `gotpm:"bit=3"`
 	// The type of the index.
 	NT TPMNT `gotpm:"bit=7:4"`
-	// Shall be zero
-	Reserved0 uint8 `gotpm:"bit=9:8"`
 	// SET (1): Index may not be deleted unless the authPolicy is satisfied
 	// using TPM2_NV_UndefineSpaceSpecial().
 	// CLEAR (0): Index may be deleted with proper platform or owner
@@ -1414,8 +1422,6 @@ type TPMANV struct {
 	// CLEAR (0): Reading of the Index data cannot be authorized with the
 	// Index authPolicy.
 	PolicyRead bool `gotpm:"bit=19"`
-	// shall be zero
-	Reserved1 uint16 `gotpm:"bit=24:20"`
 	// SET (1): Authorization failures of the Index do not affect the DA
 	// logic and authorization of the Index is not blocked when the TPM is
 	// in Lockout mode.

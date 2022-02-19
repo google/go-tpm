@@ -19,6 +19,7 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpmt"
 	"github.com/google/go-tpm/direct/structures/tpmu"
+	"github.com/google/go-tpm/direct/transport"
 	legacy "github.com/google/go-tpm/tpm2"
 )
 
@@ -28,12 +29,12 @@ type Session interface {
 	// already done. Some types of sessions may need to be initialized
 	// just-in-time, e.g., to support calling patterns that help the user
 	// securely authorize their actions without writing a lot of code.
-	Init(tpm *TPM) error
+	Init(tpm transport.TPM) error
 	// Cleans up the session, if needed.
 	// Some types of session need to be cleaned up if the command failed,
 	// again to support calling patterns that help the user securely
 	// authorize their actions without writing a lot of code.
-	CleanupFailure(tpm *TPM) error
+	CleanupFailure(tpm transport.TPM) error
 	// The last nonceTPM for this session.
 	NonceTPM() tpm2b.Nonce
 	// Updates nonceCaller to a new random value.
@@ -82,36 +83,6 @@ func CPHash(alg tpmi.AlgHash, cmd Command) (*tpm2b.Digest, error) {
 	}, nil
 }
 
-// cpHash calculates the TPM command parameter hash.
-// cpHash = hash(CC || names || parms)
-func cpHash(alg tpmi.AlgHash, cc tpm.CC, names []tpm2b.Name, parms []byte) ([]byte, error) {
-	ha, err := alg.Hash()
-	if err != nil {
-		return nil, err
-	}
-	h := ha.New()
-	binary.Write(h, binary.BigEndian, cc)
-	for _, name := range names {
-		h.Write(name.Buffer)
-	}
-	h.Write(parms)
-	return h.Sum(nil), nil
-}
-
-// rpHash calculates the TPM response parameter hash.
-// rpHash = hash(RC || CC || parms)
-func rpHash(alg tpmi.AlgHash, rc tpm.RC, cc tpm.CC, parms []byte) ([]byte, error) {
-	ha, err := alg.Hash()
-	if err != nil {
-		return nil, err
-	}
-	h := ha.New()
-	binary.Write(h, binary.BigEndian, rc)
-	binary.Write(h, binary.BigEndian, cc)
-	h.Write(parms)
-	return h.Sum(nil), nil
-}
-
 // pwSession represents a password-pseudo-session.
 type pwSession struct {
 	auth []byte
@@ -125,10 +96,10 @@ func PasswordAuth(auth []byte) Session {
 }
 
 // Init is not required and has no effect for a password session.
-func (s *pwSession) Init(tpm *TPM) error { return nil }
+func (s *pwSession) Init(tpm transport.TPM) error { return nil }
 
 // Cleanup is not required and has no effect for a password session.
-func (s *pwSession) CleanupFailure(tpm *TPM) error { return nil }
+func (s *pwSession) CleanupFailure(tpm transport.TPM) error { return nil }
 
 // NonceTPM normally returns the last nonceTPM value from the session.
 // Since a password session is a pseudo-session with the auth value stuffed
@@ -190,18 +161,47 @@ func (s *pwSession) Decrypt(parameter []byte) error { return nil }
 // In the case of a password session, this is always TPM_RS_PW.
 func (s *pwSession) Handle() tpm.Handle { return tpm.RSPW }
 
+// cpHash calculates the TPM command parameter hash.
+// cpHash = hash(CC || names || parms)
+func cpHash(alg tpmi.AlgHash, cc tpm.CC, names []tpm2b.Name, parms []byte) ([]byte, error) {
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	h := ha.New()
+	binary.Write(h, binary.BigEndian, cc)
+	for _, name := range names {
+		h.Write(name.Buffer)
+	}
+	h.Write(parms)
+	return h.Sum(nil), nil
+}
+
+// rpHash calculates the TPM response parameter hash.
+// rpHash = hash(RC || CC || parms)
+func rpHash(alg tpmi.AlgHash, rc tpm.RC, cc tpm.CC, parms []byte) ([]byte, error) {
+	ha, err := alg.Hash()
+	if err != nil {
+		return nil, err
+	}
+	h := ha.New()
+	binary.Write(h, binary.BigEndian, rc)
+	binary.Write(h, binary.BigEndian, cc)
+	h.Write(parms)
+	return h.Sum(nil), nil
+}
+
 // sessionOptions represents extra options used when setting up an HMAC or policy session.
 type sessionOptions struct {
-	auth        []byte
-	password    bool
-	bindHandle  tpmi.DHEntity
-	bindName    tpm2b.Name
-	bindAuth    []byte
-	saltHandle  tpmi.DHObject
-	saltPub     tpmt.Public
-	attrs       tpma.Session
-	symmetric   tpmt.SymDef
-	trialPolicy bool
+	auth       []byte
+	password   bool
+	bindHandle tpmi.DHEntity
+	bindName   tpm2b.Name
+	bindAuth   []byte
+	saltHandle tpmi.DHObject
+	saltPub    tpmt.Public
+	attrs      tpma.Session
+	symmetric  tpmt.SymDef
 }
 
 // defaultOptions represents the default options used when none are provided.
@@ -348,7 +348,7 @@ func HMAC(hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) Session {
 }
 
 // HMACSession sets up a reusable HMAC session that needs to be closed.
-func HMACSession(t *TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
+func HMACSession(t transport.TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
 	// Set up a not-one-off session that knows the auth value.
 	sess := hmacSession{
 		sessionOptions: defaultOptions(),
@@ -468,7 +468,7 @@ func getEncryptedSalt(pub tpmt.Public) (*tpm2b.EncryptedSecret, []byte, error) {
 }
 
 // Init initializes the session, just in time, if needed.
-func (s *hmacSession) Init(t *TPM) error {
+func (s *hmacSession) Init(t transport.TPM) error {
 	if s.handle != tpm.RHNull {
 		// Session is already initialized.
 		return nil
@@ -485,8 +485,8 @@ func (s *hmacSession) Init(t *TPM) error {
 
 	// Start up the actual auth session.
 	sasCmd := StartAuthSession{
-		TPMKey:      Handle{Handle: s.saltHandle},
-		Bind:        Handle{Handle: s.bindHandle},
+		TPMKey:      s.saltHandle,
+		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
 		SessionType: tpm.SEHMAC,
 		Symmetric:   s.symmetric,
@@ -506,7 +506,7 @@ func (s *hmacSession) Init(t *TPM) error {
 	if err != nil {
 		return err
 	}
-	s.handle = sasRsp.SessionHandle
+	s.handle = tpm.Handle(sasRsp.SessionHandle.HandleValue())
 	s.nonceTPM = sasRsp.NonceTPM
 	// Part 1, 19.6
 	ha, err := s.hash.Hash()
@@ -523,7 +523,7 @@ func (s *hmacSession) Init(t *TPM) error {
 }
 
 // Cleanup cleans up the session, if needed.
-func (s *hmacSession) CleanupFailure(t *TPM) error {
+func (s *hmacSession) CleanupFailure(t transport.TPM) error {
 	// The user is already responsible to clean up this session.
 	if s.attrs.ContinueSession {
 		return nil
@@ -552,12 +552,6 @@ func attrsToBytes(attrs tpma.Session) []byte {
 	}
 	if attrs.AuditReset {
 		res |= (1 << 2)
-	}
-	if attrs.Reserved1 {
-		res |= (1 << 3)
-	}
-	if attrs.Reserved2 {
-		res |= (1 << 4)
 	}
 	if attrs.Decrypt {
 		res |= (1 << 5)
@@ -761,7 +755,7 @@ func (s *hmacSession) Handle() tpm.Handle {
 
 // PolicyCallback represents an object's policy in the form of a function.
 // This function makes zero or more TPM policy commands and returns error.
-type PolicyCallback = func(tpm *TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error
+type PolicyCallback = func(tpm transport.TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error
 
 // policySession generally implements the policy session.
 type policySession struct {
@@ -801,7 +795,7 @@ func Policy(hash tpmi.AlgHash, nonceSize int, callback PolicyCallback, opts ...A
 // The caller is responsible to call whichever policy commands they want in the
 // session.
 // Note that the TPM resets a policy session after it is successfully used.
-func PolicySession(t *TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
+func PolicySession(t transport.TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption) (s Session, close func() error, err error) {
 	// Set up a not-one-off session that knows the auth value.
 	sess := policySession{
 		sessionOptions: defaultOptions(),
@@ -832,7 +826,7 @@ func PolicySession(t *TPM, hash tpmi.AlgHash, nonceSize int, opts ...AuthOption)
 }
 
 // Init initializes the session, just in time, if needed.
-func (s *policySession) Init(t *TPM) error {
+func (s *policySession) Init(t transport.TPM) error {
 	if s.handle != tpm.RHNull {
 		// Session is already initialized.
 		return nil
@@ -854,8 +848,8 @@ func (s *policySession) Init(t *TPM) error {
 
 	// Start up the actual auth session.
 	sasCmd := StartAuthSession{
-		TPMKey:      Handle{Handle: s.saltHandle},
-		Bind:        Handle{Handle: s.bindHandle},
+		TPMKey:      s.saltHandle,
+		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
 		SessionType: sessType,
 		Symmetric:   s.symmetric,
@@ -875,7 +869,7 @@ func (s *policySession) Init(t *TPM) error {
 	if err != nil {
 		return err
 	}
-	s.handle = sasRsp.SessionHandle
+	s.handle = tpm.Handle(sasRsp.SessionHandle.HandleValue())
 	s.nonceTPM = sasRsp.NonceTPM
 	// Part 1, 19.6
 	if s.bindHandle != tpm.RHNull || len(salt) != 0 {
@@ -900,7 +894,7 @@ func (s *policySession) Init(t *TPM) error {
 }
 
 // CleanupFailure cleans up the session, if needed.
-func (s *policySession) CleanupFailure(t *TPM) error {
+func (s *policySession) CleanupFailure(t transport.TPM) error {
 	// The user is already responsible to clean up this session.
 	if s.attrs.ContinueSession {
 		return nil
