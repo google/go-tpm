@@ -100,8 +100,7 @@ func unmarshalReserved(t *testing.T, data []byte, want interface{}) {
 	// Reserved bits are not going to be present in the input structure,
 	// or the accessible fields of what we marshalled.
 	got := reflect.New(reflect.TypeOf(want))
-	rdr := bytes.NewReader(data)
-	err := Unmarshal(rdr, got.Interface())
+	err := Unmarshal(data, got.Interface())
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
@@ -115,10 +114,12 @@ func unmarshalReserved(t *testing.T, data []byte, want interface{}) {
 
 	// Re-marshal what we unmarshalled and ensure that it contains the
 	// original serialization (i.e., any reserved bits are still there).
-	var buf bytes.Buffer
-	Marshal(&buf, got.Interface())
-	if !bytes.Equal(buf.Bytes(), data) {
-		t.Errorf("want %x got %x", data, buf.Bytes())
+	result, err := Marshal(got.Interface())
+	if err != nil {
+		t.Fatalf("error marshalling %v: %v", got, err)
+	}
+	if !bytes.Equal(result, data) {
+		t.Errorf("want %x got %x", data, result)
 	}
 }
 
@@ -126,11 +127,11 @@ func TestMarshalBitfield(t *testing.T) {
 	t.Run("8bit", func(t *testing.T) {
 		v := tpma.Session{
 			ContinueSession: true,
-			AuditExclusive: true,
-			AuditReset: false,
-			Decrypt: true,
-			Encrypt: true,
-			Audit: false,
+			AuditExclusive:  true,
+			AuditReset:      false,
+			Decrypt:         true,
+			Encrypt:         true,
+			Audit:           false,
 		}
 		want := []byte{0x63}
 		marshalUnmarshal(t, v, want)
@@ -138,12 +139,12 @@ func TestMarshalBitfield(t *testing.T) {
 	})
 	t.Run("full8bit", func(t *testing.T) {
 		v := tpma.Locality{
-			TPMLocZero: true,
-			TPMLocOne: true,
-			TPMLocTwo: false,
+			TPMLocZero:  true,
+			TPMLocOne:   true,
+			TPMLocTwo:   false,
 			TPMLocThree: true,
-			TPMLocFour: false,
-			Extended: 1,
+			TPMLocFour:  false,
+			Extended:    1,
 		}
 		want := []byte{0x2b}
 		marshalUnmarshal(t, v, want)
@@ -159,8 +160,8 @@ func TestMarshalBitfield(t *testing.T) {
 	})
 	t.Run("TPMAObject", func(t *testing.T) {
 		v := tpma.Object{
-			FixedTPM: true,
-			STClear: true,
+			FixedTPM:    true,
+			STClear:     true,
 			FixedParent: true,
 		}
 		want := []byte{0x00, 0x00, 0x00, 0x16}
@@ -242,4 +243,3 @@ func TestMarshalUnion(t *testing.T) {
 		})
 	}
 }
-

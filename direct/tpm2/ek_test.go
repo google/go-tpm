@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-tpm-tools/simulator"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
@@ -12,6 +11,8 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpmt"
 	"github.com/google/go-tpm/direct/templates"
+	"github.com/google/go-tpm/direct/transport"
+	"github.com/google/go-tpm/direct/transport/simulator"
 )
 
 // Test creating a sealed data blob on the standard-template EK using its policy.
@@ -29,9 +30,9 @@ func TestEKPolicy(t *testing.T) {
 	}
 }
 
-func ekPolicy(t *TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error {
+func ekPolicy(t transport.TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error {
 	cmd := PolicySecret{
-		AuthHandle:    AuthHandle{Handle: tpm.RHEndorsement},
+		AuthHandle:    tpm.RHEndorsement,
 		PolicySession: handle,
 		NonceTPM:      nonceTPM,
 	}
@@ -96,21 +97,18 @@ func ekTest(t *testing.T, ekTemplate tpm2b.Public) {
 		}
 	}
 
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			// Create the EK
 			createEKCmd := CreatePrimary{
-				PrimaryHandle: AuthHandle{
-					Handle: tpm.RHEndorsement,
-				},
-				InPublic: ekTemplate,
+				PrimaryHandle: tpm.RHEndorsement,
+				InPublic:      ekTemplate,
 			}
 			createEKRsp, err := createEKCmd.Execute(thetpm)
 			if err != nil {
@@ -132,7 +130,7 @@ func ekTest(t *testing.T, ekTemplate tpm2b.Public) {
 			// by creating an object under it
 			data := []byte("secrets")
 			createBlobCmd := Create{
-				ParentHandle: AuthHandle{
+				ParentHandle: NamedHandle{
 					Handle: createEKRsp.ObjectHandle,
 					Name:   createEKRsp.Name,
 				},
@@ -196,7 +194,11 @@ func ekTest(t *testing.T, ekTemplate tpm2b.Public) {
 					t.Fatalf("executing EK policy: %v", err)
 				}
 			}
-			createBlobCmd.ParentHandle.Auth = s
+			createBlobCmd.ParentHandle = AuthHandle{
+				Handle: createEKRsp.ObjectHandle,
+				Name:   createEKRsp.Name,
+				Auth:   s,
+			}
 
 			if _, err := createBlobCmd.Execute(thetpm, sessions...); err != nil {
 				t.Fatalf("%v", err)

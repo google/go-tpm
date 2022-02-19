@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
 	"reflect"
 	"strconv"
@@ -13,9 +12,9 @@ import (
 
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
-	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpma"
-	"github.com/google/go-tpm/tpmutil"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/transport"
 )
 
 const (
@@ -24,28 +23,8 @@ const (
 	maxListLength uint32 = 1024
 )
 
-// TPM represents a logical connection to a TPM. Support for
-// various commands is provided at runtime using reflection.
-type TPM struct {
-	transport io.ReadWriteCloser
-}
-
-// NewTPM opens a TPM connection using the provided ReadWriteCloser.
-// When this TPM connection is closed, the transport is closed.
-func NewTPM(t io.ReadWriteCloser) *TPM {
-	return &TPM{
-		transport: t,
-	}
-}
-
-// Close closes the connection to the TPM and its underlying
-// transport.
-func (t *TPM) Close() error {
-	return t.transport.Close()
-}
-
 // execute sends the provided command and returns the TPM's response.
-func (t *TPM) execute(cmd Command, rsp Response, extraSess ...Session) error {
+func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) error {
 	cc := cmd.Command()
 	if rsp.Response() != cc {
 		return fmt.Errorf("cmd and rsp must be for same command: %v != %v", cc, rsp.Response())
@@ -68,8 +47,7 @@ func (t *TPM) execute(cmd Command, rsp Response, extraSess ...Session) error {
 			return err
 		}
 	}
-	handles := cmdHandles(cmd)
-	names, err := cmdNames(cmd)
+	handles, err := cmdHandles(cmd)
 	if err != nil {
 		return err
 	}
@@ -77,9 +55,18 @@ func (t *TPM) execute(cmd Command, rsp Response, extraSess ...Session) error {
 	if err != nil {
 		return err
 	}
-	sessions, err := cmdSessions(t, sess, cc, names, parms)
-	if err != nil {
-		return err
+	var names []tpm2b.Name
+	var sessions []byte
+	if hasSessions {
+		var err error
+		names, err = cmdNames(cmd)
+		if err != nil {
+			return err
+		}
+		sessions, err = cmdSessions(sess, cc, names, parms)
+		if err != nil {
+			return err
+		}
 	}
 	hdr := cmdHeader(hasSessions, 10 /* size of command header */ +len(handles)+len(sessions)+len(parms), cc)
 	command := append(hdr, handles...)
@@ -87,7 +74,7 @@ func (t *TPM) execute(cmd Command, rsp Response, extraSess ...Session) error {
 	command = append(command, parms...)
 
 	// Send the command via the transport.
-	response, err := tpmutil.RunCommandRaw(t.transport, command)
+	response, err := t.Send(command)
 	if err != nil {
 		return err
 	}
@@ -133,46 +120,44 @@ func (t *TPM) execute(cmd Command, rsp Response, extraSess ...Session) error {
 	return nil
 }
 
-// Marshal will serialize the given values, appending them onto the given writer.
+// Marshal will serialize the given values, returning them as a byte slice.
 // Returns an error if any of the values are not marshallable.
-func Marshal(w io.Writer, vs ...interface{}) error {
+func Marshal(vs ...interface{}) ([]byte, error) {
 	var reflects []reflect.Value
 	for _, v := range vs {
 		reflects = append(reflects, reflect.ValueOf(v))
 	}
 	var buf bytes.Buffer
-	if err := marshal(&buf, reflects...); err != nil {
-		return err
+	for _, reflect := range reflects {
+		if err := marshal(&buf, reflect); err != nil {
+			return nil, err
+		}
 	}
-	_, err := io.Copy(w, &buf)
-	return err
+	return buf.Bytes(), nil
 }
 
-// marshal will serialize the given values, appending them onto the given
-// buffer.
-// Returns an error if any of the values are not marshallable.
-func marshal(buf *bytes.Buffer, vs ...reflect.Value) error {
-	for _, v := range vs {
-		switch v.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			if err := marshalNumeric(buf, v); err != nil {
-				return err
-			}
-		case reflect.Array, reflect.Slice:
-			if err := marshalArray(buf, v); err != nil {
-				return err
-			}
-		case reflect.Struct:
-			if err := marshalStruct(buf, v); err != nil {
-				return err
-			}
-		case reflect.Ptr:
-			if err := marshalStruct(buf, v.Elem()); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("not marshallable: %#v", v)
+// marshal will serialize the given value, appending onto the given buffer.
+// Returns an error if the value is not marshallable.
+func marshal(buf *bytes.Buffer, v reflect.Value) error {
+	switch v.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if err := marshalNumeric(buf, v); err != nil {
+			return err
 		}
+	case reflect.Array, reflect.Slice:
+		if err := marshalArray(buf, v); err != nil {
+			return err
+		}
+	case reflect.Struct:
+		if err := marshalStruct(buf, v); err != nil {
+			return err
+		}
+	case reflect.Ptr:
+		if err := marshalStruct(buf, v.Elem()); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("not marshallable: %#v", v)
 	}
 	return nil
 }
@@ -199,7 +184,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 	for i := 0; i < v.NumField(); i++ {
 		// Ignore embedded Bitfield hints.
 		if !v.Type().Field(i).IsExported() {
-		//if _, isBitfield := v.Field(i).Interface().(tpma.Bitfield); isBitfield {
+			//if _, isBitfield := v.Field(i).Interface().(tpma.Bitfield); isBitfield {
 			continue
 		}
 		thisBitwise := hasTag(v.Type().Field(i), "bit")
@@ -371,10 +356,10 @@ func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 	return fmt.Errorf("selector value '%v' not handled for type '%v'", selector, v.Type().Name())
 }
 
-// Unmarshal deserializes the given values from the reader.
+// Unmarshal deserializes the given values from the byte slice.
 // Returns an error if the buffer does not contain enough data to satisfy the
 // types, or if the types are not unmarshallable.
-func Unmarshal(r io.Reader, vs ...interface{}) error {
+func Unmarshal(data []byte, vs ...interface{}) error {
 	var reflects []reflect.Value
 	for _, v := range vs {
 		if reflect.ValueOf(v).Kind() != reflect.Ptr {
@@ -383,63 +368,62 @@ func Unmarshal(r io.Reader, vs ...interface{}) error {
 		reflects = append(reflects, reflect.ValueOf(v).Elem())
 	}
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, r); err != nil {
+	if _, err := buf.Write(data); err != nil {
 		return err
 	}
-	return unmarshal(&buf, reflects...)
+	for _, reflect := range reflects {
+		if err := unmarshal(&buf, reflect); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-// unmarshal will deserialize the given values from the given buffer.
+// unmarshal will deserialize the given value from the given buffer.
 // Returns an error if the buffer does not contain enough data to satisfy the
 // type.
-func unmarshal(buf *bytes.Buffer, vs ...reflect.Value) error {
-	for _, v := range vs {
-		switch v.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			if err := unmarshalNumeric(buf, v); err != nil {
-				return err
-			}
-			continue
-		case reflect.Slice:
-			var length uint32
-			// special case for byte slices: just read the entire
-			// rest of the buffer
-			if v.Type().Elem().Kind() == reflect.Uint8 {
-				length = uint32(buf.Len())
-			} else {
-				err := unmarshalNumeric(buf, reflect.ValueOf(&length).Elem())
-				if err != nil {
-					return fmt.Errorf("deserializing size for field of type '%v': %w", v.Type(), err)
-				}
-			}
-			if length > uint32(math.MaxInt32) || length > maxListLength {
-				return fmt.Errorf("could not deserialize slice of length %v", length)
-			}
-			// Go's reflect library doesn't allow increasing the
-			// capacity of an existing slice.
-			// Since we can't be sure that the capacity of the
-			// passed-in value was enough, allocate
-			// a new temporary one of the correct length, unmarshal
-			// to it, and swap it in.
-			tmp := reflect.MakeSlice(v.Type(), int(length), int(length))
-			if err := unmarshalArray(buf, tmp); err != nil {
-				return err
-			}
-			v.Set(tmp)
-			continue
-		case reflect.Array:
-			if err := unmarshalArray(buf, v); err != nil {
-				return err
-			}
-			continue
-		case reflect.Struct:
-			if err := unmarshalStruct(buf, v); err != nil {
-				return err
-			}
-			continue
-		default:
-			return fmt.Errorf("not unmarshallable: %v", v.Type())
+func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
+	switch v.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if err := unmarshalNumeric(buf, v); err != nil {
+			return err
 		}
+	case reflect.Slice:
+		var length uint32
+		// special case for byte slices: just read the entire
+		// rest of the buffer
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			length = uint32(buf.Len())
+		} else {
+			err := unmarshalNumeric(buf, reflect.ValueOf(&length).Elem())
+			if err != nil {
+				return fmt.Errorf("deserializing size for field of type '%v': %w", v.Type(), err)
+			}
+		}
+		if length > uint32(math.MaxInt32) || length > maxListLength {
+			return fmt.Errorf("could not deserialize slice of length %v", length)
+		}
+		// Go's reflect library doesn't allow increasing the
+		// capacity of an existing slice.
+		// Since we can't be sure that the capacity of the
+		// passed-in value was enough, allocate
+		// a new temporary one of the correct length, unmarshal
+		// to it, and swap it in.
+		tmp := reflect.MakeSlice(v.Type(), int(length), int(length))
+		if err := unmarshalArray(buf, tmp); err != nil {
+			return err
+		}
+		v.Set(tmp)
+	case reflect.Array:
+		if err := unmarshalArray(buf, v); err != nil {
+			return err
+		}
+	case reflect.Struct:
+		if err := unmarshalStruct(buf, v); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("not unmarshallable: %v", v.Type())
 	}
 	return nil
 }
@@ -468,7 +452,7 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 		// Ignore embedded Bitfield hints.
 		// Ignore embedded Bitfield hints.
 		if !v.Type().Field(i).IsExported() {
-		//if _, isBitfield := v.Field(i).Interface().(tpma.Bitfield); isBitfield {
+			//if _, isBitfield := v.Field(i).Interface().(tpma.Bitfield); isBitfield {
 			continue
 		}
 		thisBitwise := hasTag(v.Type().Field(i), "bit")
@@ -665,9 +649,8 @@ func tags(t reflect.StructField) map[string]string {
 	tags := strings.Split(allTags, ",")
 	for _, tag := range tags {
 		// Split on the equals sign for settable tags.
-		// If the split returns an empty slice, this is an empty tag.
 		// If the split returns a slice of length 1, this is an
-		//   un-settable tag.
+		//   un-settable tag or an empty tag (which we'll ignore).
 		// If the split returns a slice of length 2, this is a settable
 		//   tag.
 		assignment := strings.SplitN(tag, "=", 2)
@@ -675,7 +658,7 @@ func tags(t reflect.StructField) map[string]string {
 		if len(assignment) > 1 {
 			val = assignment[1]
 		}
-		if len(assignment) > 0 {
+		if len(assignment) > 0 && assignment[0] != "" {
 			key := assignment[0]
 			result[key] = val
 		}
@@ -755,40 +738,71 @@ func cmdAuths(cmd Command) ([]Session, error) {
 	authHandles := taggedMembers(reflect.ValueOf(cmd).Elem(), "auth", false)
 	var result []Session
 	for _, authHandle := range authHandles {
-		handle, ok := authHandle.Interface().(AuthHandle)
-		if !ok {
-			return nil, fmt.Errorf("'auth'-tagged member of %v was of type %v instead of AuthHandle",
-				reflect.TypeOf(cmd), authHandle.Type())
+		// Dynamically check if the caller provided auth in an AuthHandle.
+		// If not, use an empty password auth.
+		// A cleaner way to do this would be to have an interface method that
+		// returns a Session, but that would require Session to live inside
+		// the internal package, so that tpm.Handle can return it.
+		// So instead, we live with a little more magic reflection behavior.
+		if h, ok := authHandle.Interface().(AuthHandle); ok {
+			result = append(result, h.Auth)
+		} else {
+			result = append(result, PasswordAuth(nil))
 		}
-		result = append(result, handle.effectiveAuth())
 	}
 
 	return result, nil
 }
 
 // cmdHandles returns the handles area of the command.
-func cmdHandles(cmd Command) []byte {
+func cmdHandles(cmd Command) ([]byte, error) {
 	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
 
 	// Initial capacity is enough to hold 3 handles
 	result := bytes.NewBuffer(make([]byte, 0, 12))
 
-	marshal(result, handles...)
+	for i, maybeHandle := range handles {
+		h, ok := maybeHandle.Interface().(handle)
+		if !ok {
+			return nil, fmt.Errorf("'handle'-tagged member of '%v' was of type '%v', which does not satisfy handle",
+				reflect.TypeOf(cmd), maybeHandle.Type())
+		}
 
-	return result.Bytes()
+		// Special behavior: nullable handles have an effective zero-value of
+		// TPM_RH_NULL.
+		if h.HandleValue() == 0 && hasTag(reflect.TypeOf(cmd).Elem().Field(i), "nullable") {
+			h = tpm.RHNull
+		}
+
+		binary.Write(result, binary.BigEndian, h.HandleValue())
+	}
+
+	return result.Bytes(), nil
 }
 
-// cmdNames returns the authorized names of the command.
+// cmdNames returns the names of the entities referenced by the handles of the command.
 func cmdNames(cmd Command) ([]tpm2b.Name, error) {
-	authHandles := taggedMembers(reflect.ValueOf(cmd).Elem(), "auth", false)
+	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
 	var result []tpm2b.Name
-	for _, authHandle := range authHandles {
-		handle, ok := authHandle.Interface().(AuthHandle)
+	for i, maybeHandle := range handles {
+		h, ok := maybeHandle.Interface().(handle)
 		if !ok {
-			return nil, fmt.Errorf("'auth'-tagged member of %v was of type %v instead of AuthHandle",
-				reflect.TypeOf(cmd), authHandle.Type())
+			return nil, fmt.Errorf("'handle'-tagged member of '%v' was of type '%v', which does not satisfy handle",
+				reflect.TypeOf(cmd), maybeHandle.Type())
 		}
-		result = append(result, handle.effectiveName())
+
+		// Special behavior: nullable handles have an effective zero-value of
+		// TPM_RH_NULL.
+		if h.HandleValue() == 0 && hasTag(reflect.TypeOf(cmd).Elem().Field(i), "nullable") {
+			h = tpm.RHNull
+		}
+
+		name := h.KnownName()
+		if name == nil {
+			return nil, fmt.Errorf("missing Name for '%v' parameter",
+				reflect.ValueOf(cmd).Elem().Type().Field(i).Name)
+		}
+		result = append(result, *name)
 	}
 
 	return result, nil
@@ -816,7 +830,7 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 				return nil, fmt.Errorf("too many decrypt sessions")
 			}
 			if len(firstParmBytes) < 2 {
-				return nil, fmt.Errorf("this command's first parameter is not a tpm2b.")
+				return nil, fmt.Errorf("this command's first parameter is not a tpm2b")
 			}
 			err := s.Encrypt(firstParmBytes[2:])
 			if err != nil {
@@ -829,12 +843,16 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 	var result bytes.Buffer
 	result.Write(firstParmBytes)
 	// Write the rest of the parameters normally.
-	marshal(&result, parms[1:]...)
+	for _, parm := range parms[1:] {
+		if err := marshal(&result, parm); err != nil {
+			return nil, err
+		}
+	}
 	return result.Bytes(), nil
 }
 
 // cmdSessions returns the authorization area of the command.
-func cmdSessions(tpm *TPM, sess []Session, cc tpm.CC, names []tpm2b.Name, parms []byte) ([]byte, error) {
+func cmdSessions(sess []Session, cc tpm.CC, names []tpm2b.Name, parms []byte) ([]byte, error) {
 	// There is no authorization area if there are no sessions.
 	if len(sess) == 0 {
 		return nil, nil
@@ -1014,5 +1032,11 @@ func rspParameters(parms []byte, sess []Session, rspStruct Response) error {
 			}
 		}
 	}
-	return unmarshal(bytes.NewBuffer(parms), parmsFields...)
+	buf := bytes.NewBuffer(parms)
+	for _, parmsField := range parmsFields {
+		if err := unmarshal(buf, parmsField); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -4,6 +4,7 @@ package internal
 import (
 	"crypto"
 	"crypto/elliptic"
+	"encoding/binary"
 
 	// Register the relevant hash implementations.
 	_ "crypto/sha1"
@@ -131,6 +132,27 @@ type TPMPTPCR uint32
 // See definition in Part 2: Structures, section 7.1.
 type TPMHandle uint32
 
+// HandleValue returns the handle value. This behavior is intended to satisfy
+// an interface that can be implemented by other, more complex types as well.
+func (h TPMHandle) HandleValue() uint32 {
+	return uint32(h)
+}
+
+// KnownName returns the TPM Name associated with the handle, if it can be known
+// based only on the handle. This depends upon the value of the handle:
+// only PCR, session, and permanent values have known constant Names.
+// See definition in part 1: Architecture, section 16.
+func (h TPMHandle) KnownName() *TPM2BName {
+	switch (byte)(h >> 24) {
+	case 0x00, 0x02, 0x03, 0x40:
+		result := make([]byte, 4)
+		binary.BigEndian.PutUint32(result, h.HandleValue())
+		return &TPM2BName{Buffer: result}
+	default:
+		return nil
+	}
+}
+
 // TPMAAlgorithm represents a TPMA_ALGORITHM.
 // See definition in Part 2: Structures, section 8.2.
 type TPMAAlgorithm struct {
@@ -146,7 +168,7 @@ type TPMAAlgorithm struct {
 	Hash bool `gotpm:"bit=2"`
 	// SET (1): an algorithm that may be used as an object type
 	// CLEAR (0): an algorithm that is not used as an object type
-	Object    bool  `gotpm:"bit=3"`
+	Object bool `gotpm:"bit=3"`
 	// SET (1): a signing algorithm. The setting of asymmetric,
 	// symmetric, and hash will indicate the type of signing algorithm.
 	// CLEAR (0): not a signing algorithm
@@ -158,7 +180,7 @@ type TPMAAlgorithm struct {
 	Encrypting bool `gotpm:"bit=9"`
 	// SET (1): a method such as a key derivative function (KDF)
 	// CLEAR (0): not a method
-	Method    bool   `gotpm:"bit=10"`
+	Method bool `gotpm:"bit=10"`
 }
 
 // TPMAObject represents a TPMA_OBJECT.
