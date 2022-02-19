@@ -1930,6 +1930,29 @@ func ReadPCR(rw io.ReadWriter, pcr int, hashAlg Algorithm) ([]byte, error) {
 	return pcrVal, nil
 }
 
+func encodePCRReset(pcr tpmutil.Handle) ([]byte, error) {
+	ha, err := tpmutil.Pack(pcr)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := encodeAuthArea(AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: EmptyAuth})
+	if err != nil {
+		return nil, err
+	}
+	return concat(ha, auth)
+}
+
+// PCRReset resets the value of the given PCR. Usually, only PCR 16 (Debug) and
+// PCR 23 (Application) are resettable on the default locality.
+func PCRReset(rw io.ReadWriter, pcr tpmutil.Handle) error {
+	Cmd, err := encodePCRReset(pcr)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdPCRReset, tpmutil.RawBytes(Cmd))
+	return err
+}
+
 // EncryptSymmetric encrypts data using a symmetric key.
 //
 // WARNING: This command performs low-level cryptographic operations.
