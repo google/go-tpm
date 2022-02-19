@@ -32,7 +32,7 @@ type NamedHandle struct {
 	Name tpm2b.Name
 }
 
-// Name implements the handle interface, shadowing the default
+// KnownName implements the handle interface, shadowing the default
 // behavior of the embedded tpm.Handle.
 func (h NamedHandle) KnownName() *tpm2b.Name {
 	return &h.Name
@@ -45,10 +45,15 @@ type AuthHandle struct {
 	Auth Session
 }
 
-// Name implements the handle interface, shadowing the default
-// behavior of the embedded tpm.Handle.
+// KnownName implements the handle interface, shadowing the default
+// behavior of the embedded tpm.Handle if needed.
+// If Name is not provided (i.e., only Auth), then rely on the underlying
+// tpm.Handle.
 func (h AuthHandle) KnownName() *tpm2b.Name {
-	return &h.Name
+	if len(h.Name.Buffer) != 0 {
+		return &h.Name
+	}
+	return h.Handle.KnownName()
 }
 
 // Command is a placeholder interface for TPM command structures so that they
@@ -74,7 +79,7 @@ type Response interface {
 type PolicyCommand interface {
 	// Update updates the given policy hash according to the command
 	// parameters.
-	Update(policy *PolicyCalculator)
+	Update(policy *PolicyCalculator) error
 }
 
 // Shutdown is the input to TPM2_Shutdown.
@@ -88,17 +93,13 @@ type Shutdown struct {
 func (*Shutdown) Command() tpm.CC { return tpm.CCShutdown }
 
 // Execute executes the command and returns the response.
-func (cmd *Shutdown) Execute(t transport.TPM, s ...Session) (*ShutdownResponse, error) {
+func (cmd *Shutdown) Execute(t transport.TPM, s ...Session) error {
 	var rsp ShutdownResponse
-	if err := t.execute(cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // ShutdownResponse is the response from TPM2_Shutdown.
-type ShutdownResponse struct {
-}
+type ShutdownResponse struct{}
 
 // Response implements the Response interface.
 func (*ShutdownResponse) Response() tpm.CC { return tpm.CCShutdown }
@@ -114,17 +115,13 @@ type Startup struct {
 func (*Startup) Command() tpm.CC { return tpm.CCStartup }
 
 // Execute executes the command and returns the response.
-func (cmd *Startup) Execute(t transport.TPM, s ...Session) (*StartupResponse, error) {
+func (cmd *Startup) Execute(t transport.TPM, s ...Session) error {
 	var rsp StartupResponse
-	if err := t.execute(cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // StartupResponse is the response from TPM2_Startup.
-type StartupResponse struct {
-}
+type StartupResponse struct{}
 
 // Response implements the Response interface.
 func (*StartupResponse) Response() tpm.CC { return tpm.CCStartup }
@@ -407,17 +404,13 @@ type PCRExtend struct {
 func (*PCRExtend) Command() tpm.CC { return tpm.CCPCRExtend }
 
 // Execute executes the command and returns the response.
-func (cmd *PCRExtend) Execute(t transport.TPM, s ...Session) (*PCRExtendResponse, error) {
+func (cmd *PCRExtend) Execute(t transport.TPM, s ...Session) error {
 	var rsp PCRExtendResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // PCRExtendResponse is the response from TPM2_PCR_Extend.
-type PCRExtendResponse struct {
-}
+type PCRExtendResponse struct{}
 
 // Response implements the Response interface.
 func (*PCRExtendResponse) Response() tpm.CC { return tpm.CCPCRExtend }
@@ -435,17 +428,13 @@ type PCREvent struct {
 func (*PCREvent) Command() tpm.CC { return tpm.CCPCREvent }
 
 // Execute executes the command and returns the response.
-func (cmd *PCREvent) Execute(t transport.TPM, s ...Session) (*PCREventResponse, error) {
+func (cmd *PCREvent) Execute(t transport.TPM, s ...Session) error {
 	var rsp PCREventResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // PCREventResponse is the response from TPM2_PCR_Event.
-type PCREventResponse struct {
-}
+type PCREventResponse struct{}
 
 // Response implements the Response interface.
 func (*PCREventResponse) Response() tpm.CC { return tpm.CCPCREvent }
@@ -516,14 +505,16 @@ func (cmd *PolicySigned) Execute(t transport.TPM, s ...Session) (*PolicySignedRe
 
 // policyUpdate implements the PolicyUpdate helper for the several TPM policy
 // commands as described in Part 3, 23.2.3.
-func policyUpdate(policy *PolicyCalculator, cc tpm.CC, arg2, arg3 []byte) {
-	policy.Update(cc, arg2)
-	policy.Update(arg3)
+func policyUpdate(policy *PolicyCalculator, cc tpm.CC, arg2, arg3 []byte) error {
+	if err := policy.Update(cc, arg2); err != nil {
+		return err
+	}
+	return policy.Update(arg3)
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicySigned) Update(policy *PolicyCalculator) {
-	policyUpdate(policy, tpm.CCPolicySigned, p.AuthObject.Name.Buffer, p.PolicyRef.Buffer)
+func (p *PolicySigned) Update(policy *PolicyCalculator) error {
+	return policyUpdate(policy, tpm.CCPolicySigned, p.AuthObject.KnownName().Buffer, p.PolicyRef.Buffer)
 }
 
 // PolicySignedResponse is the response from TPM2_PolicySigned.
@@ -596,22 +587,19 @@ type PolicyOr struct {
 func (*PolicyOr) Command() tpm.CC { return tpm.CCPolicyOR }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyOr) Execute(t transport.TPM, s ...Session) (*PolicyOrResponse, error) {
+func (cmd *PolicyOr) Execute(t transport.TPM, s ...Session) error {
 	var rsp PolicyOrResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyOr) Update(policy *PolicyCalculator) {
+func (p *PolicyOr) Update(policy *PolicyCalculator) error {
 	policy.Reset()
 	var digests bytes.Buffer
 	for _, digest := range p.PHashList.Digests {
 		digests.Write(digest.Buffer)
 	}
-	policy.Update(tpm.CCPolicyOR, digests.Bytes())
+	return policy.Update(tpm.CCPolicyOR, digests.Bytes())
 }
 
 // PolicyOrResponse is the response from TPM2_PolicyOr.
@@ -633,17 +621,14 @@ type PolicyCommandCode struct {
 func (*PolicyCommandCode) Command() tpm.CC { return tpm.CCPolicyCommandCode }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyCommandCode) Execute(t transport.TPM, s ...Session) (*PolicyCommandCodeResponse, error) {
+func (cmd *PolicyCommandCode) Execute(t transport.TPM, s ...Session) error {
 	var rsp PolicyCommandCodeResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyCommandCode) Update(policy *PolicyCalculator) {
-	policy.Update(tpm.CCPolicyCommandCode, p.Code)
+func (p *PolicyCommandCode) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyCommandCode, p.Code)
 }
 
 // PolicyCommandCodeResponse is the response from TPM2_PolicyCommandCode.
@@ -665,22 +650,18 @@ type PolicyCPHash struct {
 func (*PolicyCPHash) Command() tpm.CC { return tpm.CCPolicyCpHash }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyCPHash) Execute(t transport.TPM, s ...Session) (*PolicyCPHashResponse, error) {
+func (cmd *PolicyCPHash) Execute(t transport.TPM, s ...Session) error {
 	var rsp PolicyCPHashResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyCPHash) Update(policy *PolicyCalculator) {
-	policy.Update(tpm.CCPolicyCpHash, p.CPHashA.Buffer)
+func (p *PolicyCPHash) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyCpHash, p.CPHashA.Buffer)
 }
 
 // PolicyCPHashResponse is the response from TPM2_PolicyCpHash.
-type PolicyCPHashResponse struct {
-}
+type PolicyCPHashResponse struct{}
 
 // Response implements the Response interface.
 func (*PolicyCPHashResponse) Response() tpm.CC { return tpm.CCPolicyCpHash }
@@ -704,22 +685,18 @@ type PolicyAuthorize struct {
 func (*PolicyAuthorize) Command() tpm.CC { return tpm.CCPolicyAuthorize }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyAuthorize) Execute(t transport.TPM, s ...Session) (*PolicyAuthorizeResponse, error) {
+func (cmd *PolicyAuthorize) Execute(t transport.TPM, s ...Session) error {
 	var rsp PolicyAuthorizeResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyAuthorize) Update(policy *PolicyCalculator) {
-	policyUpdate(policy, tpm.CCPolicyAuthorize, p.KeySign.Buffer, p.PolicyRef.Buffer)
+func (p *PolicyAuthorize) Update(policy *PolicyCalculator) error {
+	return policyUpdate(policy, tpm.CCPolicyAuthorize, p.KeySign.Buffer, p.PolicyRef.Buffer)
 }
 
 // PolicyAuthorizeResponse is the response from TPM2_PolicyAuthorize.
-type PolicyAuthorizeResponse struct {
-}
+type PolicyAuthorizeResponse struct{}
 
 // Response implements the Response interface.
 func (*PolicyAuthorizeResponse) Response() tpm.CC { return tpm.CCPolicyAuthorize }
@@ -775,8 +752,8 @@ func (cmd *PolicyNVWritten) Execute(t transport.TPM, s ...Session) (*PolicyNVWri
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyNVWritten) Update(policy *PolicyCalculator) {
-	policy.Update(tpm.CCPolicyNvWritten, p.WrittenSet)
+func (p *PolicyNVWritten) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyNvWritten, p.WrittenSet)
 }
 
 // PolicyNVWrittenResponse is the response from TPM2_PolicyNvWritten.
@@ -801,23 +778,19 @@ type PolicyAuthorizeNV struct {
 func (*PolicyAuthorizeNV) Command() tpm.CC { return tpm.CCPolicyAuthorizeNV }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyAuthorizeNV) Execute(t transport.TPM, s ...Session) (*PolicyAuthorizeNVResponse, error) {
+func (cmd *PolicyAuthorizeNV) Execute(t transport.TPM, s ...Session) error {
 	var rsp PolicyAuthorizeNVResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyAuthorizeNV) Update(policy *PolicyCalculator) {
+func (p *PolicyAuthorizeNV) Update(policy *PolicyCalculator) error {
 	policy.Reset()
-	policy.Update(tpm.CCPolicyAuthorizeNV, p.NVIndex.KnownName().Buffer)
+	return policy.Update(tpm.CCPolicyAuthorizeNV, p.NVIndex.KnownName().Buffer)
 }
 
 // PolicyAuthorizeNVResponse is the response from TPM2_PolicyAuthorizeNV.
-type PolicyAuthorizeNVResponse struct {
-}
+type PolicyAuthorizeNVResponse struct{}
 
 // Response implements the Response interface.
 func (*PolicyAuthorizeNVResponse) Response() tpm.CC { return tpm.CCPolicyAuthorizeNV }
@@ -883,17 +856,13 @@ type FlushContext struct {
 func (*FlushContext) Command() tpm.CC { return tpm.CCFlushContext }
 
 // Execute executes the command and returns the response.
-func (cmd *FlushContext) Execute(t transport.TPM, s ...Session) (*FlushContextResponse, error) {
+func (cmd *FlushContext) Execute(t transport.TPM, s ...Session) error {
 	var rsp FlushContextResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // FlushContextResponse is the response from TPM2_FlushContext.
-type FlushContextResponse struct {
-}
+type FlushContextResponse struct{}
 
 // Response implements the Response interface.
 func (*FlushContextResponse) Response() tpm.CC { return tpm.CCFlushContext }
@@ -947,17 +916,13 @@ type NVDefineSpace struct {
 func (*NVDefineSpace) Command() tpm.CC { return tpm.CCNVDefineSpace }
 
 // Execute executes the command and returns the response.
-func (cmd *NVDefineSpace) Execute(t transport.TPM, s ...Session) (*NVDefineSpaceResponse, error) {
+func (cmd *NVDefineSpace) Execute(t transport.TPM, s ...Session) error {
 	var rsp NVDefineSpaceResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // NVDefineSpaceResponse is the response from TPM2_NV_DefineSpace.
-type NVDefineSpaceResponse struct {
-}
+type NVDefineSpaceResponse struct{}
 
 // Response implements the Response interface.
 func (*NVDefineSpaceResponse) Response() tpm.CC { return tpm.CCNVDefineSpace }
@@ -975,17 +940,13 @@ type NVUndefineSpace struct {
 func (*NVUndefineSpace) Command() tpm.CC { return tpm.CCNVUndefineSpace }
 
 // Execute executes the command and returns the response.
-func (cmd *NVUndefineSpace) Execute(t transport.TPM, s ...Session) (*NVUndefineSpaceResponse, error) {
+func (cmd *NVUndefineSpace) Execute(t transport.TPM, s ...Session) error {
 	var rsp NVUndefineSpaceResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // NVUndefineSpaceResponse is the response from TPM2_NV_UndefineSpace.
-type NVUndefineSpaceResponse struct {
-}
+type NVUndefineSpaceResponse struct{}
 
 // Response implements the Response interface.
 func (*NVUndefineSpaceResponse) Response() tpm.CC { return tpm.CCNVUndefineSpace }
@@ -1003,17 +964,13 @@ type NVUndefineSpaceSpecial struct {
 func (*NVUndefineSpaceSpecial) Command() tpm.CC { return tpm.CCNVUndefineSpaceSpecial }
 
 // Execute executes the command and returns the response.
-func (cmd *NVUndefineSpaceSpecial) Execute(t transport.TPM, s ...Session) (*NVUndefineSpaceSpecialResponse, error) {
+func (cmd *NVUndefineSpaceSpecial) Execute(t transport.TPM, s ...Session) error {
 	var rsp NVUndefineSpaceSpecialResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // NVUndefineSpaceSpecialResponse is the response from TPM2_NV_UndefineSpaceSpecial.
-type NVUndefineSpaceSpecialResponse struct {
-}
+type NVUndefineSpaceSpecialResponse struct{}
 
 // Response implements the Response interface.
 func (*NVUndefineSpaceSpecialResponse) Response() tpm.CC { return tpm.CCNVUndefineSpaceSpecial }
@@ -1063,17 +1020,13 @@ type NVWrite struct {
 func (*NVWrite) Command() tpm.CC { return tpm.CCNVWrite }
 
 // Execute executes the command and returns the response.
-func (cmd *NVWrite) Execute(t transport.TPM, s ...Session) (*NVWriteResponse, error) {
+func (cmd *NVWrite) Execute(t transport.TPM, s ...Session) error {
 	var rsp NVWriteResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // NVWriteResponse is the response from TPM2_NV_Write.
-type NVWriteResponse struct {
-}
+type NVWriteResponse struct{}
 
 // Response implements the Response interface.
 func (*NVWriteResponse) Response() tpm.CC { return tpm.CCNVWrite }
@@ -1091,19 +1044,13 @@ type NVWriteLock struct {
 func (*NVWriteLock) Command() tpm.CC { return tpm.CCNVWriteLock }
 
 // Execute executes the command and returns the response.
-func (cmd *NVWriteLock) Execute(t transport.TPM, s ...Session) (*NVWriteLockResponse, error) {
+func (cmd *NVWriteLock) Execute(t transport.TPM, s ...Session) error {
 	var rsp NVWriteLockResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return nil, err
-	}
-	return &rsp, nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // NVWriteLockResponse is the response from TPM2_NV_WriteLock.
-type NVWriteLockResponse struct {
-	// the data read
-	Data tpm2b.MaxNVBuffer
-}
+type NVWriteLockResponse struct{}
 
 // Response implements the Response interface.
 func (*NVWriteLockResponse) Response() tpm.CC { return tpm.CCNVWriteLock }

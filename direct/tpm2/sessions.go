@@ -193,15 +193,16 @@ func rpHash(alg tpmi.AlgHash, rc tpm.RC, cc tpm.CC, parms []byte) ([]byte, error
 
 // sessionOptions represents extra options used when setting up an HMAC or policy session.
 type sessionOptions struct {
-	auth       []byte
-	password   bool
-	bindHandle tpmi.DHEntity
-	bindName   tpm2b.Name
-	bindAuth   []byte
-	saltHandle tpmi.DHObject
-	saltPub    tpmt.Public
-	attrs      tpma.Session
-	symmetric  tpmt.SymDef
+	auth        []byte
+	password    bool
+	bindHandle  tpmi.DHEntity
+	bindName    tpm2b.Name
+	bindAuth    []byte
+	saltHandle  tpmi.DHObject
+	saltPub     tpmt.Public
+	attrs       tpma.Session
+	symmetric   tpmt.SymDef
+	trialPolicy bool
 }
 
 // defaultOptions represents the default options used when none are provided.
@@ -369,9 +370,7 @@ func HMACSession(t transport.TPM, hash tpmi.AlgHash, nonceSize int, opts ...Auth
 	}
 
 	closer := func() error {
-		fc := FlushContext{FlushHandle: sess.handle}
-		_, err := fc.Execute(t)
-		return err
+		return (&FlushContext{FlushHandle: sess.handle}).Execute(t)
 	}
 
 	return &sess, closer, nil
@@ -529,7 +528,7 @@ func (s *hmacSession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if _, err := fc.Execute(t); err != nil {
+	if err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = tpm.RHNull
@@ -817,9 +816,7 @@ func PolicySession(t transport.TPM, hash tpmi.AlgHash, nonceSize int, opts ...Au
 	}
 
 	closer := func() error {
-		fc := FlushContext{sess.handle}
-		_, err := fc.Execute(t)
-		return err
+		return (&FlushContext{sess.handle}).Execute(t)
 	}
 
 	return &sess, closer, nil
@@ -900,7 +897,7 @@ func (s *policySession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if _, err := fc.Execute(t); err != nil {
+	if err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = tpm.RHNull

@@ -36,11 +36,16 @@ func (p *PolicyCalculator) Reset() {
 // Update updates the internal state of the policy hash by appending the
 // current state with the given contents, and updating the new state to the
 // hash of that.
-func (p *PolicyCalculator) Update(data ...interface{}) {
+func (p *PolicyCalculator) Update(data ...interface{}) error {
 	hash := p.hash.New()
 	hash.Write(p.state)
-	Marshal(hash, data...)
+	serialized, err := Marshal(data...)
+	if err != nil {
+		return err
+	}
+	hash.Write(serialized)
 	p.state = hash.Sum(nil)
+	return nil
 }
 
 // Hash returns the current state of the policy hash.

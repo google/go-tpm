@@ -3,25 +3,22 @@ package tpm2
 import (
 	"testing"
 
-	"github.com/google/go-tpm-tools/simulator"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
 	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/transport/simulator"
 )
 
 func TestNVAuthWrite(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	def := NVDefineSpace{
-		AuthHandle: AuthHandle{
-			Handle: tpm.RHOwner,
-		},
+		AuthHandle: tpm.RHOwner,
 		Auth: tpm2b.Auth{
 			Buffer: []byte("p@ssw0rd"),
 		},
@@ -41,28 +38,36 @@ func TestNVAuthWrite(t *testing.T) {
 			},
 		},
 	}
-	if _, err := def.Execute(thetpm); err != nil {
+	if err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
+	}
+
+	nvName, err := NVName(&def.PublicInfo.NVPublic)
+	if err != nil {
+		t.Fatalf("Calculating name of NV index: %v", err)
 	}
 
 	prewrite := NVWrite{
 		AuthHandle: AuthHandle{
 			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Name:   *nvName,
 			Auth:   PasswordAuth([]byte("p@ssw0rd")),
 		},
-		// Don't have to provide the name when authorizing by password.
-		NVIndex: Handle{Handle: def.PublicInfo.NVPublic.NVIndex},
+		NVIndex: NamedHandle{
+			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Name:   *nvName,
+		},
 		Data: tpm2b.MaxNVBuffer{
 			Buffer: []byte{0x01, 0x02, 0x03, 0x04},
 		},
 		Offset: 0,
 	}
-	if _, err := prewrite.Execute(thetpm); err != nil {
+	if err := prewrite.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Write: %v", err)
 	}
 
 	read := NVReadPublic{
-		NVIndex: Handle{Handle: def.PublicInfo.NVPublic.NVIndex},
+		NVIndex: def.PublicInfo.NVPublic.NVIndex,
 	}
 	readRsp, err := read.Execute(thetpm)
 	if err != nil {
@@ -75,17 +80,16 @@ func TestNVAuthWrite(t *testing.T) {
 			Handle: tpm.RHOwner,
 			Auth:   HMAC(tpm.AlgSHA256, 16, Auth([]byte{})),
 		},
-		NVIndex: Handle{
+		NVIndex: NamedHandle{
 			Handle: def.PublicInfo.NVPublic.NVIndex,
-			// When authorizing by HMAC or Policy, have to provide the Name.
-			Name: readRsp.NVName,
+			Name:   readRsp.NVName,
 		},
 		Data: tpm2b.MaxNVBuffer{
 			Buffer: []byte{0x01, 0x02, 0x03, 0x04},
 		},
 		Offset: 0,
 	}
-	if _, err := write.Execute(thetpm); err != nil {
+	if err := write.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Write: %v", err)
 	}
 }

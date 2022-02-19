@@ -317,24 +317,17 @@ const (
 	TPMSTFuManifest         TPMST = 0x8029
 )
 
-<<<<<<< HEAD
 // TPMSU values come from Part 2: Structures, section  6.10.
 const (
 	TPMSUClear TPMSU = 0x0000
 	TPMSUState TPMSU = 0x0001
 )
 
-=======
->>>>>>> 0b55c34 (Introduce Direct TPM2 API (#266))
 // TPMSE values come from Part 2: Structures, section 6.11.
 const (
 	TPMSEHMAC   TPMSE = 0x00
 	TPMSEPolicy TPMSE = 0x01
-<<<<<<< HEAD
 	TPMSETrial  TPMSE = 0x03
-=======
-	TPMXETrial  TPMSE = 0x03
->>>>>>> 0b55c34 (Introduce Direct TPM2 API (#266))
 )
 
 // TPMCap values come from Part 2: Structures, section 6.12.

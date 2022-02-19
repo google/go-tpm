@@ -737,7 +737,7 @@ func taggedMembers(v reflect.Value, tag string, invert bool) []reflect.Value {
 func cmdAuths(cmd Command) ([]Session, error) {
 	authHandles := taggedMembers(reflect.ValueOf(cmd).Elem(), "auth", false)
 	var result []Session
-	for _, authHandle := range authHandles {
+	for i, authHandle := range authHandles {
 		// Dynamically check if the caller provided auth in an AuthHandle.
 		// If not, use an empty password auth.
 		// A cleaner way to do this would be to have an interface method that
@@ -745,6 +745,10 @@ func cmdAuths(cmd Command) ([]Session, error) {
 		// the internal package, so that tpm.Handle can return it.
 		// So instead, we live with a little more magic reflection behavior.
 		if h, ok := authHandle.Interface().(AuthHandle); ok {
+			if h.Auth == nil {
+				return nil, fmt.Errorf("missing auth for '%v' parameter",
+					reflect.ValueOf(cmd).Elem().Type().Field(i).Name)
+			}
 			result = append(result, h.Auth)
 		} else {
 			result = append(result, PasswordAuth(nil))

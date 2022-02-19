@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/google/go-tpm-tools/simulator"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
@@ -12,14 +11,14 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpmt"
 	"github.com/google/go-tpm/direct/structures/tpmu"
+	"github.com/google/go-tpm/direct/transport"
+	"github.com/google/go-tpm/direct/transport/simulator"
 )
 
-func signingKey(t *testing.T, thetpm *TPM) (Handle, func()) {
+func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{
-		PrimaryHandle: AuthHandle{
-			Handle: tpm.RHOwner,
-		},
+		PrimaryHandle: tpm.RHOwner,
 		InPublic: tpm2b.Public{
 			PublicArea: tpmt.Public{
 				Type:    tpm.AlgECC,
@@ -56,20 +55,20 @@ func signingKey(t *testing.T, thetpm *TPM) (Handle, func()) {
 		flush := FlushContext{
 			FlushHandle: rsp.ObjectHandle,
 		}
-		if _, err := flush.Execute(thetpm); err != nil {
+		if err := flush.Execute(thetpm); err != nil {
 			t.Errorf("could not flush signing key: %v", err)
 		}
 	}
-	return Handle{
+	return NamedHandle{
 		Handle: rsp.ObjectHandle,
 		Name:   rsp.Name,
 	}, cleanup
 }
 
-func nvIndex(t *testing.T, thetpm *TPM) (Handle, func()) {
+func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	defSpace := NVDefineSpace{
-		AuthHandle: AuthHandle{Handle: tpm.RHOwner},
+		AuthHandle: tpm.RHOwner,
 		PublicInfo: tpm2b.NVPublic{
 			NVPublic: tpms.NVPublic{
 				NVIndex: 0x01800001,
@@ -82,12 +81,11 @@ func nvIndex(t *testing.T, thetpm *TPM) (Handle, func()) {
 			},
 		},
 	}
-	_, err := defSpace.Execute(thetpm)
-	if err != nil {
+	if err := defSpace.Execute(thetpm); err != nil {
 		t.Fatalf("could not create NV index: %v", err)
 	}
 	readPub := NVReadPublic{
-		NVIndex: Handle{Handle: defSpace.PublicInfo.NVPublic.NVIndex},
+		NVIndex: defSpace.PublicInfo.NVPublic.NVIndex,
 	}
 	readRsp, err := readPub.Execute(thetpm)
 	if err != nil {
@@ -96,25 +94,27 @@ func nvIndex(t *testing.T, thetpm *TPM) (Handle, func()) {
 	cleanup := func() {
 		t.Helper()
 		undefine := NVUndefineSpace{
-			AuthHandle: AuthHandle{Handle: tpm.RHOwner},
-			NVIndex:    Handle{Handle: defSpace.PublicInfo.NVPublic.NVIndex},
+			AuthHandle: tpm.RHOwner,
+			NVIndex: NamedHandle{
+				defSpace.PublicInfo.NVPublic.NVIndex,
+				readRsp.NVName,
+			},
 		}
-		if _, err := undefine.Execute(thetpm); err != nil {
+		if err := undefine.Execute(thetpm); err != nil {
 			t.Errorf("could not undefine NV index: %v", err)
 		}
 	}
-	return Handle{
+	return NamedHandle{
 		Handle: defSpace.PublicInfo.NVPublic.NVIndex,
 		Name:   readRsp.NVName,
 	}, cleanup
 }
 
 func TestPolicySignedUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	sk, cleanup := signingKey(t, thetpm)
@@ -134,7 +134,7 @@ func TestPolicySignedUpdate(t *testing.T) {
 
 	policySigned := PolicySigned{
 		AuthObject:    sk,
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 		PolicyRef:     tpm2b.Nonce{Buffer: []byte{5, 6, 7, 8}},
 		Auth: tpmt.Signature{
 			SigAlg: tpm.AlgECDSA,
@@ -151,7 +151,7 @@ func TestPolicySignedUpdate(t *testing.T) {
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {
@@ -172,11 +172,10 @@ func TestPolicySignedUpdate(t *testing.T) {
 }
 
 func TestPolicySecretUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	sk, cleanup := signingKey(t, thetpm)
@@ -195,11 +194,11 @@ func TestPolicySecretUpdate(t *testing.T) {
 	}()
 
 	policySecret := PolicySecret{
-		AuthHandle: AuthHandle{
+		AuthHandle: NamedHandle{
 			Handle: sk.Handle,
 			Name:   sk.Name,
 		},
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 		PolicyRef:     tpm2b.Nonce{Buffer: []byte{5, 6, 7, 8}},
 	}
 
@@ -208,7 +207,7 @@ func TestPolicySecretUpdate(t *testing.T) {
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {
@@ -229,11 +228,10 @@ func TestPolicySecretUpdate(t *testing.T) {
 }
 
 func TestPolicyOrUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -249,7 +247,7 @@ func TestPolicyOrUpdate(t *testing.T) {
 	}()
 
 	policyOr := PolicyOr{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 		PHashList: tpml.Digest{
 			Digests: []tpm2b.Digest{
 				{Buffer: []byte{1, 2, 3}},
@@ -258,12 +256,12 @@ func TestPolicyOrUpdate(t *testing.T) {
 		},
 	}
 
-	if _, err := policyOr.Execute(thetpm); err != nil {
+	if err := policyOr.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyOr: %v", err)
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {
@@ -284,11 +282,10 @@ func TestPolicyOrUpdate(t *testing.T) {
 }
 
 func TestPolicyCpHashUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -304,18 +301,18 @@ func TestPolicyCpHashUpdate(t *testing.T) {
 	}()
 
 	policyCpHash := PolicyCPHash{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 		CPHashA: tpm2b.Digest{Buffer: []byte{
 			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}},
 	}
 
-	if _, err := policyCpHash.Execute(thetpm); err != nil {
+	if err := policyCpHash.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyCpHash: %v", err)
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {
@@ -336,11 +333,10 @@ func TestPolicyCpHashUpdate(t *testing.T) {
 }
 
 func TestPolicyAuthorizeUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -359,7 +355,7 @@ func TestPolicyAuthorizeUpdate(t *testing.T) {
 	defer cleanup()
 
 	policyAuthorize := PolicyAuthorize{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 		PolicyRef:     tpm2b.Digest{Buffer: []byte{5, 6, 7, 8}},
 		KeySign:       sk.Name,
 		CheckTicket: tpmt.TKVerified{
@@ -368,12 +364,12 @@ func TestPolicyAuthorizeUpdate(t *testing.T) {
 		},
 	}
 
-	if _, err := policyAuthorize.Execute(thetpm); err != nil {
+	if err := policyAuthorize.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorize: %v", err)
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {
@@ -394,11 +390,10 @@ func TestPolicyAuthorizeUpdate(t *testing.T) {
 }
 
 func TestPolicyNVWrittenUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -414,7 +409,7 @@ func TestPolicyNVWrittenUpdate(t *testing.T) {
 	}()
 
 	policyNVWritten := PolicyNVWritten{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 		WrittenSet:    true,
 	}
 
@@ -423,7 +418,7 @@ func TestPolicyNVWrittenUpdate(t *testing.T) {
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {
@@ -444,11 +439,10 @@ func TestPolicyNVWrittenUpdate(t *testing.T) {
 }
 
 func TestPolicyAuthorizeNVUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	nv, cleanup := nvIndex(t, thetpm)
@@ -467,17 +461,17 @@ func TestPolicyAuthorizeNVUpdate(t *testing.T) {
 	}()
 
 	policyAuthorizeNV := PolicyAuthorizeNV{
-		AuthHandle:    AuthHandle{Handle: nv.Handle, Name: nv.Name},
-		PolicySession: Handle{Handle: sess.Handle()},
+		AuthHandle:    NamedHandle{Handle: nv.Handle, Name: nv.Name},
+		PolicySession: sess.Handle(),
 		NVIndex:       nv,
 	}
 
-	if _, err := policyAuthorizeNV.Execute(thetpm); err != nil {
+	if err := policyAuthorizeNV.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorizeNV: %v", err)
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {
@@ -498,11 +492,10 @@ func TestPolicyAuthorizeNVUpdate(t *testing.T) {
 }
 
 func TestPolicyCommandCodeUpdate(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -518,15 +511,15 @@ func TestPolicyCommandCodeUpdate(t *testing.T) {
 	}()
 
 	pcc := PolicyCommandCode{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 		Code:          tpm.CCCreate,
 	}
-	if _, err := pcc.Execute(thetpm); err != nil {
+	if err := pcc.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyCommandCode: %v", err)
 	}
 
 	pgd := PolicyGetDigest{
-		PolicySession: Handle{Handle: sess.Handle()},
+		PolicySession: sess.Handle(),
 	}
 	want, err := pgd.Execute(thetpm)
 	if err != nil {

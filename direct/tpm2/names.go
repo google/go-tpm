@@ -35,9 +35,11 @@ func objectOrNVName(alg tpm.AlgID, pub interface{}) (*tpm2b.Name, error) {
 	// Calculate the hash of the entire Public contents and append it to the
 	// result.
 	ha := h.New()
-	if err := Marshal(ha, pub); err != nil {
+	marshalledPub, err := Marshal(pub)
+	if err != nil {
 		return nil, err
 	}
+	ha.Write(marshalledPub)
 	result = ha.Sum(result)
 
 	return &tpm2b.Name{

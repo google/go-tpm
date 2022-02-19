@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/google/go-tpm-tools/simulator"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/templates"
+	"github.com/google/go-tpm/direct/transport/simulator"
 )
 
 func TestHandleName(t *testing.T) {
@@ -21,18 +21,15 @@ func TestHandleName(t *testing.T) {
 }
 
 func TestObjectName(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	createPrimary := CreatePrimary{
-		PrimaryHandle: AuthHandle{
-			Handle: tpm.RHEndorsement,
-		},
-		InPublic: templates.ECCEKTemplate,
+		PrimaryHandle: tpm.RHEndorsement,
+		InPublic:      templates.ECCEKTemplate,
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {
@@ -53,11 +50,10 @@ func TestObjectName(t *testing.T) {
 }
 
 func TestNVName(t *testing.T) {
-	sim, err := simulator.Get()
+	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
-	thetpm := NewTPM(sim)
 	defer thetpm.Close()
 
 	public := tpm2b.NVPublic{
@@ -74,17 +70,15 @@ func TestNVName(t *testing.T) {
 	}
 
 	defineSpace := NVDefineSpace{
-		AuthHandle: AuthHandle{
-			Handle: tpm.RHOwner,
-		},
+		AuthHandle: tpm.RHOwner,
 		PublicInfo: public,
 	}
-	if _, err := defineSpace.Execute(thetpm); err != nil {
+	if err := defineSpace.Execute(thetpm); err != nil {
 		t.Fatalf("could not call TPM2_DefineSpace: %v", err)
 	}
 
 	readPublic := NVReadPublic{
-		NVIndex: Handle{Handle: public.NVPublic.NVIndex},
+		NVIndex: public.NVPublic.NVIndex,
 	}
 	rsp, err := readPublic.Execute(thetpm)
 	if err != nil {

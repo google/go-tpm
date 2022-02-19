@@ -4,10 +4,7 @@ package internal
 import (
 	"crypto"
 	"crypto/elliptic"
-<<<<<<< HEAD
-=======
 	"encoding/binary"
->>>>>>> 0b55c34 (Introduce Direct TPM2 API (#266))
 
 	// Register the relevant hash implementations.
 	_ "crypto/sha1"
