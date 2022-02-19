@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpma"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -193,27 +194,33 @@ func marshalArray(buf *bytes.Buffer, v reflect.Value) error {
 func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 	// Check if this is a bitwise-defined structure. This requires all the
 	// members to be bitwise-defined.
-	if v.NumField() > 0 {
-		bitwise := hasTag(v.Type().Field(0), "bit")
-		for i := 0; i < v.NumField(); i++ {
-			thisBitwise := hasTag(v.Type().Field(i), "bit")
-			if thisBitwise {
-				if hasTag(v.Type().Field(i), "sized") || hasTag(v.Type().Field(i), "sized8") {
-					return fmt.Errorf("struct '%v' field '%v' is both bitwise and sized",
-						v.Type().Name(), v.Type().Field(i).Name)
-				}
-				if hasTag(v.Type().Field(i), "tag") {
-					return fmt.Errorf("struct '%v' field '%v' is both bitwise and a tagged union",
-						v.Type().Name(), v.Type().Field(i).Name)
-				}
+	numBitwise := 0
+	numChecked := 0
+	for i := 0; i < v.NumField(); i++ {
+		// Ignore embedded Bitfield hints.
+		if !v.Type().Field(i).IsExported() {
+		//if _, isBitfield := v.Field(i).Interface().(tpma.Bitfield); isBitfield {
+			continue
+		}
+		thisBitwise := hasTag(v.Type().Field(i), "bit")
+		if thisBitwise {
+			numBitwise++
+			if hasTag(v.Type().Field(i), "sized") || hasTag(v.Type().Field(i), "sized8") {
+				return fmt.Errorf("struct '%v' field '%v' is both bitwise and sized",
+					v.Type().Name(), v.Type().Field(i).Name)
 			}
-			if bitwise != thisBitwise {
-				return fmt.Errorf("struct '%v' has mixture of bitwise and non-bitwise members", v.Type().Name())
+			if hasTag(v.Type().Field(i), "tag") {
+				return fmt.Errorf("struct '%v' field '%v' is both bitwise and a tagged union",
+					v.Type().Name(), v.Type().Field(i).Name)
 			}
 		}
-		if bitwise {
-			return marshalBitwise(buf, v)
-		}
+		numChecked++
+	}
+	if numBitwise != numChecked && numBitwise != 0 {
+		return fmt.Errorf("struct '%v' has mixture of bitwise and non-bitwise members", v.Type().Name())
+	}
+	if numBitwise > 0 {
+		return marshalBitwise(buf, v)
 	}
 	// Make a pass to create a map of tag values
 	// UInt64-valued fields with values greater than MaxInt64 cannot be
@@ -304,21 +311,16 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 
 // Marshals a bitwise-defined struct.
 func marshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
-	maxBit := 0
-	for i := 0; i < v.NumField(); i++ {
-		high, _, ok := rangeTag(v.Type().Field(i), "bit")
-		if !ok {
-			return fmt.Errorf("'%v' struct member '%v' did not specify a bit index or range", v.Type().Name(), v.Type().Field(i).Name)
-		}
-		if high > maxBit {
-			maxBit = high
-		}
+	bg, ok := v.Interface().(tpma.BitGetter)
+	if !ok {
+		return fmt.Errorf("'%v' was not a BitGetter", v.Type().Name())
 	}
-	if (maxBit+1)%8 != 0 {
-		return fmt.Errorf("'%v' bitwise members did not total up to a multiple of 8 bits", v.Type().Name())
-	}
-	bitArray := make([]bool, maxBit+1)
+	bitArray := make([]bool, bg.Length())
+	// Marshal the defined fields
 	for i := 0; i < v.NumField(); i++ {
+		if !v.Type().Field(i).IsExported() {
+			continue
+		}
 		high, low, _ := rangeTag(v.Type().Field(i), "bit")
 		var buf bytes.Buffer
 		if err := marshal(&buf, v.Field(i)); err != nil {
@@ -327,6 +329,12 @@ func marshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 		b := buf.Bytes()
 		for i := 0; i <= (high - low); i++ {
 			bitArray[low+i] = ((b[len(b)-i/8-1] >> (i % 8)) & 1) == 1
+		}
+	}
+	// Also marshal the reserved values
+	for i := 0; i < len(bitArray); i++ {
+		if bg.GetReservedBit(i) {
+			bitArray[i] = true
 		}
 	}
 	result := make([]byte, len(bitArray)/8)
@@ -453,28 +461,35 @@ func unmarshalArray(buf *bytes.Buffer, v reflect.Value) error {
 
 func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 	// Check if this is a bitwise-defined structure. This requires all the
-	// members to be bitwise-defined.
-	if v.NumField() > 0 {
-		bitwise := hasTag(v.Type().Field(0), "bit")
-		for i := 0; i < v.NumField(); i++ {
-			thisBitwise := hasTag(v.Type().Field(i), "bit")
-			if thisBitwise {
-				if hasTag(v.Type().Field(i), "sized") {
-					return fmt.Errorf("struct '%v' field '%v' is both bitwise and sized",
-						v.Type().Name(), v.Type().Field(i).Name)
-				}
-				if hasTag(v.Type().Field(i), "tag") {
-					return fmt.Errorf("struct '%v' field '%v' is both bitwise and a tagged union",
-						v.Type().Name(), v.Type().Field(i).Name)
-				}
+	// exported members to be bitwise-defined.
+	numBitwise := 0
+	numChecked := 0
+	for i := 0; i < v.NumField(); i++ {
+		// Ignore embedded Bitfield hints.
+		// Ignore embedded Bitfield hints.
+		if !v.Type().Field(i).IsExported() {
+		//if _, isBitfield := v.Field(i).Interface().(tpma.Bitfield); isBitfield {
+			continue
+		}
+		thisBitwise := hasTag(v.Type().Field(i), "bit")
+		if thisBitwise {
+			numBitwise++
+			if hasTag(v.Type().Field(i), "sized") {
+				return fmt.Errorf("struct '%v' field '%v' is both bitwise and sized",
+					v.Type().Name(), v.Type().Field(i).Name)
 			}
-			if bitwise != thisBitwise {
-				return fmt.Errorf("struct '%v' has mixture of bitwise and non-bitwise members", v.Type().Name())
+			if hasTag(v.Type().Field(i), "tag") {
+				return fmt.Errorf("struct '%v' field '%v' is both bitwise and a tagged union",
+					v.Type().Name(), v.Type().Field(i).Name)
 			}
 		}
-		if bitwise {
-			return unmarshalBitwise(buf, v)
-		}
+		numChecked++
+	}
+	if numBitwise != numChecked && numBitwise != 0 {
+		return fmt.Errorf("struct '%v' has mixture of bitwise and non-bitwise members", v.Type().Name())
+	}
+	if numBitwise > 0 {
+		return unmarshalBitwise(buf, v)
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if hasTag(v.Type().Field(i), "skip") {
@@ -570,20 +585,11 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 
 // Unmarshals a bitwise-defined struct.
 func unmarshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
-	maxBit := 0
-	for i := 0; i < v.NumField(); i++ {
-		high, _, ok := rangeTag(v.Type().Field(i), "bit")
-		if !ok {
-			return fmt.Errorf("'%v' struct member '%v' did not specify a bit index or range", v.Type().Name(), v.Type().Field(i).Name)
-		}
-		if high > maxBit {
-			maxBit = high
-		}
+	bs, ok := v.Addr().Interface().(tpma.BitSetter)
+	if !ok {
+		return fmt.Errorf("'%v' was not a BitSetter", v.Addr().Type())
 	}
-	if (maxBit+1)%8 != 0 {
-		return fmt.Errorf("'%v' bitwise members did not total up to a multiple of 8 bits", v.Type().Name())
-	}
-	bitArray := make([]bool, maxBit+1)
+	bitArray := make([]bool, bs.Length())
 	// We will read big-endian, starting from the last byte and working our
 	// way down.
 	for i := len(bitArray)/8 - 1; i >= 0; i-- {
@@ -596,19 +602,29 @@ func unmarshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 			bitArray[8*i+j] = (((b >> j) & 1) == 1)
 		}
 	}
+	// Unmarshal the defined fields and clear the bits from the array as we
+	// read them.
 	for i := 0; i < v.NumField(); i++ {
+		if !v.Type().Field(i).IsExported() {
+			continue
+		}
 		high, low, _ := rangeTag(v.Type().Field(i), "bit")
 		var val uint64
 		for j := 0; j <= high-low; j++ {
 			if bitArray[low+j] {
 				val |= (1 << j)
 			}
+			bitArray[low+j] = false
 		}
 		if v.Field(i).Kind() == reflect.Bool {
 			v.Field(i).SetBool((val & 1) == 1)
 		} else {
 			v.Field(i).SetUint(val)
 		}
+	}
+	// Unmarshal the remaining uncleared bits as reserved bits.
+	for i := 0; i < len(bitArray); i++ {
+		bs.SetReservedBit(i, bitArray[i])
 	}
 	return nil
 }

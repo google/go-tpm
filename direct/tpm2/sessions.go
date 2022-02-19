@@ -522,12 +522,6 @@ func attrsToBytes(attrs tpma.Session) []byte {
 	if attrs.AuditReset {
 		res |= (1 << 2)
 	}
-	if attrs.Reserved1 {
-		res |= (1 << 3)
-	}
-	if attrs.Reserved2 {
-		res |= (1 << 4)
-	}
 	if attrs.Decrypt {
 		res |= (1 << 5)
 	}

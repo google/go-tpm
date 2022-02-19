@@ -5,6 +5,10 @@ import (
 	"github.com/google/go-tpm/direct/structures/internal"
 )
 
+type Bitfield = internal.Bitfield
+type BitSetter = internal.BitSetter
+type BitGetter = internal.BitGetter
+
 // Algorithm represents a TPMA_ALGORITHM.
 // See definition in Part 2: Structures, section 8.2.
 type Algorithm = internal.TPMAAlgorithm

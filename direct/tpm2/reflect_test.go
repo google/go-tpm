@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/google/go-tpm/direct/structures/tpma"
 )
 
 func marshalUnmarshal(t *testing.T, v interface{}, want []byte) {
@@ -21,8 +24,12 @@ func marshalUnmarshal(t *testing.T, v interface{}, want []byte) {
 	if err != nil {
 		t.Fatalf("want nil, got %v", err)
 	}
-	if !cmp.Equal(v, got.Elem().Interface()) {
-		t.Errorf("want %#v, got %#v\n%v", v, got.Elem().Interface(), cmp.Diff(v, got.Elem().Interface()))
+	var opts []cmp.Option
+	if reflect.TypeOf(v).Kind() == reflect.Struct {
+		opts = append(opts, cmpopts.IgnoreUnexported(v))
+	}
+	if !cmp.Equal(v, got.Elem().Interface(), opts...) {
+		t.Errorf("want %#v, got %#v\n%v", v, got.Elem().Interface(), cmp.Diff(v, got.Elem().Interface(), opts...))
 	}
 }
 
@@ -85,51 +92,80 @@ func TestMarshalSlice(t *testing.T) {
 	}
 }
 
+func unmarshalReserved(t *testing.T, data []byte, want interface{}) {
+	t.Helper()
+
+	// Attempt to unmarshal data to the type of want, and compare
+	// Want is assumed to be a bitfield that may have reserved bits.
+	// Reserved bits are not going to be present in the input structure,
+	// or the accessible fields of what we marshalled.
+	got := reflect.New(reflect.TypeOf(want))
+	rdr := bytes.NewReader(data)
+	err := Unmarshal(rdr, got.Interface())
+	if err != nil {
+		t.Fatalf("want nil, got %v", err)
+	}
+	var opts []cmp.Option
+	if reflect.TypeOf(want).Kind() == reflect.Struct {
+		opts = append(opts, cmpopts.IgnoreUnexported(want))
+	}
+	if !cmp.Equal(want, got.Elem().Interface(), opts...) {
+		t.Errorf("want %#v, got %#v\n%v", want, got.Elem().Interface(), cmp.Diff(want, got.Elem().Interface(), opts...))
+	}
+
+	// Re-marshal what we unmarshalled and ensure that it contains the
+	// original serialization (i.e., any reserved bits are still there).
+	var buf bytes.Buffer
+	Marshal(&buf, got.Interface())
+	if !bytes.Equal(buf.Bytes(), data) {
+		t.Errorf("want %x got %x", data, buf.Bytes())
+	}
+}
+
 func TestMarshalBitfield(t *testing.T) {
-	type bitfield8 struct {
-		Bit0 uint8 `gotpm:"bit=0"`
-		Bit1 uint8 `gotpm:"bit=1"`
-		Bit2 uint8 `gotpm:"bit=2"`
-		Bit3 uint8 `gotpm:"bit=3"`
-		Bit4 uint8 `gotpm:"bit=4"`
-		Bit5 uint8 `gotpm:"bit=5"`
-		Bit6 uint8 `gotpm:"bit=6"`
-		Bit7 uint8 `gotpm:"bit=7"`
-	}
-	type bitfield32 struct {
-		Reserved1       uint16 `gotpm:"bit=5:0"`
-		Bit6            uint8  `gotpm:"bit=6"`
-		Reserved2       uint8  `gotpm:"bit=12:7"`
-		Bit13           bool   `gotpm:"bit=13"`
-		Bits14Through18 uint8  `gotpm:"bit=18:14"`
-		Bit19           byte   `gotpm:"bit=19"`
-		Reserved3       uint16 `gotpm:"bit=30:20"`
-		Bit31           uint32 `gotpm:"bit=31"`
-	}
 	t.Run("8bit", func(t *testing.T) {
-		v := bitfield8{
-			Bit0: 0,
-			Bit1: 1,
-			Bit2: 0,
-			Bit3: 1,
-			Bit4: 1,
-			Bit5: 0,
-			Bit6: 0,
-			Bit7: 1,
+		v := tpma.Session{
+			ContinueSession: true,
+			AuditExclusive: true,
+			AuditReset: false,
+			Decrypt: true,
+			Encrypt: true,
+			Audit: false,
 		}
-		want := []byte{0x9a}
+		want := []byte{0x63}
+		marshalUnmarshal(t, v, want)
+		unmarshalReserved(t, []byte{0x7b}, v)
+	})
+	t.Run("full8bit", func(t *testing.T) {
+		v := tpma.Locality{
+			TPMLocZero: true,
+			TPMLocOne: true,
+			TPMLocTwo: false,
+			TPMLocThree: true,
+			TPMLocFour: false,
+			Extended: 1,
+		}
+		want := []byte{0x2b}
 		marshalUnmarshal(t, v, want)
 	})
 	t.Run("32bit", func(t *testing.T) {
-		v := bitfield32{
-			Bit6:            1,
-			Bit13:           false,
-			Bits14Through18: 29,
-			Bit19:           1,
-			Bit31:           1,
+		v := tpma.CC{
+			CommandIndex: 6,
+			NV:           true,
 		}
-		want := []byte{0x80, 0x0f, 0x40, 0x40}
+		want := []byte{0x00, 0x40, 0x00, 0x06}
 		marshalUnmarshal(t, v, want)
+		unmarshalReserved(t, []byte{0x80, 0x41, 0x00, 0x06}, v)
+	})
+	t.Run("TPMAObject", func(t *testing.T) {
+		v := tpma.Object{
+			FixedTPM: true,
+			STClear: true,
+			FixedParent: true,
+		}
+		want := []byte{0x00, 0x00, 0x00, 0x16}
+		marshalUnmarshal(t, v, want)
+		unmarshalReserved(t, []byte{0xff, 0x00, 0x00, 0x16}, v)
 	})
 }
 
@@ -206,3 +242,4 @@ func TestMarshalUnion(t *testing.T) {
 		})
 	}
 }
+
