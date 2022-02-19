@@ -58,7 +58,7 @@ func unsealingTest(t *testing.T, srkTemplate tpm2b.Public) {
 	defer func() {
 		// Flush the SRK
 		flushSRKCmd := FlushContext{createSRKRsp.ObjectHandle}
-		if _, err := flushSRKCmd.Execute(thetpm); err != nil {
+		if err := flushSRKCmd.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
@@ -266,7 +266,7 @@ func unsealingTest(t *testing.T, srkTemplate tpm2b.Public) {
 	defer func() {
 		// Flush the blob
 		flushBlobCmd := FlushContext{loadBlobRsp.ObjectHandle}
-		if _, err := flushBlobCmd.Execute(thetpm); err != nil {
+		if err := flushBlobCmd.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()

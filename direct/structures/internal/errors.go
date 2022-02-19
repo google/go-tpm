@@ -10,6 +10,10 @@ type errorDesc struct {
 }
 
 var fmt0Descs = map[TPMRC]errorDesc{
+	TPMRCInitialize: errorDesc{
+		name:        "TPM_RC_INITIALIZE",
+		description: "TPM not initialized by TPM2_Startup or already initialized",
+	},
 	TPMRCFailure: errorDesc{
 		name:        "TPM_RC_FAILURE",
 		description: "commands not being accepted because of a TPM failure",

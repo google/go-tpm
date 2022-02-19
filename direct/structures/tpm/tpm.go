@@ -69,6 +69,10 @@ type Fmt1Error = internal.TPMFmt1Error
 // See definition in Part 2: Structures, section 6.9.
 type ST = internal.TPMST
 
+// SU represents a TPM_SU.
+// See definition in Part 2: Structures, section 6.10.
+type SU = internal.TPMSU
+
 // SE represents a TPM_SE.
 // See definition in Part 2: Structures, section 6.11.
 type SE = internal.TPMSE
@@ -88,3 +92,7 @@ type PTPCR = internal.TPMPTPCR
 // Handle represents a TPM_HANDLE.
 // See definition in Part 2: Structures, section 7.1.
 type Handle = internal.TPMHandle
+
+// NT represents a TPM_NT.
+// See definition in Part 2: Structures, section 13.4.
+type NT = internal.TPMNT

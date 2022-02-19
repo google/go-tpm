@@ -62,6 +62,27 @@ type Session interface {
 	Handle() tpm.Handle
 }
 
+// CPHash calculates the TPM command parameter hash for a given Command.
+// N.B. Authorization sessions on handles are ignored, but names aren't.
+func CPHash(alg tpmi.AlgHash, cmd Command) (*tpm2b.Digest, error) {
+	cc := cmd.Command()
+	names, err := cmdNames(cmd)
+	if err != nil {
+		return nil, err
+	}
+	parms, err := cmdParameters(cmd, nil)
+	if err != nil {
+		return nil, err
+	}
+	digest, err := cpHash(alg, cc, names, parms)
+	if err != nil {
+		return nil, err
+	}
+	return &tpm2b.Digest{
+		Buffer: digest,
+	}, nil
+}
+
 // pwSession represents a password-pseudo-session.
 type pwSession struct {
 	auth []byte
@@ -172,15 +193,16 @@ func rpHash(alg tpmi.AlgHash, rc tpm.RC, cc tpm.CC, parms []byte) ([]byte, error
 
 // sessionOptions represents extra options used when setting up an HMAC or policy session.
 type sessionOptions struct {
-	auth       []byte
-	password   bool
-	bindHandle tpmi.DHEntity
-	bindName   tpm2b.Name
-	bindAuth   []byte
-	saltHandle tpmi.DHObject
-	saltPub    tpmt.Public
-	attrs      tpma.Session
-	symmetric  tpmt.SymDef
+	auth        []byte
+	password    bool
+	bindHandle  tpmi.DHEntity
+	bindName    tpm2b.Name
+	bindAuth    []byte
+	saltHandle  tpmi.DHObject
+	saltPub     tpmt.Public
+	attrs       tpma.Session
+	symmetric   tpmt.SymDef
+	trialPolicy bool
 }
 
 // defaultOptions represents the default options used when none are provided.
@@ -288,6 +310,15 @@ func AuditExclusive() AuthOption {
 	}
 }
 
+// Trial indicates that the policy session should be in tral-mode.
+// This allows using the TPM to calculate policy hashes.
+// This option has no effect on non-Policy sessions.
+func Trial() AuthOption {
+	return func(o *sessionOptions) {
+		o.trialPolicy = true
+	}
+}
+
 // hmacSession generally implements the HMAC session.
 type hmacSession struct {
 	sessionOptions
@@ -339,9 +370,7 @@ func HMACSession(t transport.TPM, hash tpmi.AlgHash, nonceSize int, opts ...Auth
 	}
 
 	closer := func() error {
-		fc := FlushContext{FlushHandle: sess.handle}
-		_, err := fc.Execute(t)
-		return err
+		return (&FlushContext{FlushHandle: sess.handle}).Execute(t)
 	}
 
 	return &sess, closer, nil
@@ -499,7 +528,7 @@ func (s *hmacSession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if _, err := fc.Execute(t); err != nil {
+	if err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = tpm.RHNull
@@ -787,9 +816,7 @@ func PolicySession(t transport.TPM, hash tpmi.AlgHash, nonceSize int, opts ...Au
 	}
 
 	closer := func() error {
-		fc := FlushContext{sess.handle}
-		_, err := fc.Execute(t)
-		return err
+		return (&FlushContext{sess.handle}).Execute(t)
 	}
 
 	return &sess, closer, nil
@@ -811,12 +838,17 @@ func (s *policySession) Init(t transport.TPM) error {
 		return err
 	}
 
+	sessType := tpm.SEPolicy
+	if s.sessionOptions.trialPolicy {
+		sessType = tpm.SETrial
+	}
+
 	// Start up the actual auth session.
 	sasCmd := StartAuthSession{
 		TPMKey:      s.saltHandle,
 		Bind:        s.bindHandle,
 		NonceCaller: s.nonceCaller,
-		SessionType: tpm.SEPolicy,
+		SessionType: sessType,
 		Symmetric:   s.symmetric,
 		AuthHash:    s.hash,
 	}
@@ -865,7 +897,7 @@ func (s *policySession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if _, err := fc.Execute(t); err != nil {
+	if err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = tpm.RHNull

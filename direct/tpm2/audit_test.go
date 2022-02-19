@@ -69,8 +69,8 @@ func TestAuditSession(t *testing.T) {
 	}
 	defer func() {
 		// Flush the AK
-		flushCmd := FlushContext{FlushHandle: createAKRsp.ObjectHandle}
-		if _, err := flushCmd.Execute(thetpm); err != nil {
+		flush := FlushContext{FlushHandle: createAKRsp.ObjectHandle}
+		if err := flush.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()

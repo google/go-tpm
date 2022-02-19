@@ -112,6 +112,10 @@ type TPMRC uint32
 // See definition in Part 2: Structures, section 6.9.
 type TPMST uint16
 
+// TPMSU represents a TPM_SU.
+// See definition in Part 2: Structures, section 6.10.
+type TPMSU uint16
+
 // TPMSE represents a TPM_SE.
 // See definition in Part 2: Structures, section 6.11.
 type TPMSE uint8
@@ -397,6 +401,58 @@ type TPMIDHContext = TPMHandle
 // See definition in Part 2: Structures, section 9.13.
 type TPMIRHHierarchy = TPMHandle
 
+// TPMIRHEnables represents a TPMI_RH_ENABLES.
+// See definition in Part 2: Structures, section 9.14.
+type TPMIRHEnables = TPMHandle
+
+// TPMIRHHierarchyAuth represents a TPMI_RH_HIERARCHY_AUTH.
+// See definition in Part 2: Structures, section 9.15.
+type TPMIRHHierarchyAuth = TPMHandle
+
+// TPMIRHHierarchyPolicy represents a TPMI_RH_HIERARCHY_POLICY.
+// See definition in Part 2: Structures, section 9.16.
+type TPMIRHHierarchyPolicy = TPMHandle
+
+// TPMIRHPlatform represents a TPMI_RH_PLATFORM.
+// See definition in Part 2: Structures, section 9.17.
+type TPMIRHPlatform = TPMHandle
+
+// TPMIRHOwner represents a TPMI_RH_OWNER.
+// See definition in Part 2: Structures, section 9.18.
+type TPMIRHOwner = TPMHandle
+
+// TPMIRHEndorsement represents a TPMI_RH_ENDORSEMENT.
+// See definition in Part 2: Structures, section 9.19.
+type TPMIRHEndorsement = TPMHandle
+
+// TPMIRHProvision represents a TPMI_RH_PROVISION.
+// See definition in Part 2: Structures, section 9.20.
+type TPMIRHProvision = TPMHandle
+
+// TPMIRHClear represents a TPMI_RH_CLEAR.
+// See definition in Part 2: Structures, section 9.21.
+type TPMIRHClear = TPMHandle
+
+// TPMIRHNVAuth represents a TPMI_RH_NV_AUTH.
+// See definition in Part 2: Structures, section 9.22.
+type TPMIRHNVAuth = TPMHandle
+
+// TPMIRHLockout represents a TPMI_RH_LOCKOUT.
+// See definition in Part 2: Structures, section 9.23.
+type TPMIRHLockout = TPMHandle
+
+// TPMIRHNVIndex represents a TPMI_RH_NV_INDEX.
+// See definition in Part 2: Structures, section 9.24.
+type TPMIRHNVIndex = TPMHandle
+
+// TPMIRHAC represents a TPMI_RH_AC.
+// See definition in Part 2: Structures, section 9.25.
+type TPMIRHAC = TPMHandle
+
+// TPMIRHACT represents a TPMI_RH_ACT.
+// See definition in Part 2: Structures, section 9.26.
+type TPMIRHACT = TPMHandle
+
 // TPMIAlgHash represents a TPMI_ALG_HASH.
 // See definition in Part 2: Structures, section 9.27.
 type TPMIAlgHash = TPMAlgID
@@ -447,25 +503,14 @@ type TPMISTCommandTag = TPMST
 // See definition in Part 2: Structures, section 10.1.
 type TPMSEmpty = struct{}
 
-// TPMUHA represents a TPMU_HA.
-// See definition in Part 2: Structures, section 10.3.1.
-type TPMUHA struct {
-	SHA1     *[20]byte `gotpm:"selector=0x0004"` // TPM_ALG_SHA1
-	SHA256   *[32]byte `gotpm:"selector=0x000B"` // TPM_ALG_SHA256
-	SHA384   *[48]byte `gotpm:"selector=0x000C"` // TPM_ALG_SHA384
-	SHA512   *[64]byte `gotpm:"selector=0x000D"` // TPM_ALG_SHA512
-	SHA3x256 *[32]byte `gotpm:"selector=0x0027"` // TPM_ALG_SHA3_256
-	SHA3x384 *[48]byte `gotpm:"selector=0x0028"` // TPM_ALG_SHA3_384
-	SHA3x512 *[64]byte `gotpm:"selector=0x0029"` // TPM_ALG_SHA3_512
-}
-
 // TPMTHA represents a TPMT_HA.
 // See definition in Part 2: Structures, section 10.3.2.
 type TPMTHA struct {
 	// selector of the hash contained in the digest that implies the size of the digest
 	HashAlg TPMIAlgHash `gotpm:"nullable"`
 	// the digest data
-	Digest TPMUHA `gotpm:"tag=HashAlg"`
+	// NOTE: For convenience, this is not implemented as a union.
+	Digest []byte
 }
 
 // TPM2BDigest represents a TPM2B_DIGEST.
@@ -495,6 +540,10 @@ type TPM2BTimeout TPM2BData
 // See definition in Part 2: Structures, section 10.4.5.
 type TPM2BAuth TPM2BDigest
 
+// TPM2BMaxNVBuffer represents a TPM2B_MAX_NV_BUFFER.
+// See definition in Part 2: Structures, section 10.4.9.
+type TPM2BMaxNVBuffer TPM2BData
+
 // TPM2BName represents a TPM2B_NAME.
 // See definition in Part 2: Structures, section 10.5.3.
 // NOTE: This structure does not contain a TPMUName, because that union
@@ -515,6 +564,17 @@ type TPMTTKCreation struct {
 	// ticket structure tag
 	Tag TPMST
 	// the hierarchy containing name
+	Hierarchy TPMIRHHierarchy
+	// This shall be the HMAC produced using a proof value of hierarchy.
+	Digest TPM2BDigest
+}
+
+// TPMTTVerified represents a TPMT_TK_Verified.
+// See definition in Part 2: Structures, section 10.7.4.
+type TPMTTKVerified struct {
+	// ticket structure tag
+	Tag TPMST
+	// the hierarchy containing keyName
 	Hierarchy TPMIRHHierarchy
 	// This shall be the HMAC produced using a proof value of hierarchy.
 	Digest TPM2BDigest
@@ -1280,6 +1340,142 @@ type TPMSCreationData struct {
 	ParentQualifiedName TPM2BName
 	// association with additional information added by the key
 	OutsideInfo TPM2BData
+}
+
+// TPMNT represents a TPM_NT.
+// See definition in Part 2: Structures, section 13.4.
+type TPMNT uint8
+
+// TPMANV represents a TPMA_NV.
+// See definition in Part 2: Structures, section 13.4.
+type TPMANV struct {
+	bitfield32
+	// SET (1): The Index data can be written if Platform Authorization is
+	// provided.
+	// CLEAR (0): Writing of the Index data cannot be authorized with
+	// Platform Authorization.
+	PPWrite bool `gotpm:"bit=0"`
+	// SET (1): The Index data can be written if Owner Authorization is
+	// provided.
+	// CLEAR (0): Writing of the Index data cannot be authorized with Owner
+	// Authorization.
+	OwnerWrite bool `gotpm:"bit=1"`
+	// SET (1): Authorizations to change the Index contents that require
+	// USER role may be provided with an HMAC session or password.
+	// CLEAR (0): Authorizations to change the Index contents that require
+	// USER role may not be provided with an HMAC session or password.
+	AuthWrite bool `gotpm:"bit=2"`
+	// SET (1): Authorizations to change the Index contents that require
+	// USER role may be provided with a policy session.
+	// CLEAR (0): Authorizations to change the Index contents that require
+	// USER role may not be provided with a policy session.
+	PolicyWrite bool `gotpm:"bit=3"`
+	// The type of the index.
+	NT TPMNT `gotpm:"bit=7:4"`
+	// SET (1): Index may not be deleted unless the authPolicy is satisfied
+	// using TPM2_NV_UndefineSpaceSpecial().
+	// CLEAR (0): Index may be deleted with proper platform or owner
+	// authorization using TPM2_NV_UndefineSpace().
+	PolicyDelete bool `gotpm:"bit=10"`
+	// SET (1): Index cannot be written.
+	// CLEAR (0): Index can be written.
+	WriteLocked bool `gotpm:"bit=11"`
+	// SET (1): A partial write of the Index data is not allowed. The write
+	// size shall match the defined space size.
+	// CLEAR (0): Partial writes are allowed. This setting is required if
+	// the .dataSize of the Index is larger than NV_MAX_BUFFER_SIZE for the
+	// implementation.
+	WriteAll bool `gotpm:"bit=12"`
+	// SET (1): TPM2_NV_WriteLock() may be used to prevent further writes
+	// to this location.
+	// CLEAR (0): TPM2_NV_WriteLock() does not block subsequent writes if
+	// TPMA_NV_WRITE_STCLEAR is also CLEAR.
+	WriteDefine bool `gotpm:"bit=13"`
+	// SET (1): TPM2_NV_WriteLock() may be used to prevent further writes
+	// to this location until the next TPM Reset or TPM Restart.
+	// CLEAR (0): TPM2_NV_WriteLock() does not block subsequent writes if
+	// TPMA_NV_WRITEDEFINE is also CLEAR.
+	WriteSTClear bool `gotpm:"bit=14"`
+	// SET (1): If TPM2_NV_GlobalWriteLock() is successful,
+	// TPMA_NV_WRITELOCKED is set.
+	// CLEAR (0): TPM2_NV_GlobalWriteLock() has no effect on the writing of
+	// the data at this Index.
+	GlobalLock bool `gotpm:"bit=15"`
+	// SET (1): The Index data can be read if Platform Authorization is
+	// provided.
+	// CLEAR (0): Reading of the Index data cannot be authorized with
+	// Platform Authorization.
+	PPRead bool `gotpm:"bit=16"`
+	// SET (1): The Index data can be read if Owner Authorization is
+	// provided.
+	// CLEAR (0): Reading of the Index data cannot be authorized with Owner
+	// Authorization.
+	OwnerRead bool `gotpm:"bit=17"`
+	// SET (1): The Index data may be read if the authValue is provided.
+	// CLEAR (0): Reading of the Index data cannot be authorized with the
+	// Index authValue.
+	AuthRead bool `gotpm:"bit=18"`
+	// SET (1): The Index data may be read if the authPolicy is satisfied.
+	// CLEAR (0): Reading of the Index data cannot be authorized with the
+	// Index authPolicy.
+	PolicyRead bool `gotpm:"bit=19"`
+	// SET (1): Authorization failures of the Index do not affect the DA
+	// logic and authorization of the Index is not blocked when the TPM is
+	// in Lockout mode.
+	// CLEAR (0): Authorization failures of the Index will increment the
+	// authorization failure counter and authorizations of this Index are
+	// not allowed when the TPM is in Lockout mode.
+	NoDA bool `gotpm:"bit=25"`
+	// SET (1): NV Index state is only required to be saved when the TPM
+	// performs an orderly shutdown (TPM2_Shutdown()).
+	// CLEAR (0): NV Index state is required to be persistent after the
+	// command to update the Index completes successfully (that is, the NV
+	// update is synchronous with the update command).
+	Orderly bool `gotpm:"bit=26"`
+	// SET (1): TPMA_NV_WRITTEN for the Index is CLEAR by TPM Reset or TPM
+	// Restart.
+	// CLEAR (0): TPMA_NV_WRITTEN is not changed by TPM Restart.
+	ClearSTClear bool `gotpm:"bit=27"`
+	// SET (1): Reads of the Index are blocked until the next TPM Reset or
+	// TPM Restart.
+	// CLEAR (0): Reads of the Index are allowed if proper authorization is
+	// provided.
+	ReadLocked bool `gotpm:"bit=28"`
+	// SET (1): Index has been written.
+	// CLEAR (0): Index has not been written.
+	Written bool `gotpm:"bit=29"`
+	// SET (1): This Index may be undefined with Platform Authorization
+	// but not with Owner Authorization.
+	// CLEAR (0): This Index may be undefined using Owner Authorization but
+	// not with Platform Authorization.
+	PlatformCreate bool `gotpm:"bit=30"`
+	// SET (1): TPM2_NV_ReadLock() may be used to SET TPMA_NV_READLOCKED
+	// for this Index.
+	// CLEAR (0): TPM2_NV_ReadLock() has no effect on this Index.
+	ReadSTClear bool `gotpm:"bit=31"`
+}
+
+// TPMSNVPublic represents a TPMS_NV_PUBLIC.
+// See definition in Part 2: Structures, section 13.5.
+type TPMSNVPublic struct {
+	// the handle of the data area
+	NVIndex TPMIRHNVIndex
+	// hash algorithm used to compute the name of the Index and used for
+	// the authPolicy. For an extend index, the hash algorithm used for the
+	// extend.
+	NameAlg TPMIAlgHash
+	// the Index attributes
+	Attributes TPMANV
+	// optional access policy for the Index
+	AuthPolicy TPM2BDigest
+	// the size of the data area
+	DataSize uint16
+}
+
+// TPM2BNVPublic represents a TPM2B_NV_PUBLIC.
+// See definition in Part 2: Structures, section 13.6.
+type TPM2BNVPublic struct {
+	NVPublic TPMSNVPublic `gotpm:"sized"`
 }
 
 // TPM2BCreationData represents a TPM2B_CREATION_DATA.

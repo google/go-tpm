@@ -47,7 +47,7 @@ const (
 	AlgECB          = internal.TPMAlgECB
 )
 
-// ECCCurve = internal.TPMECCCurve
+// ECCCurve values come from Part 2: Structures, section 6.4.
 const (
 	ECCNone     = internal.TPMECCNone
 	ECCNistP192 = internal.TPMECCNistP192
@@ -60,7 +60,7 @@ const (
 	ECCSM2P256  = internal.TPMECCSM2P256
 )
 
-// CC = internal.TPMCC
+// CC values come from Part 2: Structures, section 6.5.2.
 const (
 	CCNVUndefineSpaceSpecial     = internal.TPMCCNVUndefineSpaceSpecial
 	CCEvictControl               = internal.TPMCCEvictControl
@@ -183,7 +183,7 @@ const (
 	CCACTSetTimeout              = internal.TPMCCACTSetTimeout
 )
 
-// RC = internal.TPMRC
+// RC values come from Part 2: Structures, section 6.6.3.
 const (
 	RCSuccess = internal.TPMRCSuccess
 	// FMT0 error codes
@@ -286,7 +286,7 @@ const (
 	RCNVUnavailable  = internal.TPMRCNVUnavailable
 )
 
-// ST = internal.TPMST
+// ST values come from Part 2: Structures, section  6.9.
 const (
 	STRspCommand         = internal.TPMSTRspCommand
 	STNull               = internal.TPMSTNull
@@ -308,14 +308,20 @@ const (
 	STFuManifest         = internal.TPMSTFuManifest
 )
 
-// SE = internal.TPMSE
+// SU values come from Part 2: Structures, section  6.10.
+const (
+	SUClear = internal.TPMSUClear
+	SUState = internal.TPMSUState
+)
+
+// SE values come from Part 2: Structures, section 6.11.
 const (
 	SEHMAC   = internal.TPMSEHMAC
 	SEPolicy = internal.TPMSEPolicy
-	XETrial  = internal.TPMXETrial
+	SETrial  = internal.TPMSETrial
 )
 
-// Cap = internal.TPMCap
+// Cap values come from Part 2: Structures, section 6.12.
 const (
 	CapAlgs          = internal.TPMCapAlgs
 	CapHandles       = internal.TPMCapHandles
@@ -503,4 +509,27 @@ const (
 	RHEndorsement = internal.TPMRHEndorsement
 	RHPlatform    = internal.TPMRHPlatform
 	RHPlatformNV  = internal.TPMRHPlatformNV
+)
+
+// NT values come from Part 2: Structures, section 13.2.
+const (
+	// contains data that is opaque to the TPM that can only be modified
+	// using TPM2_NV_Write().
+	NTOrdinary = internal.TPMNTOrdinary
+	// contains an 8-octet value that is to be used as a counter and can
+	// only be modified with TPM2_NV_Increment()
+	NTCounter = internal.TPMNTCounter
+	// contains an 8-octet value to be used as a bit field and can only be
+	// modified with TPM2_NV_SetBits().
+	NTBits = internal.TPMNTBits
+	// contains a digest-sized value used like a PCR. The Index can only be
+	// modified using TPM2_NV_Extend(). The extend will use the nameAlg of
+	// the Index.
+	NTExtend = internal.TPMNTExtend
+	// contains pinCount that increments on a PIN authorization failure and
+	// a pinLimit
+	NTPinFail = internal.TPMNTPinFail
+	// contains pinCount that increments on a PIN authorization success and
+	// a pinLimit
+	NTPinPass = internal.TPMNTPinPass
 )

@@ -38,6 +38,58 @@ type DHContext = internal.TPMIDHContext
 // See definition in Part 2: Structures, section 9.13.
 type RHHierarchy = internal.TPMIRHHierarchy
 
+// RHEnables represents a TPMI_RH_ENABLES.
+// See definition in Part 2: Structures, section 9.14.
+type RHEnables = internal.TPMIRHEnables
+
+// RHHierarchyAuth represents a TPMI_RH_HIERARCHY_AUTH.
+// See definition in Part 2: Structures, section 9.15.
+type RHHierarchyAuth = internal.TPMIRHHierarchyAuth
+
+// RHHierarchyPolicy represents a TPMI_RH_HIERARCHY_POLICY.
+// See definition in Part 2: Structures, section 9.16.
+type RHHierarchyPolicy = internal.TPMIRHHierarchyPolicy
+
+// RHPlatform represents a TPMI_RH_PLATFORM.
+// See definition in Part 2: Structures, section 9.17.
+type RHPlatform = internal.TPMIRHPlatform
+
+// RHOwner represents a TPMI_RH_OWNER.
+// See definition in Part 2: Structures, section 9.18.
+type RHOwner = internal.TPMIRHOwner
+
+// RHEndorsement represents a TPMI_RH_ENDORSEMENT.
+// See definition in Part 2: Structures, section 9.19.
+type RHEndorsement = internal.TPMIRHEndorsement
+
+// RHProvision represents a TPMI_RH_PROVISION.
+// See definition in Part 2: Structures, section 9.20.
+type RHProvision = internal.TPMIRHProvision
+
+// RHClear represents a TPMI_RH_CLEAR.
+// See definition in Part 2: Structures, section 9.21.
+type RHClear = internal.TPMIRHClear
+
+// RHNVAuth represents a TPMI_RH_NV_AUTH.
+// See definition in Part 2: Structures, section 9.22.
+type RHNVAuth = internal.TPMIRHNVAuth
+
+// RHLockout represents a TPMI_RH_LOCKOUT.
+// See definition in Part 2: Structures, section 9.23.
+type RHLockout = internal.TPMIRHLockout
+
+// RHNVIndex represents a TPMI_RH_NV_INDEX.
+// See definition in Part 2: Structures, section 9.24.
+type RHNVIndex = internal.TPMIRHNVIndex
+
+// RHAC represents a TPMI_RH_AC.
+// See definition in Part 2: Structures, section 9.25.
+type RHAC = internal.TPMIRHAC
+
+// RHACT represents a TPMI_RH_ACT.
+// See definition in Part 2: Structures, section 9.26.
+type RHACT = internal.TPMIRHACT
+
 // AlgHash represents a TPMI_ALG_HASH.
 // See definition in Part 2: Structures, section 9.27.
 type AlgHash = internal.TPMIAlgHash

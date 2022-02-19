@@ -29,6 +29,10 @@ type Timeout = internal.TPM2BTimeout
 // See definition in Part 2: Structures, section 10.4.5.
 type Auth = internal.TPM2BAuth
 
+// TPM2BMaxNVBuffer represents a TPM2B_MAX_NV_BUFFER.
+// See definition in Part 2: Structures, section 10.4.9.
+type MaxNVBuffer = internal.TPM2BMaxNVBuffer
+
 // Name represents a TPM2B_NAME.
 // See definition in Part 2: Structures, section 10.5.3.
 // NOTE: This structure does not contain a TPMUName, because that union
@@ -69,6 +73,10 @@ type Public = internal.TPM2BPublic
 // Private represents a TPM2B_PRIVATE.
 // See definition in Part 2: Structures, section 12.3.7.
 type Private = internal.TPM2BPrivate
+
+// NVPublic represents a TPM2B_NV_PUBLIC.
+// See definition in Part 2: Structures, section 13.6.
+type NVPublic = internal.TPM2BNVPublic
 
 // CreationData represents a TPM2B_CREATION_DATA.
 // See definition in Part 2: Structures, section 15.2.
