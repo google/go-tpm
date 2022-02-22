@@ -256,6 +256,40 @@ type LoadResponse struct {
 // Response implements the Response interface.
 func (*LoadResponse) Response() tpm.CC { return tpm.CCLoad }
 
+// LoadExternal is the input to TPM2_LoadExternal.
+// See definition in Part 3, Commands, section 12.3
+type LoadExternal struct {
+	// the sensitive portion of the object (optional)
+	InPrivate *tpm2b.Sensitive `gotpm:"optional"`
+	// the public portion of the object
+	InPublic tpm2b.Public
+	// hierarchy with which the object area is associated
+	Hierarchy tpmi.RHHierarchy `gotpm:"nullable"`
+}
+
+// Command implements the Command interface.
+func (*LoadExternal) Command() tpm.CC { return tpm.CCLoadExternal }
+
+// Execute executes the command and returns the response.
+func (cmd *LoadExternal) Execute(t transport.TPM, s ...Session) (*LoadExternalResponse, error) {
+	var rsp LoadExternalResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// LoadExternalResponse is the response from TPM2_LoadExternal.
+type LoadExternalResponse struct {
+	// handle of type TPM_HT_TRANSIENT for loaded object
+	ObjectHandle tpm.Handle `gotpm:"handle"`
+	// Name of the loaded object
+	Name tpm2b.Name
+}
+
+// Response implements the Response interface.
+func (*LoadExternalResponse) Response() tpm.CC { return tpm.CCLoadExternal }
+
 // Unseal is the input to TPM2_Unseal.
 // See definition in Part 3, Commands, section 12.7
 type Unseal struct {
@@ -281,6 +315,45 @@ type UnsealResponse struct {
 
 // Response implements the Response interface.
 func (*UnsealResponse) Response() tpm.CC { return tpm.CCUnseal }
+
+// CreateLoaded is the input to TPM2_CreateLoaded.
+// See definition in Part 3, Commands, section 12.9
+type CreateLoaded struct {
+	// Handle of a transient storage key, a persistent storage key,
+	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER, TPM_RH_PLATFORM+{PP}, or TPM_RH_NULL
+	ParentHandle handle `gotpm:"handle,auth,nullable"`
+	// the sensitive data, see TPM 2.0 Part 1 Sensitive Values
+	InSensitive tpm2b.SensitiveCreate
+	// the public template
+	InPublic tpm2b.Template
+}
+
+// Command implements the Command interface.
+func (*CreateLoaded) Command() tpm.CC { return tpm.CCCreateLoaded }
+
+// Execute executes the command and returns the response.
+func (cmd *CreateLoaded) Execute(t transport.TPM, s ...Session) (*CreateLoadedResponse, error) {
+	var rsp CreateLoadedResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// CreateLoadedResponse is the response from TPM2_CreateLoaded.
+type CreateLoadedResponse struct {
+	// handle of type TPM_HT_TRANSIENT for loaded object
+	ObjectHandle tpm.Handle `gotpm:"handle"`
+	// the sensitive area of the object (optional)
+	OutPrivate *tpm2b.Private `gotpm:"optional"`
+	// the public portion of the created object
+	OutPublic tpm2b.Public
+	// the name of the created object
+	Name tpm2b.Name
+}
+
+// Response implements the Response interface.
+func (*CreateLoadedResponse) Response() tpm.CC { return tpm.CCCreateLoaded }
 
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4

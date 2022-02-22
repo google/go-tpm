@@ -23,6 +23,10 @@ type SymMode = internal.TPMUSymMode
 // See definition in Part 2: Structures, section 11.1.5.
 type SymDetails = internal.TPMUSymDetails
 
+// SensitiveCreate represents a TPMU_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.13.
+type SensitiveCreate = internal.TPMUSensitiveCreate
+
 // SchemeKeyedHash represents a TPMU_SCHEME_KEYEDHASH.
 // See definition in Part 2: Structures, section 11.1.22.
 type SchemeKeyedHash = internal.TPMUSchemeKeyedHash
@@ -50,3 +54,12 @@ type PublicID = internal.TPMUPublicID
 // PublicParms represents a TPMU_PUBLIC_PARMS.
 // See definition in Part 2: Structures, section 12.2.3.7.
 type PublicParms = internal.TPMUPublicParms
+
+// Template represents the possible contents of a TPM2B_Template. It is not
+// defined or named in the spec, which instead describes how its contents may
+// differ in the case of CreateLoaded with a derivation parent.
+type Template = internal.TPMUTemplate
+
+// SensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
+// See definition in Part 2: Structures, section 12.3.2.3.
+type SensitiveComposite = internal.TPMUSensitiveComposite

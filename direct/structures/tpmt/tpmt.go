@@ -54,3 +54,12 @@ type Signature = internal.TPMTSignature
 // Public represents a TPMT_PUBLIC.
 // See definition in Part 2: Structures, section 12.2.4.
 type Public = internal.TPMTPublic
+
+// Template represents a TPMT_TEMPLATE. It is not defined in the spec.
+// It represents the alternate form of TPMT_PUBLIC for TPM2B_TEMPLATE as
+// described in Part 2: Structures, 12.2.6.
+type Template = internal.TPMTTemplate
+
+// Sensitive represents a TPMT_SENSITIVE.
+// See definition in Part 2: Structures, section 12.3.2.4.
+type Sensitive = internal.TPMTSensitive

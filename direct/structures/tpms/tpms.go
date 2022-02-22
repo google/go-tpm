@@ -91,6 +91,10 @@ type AuthResponse = internal.TPMSAuthResponse
 // See definition in Part 2: Structures, section 11.1.9.
 type SymCipherParms = internal.TPMSSymCipherParms
 
+// Derive represents a TPMS_DERIVE.
+// See definition in Part 2: Structures, section 11.1.11.
+type Derive = internal.TPMSDerive
+
 // SensitiveCreate represents a TPMS_SENSITIVE_CREATE.
 // See definition in Part 2: Structures, section 11.1.15.
 type SensitiveCreate = internal.TPMSSensitiveCreate
@@ -163,7 +167,7 @@ type SignatureRSA = internal.TPMSSignatureRSA
 // See definition in Part 2: Structures, section 11.3.2.
 type SignatureECC = internal.TPMSSignatureECC
 
-// KeyedHashParms represents a TPMS_KEYED_HASH_PARMS.
+// KeyedHashParms represents a TPMS_KEYEDHASH_PARMS.
 // See definition in Part 2: Structures, section 12.2.3.3.
 type KeyedHashParms = internal.TPMSKeyedHashParms
 

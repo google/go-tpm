@@ -17,7 +17,7 @@ import (
 
 // Test creating a sealed data blob on the standard-template EK using its policy.
 func TestEKPolicy(t *testing.T) {
-	templates := map[string]tpm2b.Public{
+	templates := map[string]tpmt.Public{
 		"RSA": templates.RSAEKTemplate,
 		"ECC": templates.ECCEKTemplate,
 	}
@@ -41,7 +41,7 @@ func ekPolicy(t transport.TPM, handle tpmi.SHPolicy, nonceTPM tpm2b.Nonce) error
 }
 
 // This function tests a lot of combinations of authorizing the EK policy.
-func ekTest(t *testing.T, ekTemplate tpm2b.Public) {
+func ekTest(t *testing.T, ekTemplate tpmt.Public) {
 	type ekTestCase struct {
 		name string
 		// Use Policy instead of PolicySession, passing the callback instead of
@@ -108,7 +108,9 @@ func ekTest(t *testing.T, ekTemplate tpm2b.Public) {
 			// Create the EK
 			createEKCmd := CreatePrimary{
 				PrimaryHandle: tpm.RHEndorsement,
-				InPublic:      ekTemplate,
+				InPublic: tpm2b.Public{
+					PublicArea: ekTemplate,
+				},
 			}
 			createEKRsp, err := createEKCmd.Execute(thetpm)
 			if err != nil {
@@ -136,7 +138,7 @@ func ekTest(t *testing.T, ekTemplate tpm2b.Public) {
 				},
 				InSensitive: tpm2b.SensitiveCreate{
 					Sensitive: tpms.SensitiveCreate{
-						Data: tpm2b.Data{
+						Data: tpm2b.SensitiveData{
 							Buffer: data,
 						},
 					},

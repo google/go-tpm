@@ -29,7 +29,9 @@ func TestObjectName(t *testing.T) {
 
 	createPrimary := CreatePrimary{
 		PrimaryHandle: tpm.RHEndorsement,
-		InPublic:      templates.ECCEKTemplate,
+		InPublic: tpm2b.Public{
+			PublicArea: templates.ECCEKTemplate,
+		},
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {

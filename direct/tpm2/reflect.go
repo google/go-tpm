@@ -141,25 +141,48 @@ func Marshal(vs ...interface{}) ([]byte, error) {
 func marshal(buf *bytes.Buffer, v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if err := marshalNumeric(buf, v); err != nil {
-			return err
-		}
+		return marshalNumeric(buf, v)
 	case reflect.Array, reflect.Slice:
-		if err := marshalArray(buf, v); err != nil {
-			return err
-		}
+		return marshalArray(buf, v)
 	case reflect.Struct:
-		if err := marshalStruct(buf, v); err != nil {
-			return err
-		}
+		return marshalStruct(buf, v)
 	case reflect.Ptr:
-		if err := marshalStruct(buf, v.Elem()); err != nil {
-			return err
+		return marshalStruct(buf, v.Elem())
+	case reflect.Interface:
+		// Special case: there are very few TPM types which, for TPM spec
+		// backwards-compatibility reasons, are implemented as Go interfaces
+		// so that callers can ergonomically satisfy cases where the TPM spec
+		// allows a parameter to literally be one of a couple of types.
+		// In a few of these cases, we want the caller to be able to sensibly
+		// omit the data, and fill in reasonable defaults.
+		// These cases are enumerated here.
+		if v.IsNil() {
+			switch v.Type().Name() {
+			case "TPMUSensitiveCreate":
+				return marshal(buf, reflect.ValueOf(tpm2b.SensitiveData{}))
+			default:
+				return fmt.Errorf("missing required value for %v interface", v.Type().Name())
+			}
 		}
+		return marshal(buf, v.Elem())
 	default:
 		return fmt.Errorf("not marshallable: %#v", v)
 	}
-	return nil
+}
+
+// marshalOptional will serialize the given value, appending onto the given
+// buffer.
+// Special case: Part 3 specifies some input/output
+// parameters as "optional", which means that they are
+// sized fields that can be zero-length, even if the
+// enclosed type has no legal empty serialization.
+// When nil, marshal the zero size.
+// Returns an error if the value is not marshallable.
+func marshalOptional(buf *bytes.Buffer, v reflect.Value) error {
+	if v.Kind() == reflect.Ptr && v.IsNil() {
+		return marshalArray(buf, reflect.ValueOf([2]byte{}))
+	}
+	return marshal(buf, v)
 }
 
 func marshalNumeric(buf *bytes.Buffer, v reflect.Value) error {
@@ -272,6 +295,10 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			// algorithms/schemes instead of specifying them as
 			// TPM_ALG_NULL.
 			if err := binary.Write(&res, binary.BigEndian, uint16(tpm.AlgNull)); err != nil {
+				return err
+			}
+		} else if hasTag(v.Type().Field(i), "optional") {
+			if err := marshalOptional(&res, v.Field(i)); err != nil {
 				return err
 			}
 		} else {
@@ -488,6 +515,23 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 		if !list && (v.Field(i).Kind() == reflect.Slice) && (v.Type().Field(i).Type.Elem().Kind() != reflect.Uint8) {
 			return fmt.Errorf("field '%v' of struct '%v' was a slice of non-byte but did not have the 'list' tag",
 				v.Type().Field(i).Name, v.Type().Name())
+		}
+		if hasTag(v.Type().Field(i), "optional") {
+			// Special case: Part 3 specifies some input/output
+			// parameters as "optional", which means that they are
+			// (2B-) sized fields that can be zero-length, even if the
+			// enclosed type has no legal empty serialization.
+			// When unmarshalling an optional field, test for zero size
+			// and skip if empty.
+			if buf.Len() < 2 {
+				if binary.BigEndian.Uint16(buf.Bytes()) == 0 {
+					// Advance the buffer past the zero size and skip to the
+					// next field of the struct.
+					buf.Next(2)
+					continue
+				}
+				// If non-zero size, proceed to unmarshal the contents below.
+			}
 		}
 		sized := hasTag(v.Type().Field(i), "sized")
 		sized8 := hasTag(v.Type().Field(i), "sized8")
@@ -812,6 +856,26 @@ func cmdNames(cmd Command) ([]tpm2b.Name, error) {
 	return result, nil
 }
 
+// TODO: Extract the logic of "marshal the Nth field of some struct after the handles"
+// For now, we duplicate some logic from marshalStruct here.
+func marshalParameter(buf *bytes.Buffer, cmd Command, i int) error {
+	numHandles := len(taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false))
+	if numHandles+i >= reflect.TypeOf(cmd).Elem().NumField() {
+		return fmt.Errorf("invalid parameter index %v", i)
+	}
+	parm := reflect.ValueOf(cmd).Elem().Field(numHandles + i)
+	field := reflect.TypeOf(cmd).Elem().Field(numHandles + i)
+	if hasTag(field, "optional") {
+		return marshalOptional(buf, parm)
+	} else if parm.IsZero() && parm.Kind() == reflect.Uint32 && hasTag(field, "nullable") {
+		return marshal(buf, reflect.ValueOf(tpm.RHNull))
+	} else if parm.IsZero() && parm.Kind() == reflect.Uint16 && hasTag(field, "nullable") {
+		return marshal(buf, reflect.ValueOf(tpm.AlgNull))
+	} else {
+		return marshal(buf, parm)
+	}
+}
+
 // cmdParameters returns the parameters area of the command.
 // The first parameter may be encrypted by one of the sessions.
 func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
@@ -820,9 +884,10 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 		return nil, nil
 	}
 
-	// Marshal the first parameter for in-place session encryption.
 	var firstParm bytes.Buffer
-	marshal(&firstParm, parms[0])
+	if err := marshalParameter(&firstParm, cmd, 0); err != nil {
+		return nil, err
+	}
 	firstParmBytes := firstParm.Bytes()
 
 	// Encrypt the first parameter if there are any decryption sessions.
@@ -847,8 +912,8 @@ func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
 	var result bytes.Buffer
 	result.Write(firstParmBytes)
 	// Write the rest of the parameters normally.
-	for _, parm := range parms[1:] {
-		if err := marshal(&result, parm); err != nil {
+	for i := 1; i < len(parms); i++ {
+		if err := marshalParameter(&result, cmd, i); err != nil {
 			return nil, err
 		}
 	}
@@ -1014,7 +1079,7 @@ func rspSessions(rsp *bytes.Buffer, rc tpm.RC, cc tpm.CC, names []tpm2b.Name, pa
 // into the response structure. If there is a mismatch between the expected
 // and actual response structure, returns an error here.
 func rspParameters(parms []byte, sess []Session, rspStruct Response) error {
-	parmsFields := taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", true)
+	numHandles := len(taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", false))
 
 	// Use the heuristic of "does interpreting the first 2 bytes of response
 	// as a length make any sense" to attempt encrypted parameter
@@ -1037,7 +1102,16 @@ func rspParameters(parms []byte, sess []Session, rspStruct Response) error {
 		}
 	}
 	buf := bytes.NewBuffer(parms)
-	for _, parmsField := range parmsFields {
+	for i := numHandles; i < reflect.TypeOf(rspStruct).Elem().NumField(); i++ {
+		parmsField := reflect.ValueOf(rspStruct).Elem().Field(i)
+		if parmsField.Kind() == reflect.Ptr && hasTag(reflect.TypeOf(rspStruct).Elem().Field(i), "optional") {
+			if binary.BigEndian.Uint16(buf.Bytes()) == 0 {
+				// Advance the buffer past the zero size and skip to the
+				// next field of the struct.
+				buf.Next(2)
+				continue
+			}
+		}
 		if err := unmarshal(buf, parmsField); err != nil {
 			return err
 		}

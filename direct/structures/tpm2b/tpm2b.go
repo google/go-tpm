@@ -46,6 +46,18 @@ type Name = internal.TPM2BName
 // For ergonomics, pretend that TPM2B_Attest wraps a TPMS_Attest just like other 2Bs.
 type Attest = internal.TPM2BAttest
 
+// SymKey represents a TPM2B_SYM_KEY.
+// See definition in Part 2: Structures, section 11.1.8.
+type SymKey = internal.TPM2BSymKey
+
+// Label represents a TPM2B_LABEL.
+// See definition in Part 2: Structures, section 11.1.10.
+type Label = internal.TPM2BLabel
+
+// Derive represents a TPM2B_DERIVE.
+// See definition in Part 2: Structures, section 11.1.12.
+type Derive = internal.TPM2BDerive
+
 // SensitiveData represents a TPM2B_SENSITIVE_DATA.
 // See definition in Part 2: Structures, section 11.1.14.
 type SensitiveData = internal.TPM2BSensitiveData
@@ -58,6 +70,10 @@ type SensitiveCreate = internal.TPM2BSensitiveCreate
 // See definition in Part 2: Structures, section 11.2.4.5.
 type PublicKeyRSA = internal.TPM2BPublicKeyRSA
 
+// PrivateKeyRSA representsa a TPM2B_PRIVATE_KEY_RSA.
+// See definition in Part 2: Structures, section 11.2.4.7.
+type PrivateKeyRSA = internal.TPM2BPrivateKeyRSA
+
 // ECCParameter represents a TPM2B_ECC_PARAMETER.
 // See definition in Part 2: Structures, section 11.2.5.1.
 type ECCParameter = internal.TPM2BECCParameter
@@ -69,6 +85,14 @@ type EncryptedSecret = internal.TPM2BEncryptedSecret
 // Public represents a TPM2B_PUBLIC.
 // See definition in Part 2: Structures, section 12.2.5.
 type Public = internal.TPM2BPublic
+
+// Template represents a TPM2B_TEMPLATE.
+// See definition in Part 2: Structures, section 12.2.6.
+type Template = internal.TPM2BTemplate
+
+// Sensitive represents a TPM2B_SENSITIVE.
+// See definition in Part 2: Structures, section 12.3.3.
+type Sensitive = internal.TPM2BSensitive
 
 // Private represents a TPM2B_PRIVATE.
 // See definition in Part 2: Structures, section 12.3.7.

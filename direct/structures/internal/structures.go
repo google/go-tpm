@@ -964,12 +964,43 @@ type TPMTSymDefObject struct {
 	Details TPMUSymDetails `gotpm:"tag=Algorithm"`
 }
 
+// TPM2BSymKey represents a TPM2B_SYM_KEY.
+// See definition in Part 2: Structures, section 11.1.8.
+type TPM2BSymKey TPM2BData
+
 // TPMSSymCipherParms represents a TPMS_SYMCIPHER_PARMS.
 // See definition in Part 2: Structures, section 11.1.9.
 type TPMSSymCipherParms struct {
 	// a symmetric block cipher
 	Sym TPMTSymDefObject
 }
+
+// TPM2BLabel represents a TPM2B_LABEL.
+// See definition in Part 2: Structures, section 11.1.10.
+type TPM2BLabel TPM2BData
+
+// TPMSDerive represents a TPMS_DERIVE.
+// See definition in Part 2: Structures, section 11.1.11.
+type TPMSDerive struct {
+	Label   TPM2BLabel
+	Context TPM2BLabel
+}
+
+// TPM2BDerive represents a TPM2B_DERIVE.
+// See definition in Part 2: Structures, section 11.1.12.
+type TPM2BDerive struct {
+	Buffer TPMSDerive `gotpm:"sized"`
+}
+
+// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.13.
+// Since the TPM cannot return this type, it can be an interface.
+type TPMUSensitiveCreate interface {
+	tpmusensitivecreate()
+}
+
+func (TPM2BSensitiveData) tpmusensitivecreate() {}
+func (TPM2BDerive) tpmusensitivecreate()        {}
 
 // TPM2BSensitiveData represents a TPM2B_SENSITIVE_DATA.
 // See definition in Part 2: Structures, section 11.1.14.
@@ -981,7 +1012,7 @@ type TPMSSensitiveCreate struct {
 	// the USER auth secret value.
 	UserAuth TPM2BAuth
 	// data to be sealed, a key, or derivation values.
-	Data TPM2BData
+	Data TPMUSensitiveCreate
 }
 
 // TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
@@ -1141,6 +1172,10 @@ type TPM2BPublicKeyRSA TPM2BData
 // See definition in Part 2: Structures, section 11.2.4.6.
 type TPMIRSAKeyBits = TPMKeyBits
 
+// TPM2BPrivateKeyRSA representsa a TPM2B_PRIVATE_KEY_RSA.
+// See definition in Part 2: Structures, section 11.2.4.7.
+type TPM2BPrivateKeyRSA TPM2BData
+
 // TPM2BECCParameter represents a TPM2B_ECC_PARAMETER.
 // See definition in Part 2: Structures, section 11.2.5.1.
 type TPM2BECCParameter TPM2BData
@@ -1224,7 +1259,7 @@ type TPMUPublicID struct {
 	ECC       *TPMSECCPoint      `gotpm:"selector=0x0023"` // TPM_ALG_ECC
 }
 
-// TPMSKeyedHashParms represents a TPMS_KEYED_HASH_PARMS.
+// TPMSKeyedHashParms represents a TPMS_KEYEDHASH_PARMS.
 // See definition in Part 2: Structures, section 12.2.3.3.
 type TPMSKeyedHashParms struct {
 	// Indicates the signing method used for a keyedHash signing
@@ -1311,11 +1346,85 @@ type TPMTPublic struct {
 	Unique TPMUPublicID `gotpm:"tag=Type"`
 }
 
+// TPMTTemplate represents a TPMT_TEMPLATE. It is not defined in the spec.
+// It represents the alternate form of TPMT_PUBLIC for TPM2B_TEMPLATE as
+// described in Part 2: Structures, 12.2.6.
+type TPMTTemplate struct {
+	// “algorithm” associated with this object
+	Type TPMIAlgPublic
+	// algorithm used for computing the Name of the object
+	NameAlg TPMIAlgHash
+	// attributes that, along with type, determine the manipulations
+	// of this object
+	ObjectAttributes TPMAObject
+	// optional policy for using this key
+	// The policy is computed using the nameAlg of the object.
+	AuthPolicy TPM2BDigest
+	// the algorithm or structure details
+	Parameters TPMUPublicParms `gotpm:"tag=Type"`
+	// the derivation parameters
+	Unique TPMSDerive
+}
+
 // TPM2BPublic represents a TPM2B_PUBLIC.
 // See definition in Part 2: Structures, section 12.2.5.
 type TPM2BPublic struct {
 	// the public area
 	PublicArea TPMTPublic `gotpm:"sized"`
+}
+
+// TPM2BTemplate represents a TPM2B_TEMPLATE.
+// See definition in Part 2: Structures, section 12.2.6.
+type TPM2BTemplate struct {
+	Template TPMUTemplate `gotpm:"sized"`
+}
+
+// TPMUTemplate represents the possible contents of a TPM2B_Template. It is not
+// defined or named in the spec, which instead describes how its contents may
+// differ in the case of CreateLoaded with a derivation parent.
+// Since the TPM cannot return this type, it can be an interface.
+type TPMUTemplate interface {
+	tpmutemplate()
+	defaultMarshalling() []byte
+}
+
+func (TPMTPublic) tpmutemplate()                {}
+func (TPMTPublic) defaultMarshalling() []byte   { return nil }
+func (TPMTTemplate) tpmutemplate()              {}
+func (TPMTTemplate) defaultMarshalling() []byte { return nil }
+
+// TPMUSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
+// See definition in Part 2: Structures, section 12.3.2.3.
+type TPMUSensitiveComposite struct {
+	// a prime factor of the public key
+	RSA *TPM2BPrivateKeyRSA `gotpm:"selector=0x0001"` // TPM_ALG_RSA
+	// the integer private key
+	ECC *TPM2BECCParameter `gotpm:"selector=0x0023"` // TPM_ALG_ECC
+	// the private data
+	Bits *TPM2BSensitiveData `gotpm:"selector=0x0008"` // TPM_ALG_KEYEDHASH
+	// the symmetric key
+	Sym *TPM2BSymKey `gotpm:"selector=0x0025"` // TPM_ALG_SYMCIPHER
+}
+
+// TPMTSensitive represents a TPMT_SENSITIVE.
+// See definition in Part 2: Structures, section 12.3.2.4.
+type TPMTSensitive struct {
+	// identifier for the sensitive area
+	SensitiveType TPMIAlgPublic
+	// user authorization data
+	AuthValue TPM2BAuth
+	// for a parent object, the optional protection seed; for other objects,
+	// the obfuscation value
+	SeedValue TPM2BDigest
+	// the type-specific private data
+	Sensitive TPMUSensitiveComposite `gotpm:"tag=SensitiveType"`
+}
+
+// TPM2BSensitive represents a TPM2B_SENSITIVE.
+// See definition in Part 2: Structures, section 12.3.3.
+type TPM2BSensitive struct {
+	// an unencrypted sensitive area
+	SensitiveArea TPMTSensitive `gotpm:"sized"`
 }
 
 // TPM2BPrivate represents a TPM2B_PRIVATE.
