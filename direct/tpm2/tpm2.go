@@ -455,10 +455,7 @@ func (cmd *VerifySignature) Execute(t transport.TPM, s ...Session) (*VerifySigna
 
 // VerifySignatureResponse is the response from TPM2_VerifySignature.
 type VerifySignatureResponse struct {
-	// the audit information that was signed
-	AuditInfo tpm2b.Attest
-	// the signature over auditInfo
-	Signature tpmt.Signature
+	Validation tpmt.TKVerified
 }
 
 // Response implements the Response interface.
