@@ -296,7 +296,7 @@ func TestEncodeQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	toQuote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), defaultPassword, toQuote, pcrSelection7, 0x0010)
+	cmdBytes, err := encodeQuote(tpmutil.Handle(0x80000001), defaultPassword, toQuote, []PCRSelection{pcrSelection7}, 0x0010)
 	if err != nil {
 		t.Fatal(err)
 	}
