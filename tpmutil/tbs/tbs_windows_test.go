@@ -118,11 +118,15 @@ func TestGetStorageOwnerAuth(t *testing.T) {
 	defer ctx.Close()
 
 	authBufferLength, err := ctx.GetOwnerAuth(Storage20Authorization, nil)
-	if err != nil && err != ErrOwnerauthNotFound {
-		t.Fatalf("Failed to get Storage authorization delegation blob size: %v", err)
-	} else if err == ErrOwnerauthNotFound {
-		t.Log("Skipping retrieval of Storage authorization; Delegation blob not available in the registry.")
+	if err == ErrOwnerauthNotFound || err == ErrInternalError {
+		expectedErrorHint := "An internal error occurred.  Are you running with Administrative permissions?"
+		if err == ErrOwnerauthNotFound {
+			expectedErrorHint = "Delegation blob not available in the registry."
+		}
+		t.Logf("Skipping retrieval of Storage authorization; %v", expectedErrorHint)
 		t.SkipNow()
+	} else if err != nil {
+		t.Fatalf("Failed to get Storage authorization delegation blob size: %v", err)
 	}
 
 	storageOwnerAuth := make([]byte, authBufferLength)
@@ -140,11 +144,15 @@ func TestGetEndorsementOwnerAuth(t *testing.T) {
 	defer ctx.Close()
 
 	authBufferLength, err := ctx.GetOwnerAuth(Endorsement20Authorization, nil)
-	if err != nil && err != ErrOwnerauthNotFound {
-		t.Fatalf("Failed to get Endorsement authorization delegation blob size: %v", err)
-	} else if err == ErrOwnerauthNotFound {
-		t.Log("Skipping retrieval of Endorsement authorization; Delegation blob not available in the registry.")
+	if err == ErrOwnerauthNotFound || err == ErrInternalError {
+		expectedErrorHint := "An internal error occurred.  Are you running with Administrative permissions?"
+		if err == ErrOwnerauthNotFound {
+			expectedErrorHint = "Delegation blob not available in the registry."
+		}
+		t.Logf("Skipping retrieval of Endorsement authorization; %v", expectedErrorHint)
 		t.SkipNow()
+	} else if err != nil {
+		t.Fatalf("Unexpected error occurred when retrieving Endorsement authorization delegation blob size: %v", err)
 	}
 	if authBufferLength <= 0 {
 		t.Fatal("Expected positive Endorsement authorization delegation blob size")
@@ -153,9 +161,6 @@ func TestGetEndorsementOwnerAuth(t *testing.T) {
 	endorsementOwnerAuth := make([]byte, authBufferLength)
 	if _, err := ctx.GetOwnerAuth(Endorsement20Authorization, endorsementOwnerAuth); err != nil && err != ErrOwnerauthNotFound {
 		t.Fatalf("Failed to retrieve Endorsement Authorization delegation blob from the registry: %v", err)
-	} else if err == ErrOwnerauthNotFound {
-		t.Log("Skipping retrieval of Endorsement authorization; Delegation blob not available in the registry.")
-		t.SkipNow()
 	}
 }
 
@@ -165,18 +170,19 @@ func TestGetFullOwnerAuth(t *testing.T) {
 	defer ctx.Close()
 
 	authBufferLength, err := ctx.GetOwnerAuth(FullAuthorization, nil)
-	if err != nil && err != ErrOwnerauthNotFound {
-		t.Fatalf("Failed to get Full authorization delegation blob size: %v", err)
-	} else if err == ErrOwnerauthNotFound {
-		t.Log("Skipping retrieval of Full authorization; Delegation blob not available in the registry.")
+	if err == ErrOwnerauthNotFound || err == ErrInternalError {
+		expectedErrorHint := "An internal error occurred.  Are you running with Administrative permissions?"
+		if err == ErrOwnerauthNotFound {
+			expectedErrorHint = "Delegation blob not available in the registry."
+		}
+		t.Logf("Skipping retrieval of Full authorization; %v", expectedErrorHint)
 		t.SkipNow()
+	} else if err != nil {
+		t.Fatalf("Unexpected error occurred when retrieving Full authorization delegation blob size: %v", err)
 	}
 
 	fullOwnerAuth := make([]byte, authBufferLength)
 	if _, err := ctx.GetOwnerAuth(FullAuthorization, fullOwnerAuth); err != nil && err != ErrOwnerauthNotFound {
 		t.Fatalf("Failed to retrieve Full Authorization delegation blob from the registry: %v", err)
-	} else if err == ErrOwnerauthNotFound {
-		t.Log("Skipping retrieval of Full authorization; Delegation blob not available in the registry.")
-		t.SkipNow()
 	}
 }
