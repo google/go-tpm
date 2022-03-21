@@ -282,6 +282,7 @@ func (context Context) GetOwnerAuth(ownerAuthType OwnerAuthType, ownerAuthBuffer
 	//	);
 	result, _, _ := tbsGetOwnerAuth.Call(
 		uintptr(context),
+		uintptr(uint32(ownerAuthType)),
 		sliceAddress(ownerAuthBuffer),
 		uintptr(unsafe.Pointer(&ownerAuthBufferLen)),
 	)
