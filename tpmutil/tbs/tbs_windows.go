@@ -126,6 +126,20 @@ var errorDescriptions = map[Error]string{
 	ErrOwnerauthNotFound:      "The requested TPM OwnerAuth value was not found.",
 }
 
+// TBS Owner Auth Types required by Tbsi_Get_OwnerAuth
+// https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsi_get_ownerauth
+type OwnerAuthType uint32
+
+const (
+	FullAuthorization OwnerAuthType = 1
+	// Omitted TPM 1.2 values
+	// Admin         OwnerAuthType = 2
+	// User          OwnerAuthType = 3
+	// Endorsement   OwnerAuthType = 4
+	Endorsement20Authorization OwnerAuthType = 12
+	Storage20Authorization     OwnerAuthType = 13
+)
+
 // Tbs.dll provides an API for making calls to the TPM:
 // https://docs.microsoft.com/en-us/windows/desktop/TBS/tpm-base-services-portal
 var (
@@ -135,6 +149,7 @@ var (
 	tbsContextClose  = tbsDLL.NewProc("Tbsip_Context_Close")
 	tbsSubmitCommand = tbsDLL.NewProc("Tbsip_Submit_Command")
 	tbsGetTCGLog     = tbsDLL.NewProc("Tbsi_Get_TCG_Log")
+	tbsGetOwnerAuth  = tbsDLL.NewProc("Tbsi_Get_OwnerAuth")
 )
 
 // Returns the address of the beginning of a slice or 0 for a nil slice.
@@ -249,4 +264,26 @@ func (context Context) GetTCGLog(logBuffer []byte) (uint32, error) {
 		uintptr(unsafe.Pointer(&logBufferLen)),
 	)
 	return logBufferLen, getError(result)
+}
+
+// Retrieves the owner authorization of the TPM if the information is available in the local registry.
+// If ownerAuthBuffer is nil, the actual size of the TPM ownerAuth is returned.
+// ErrOwnerauthNotFound is returned if the requested TPM ownerAuth value was not found. On failure,
+// the returned length is unspecified.
+// https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsi_get_ownerauth
+func (context Context) GetOwnerAuth(ownerAuthType OwnerAuthType, ownerAuthBuffer []byte) (uint32, error) {
+	ownerAuthBufferLen := uint32(len(ownerAuthBuffer))
+
+	//	TBS_RESULT Tbsi_Get_OwnerAuth(
+	//		TBS_HCONTEXT       hContext,
+	//		TBS_OWNERAUTH_TYPE ownerauthType,
+	//		PBYTE              pOutputBuf,
+	//		PUINT32            pOutputBufLen
+	//	);
+	result, _, _ := tbsGetOwnerAuth.Call(
+		uintptr(context),
+		sliceAddress(ownerAuthBuffer),
+		uintptr(unsafe.Pointer(&ownerAuthBufferLen)),
+	)
+	return ownerAuthBufferLen, getError(result)
 }
