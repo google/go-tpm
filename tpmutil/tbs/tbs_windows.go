@@ -266,7 +266,7 @@ func (context Context) GetTCGLog(logBuffer []byte) (uint32, error) {
 	return logBufferLen, getError(result)
 }
 
-// Retrieves the owner authorization of the TPM if the information is available in the local registry.
+// GetOwnerAuth Retrieves the owner authorization of the TPM if the information is available in the local registry.
 // If ownerAuthBuffer is nil, the actual size of the TPM ownerAuth is returned.
 // ErrOwnerauthNotFound is returned if the requested TPM ownerAuth value was not found. On failure,
 // the returned length is unspecified.
