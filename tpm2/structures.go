@@ -823,13 +823,13 @@ func (ci CertifyInfo) encode() ([]byte, error) {
 
 // QuoteInfo represents a TPMS_QUOTE_INFO structure.
 type QuoteInfo struct {
-	PCRSelection PCRSelection
+	PCRSelection []PCRSelection
 	PCRDigest    tpmutil.U16Bytes
 }
 
 func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 	var out QuoteInfo
-	sel, err := decodeOneTPMLPCRSelection(in)
+	sel, err := decodeTPMLPCRSelection(in)
 	if err != nil {
 		return nil, fmt.Errorf("decoding PCRSelection: %v", err)
 	}
@@ -842,7 +842,7 @@ func decodeQuoteInfo(in *bytes.Buffer) (*QuoteInfo, error) {
 }
 
 func (qi QuoteInfo) encode() ([]byte, error) {
-	sel, err := encodeTPMLPCRSelection(qi.PCRSelection)
+	sel, err := encodeTPMLPCRSelection(qi.PCRSelection...)
 	if err != nil {
 		return nil, fmt.Errorf("encoding PCRSelection: %v", err)
 	}

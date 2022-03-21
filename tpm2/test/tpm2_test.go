@@ -1670,7 +1670,7 @@ func TestQuote(t *testing.T) {
 	}
 	defer FlushContext(rw, keyHandle)
 
-	attestation, signature, err := Quote(rw, keyHandle, emptyPassword, emptyPassword, nil, pcrSelection7, AlgNull)
+	attestation, signature, err := Quote(rw, keyHandle, emptyPassword, emptyPassword, nil, []PCRSelection{pcrSelection7}, AlgNull)
 	if err != nil {
 		t.Fatalf("Quote failed: %v", err)
 	}

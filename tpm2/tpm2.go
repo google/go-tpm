@@ -950,7 +950,7 @@ func UnsealWithSession(rw io.ReadWriter, sessionHandle, itemHandle tpmutil.Handl
 	return decodeUnseal(resp)
 }
 
-func encodeQuote(signingHandle tpmutil.Handle, signerAuth string, toQuote tpmutil.U16Bytes, sel PCRSelection, sigAlg Algorithm) ([]byte, error) {
+func encodeQuote(signingHandle tpmutil.Handle, signerAuth string, toQuote tpmutil.U16Bytes, sel []PCRSelection, sigAlg Algorithm) ([]byte, error) {
 	ha, err := tpmutil.Pack(signingHandle)
 	if err != nil {
 		return nil, err
@@ -963,7 +963,7 @@ func encodeQuote(signingHandle tpmutil.Handle, signerAuth string, toQuote tpmuti
 	if err != nil {
 		return nil, err
 	}
-	pcrs, err := encodeTPMLPCRSelection(sel)
+	pcrs, err := encodeTPMLPCRSelection(sel...)
 	if err != nil {
 		return nil, err
 	}
@@ -988,7 +988,7 @@ func decodeQuote(in []byte) ([]byte, []byte, error) {
 // values, created using a signing TPM key.
 //
 // Returns attestation data and the decoded signature.
-func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, signerAuth, unused string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, *Signature, error) {
+func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, signerAuth, unused string, toQuote []byte, sel []PCRSelection, sigAlg Algorithm) ([]byte, *Signature, error) {
 	// TODO: Remove "unused" parameter on next breaking change.
 	attest, sigRaw, err := QuoteRaw(rw, signingHandle, signerAuth, unused, toQuote, sel, sigAlg)
 	if err != nil {
@@ -1003,7 +1003,7 @@ func Quote(rw io.ReadWriter, signingHandle tpmutil.Handle, signerAuth, unused st
 
 // QuoteRaw is very similar to Quote, except that it will return
 // the raw signature in a byte array without decoding.
-func QuoteRaw(rw io.ReadWriter, signingHandle tpmutil.Handle, signerAuth, unused string, toQuote []byte, sel PCRSelection, sigAlg Algorithm) ([]byte, []byte, error) {
+func QuoteRaw(rw io.ReadWriter, signingHandle tpmutil.Handle, signerAuth, unused string, toQuote []byte, sel []PCRSelection, sigAlg Algorithm) ([]byte, []byte, error) {
 	// TODO: Remove "unused" parameter on next breaking change.
 	Cmd, err := encodeQuote(signingHandle, signerAuth, toQuote, sel, sigAlg)
 	if err != nil {
