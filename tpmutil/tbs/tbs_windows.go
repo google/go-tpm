@@ -126,18 +126,17 @@ var errorDescriptions = map[Error]string{
 	ErrOwnerauthNotFound:      "The requested TPM OwnerAuth value was not found.",
 }
 
-// TBS Owner Auth Types required by Tbsi_Get_OwnerAuth
+// OwnerAuthType values required by Tbsi_Get_OwnerAuth
 // https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsi_get_ownerauth
 type OwnerAuthType uint32
 
 const (
+	// FullAuthorization retrieves Full authorization delegation blob
 	FullAuthorization OwnerAuthType = 1
-	// Omitted TPM 1.2 values
-	// Admin         OwnerAuthType = 2
-	// User          OwnerAuthType = 3
-	// Endorsement   OwnerAuthType = 4
+	// Endorsement20Authorization retrieves Endorsement authorization delegation blob (TPM 2.0 only)
 	Endorsement20Authorization OwnerAuthType = 12
-	Storage20Authorization     OwnerAuthType = 13
+	// Storage20Authorization retrieves Storage authorization delegation blob (TPM 2.0 Only)
+	Storage20Authorization OwnerAuthType = 13
 )
 
 // Tbs.dll provides an API for making calls to the TPM:
