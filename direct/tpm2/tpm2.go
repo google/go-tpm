@@ -387,6 +387,33 @@ type CreateLoadedResponse struct {
 // Response implements the Response interface.
 func (*CreateLoadedResponse) Response() tpm.CC { return tpm.CCCreateLoaded }
 
+// GetRandom is the input to TPM2_GetRandom.
+// See definition in Part 3, Commands, section 16.1
+type GetRandom struct {
+	BytesRequested uint16
+}
+
+// Command implements the Command interface.
+func (*GetRandom) Command() tpm.CC { return tpm.CCGetRandom }
+
+// Execute executes the command and returns the response.
+func (cmd *GetRandom) Execute(t transport.TPM, s ...Session) (*GetRandomResponse, error) {
+	var rsp GetRandomResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// GetRandomReponse is the reponse from TPM2_GetRandom
+type GetRandomResponse struct {
+	// the random octets
+	RandomBytes tpm2b.Digest
+}
+
+// Reponse implements the Response interface.
+func (*GetRandomResponse) Response() tpm.CC { return tpm.CCGetRandom }
+
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
 type Quote struct {
