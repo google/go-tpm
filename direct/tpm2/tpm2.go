@@ -290,6 +290,39 @@ type LoadExternalResponse struct {
 // Response implements the Response interface.
 func (*LoadExternalResponse) Response() tpm.CC { return tpm.CCLoadExternal }
 
+// ReadPublic is the input to TPM2_ReadPublic.
+// See definition in Part 3, Commands, section 12.4
+type ReadPublic struct {
+	// maybe its not this type
+	// tpm handle of an object
+	ObjectHandle tpmi.DHObject `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (*ReadPublic) Command() tpm.CC { return tpm.CCReadPublic }
+
+// Execute executes the command and returns the response.
+func (cmd *ReadPublic) Execute(t transport.TPM, s ...Session) (*ReadPublicResponse, error) {
+	var rsp ReadPublicResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ReadPublicResponse is the response from TPM2_SOMETHING.
+type ReadPublicResponse struct {
+	// public area of an object
+	OutPublic tpm2b.Public
+	// name of object
+	Name tpm2b.Name
+	// Qualified name of object
+	QualifiedName tpm2b.Name
+}
+
+// Response implements the Response interface.
+func (*ReadPublicResponse) Response() tpm.CC { return tpm.CCReadPublic }
+
 // Unseal is the input to TPM2_Unseal.
 // See definition in Part 3, Commands, section 12.7
 type Unseal struct {
