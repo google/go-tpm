@@ -187,6 +187,14 @@ type ECCParms = internal.TPMSECCParms
 // See definition in Part 2: Structures, section 13.5.
 type NVPublic = internal.TPMSNVPublic
 
+// ContextData represents a TPMS_CONTEXT_DATA
+// See definition in Part 2: Structures, section 14.3.
+type ContextData = internal.TPMSContextData
+
+// Context represents a TPMS_CONTEXT
+// See definition in Part 2: Structures, section 14.5.
+type Context = internal.TPMSContext
+
 // CreationData represents a TPMS_CREATION_DATA.
 // See definition in Part 2: Structures, section 15.1.
 type CreationData = internal.TPMSCreationData

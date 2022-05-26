@@ -1171,6 +1171,61 @@ type CreatePrimaryResponse struct {
 // Response implements the Response interface.
 func (*CreatePrimaryResponse) Response() tpm.CC { return tpm.CCCreatePrimary }
 
+// ContextSave is the input to TPM2_ContextSave.
+// See definition in Part 3, Commands, section 28.2
+type ContextSave struct {
+	// handle of the resource to save Auth Index: None
+	SaveHandle tpmi.DHContext
+}
+
+// Command implements the Command interface.
+func (*ContextSave) Command() tpm.CC { return tpm.CCContextSave }
+
+// Execute executes the command and returns the response.
+func (cmd *ContextSave) Execute(t transport.TPM, s ...Session) (*ContextSaveResponse, error) {
+	var rsp ContextSaveResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ContextSaveResponse is the response from TPM2_ContextSave.
+type ContextSaveResponse struct {
+	Context tpms.Context
+}
+
+// Response implements the Response interface.
+func (*ContextSaveResponse) Response() tpm.CC { return tpm.CCContextSave }
+
+// ContextLoad is the input to TPM2_ContextLoad.
+// See definition in Part 3, Commands, section 28.3
+type ContextLoad struct {
+	// the context blob
+	Context tpms.Context
+}
+
+// Command implements the Command interface.
+func (*ContextLoad) Command() tpm.CC { return tpm.CCContextLoad }
+
+// Execute executes the command and returns the response.
+func (cmd *ContextLoad) Execute(t transport.TPM, s ...Session) (*ContextLoadResponse, error) {
+	var rsp ContextLoadResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ContextLoadResponse is the response from TPM2_ContextLoad.
+type ContextLoadResponse struct {
+	// the handle assigned to the resource after it has been successfully loaded
+	LoadedHandle tpmi.DHContext
+}
+
+// Response implements the Response interface.
+func (*ContextLoadResponse) Response() tpm.CC { return tpm.CCContextLoad }
+
 // FlushContext is the input to TPM2_FlushContext.
 // See definition in Part 3, Commands, section 28.4
 type FlushContext struct {

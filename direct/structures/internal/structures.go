@@ -397,6 +397,10 @@ type TPMISHPolicy = TPMHandle
 // See definition in Part 2: Structures, section 9.11.
 type TPMIDHContext = TPMHandle
 
+// TPMIDHSaved represents a TPMI_DH_SAVED.
+// See definition in Part 2: Structures, section 9.12.
+type TPMIDHSaved = TPMHandle
+
 // TPMIRHHierarchy represents a TPMI_RH_HIERARCHY.
 // See definition in Part 2: Structures, section 9.13.
 type TPMIRHHierarchy = TPMHandle
@@ -1610,6 +1614,42 @@ type TPMSNVPublic struct {
 // See definition in Part 2: Structures, section 13.6.
 type TPM2BNVPublic struct {
 	NVPublic TPMSNVPublic `gotpm:"sized"`
+}
+
+// TPM2BContextSensitive represents a TPM2B_CONTEXT_SENSITIVE
+// See definition in Part 2: Structures, section 14.2.
+type TPM2BContextSensitive struct {
+	Size uint16
+	// the sensitive data
+	Buffer []byte
+}
+
+// TPMSContextData represents a TPMS_CONTEXT_DATA
+// See definition in Part 2: Structures, section 14.3.
+type TPMSContextData struct {
+	// the integrity value
+	Integrity TPM2BDigest
+	// the sensitive area
+	Encrypted TPM2BContextSensitive
+}
+
+// TPM2BContextData represents a TPM2B_CONTEXT_DATA
+// See definition in Part 2: Structures, section 14.4.
+type TPM2BContextData struct {
+	Buffer TPMSContextData `gotpm:"sized"`
+}
+
+// TPMSContext represents a TPMS_CONTEXT
+// See definition in Part 2: Structures, section 14.5.
+type TPMSContext struct {
+	// the sequence number of the context
+	Sequence uint64
+	// a handle indicating if the context is a session, object, or sequence object
+	SavedHandle TPMIDHSaved
+	// the hierarchy of the context
+	Hierarchy TPMIRHHierarchy
+	// the context data and integrity HMAC
+	ContextBlob TPM2BContextData
 }
 
 // TPM2BCreationData represents a TPM2B_CREATION_DATA.
