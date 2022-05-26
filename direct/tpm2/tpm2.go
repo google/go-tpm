@@ -390,6 +390,7 @@ func (*CreateLoadedResponse) Response() tpm.CC { return tpm.CCCreateLoaded }
 // GetRandom is the input to TPM2_GetRandom.
 // See definition in Part 3, Commands, section 16.1
 type GetRandom struct {
+	// number of octets to return
 	BytesRequested uint16
 }
 
@@ -405,7 +406,7 @@ func (cmd *GetRandom) Execute(t transport.TPM, s ...Session) (*GetRandomResponse
 	return &rsp, nil
 }
 
-// GetRandomReponse is the reponse from TPM2_GetRandom
+// GetRandomReponse is the reponse from TPM2_GetRandom.
 type GetRandomResponse struct {
 	// the random octets
 	RandomBytes tpm2b.Digest

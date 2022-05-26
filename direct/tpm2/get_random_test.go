@@ -20,5 +20,4 @@ func TestGetRandom(t *testing.T) {
 	if _, err := grc.Execute(thetpm); err != nil {
 		t.Fatalf("GetRandom failed: %v", err)
 	}
-
 }
