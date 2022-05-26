@@ -293,7 +293,7 @@ func (*LoadExternalResponse) Response() tpm.CC { return tpm.CCLoadExternal }
 // ReadPublic is the input to TPM2_ReadPublic.
 // See definition in Part 3, Commands, section 12.4
 type ReadPublic struct {
-	// tpm handle of an object
+	// TPM handle of an object, Auth Index: None
 	ObjectHandle tpmi.DHObject `gotpm:"handle"`
 }
 
@@ -311,11 +311,11 @@ func (cmd *ReadPublic) Execute(t transport.TPM, s ...Session) (*ReadPublicRespon
 
 // ReadPublicResponse is the response from TPM2_ReadPublic.
 type ReadPublicResponse struct {
-	// public area of an object
+	// structure containing the public area of an object
 	OutPublic tpm2b.Public
 	// name of object
 	Name tpm2b.Name
-	// Qualified name of object
+	// the Qualified Name of the object
 	QualifiedName tpm2b.Name
 }
 

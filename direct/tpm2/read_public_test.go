@@ -1,9 +1,9 @@
 package tpm2
 
 import (
-	"bytes"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
@@ -21,7 +21,6 @@ func TestReadPublicKey(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	// CreatePrimary Struct Params copied from policy_test.go
 	createPrimary := CreatePrimary{
 		PrimaryHandle: tpm.RHOwner,
 		InPublic: tpm2b.Public{
@@ -57,6 +56,9 @@ func TestReadPublicKey(t *testing.T) {
 		t.Fatalf("CreatePrimary failed: %v", err)
 	}
 
+	flushContext := FlushContext{FlushHandle: rspCP.ObjectHandle}
+	defer flushContext.Execute(thetpm)
+
 	readPublic := ReadPublic{
 		ObjectHandle: rspCP.ObjectHandle,
 	}
@@ -66,11 +68,10 @@ func TestReadPublicKey(t *testing.T) {
 		t.Fatalf("ReadPublic failed: %v", err)
 	}
 
-	rspCPXBuffer := rspCP.OutPublic.PublicArea.Unique.ECC.X.Buffer
-	rspRPXBuffer := rspRP.OutPublic.PublicArea.Unique.ECC.X.Buffer
+	rspCPUnique := rspCP.OutPublic.PublicArea.Unique
+	rspRPUnique := rspRP.OutPublic.PublicArea.Unique
 
-	// not comprehensive as the function to encode public area is not implemented yet
-	if !bytes.Equal(rspCPXBuffer, rspRPXBuffer) {
+	if !cmp.Equal(rspCPUnique, rspRPUnique) {
 		t.Error("Mismatch between public returned from CreatePrimary & ReadPublic")
 	}
 }
