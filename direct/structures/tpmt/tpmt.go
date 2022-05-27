@@ -19,6 +19,10 @@ type TKVerified = internal.TPMTTKVerified
 // See definition in Part 2: Structures, section 10.7.5.
 type TKAuth = internal.TPMTTKAuth
 
+// TPMTTKHashCheck represents a TPMT_TK_HASHCHECK.
+// See definition in Part 2: Structures, section 10.7.6.
+type TKHashCheck = internal.TPMTTKHashCheck
+
 // SymDef represents a TPMT_SYM_DEF.
 // See definition in Part 2: Structures, section 11.1.6.
 type SymDef = internal.TPMTSymDef

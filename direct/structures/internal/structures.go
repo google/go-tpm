@@ -540,6 +540,10 @@ type TPM2BTimeout TPM2BData
 // See definition in Part 2: Structures, section 10.4.5.
 type TPM2BAuth TPM2BDigest
 
+// TPM2BMaxBuffer represents a TPM2B_MAX_BUFFER.
+// See definition in Part 2: Structures, section 10.4.8.
+type TPM2BMaxBuffer TPM2BData
+
 // TPM2BMaxNVBuffer represents a TPM2B_MAX_NV_BUFFER.
 // See definition in Part 2: Structures, section 10.4.9.
 type TPM2BMaxNVBuffer TPM2BData
@@ -586,6 +590,17 @@ type TPMTTKAuth struct {
 	// ticket structure tag
 	Tag TPMST
 	// the hierarchy of the object used to produce the ticket
+	Hierarchy TPMIRHHierarchy
+	// This shall be the HMAC produced using a proof value of hierarchy.
+	Digest TPM2BDigest
+}
+
+// TPMTTKHashCheck represents a TPMT_TK_HASHCHECK.
+// See definition in Part 2: Structures, section 10.7.6.
+type TPMTTKHashCheck struct {
+	// ticket structure tag
+	Tag TPMST
+	// the hierarchy
 	Hierarchy TPMIRHHierarchy
 	// This shall be the HMAC produced using a proof value of hierarchy.
 	Digest TPM2BDigest
