@@ -387,6 +387,41 @@ type CreateLoadedResponse struct {
 // Response implements the Response interface.
 func (*CreateLoadedResponse) Response() tpm.CC { return tpm.CCCreateLoaded }
 
+// Hash is the input to TPM2_Hash.
+// See definition in Part 3, Commands, section 15.4
+type Hash struct {
+	//data to be hashed
+	Data tpm2b.MaxBuffer
+	// algorithm for the hash being computed - shall not be TPM_ALH_NULL
+	HashAlg tpmi.AlgHash
+	// hierarchy to use for the tickey (TPM_RH_NULL_allowed)
+	Hierarchy tpmi.RHHierarchy
+}
+
+// Command implements the Command interface.
+func (*Hash) Command() tpm.CC { return tpm.CCHash }
+
+// Execute executes the command and returns the response.
+func (cmd *Hash) Execute(t transport.TPM, s ...Session) (*HashResponse, error) {
+	var rsp HashResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// HashResponse is the response from TPM2_Hash.
+type HashResponse struct {
+	// results
+	OutHash tpm2b.Digest
+	// ticket indicating that the sequence of octets used to
+	// compute outDigest did not start with TPM_GENERATED_VALUE
+	Validation tpmt.TKHashCheck
+}
+
+// Response implements the Response interface.
+func (*HashResponse) Response() tpm.CC { return tpm.CCHash }
+
 // GetRandom is the input to TPM2_GetRandom.
 // See definition in Part 3, Commands, section 16.1
 type GetRandom struct {
@@ -414,6 +449,97 @@ type GetRandomResponse struct {
 
 // Reponse implements the Response interface.
 func (*GetRandomResponse) Response() tpm.CC { return tpm.CCGetRandom }
+
+// Quote is the input to TPM2_HashSequenceStart.
+// See definition in Part 3, Commands, section 17.3
+type HashSequenceStart struct {
+	// authorization value for subsequent use of the sequence
+	Auth tpm2b.Auth
+	// the hash algorithm to use for the hash sequence
+	// An Event Sequence starts if this is TPM_ALG_NULL.
+	HashAlg tpmi.AlgHash
+}
+
+// Command implements the Command interface.
+func (*HashSequenceStart) Command() tpm.CC { return tpm.CCHashSequenceStart }
+
+// Execute executes the command and returns the response.
+func (cmd *HashSequenceStart) Execute(t transport.TPM, s ...Session) (*HashSequenceStartResponse, error) {
+	var rsp HashSequenceStartResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// HashSequenceStartResponse is the response from TPM2_StartHashSequence.
+type HashSequenceStartResponse struct {
+	// a handle to reference the sequence
+	SequenceHandle tpmi.DHObject
+}
+
+// Response implements the Response interface.
+func (*HashSequenceStartResponse) Response() tpm.CC { return tpm.CCHashSequenceStart }
+
+// SequenceUpdate is the input to TPM2_SequenceUpdate.
+// See definition in Part 3, Commands, section 17.4
+type SequenceUpdate struct {
+	// handle for the sequence object Auth Index: 1 Auth Role: USER
+	SequenceHandle tpmi.DHObject
+	// data to be added to hash
+	Buffer tpm2b.MaxBuffer
+}
+
+// Command implements the Command interface.
+func (*SequenceUpdate) Command() tpm.CC { return tpm.CCSequenceUpdate }
+
+// Execute executes the command and returns the response.
+func (cmd *SequenceUpdate) Execute(t transport.TPM, s ...Session) (*SequenceUpdateResponse, error) {
+	var rsp SequenceUpdateResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// SequenceUpdateResponse is the response from TPM2_SequenceUpdate.
+type SequenceUpdateResponse struct{}
+
+// Response implements the Response interface.
+func (*SequenceUpdateResponse) Response() tpm.CC { return tpm.CCSequenceUpdate }
+
+// SequenceComplete is the input to TPM2_SequenceComplete.
+// See definition in Part 3, Commands, section 17.5
+type SequenceComplete struct {
+	// data to be added to the hash/HMAC
+	Buffer tpm2b.MaxBuffer
+	// hierarchy of the ticket for a hash
+	Hierarchy tpmi.RHHierarchy
+}
+
+// Command implements the Command interface.
+func (*SequenceComplete) Command() tpm.CC { return tpm.CCSequenceComplete }
+
+// Execute executes the command and returns the response.
+func (cmd *SequenceComplete) Execute(t transport.TPM, s ...Session) (*SequenceCompleteResponse, error) {
+	var rsp SequenceCompleteResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// SequenceCompleteResponse is the response from TPM2_SequenceComplete.
+type SequenceCompleteResponse struct {
+	// the returned HMAC or digest in a sized buffer
+	Result tpm2b.Digest
+	// 	ticket indicating that the sequence of octets used to
+	// compute outDigest did not start with TPM_GENERATED_VALUE
+	Validation tpmt.TKHashCheck
+}
+
+// Response implements the Response interface.
+func (*SequenceCompleteResponse) Response() tpm.CC { return tpm.CCSequenceComplete }
 
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
