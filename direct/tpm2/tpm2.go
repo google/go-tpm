@@ -485,7 +485,7 @@ func (*HashSequenceStartResponse) Response() tpm.CC { return tpm.CCHashSequenceS
 // See definition in Part 3, Commands, section 17.4
 type SequenceUpdate struct {
 	// handle for the sequence object Auth Index: 1 Auth Role: USER
-	SequenceHandle tpmi.DHObject
+	SequenceHandle handle `gotpm:"handle,auth"`
 	// data to be added to hash
 	Buffer tpm2b.MaxBuffer
 }
@@ -511,6 +511,8 @@ func (*SequenceUpdateResponse) Response() tpm.CC { return tpm.CCSequenceUpdate }
 // SequenceComplete is the input to TPM2_SequenceComplete.
 // See definition in Part 3, Commands, section 17.5
 type SequenceComplete struct {
+	// authorization for the sequence, Auth Index: 1, Auth Role: USER
+	SequenceHandle handle `gotpm:"handle,auth"`
 	// data to be added to the hash/HMAC
 	Buffer tpm2b.MaxBuffer
 	// hierarchy of the ticket for a hash

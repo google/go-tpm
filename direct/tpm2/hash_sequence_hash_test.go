@@ -56,9 +56,10 @@ func TestHashSequence(t *testing.T) {
 	}
 	defer thetpm.Close()
 
+	Auth := []byte("")
 	hashSequenceStart := HashSequenceStart{
 		Auth: tpm2b.Auth{
-			Buffer: []byte("InitialBuffer"),
+			Buffer: Auth,
 		},
 		HashAlg: tpm.AlgSHA256,
 	}
@@ -69,7 +70,12 @@ func TestHashSequence(t *testing.T) {
 	}
 
 	sequenceUpdate := SequenceUpdate{
-		SequenceHandle: rspHSS.SequenceHandle,
+		SequenceHandle: NamedHandle{
+			Handle: rspHSS.SequenceHandle,
+			Name: tpm2b.Name{
+				Buffer: Auth,
+			},
+		},
 		Buffer: tpm2b.MaxBuffer{
 			Buffer: []byte("UpdateBuffer"),
 		},
@@ -81,17 +87,20 @@ func TestHashSequence(t *testing.T) {
 	}
 
 	sequenceComplete := SequenceComplete{
+		SequenceHandle: NamedHandle{
+			Handle: rspHSS.SequenceHandle,
+			Name: tpm2b.Name{
+				Buffer: Auth,
+			},
+		},
 		Buffer: tpm2b.MaxBuffer{
 			Buffer: []byte("CompleteBuffer"),
 		},
 		Hierarchy: tpm.RHOwner,
 	}
 
-	rspSC, err := sequenceComplete.Execute(thetpm)
+	_, err = sequenceComplete.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("SequenceComplete failed: %v", err)
 	}
-
-	print(rspSC.Result.Buffer)
-
 }
