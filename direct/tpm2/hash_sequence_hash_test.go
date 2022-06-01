@@ -56,7 +56,7 @@ func TestHashSequence(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	Auth := []byte("")
+	Auth := []byte("password")
 	hashSequenceStart := HashSequenceStart{
 		Auth: tpm2b.Auth{
 			Buffer: Auth,
@@ -69,13 +69,16 @@ func TestHashSequence(t *testing.T) {
 		t.Fatalf("HashSequenceStart failed: %v", err)
 	}
 
-	sequenceUpdate := SequenceUpdate{
-		SequenceHandle: NamedHandle{
-			Handle: rspHSS.SequenceHandle,
-			Name: tpm2b.Name{
-				Buffer: Auth,
-			},
+	authHandle := AuthHandle{
+		Handle: rspHSS.SequenceHandle,
+		Name: tpm2b.Name{
+			Buffer: Auth,
 		},
+		Auth: PasswordAuth(Auth),
+	}
+
+	sequenceUpdate := SequenceUpdate{
+		SequenceHandle: authHandle,
 		Buffer: tpm2b.MaxBuffer{
 			Buffer: []byte("UpdateBuffer"),
 		},
@@ -87,12 +90,7 @@ func TestHashSequence(t *testing.T) {
 	}
 
 	sequenceComplete := SequenceComplete{
-		SequenceHandle: NamedHandle{
-			Handle: rspHSS.SequenceHandle,
-			Name: tpm2b.Name{
-				Buffer: Auth,
-			},
-		},
+		SequenceHandle: authHandle,
 		Buffer: tpm2b.MaxBuffer{
 			Buffer: []byte("CompleteBuffer"),
 		},
@@ -103,4 +101,6 @@ func TestHashSequence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SequenceComplete failed: %v", err)
 	}
+
+	// Add the check for wanted Digest and result Digest
 }
