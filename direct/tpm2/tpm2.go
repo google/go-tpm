@@ -521,6 +521,43 @@ type VerifySignatureResponse struct {
 // Response implements the Response interface.
 func (*VerifySignatureResponse) Response() tpm.CC { return tpm.CCVerifySignature }
 
+// Sign is the input to TPM2_Sign.
+// See definition in Part 3, Commands, section 20.2.
+type Sign struct {
+	// Handle of key that will perform signing, Auth Index: 1, Auth Role: USER
+	KeyHandle handle `gotpm:"handle,auth"`
+	// digest to be signed
+	Digest tpm2b.Digest
+	// signing scheme to use if the scheme for keyHandle is TPM_ALG_NULL
+	InScheme tpmt.SigScheme
+	// proof that digest was created by the TPM
+	// If keyHandle is not a restricted signing key, then this
+	// may be a NULL Ticket with tag =
+	// TPM_ST_CHECKHASH.
+	Validation tpmt.TKHashCheck
+}
+
+// Command implements the Command interface.
+func (*Sign) Command() tpm.CC { return tpm.CCSign }
+
+// Execute executes the command and returns the response.
+func (cmd *Sign) Execute(t transport.TPM, s ...Session) (*SignResponse, error) {
+	var rsp SignResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// SignResponse is the response from TPM2_Sign.
+type SignResponse struct {
+	// the signature
+	Signature tpmt.Signature
+}
+
+// Response implements the Response interface.
+func (*SignResponse) Response() tpm.CC { return tpm.CCSign }
+
 // PCRExtend is the input to TPM2_PCR_Extend.
 // See definition in Part 3, Commands, section 22.2
 type PCRExtend struct {

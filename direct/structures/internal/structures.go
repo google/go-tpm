@@ -586,10 +586,14 @@ type TPMTTKAuth struct {
 	// ticket structure tag
 	Tag TPMST
 	// the hierarchy of the object used to produce the ticket
-	Hierarchy TPMIRHHierarchy
+	Hierarchy TPMIRHHierarchy `gotpm:"nullable"`
 	// This shall be the HMAC produced using a proof value of hierarchy.
 	Digest TPM2BDigest
 }
+
+// TPMTTKHashCheck represents a TPMT_TK_HASHCHECK.
+// See definition in Part 2: Structures, section 10.7.6.
+type TPMTTKHashCheck = TPMTTKAuth
 
 // TPMSAlgProperty represents a TPMS_ALG_PROPERTY.
 // See definition in Part 2: Structures, section 10.8.1.
@@ -676,13 +680,13 @@ type TPMLDigestValues struct {
 	Digests []TPMTHA `gotpm:"list"`
 }
 
-// TPMLPCRSelection represents a TPML_PCRzSELECTION.
+// TPMLPCRSelection represents a TPML_PCR_SELECTION.
 // See definition in Part 2: Structures, section 10.9.7.
 type TPMLPCRSelection struct {
 	PCRSelections []TPMSPCRSelection `gotpm:"list"`
 }
 
-// TPMLAlgProperty represents a TPML_ALGzPROPERTY.
+// TPMLAlgProperty represents a TPML_ALG_PROPERTY.
 // See definition in Part 2: Structures, section 10.9.8.
 type TPMLAlgProperty struct {
 	AlgProperties []TPMSAlgProperty `gotpm:"list"`

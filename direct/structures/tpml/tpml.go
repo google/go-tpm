@@ -29,11 +29,11 @@ type Digest = internal.TPMLDigest
 // See definition in Part 2: Structures, section 10.9.6.
 type DigestValues = internal.TPMLDigestValues
 
-// PCRSelection represents a TPML_PCRzSELECTION.
+// PCRSelection represents a TPML_PCR_SELECTION.
 // See definition in Part 2: Structures, section 10.9.7.
 type PCRSelection = internal.TPMLPCRSelection
 
-// AlgProperty represents a TPML_ALGzPROPERTY.
+// AlgProperty represents a TPML_ALG_PROPERTY.
 // See definition in Part 2: Structures, section 10.9.8.
 type AlgProperty = internal.TPMLAlgProperty
 
