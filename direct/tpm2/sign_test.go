@@ -21,7 +21,7 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-func CreatetpmsPCRSelection(s []int) ([]byte, error) {
+func CreatePCRSelection(s []int) ([]byte, error) {
 
 	const sizeOfPCRSelect = 3
 
@@ -32,16 +32,16 @@ func CreatetpmsPCRSelection(s []int) ([]byte, error) {
 			return nil, fmt.Errorf("PCR index %d is out of range (exceeds maximum value %d)", n, 8*sizeOfPCRSelect-1)
 		}
 		byteNum := n / 8
-		bytePos := byte(1 << byte(n%8))
+		bytePos := byte(1 << (n % 8))
 		PCRs[byteNum] |= bytePos
 	}
 
 	return PCRs, nil
 }
 
-func TestCreatetpmsPCRSelection(t *testing.T) {
+func TestCreatePCRSelection(t *testing.T) {
 
-	emptyTest, err := CreatetpmsPCRSelection([]int{})
+	emptyTest, err := CreatePCRSelection([]int{})
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
@@ -50,10 +50,7 @@ func TestCreatetpmsPCRSelection(t *testing.T) {
 		t.Fatalf("emptyTest does not return valid PCRs")
 	}
 
-	// Debug this
-	filledTest, err := CreatetpmsPCRSelection([]int{0, 1, 2})
-	t.Log("hi")
-	t.Log(filledTest)
+	filledTest, err := CreatePCRSelection([]int{0, 1, 2})
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
@@ -71,7 +68,7 @@ func TestSign(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	PCR7, err := CreatetpmsPCRSelection([]int{7})
+	PCR7, err := CreatePCRSelection([]int{7})
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
