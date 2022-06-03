@@ -1,6 +1,9 @@
 package tpm2
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"math/rand"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -50,6 +53,8 @@ func TestHash(t *testing.T) {
 
 func TestHashSequence(t *testing.T) {
 
+	maxDigestBuffer := 1024
+
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
@@ -77,30 +82,42 @@ func TestHashSequence(t *testing.T) {
 		Auth: PasswordAuth(Auth),
 	}
 
-	sequenceUpdate := SequenceUpdate{
-		SequenceHandle: authHandle,
-		Buffer: tpm2b.MaxBuffer{
-			Buffer: []byte("UpdateBuffer"),
-		},
-	}
+	data := make([]byte, 2048)
+	rand.Read(data)
 
-	_, err = sequenceUpdate.Execute(thetpm)
-	if err != nil {
-		t.Fatalf("SequenceUpdate failed: %v", err)
+	wantDigest := sha256.Sum256(data)
+
+	for len(data) > maxDigestBuffer {
+		sequenceUpdate := SequenceUpdate{
+			SequenceHandle: authHandle,
+			Buffer: tpm2b.MaxBuffer{
+				Buffer: data[:maxDigestBuffer],
+			},
+		}
+		_, err = sequenceUpdate.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("SequenceUpdate failed: %v", err)
+		}
+
+		data = data[maxDigestBuffer:]
 	}
 
 	sequenceComplete := SequenceComplete{
 		SequenceHandle: authHandle,
 		Buffer: tpm2b.MaxBuffer{
-			Buffer: []byte("CompleteBuffer"),
+			Buffer: data,
 		},
 		Hierarchy: tpm.RHOwner,
 	}
 
-	_, err = sequenceComplete.Execute(thetpm)
+	rspSC, err := sequenceComplete.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("SequenceComplete failed: %v", err)
 	}
 
-	// Add the check for wanted Digest and result Digest
+	gotDigest := rspSC.Result.Buffer
+
+	if !bytes.Equal(gotDigest, wantDigest[:]) {
+		t.Errorf("The resulting digest %x, is not expectied %x", gotDigest, wantDigest)
+	}
 }
