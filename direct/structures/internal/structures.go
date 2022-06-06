@@ -601,7 +601,7 @@ type TPMTTKHashCheck struct {
 	// ticket structure tag
 	Tag TPMST
 	// the hierarchy
-	Hierarchy TPMIRHHierarchy
+	Hierarchy TPMIRHHierarchy `gotpm:"nullable"`
 	// This shall be the HMAC produced using a proof value of hierarchy.
 	Digest TPM2BDigest
 }
