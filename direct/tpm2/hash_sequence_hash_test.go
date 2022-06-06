@@ -118,6 +118,6 @@ func TestHashSequence(t *testing.T) {
 	gotDigest := rspSC.Result.Buffer
 
 	if !bytes.Equal(gotDigest, wantDigest[:]) {
-		t.Errorf("The resulting digest %x, is not expectied %x", gotDigest, wantDigest)
+		t.Errorf("The resulting digest %x, is not expected %x", gotDigest, wantDigest)
 	}
 }
