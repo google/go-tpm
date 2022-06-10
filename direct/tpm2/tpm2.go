@@ -662,7 +662,7 @@ type Sign struct {
 	// If keyHandle is not a restricted signing key, then this
 	// may be a NULL Ticket with tag =
 	// TPM_ST_CHECKHASH.
-	Validation tpmt.TKHashCheck
+	Validation tpmt.TKHashCheck 
 }
 
 // Command implements the Command interface.
