@@ -20,7 +20,7 @@ func (t *TPM) Send(input []byte) ([]byte, error) {
 }
 
 // OpenSimulator starts and opens a TPM simulator.
-func OpenSimulator() (transport.TPM, error) {
+func OpenSimulator() (transport.TPMCloser, error) {
 	sim, err := simulator.Get()
 	if err != nil {
 		return nil, err

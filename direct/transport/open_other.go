@@ -17,12 +17,12 @@ import (
 //
 // This function may also be invoked with no paths, as tpm2.OpenTPM(). In this
 // case, the default paths on Linux (/dev/tpmrm0 then /dev/tpm0), will be used.
-func OpenTPM(path ...string) (TPM, error) {
+func OpenTPM(path ...string) (TPMCloser, error) {
 	rwc, err := legacy.OpenTPM(path...)
 	if err != nil {
 		return nil, err
 	}
-	return &LocalTPM{
+	return &wrappedRWC{
 		transport: rwc,
 	}, nil
 }
