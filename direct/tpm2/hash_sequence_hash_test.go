@@ -48,6 +48,30 @@ func TestHash(t *testing.T) {
 	})
 }
 
+func TestHashNullHierarchy(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	data := []byte("carolyn")
+	hash := Hash{
+		Data:    tpm2b.MaxBuffer{Buffer: data},
+		HashAlg: tpm.AlgSHA256,
+	}
+	rspHash, err := hash.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Hash failed: %v", err)
+	}
+	gotDigest := rspHash.OutHash.Buffer
+	wantDigest := sha256.Sum256(data)
+
+	if !bytes.Equal(gotDigest, wantDigest[:]) {
+		t.Errorf("Hash(%q) returned digest %x, want %x", data, gotDigest, wantDigest)
+	}
+}
+
 func TestHashSequence(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
@@ -103,7 +127,7 @@ func TestHashSequence(t *testing.T) {
 			Buffer: tpm2b.MaxBuffer{
 				Buffer: data,
 			},
-			Hierarchy: tpm.RHOwner,
+			Hierarchy: hierarchy,
 		}
 
 		rspSC, err := sequenceComplete.Execute(thetpm)
@@ -126,6 +150,84 @@ func TestHashSequence(t *testing.T) {
 		})
 		t.Run(fmt.Sprintf("Owner hierarchy [bufferSize=%d]", bufferSize), func(t *testing.T) {
 			run(t, bufferSize, password, tpm.RHOwner, thetpm)
+		})
+	}
+}
+
+func TestHashSequenceNullHierarchy(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	run := func(t *testing.T, bufferSize int, password string, thetpm transport.TPM) {
+		maxDigestBuffer := 1024
+		Auth := []byte(password)
+
+		hashSequenceStart := HashSequenceStart{
+			Auth: tpm2b.Auth{
+				Buffer: Auth,
+			},
+			HashAlg: tpm.AlgSHA256,
+		}
+
+		rspHSS, err := hashSequenceStart.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("HashSequenceStart failed: %v", err)
+		}
+
+		authHandle := AuthHandle{
+			Handle: rspHSS.SequenceHandle,
+			Name: tpm2b.Name{
+				Buffer: Auth,
+			},
+			Auth: PasswordAuth(Auth),
+		}
+
+		data := make([]byte, bufferSize)
+		rand.Read(data)
+		wantDigest := sha256.Sum256(data)
+
+		for len(data) > maxDigestBuffer {
+			sequenceUpdate := SequenceUpdate{
+				SequenceHandle: authHandle,
+				Buffer: tpm2b.MaxBuffer{
+					Buffer: data[:maxDigestBuffer],
+				},
+			}
+			_, err = sequenceUpdate.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("SequenceUpdate failed: %v", err)
+			}
+
+			data = data[maxDigestBuffer:]
+		}
+
+		sequenceComplete := SequenceComplete{
+			SequenceHandle: authHandle,
+			Buffer: tpm2b.MaxBuffer{
+				Buffer: data,
+			},
+		}
+
+		rspSC, err := sequenceComplete.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("SequenceComplete failed: %v", err)
+		}
+
+		gotDigest := rspSC.Result.Buffer
+
+		if !bytes.Equal(gotDigest, wantDigest[:]) {
+			t.Errorf("The resulting digest %x, is not expected %x", gotDigest, wantDigest)
+		}
+	}
+	//  t *testing.T, bufferSize int, password string, hierarchy tpm.Handle, thetpm transport.TPM
+	bufferSizes := []int{512, 1024, 2048, 4096}
+	password := "password"
+	for _, bufferSize := range bufferSizes {
+		t.Run(fmt.Sprintf("Null hierarchy [bufferSize=%d]", bufferSize), func(t *testing.T) {
+			run(t, bufferSize, password, thetpm)
 		})
 	}
 }

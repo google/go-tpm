@@ -395,7 +395,7 @@ type Hash struct {
 	// algorithm for the hash being computed - shall not be TPM_ALH_NULL
 	HashAlg tpmi.AlgHash
 	// hierarchy to use for the tickey (TPM_RH_NULL_allowed)
-	Hierarchy tpmi.RHHierarchy
+	Hierarchy tpmi.RHHierarchy `gotpm:"nullable"`
 }
 
 // Command implements the Command interface.
@@ -516,7 +516,7 @@ type SequenceComplete struct {
 	// data to be added to the hash/HMAC
 	Buffer tpm2b.MaxBuffer
 	// hierarchy of the ticket for a hash
-	Hierarchy tpmi.RHHierarchy
+	Hierarchy tpmi.RHHierarchy `gotpm:"nullable"`
 }
 
 // Command implements the Command interface.
