@@ -506,7 +506,7 @@ func (s *AsymScheme) encode() ([]byte, error) {
 type SigScheme struct {
 	Alg   Algorithm
 	Hash  Algorithm
-	Count uint32
+	Count uint16
 }
 
 func (s *SigScheme) encode() ([]byte, error) {
