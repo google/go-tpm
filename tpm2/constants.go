@@ -426,7 +426,7 @@ const (
 	CurveNISTP384
 	CurveNISTP521
 
-	CurveBNP256 = EllipticCurve(iota + 10)
+	CurveBNP256 = EllipticCurve(0x10)
 	CurveBNP638
 
 	CurveSM2P256 = EllipticCurve(0x0020)
