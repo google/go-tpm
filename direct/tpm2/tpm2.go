@@ -394,7 +394,7 @@ type Hash struct {
 	Data tpm2b.MaxBuffer
 	// algorithm for the hash being computed - shall not be TPM_ALH_NULL
 	HashAlg tpmi.AlgHash
-	// hierarchy to use for the tickey (TPM_RH_NULL_allowed)
+	// hierarchy to use for the ticket (TPM_RH_NULL_allowed)
 	Hierarchy tpmi.RHHierarchy `gotpm:"nullable"`
 }
 

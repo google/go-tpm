@@ -141,7 +141,6 @@ func TestHashSequence(t *testing.T) {
 			t.Errorf("The resulting digest %x, is not expected %x", gotDigest, wantDigest)
 		}
 	}
-	//  t *testing.T, bufferSize int, password string, hierarchy tpm.Handle, thetpm transport.TPM
 	bufferSizes := []int{512, 1024, 2048, 4096}
 	password := "password"
 	for _, bufferSize := range bufferSizes {
