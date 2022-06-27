@@ -7,44 +7,73 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
+	"github.com/google/go-tpm/direct/structures/tpml"
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpmt"
 	"github.com/google/go-tpm/direct/structures/tpmu"
+	"github.com/google/go-tpm/direct/transport"
 	"github.com/google/go-tpm/direct/transport/simulator"
 )
 
-func CombinedContextTest(t *testing.T) {
+func ReadPublicName(t *testing.T, handle tpm.Handle, thetpm transport.TPM) tpm2b.Name {
+	readPublic := ReadPublic{
+		ObjectHandle: handle,
+	}
+
+	rspRP, err := readPublic.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Failed to read public: %v", err)
+	}
+
+	return rspRP.Name
+}
+
+func TestCombinedContext(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
 	defer thetpm.Close()
 
+	PCR7, err := CreatePCRSelection([]int{7})
+	if err != nil {
+		t.Fatalf("Failed to create PCRSelection")
+	}
+
 	createPrimary := CreatePrimary{
 		PrimaryHandle: tpm.RHOwner,
+
 		InPublic: tpm2b.Public{
 			PublicArea: tpmt.Public{
-				Type:    tpm.AlgECC,
+				Type:    tpm.AlgRSA,
 				NameAlg: tpm.AlgSHA256,
 				ObjectAttributes: tpma.Object{
+					SignEncrypt:         true,
 					FixedTPM:            true,
 					FixedParent:         true,
 					SensitiveDataOrigin: true,
 					UserWithAuth:        true,
-					SignEncrypt:         true,
 				},
 				Parameters: tpmu.PublicParms{
-					ECCDetail: &tpms.ECCParms{
-						Scheme: tpmt.ECCScheme{
-							Scheme: tpm.AlgECDSA,
+					RSADetail: &tpms.RSAParms{
+						Scheme: tpmt.RSAScheme{
+							Scheme: tpm.AlgRSASSA,
 							Details: tpmu.AsymScheme{
-								ECDSA: &tpms.SigSchemeECDSA{
+								RSASSA: &tpms.SigSchemeRSASSA{
 									HashAlg: tpm.AlgSHA256,
 								},
 							},
 						},
-						CurveID: tpm.ECCNistP256,
+						KeyBits: 2048,
 					},
+				},
+			},
+		},
+		CreationPCR: tpml.PCRSelection{
+			PCRSelections: []tpms.PCRSelection{
+				{
+					Hash:      tpm.AlgSHA1,
+					PCRSelect: PCR7,
 				},
 			},
 		},
@@ -52,67 +81,37 @@ func CombinedContextTest(t *testing.T) {
 
 	rspCP, err := createPrimary.Execute(thetpm)
 	if err != nil {
-		t.Fatalf("CreatePrimary failed: %v", err)
+		t.Fatalf("could not create key: %v", err)
 	}
 
-	flushContextCP := FlushContext{FlushHandle: rspCP.ObjectHandle}
-	defer flushContextCP.Execute(thetpm)
-
-	cl := CreateLoaded{
-		ParentHandle: rspCP.ObjectHandle,
-		InPublic: tpm2b.Template{
-			Template: tpmt.Public{
-				Type:    tpm.AlgKeyedHash,
-				NameAlg: tpm.AlgSHA256,
-				ObjectAttributes: tpma.Object{
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-					Decrypt:             true,
-					Restricted:          true,
-				},
-				Parameters: tpmu.PublicParms{
-					KeyedHashDetail: &tpms.KeyedHashParms{
-						Scheme: tpmt.KeyedHashScheme{
-							Scheme: tpm.AlgXOR,
-							Details: tpmu.SchemeKeyedHash{
-								XOR: &tpms.SchemeXOR{
-									HashAlg: tpm.AlgSHA256,
-									KDF:     tpm.AlgKDF1SP800108,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	rspCrL, err := cl.Execute(thetpm)
-	if err != nil {
-		t.Fatalf("could not create derivation parent: %v:", err)
-	}
+	flushContextObject := FlushContext{FlushHandle: rspCP.ObjectHandle}
+	defer flushContextObject.Execute(thetpm)
 
 	contextSave := ContextSave{
-		SaveHandle: rspCrL.ObjectHandle,
+		SaveHandle: rspCP.ObjectHandle,
 	}
+
 	rspCS, err := contextSave.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("ContextSave failed: %v", err)
 	}
 
-	flushContextCL := FlushContext{FlushHandle: rspCrL.ObjectHandle}
-	flushContextCL.Execute(thetpm)
-
 	contextLoad := ContextLoad{
 		Context: rspCS.Context,
 	}
 
-	rspCoL, err := contextLoad.Execute(thetpm)
+	rspCL, err := contextLoad.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("ContextLoad failed: %v", err)
 	}
 
-	if !cmp.Equal(rspCoL.LoadedHandle, rspCrL.ObjectHandle) {
+	flushContextLoaded := FlushContext{FlushHandle: rspCL.LoadedHandle}
+	defer flushContextLoaded.Execute(thetpm)
+
+	rspCLName := ReadPublicName(t, rspCL.LoadedHandle, thetpm)
+	rspCPName := ReadPublicName(t, rspCP.ObjectHandle, thetpm)
+
+	if !cmp.Equal(rspCLName, rspCPName) {
 		t.Error("Mismatch between public returned from ContextLoad & CreateLoaded")
 	}
 }
