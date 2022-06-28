@@ -420,14 +420,14 @@ type EllipticCurve uint16
 
 // ECC curves supported by TPM 2.0 spec.
 const (
-	CurveNISTP192 = EllipticCurve(iota + 1)
-	CurveNISTP224
-	CurveNISTP256
-	CurveNISTP384
-	CurveNISTP521
+	CurveNISTP192 = EllipticCurve(0x0001)
+	CurveNISTP224 = EllipticCurve(0x0002)
+	CurveNISTP256 = EllipticCurve(0x0003)
+	CurveNISTP384 = EllipticCurve(0x0004)
+	CurveNISTP521 = EllipticCurve(0x0005)
 
-	CurveBNP256 = EllipticCurve(0x10)
-	CurveBNP638
+	CurveBNP256 = EllipticCurve(0x0010)
+	CurveBNP638 = EllipticCurve(0x0011)
 
 	CurveSM2P256 = EllipticCurve(0x0020)
 )
