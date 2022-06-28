@@ -18,50 +18,49 @@ type TPMCloser interface {
 	io.Closer
 }
 
-// The wrappedRW represents a struct that wraps an io.ReadWriter
-// to function like a transport.TPM.
+
+// wrappedRW represents a struct that wraps an io.ReadWriter
+// to a transport.TPM to be compatible with tpmdirect.
 type wrappedRW struct {
 	transport io.ReadWriter
 }
 
-// The wrappedRWC represents a struct that wraps an io.ReadWriteCloser
-// to function like a transport.TPM with the close function.
+// wrappedRWC represents a struct that wraps an io.ReadWriteCloser
+// to a transport.TPM to be compatible with tpmdirect.
 type wrappedRWC struct {
 	transport io.ReadWriteCloser
 }
 
-// The wrappedTPM represents a struct that wraps a transport.TPM 
-// to function like a io.ReadWriter
+// wrappedTPM represents a struct that wraps a transport.TPM's underlying 
+// transport to use with legacy code that expects an io.ReadWriter.
 type wrappedTPM struct {
 	response []byte
 	tpm      TPM
 }
 
-// FromReadWritter takes in a io.ReadWriter TPM and returns a
-// transport.TPm wrapping the io.ReadWriter.
+// FromReadWriter takes in a io.ReadWriter and returns a
+// transport.TPM wrapping the io.ReadWriter.
 func FromReadWriter(rw io.ReadWriter) TPM {
 	return &wrappedRW{transport: rw}
 }
 
-// ToReadWritter takes in a transport TPM and returns an
+// ToReadWriter takes in a transport TPM and returns an
 // io.ReadWriter wrapping the transport TPM.
 func ToReadWriter(tpm TPM) io.ReadWriter {
 	return &wrappedTPM{tpm: tpm}
 }
 
 // Read copies t.response into the p buffer and return the appropriate length.
-func (t *wrappedTPM) Read(p []byte) (n int, err error) {
-	p = t.response
-	return len(p), nil
+func (t *wrappedTPM) Read(p []byte) (int, error) {
+	n := copy(p, t.response)
+	t.response = t.response[n:]
+	if len(t.response) == 0 {
+		return n, io.EOF
+	}
+	return n, nil
 }
 
-// Write writes len(p) bytes from p to the underlying data stream.
-// It returns the number of bytes written from p (0 <= n <= len(p))
-// and any error encountered that caused the write to stop early.
-// Write must return a non-nil error if it returns n < len(p).
-// Write must not modify the slice data, even temporarily.
-//
-// Implementations must not retain p.
+// Write implements the io.ReadWriter interface.
 func (t *wrappedTPM) Write(p []byte) (n int, err error) {
 	t.response, err = t.tpm.Send(p)
 	if err != nil {
