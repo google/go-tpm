@@ -660,8 +660,7 @@ type Sign struct {
 	InScheme tpmt.SigScheme
 	// proof that digest was created by the TPM
 	// If keyHandle is not a restricted signing key, then this
-	// may be a NULL Ticket with tag =
-	// TPM_ST_CHECKHASH.
+	// may be a NULL Ticket with tag = TPM_ST_CHECKHASH.
 	Validation tpmt.TKHashCheck
 }
 

@@ -159,6 +159,12 @@ type responseHeader struct {
 // A Handle is a reference to a TPM object.
 type Handle uint32
 
+// HandleValue returns the handle value. This behavior is intended to satisfy
+// an interface that can be implemented by other, more complex types as well.
+func (h Handle) HandleValue() uint32 {
+	return uint32(h)
+}
+
 type handleList []Handle
 
 func (l *handleList) TPMMarshal(out io.Writer) error {
