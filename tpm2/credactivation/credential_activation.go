@@ -87,10 +87,11 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	if err != nil {
 		return nil, nil, fmt.Errorf("encoding aikName: %v", err)
 	}
-	symmetricKey, err := tpm2.KDFa(aik.Alg, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
+	h, err := aik.Alg.Hash()
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating symmetric key: %v", err)
 	}
+	symmetricKey := tpm2.KDFaHash(h, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
 	c, err := aes.NewCipher(symmetricKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("symmetric cipher setup: %v", err)
@@ -107,10 +108,7 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
 	// See section 24.5 of the TPM specification revision 2 part 1.
-	macKey, err := tpm2.KDFa(aik.Alg, seed, labelIntegrity, nil, nil, crypothash.Size()*8)
-	if err != nil {
-		return nil, nil, fmt.Errorf("generating HMAC key: %v", err)
-	}
+	macKey := tpm2.KDFaHash(h, seed, labelIntegrity, nil, nil, crypothash.Size()*8)
 
 	mac := hmac.New(crypothash.New, macKey)
 	mac.Write(encIdentity)

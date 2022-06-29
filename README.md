@@ -19,6 +19,11 @@ The `tpm2` directory contains TPM 2.0 client library.
 The `examples` directory contains some simple examples for both versions of the
 spec.
 
+The `direct` directory contains the prototype "TPMDirect" TPM 2.0 API, which is
+intended to (eventually) be 1:1 with the TPM 2.0 spec. Please report issues,
+complaints, or suggestions using the label
+https://github.com/google/go-tpm/labels/tpmdirect.
+
 ## TPM 1.2
 
 TPM 1.2 support currently has no maintainer. None of the TPM 2.0 maintainers
