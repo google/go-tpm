@@ -103,6 +103,10 @@ type SensitiveCreate = internal.TPMSSensitiveCreate
 // See definition in Part 2: Structures, section 11.1.17.
 type SchemeHash = internal.TPMSSchemeHash
 
+// SchemeECDAA represents a TPMS_SCHEME_ECDAA.
+// See definition in Part 2: Structures, section 11.1.18.
+type SchemeECDAA = internal.TPMSSchemeECDAA
+
 // SchemeHMAC represents a TPMS_SCHEME_HMAC.
 // See definition in Part 2: Structures, section 11.1.20.
 type SchemeHMAC = internal.TPMSSchemeHMAC
