@@ -1044,7 +1044,7 @@ type TPMSSchemeECDAA struct {
 }
 
 // TPMIAlgKeyedHashScheme represents a TPMI_ALG_KEYEDHASH_SCHEME.
-// See definition in Part 2: Structures, section 11.1.10.
+// See definition in Part 2: Structures, section 11.1.19.
 type TPMIAlgKeyedHashScheme = TPMAlgID
 
 // TPMSSchemeHMAC represents a TPMS_SCHEME_HMAC.
