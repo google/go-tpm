@@ -1033,6 +1033,16 @@ type TPMSSchemeHash struct {
 	HashAlg TPMIAlgHash
 }
 
+// TPM represents a TPMS_SCHEME_ECDAA.
+// See definition in Part 2: Structures, section 11.1.18.
+type TPMSSchemeECDAA struct {
+	// the hash algorithm used to digest the message
+	HashAlg TPMIAlgHash
+	// the counter value that is used between TPM2_Commit()
+	// and the sign operation
+	Count uint16
+}
+
 // TPMIAlgKeyedHashScheme represents a TPMI_ALG_KEYEDHASH_SCHEME.
 // See definition in Part 2: Structures, section 11.1.10.
 type TPMIAlgKeyedHashScheme = TPMAlgID
