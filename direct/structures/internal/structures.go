@@ -1044,7 +1044,7 @@ type TPMSSchemeHash struct {
 	HashAlg TPMIAlgHash
 }
 
-// TPM represents a TPMS_SCHEME_ECDAA.
+// TPMSSchemeECDAA represents a TPMS_SCHEME_ECDAA.
 // See definition in Part 2: Structures, section 11.1.18.
 type TPMSSchemeECDAA struct {
 	// the hash algorithm used to digest the message
