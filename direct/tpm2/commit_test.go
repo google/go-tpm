@@ -69,6 +69,51 @@ func TestCommit(t *testing.T) {
 
 	rspCP, err := createPrimary.Execute(thetpm)
 	if err != nil {
+		t.Fatalf("could not create primary key: %v", err)
+	}
+
+	create := Create{
+		ParentHandle: NamedHandle{
+			Handle: rspCP.ObjectHandle,
+			Name:   rspCP.Name,
+		},
+		InPublic: tpm2b.Public{
+			PublicArea: tpmt.Public{
+				Type:    tpm.AlgECC,
+				NameAlg: tpm.AlgSHA1,
+				ObjectAttributes: tpma.Object{
+					FixedTPM:            true,
+					FixedParent:         true,
+					UserWithAuth:        true,
+					SensitiveDataOrigin: true,
+					SignEncrypt:         true,
+				},
+				Parameters: tpmu.PublicParms{
+					ECCDetail: &tpms.ECCParms{
+						Symmetric: tpmt.SymDefObject{
+							Algorithm: tpm.AlgNull,
+						},
+						Scheme: tpmt.ECCScheme{
+							Scheme: tpm.AlgECDAA,
+							Details: tpmu.AsymScheme{
+								ECDAA: &tpms.SigSchemeECDAA{
+									HashAlg: tpm.AlgSHA1,
+									Count:   0,
+								},
+							},
+						},
+						CurveID: tpm.ECCBNP256,
+						KDF: tpmt.KDFScheme{
+							Scheme: tpm.AlgNull,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err = create.Execute(thetpm)
+	if err != nil {
 		t.Fatalf("could not create key: %v", err)
 	}
 
