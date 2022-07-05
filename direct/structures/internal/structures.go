@@ -1097,13 +1097,18 @@ type TPMSSigSchemeRSAPSS TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.1.3.
 type TPMSSigSchemeECDSA TPMSSchemeHash
 
+// TPMSSigSchemeECDAA represents a TPMS_SIG_SCHEME_ECDAA.
+// See definition in Part 2: Structures, section 11.2.1.3.
+type TPMSSigSchemeECDAA TPMSSchemeECDAA
+
 // TPMUSigScheme represents a TPMU_SIG_SCHEME.
 // See definition in Part 2: Structures, section 11.2.1.4.
 type TPMUSigScheme struct {
-	HMAC   *TPMSSchemeHMAC `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
-	RSASSA *TPMSSchemeHash `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
-	RSAPSS *TPMSSchemeHash `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
-	ECDSA  *TPMSSchemeHash `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
+	HMAC   *TPMSSchemeHMAC  `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
+	RSASSA *TPMSSchemeHash  `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
+	RSAPSS *TPMSSchemeHash  `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
+	ECDSA  *TPMSSchemeHash  `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
+	ECDAA  *TPMSSchemeECDAA `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
 }
 
 // TPMTSigScheme represents a TPMT_SIG_SCHEME.
@@ -1174,6 +1179,7 @@ type TPMUAsymScheme struct {
 	OAEP   *TPMSEncSchemeOAEP   `gotpm:"selector=0x0017"` // TPM_ALG_OAEP
 	ECDSA  *TPMSSigSchemeECDSA  `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
 	ECDH   *TPMSKeySchemeECDH   `gotpm:"selector=0x0019"` // TPM_ALG_ECDH
+	ECDAA  *TPMSSigSchemeECDAA  `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
 }
 
 // TPMIAlgRSAScheme represents a TPMI_ALG_RSA_SCHEME.
