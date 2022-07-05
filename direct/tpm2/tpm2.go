@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpmt"
 	"github.com/google/go-tpm/direct/transport"
+	"github.com/google/go-tpm/tpm2"
 )
 
 // handle represents a TPM handle as comprehended in Part 3: Commands.
@@ -617,6 +618,41 @@ type GetSessionAuditDigestResponse struct {
 
 // Response implements the Response interface.
 func (*GetSessionAuditDigestResponse) Response() tpm.CC { return tpm.CCGetSessionAuditDigest }
+
+// Commit is the input to TPM2_Commit.
+// See definition in Part 3, Commands, section 19.2
+type Commit struct {
+	SignHandle handle `gotpm:"handle"`
+	P1         *tpm2.ECPoint
+	S2         *tpm2b.SensitiveData
+	Y2         *tpm2.ECCParams
+	Count      uint16
+}
+
+// Command implements the Command interface.
+func (*Commit) Command() tpm.CC { return tpm.CCCommit }
+
+// Execute executes the command and returns the response.
+func (cmd *Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, error) {
+	var rsp CommitResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+
+	return &rsp, nil
+}
+
+// CommitResponse is the response from TPM2_Commit.
+type CommitResponse struct {
+	// the data read
+	K     tpm2.ECPoint
+	L     tpm2.ECPoint
+	E     tpm2.ECPoint
+	Count uint16
+}
+
+// Response implements the Response interface.
+func (*CommitResponse) Response() tpm.CC { return tpm.CCCommit }
 
 // VerifySignature is the input to TPM2_VerifySignature.
 // See definition in Part 3, Commands, section 20.1
