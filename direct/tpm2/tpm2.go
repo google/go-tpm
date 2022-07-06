@@ -928,7 +928,7 @@ func (p *PolicyPCR) Update(policy *PolicyCalculator) error {
 	return policy.Update(tpm.CCPolicyPCR, p.Pcrs, p.PcrDigest.Buffer)
 }
 
-// PolicyOrResponse is the response from TPM2_PolicyPCR.
+// PolicyPCRResponse is the response from TPM2_PolicyPCR.
 type PolicyPCRResponse struct{}
 
 // Response implements the Response interface.
