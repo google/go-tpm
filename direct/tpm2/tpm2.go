@@ -620,12 +620,12 @@ type GetSessionAuditDigestResponse struct {
 func (*GetSessionAuditDigestResponse) Response() tpm.CC { return tpm.CCGetSessionAuditDigest }
 
 // Commit is the input to TPM2_Commit.
-// See definition in Part 3, Commands, section 19.2
+// See definition in Part 3, Commands, section 19.2.
 type Commit struct {
-	SignHandle handle `gotpm:"handle"`
-	P1         *tpm2.ECPoint
-	S2         *tpm2b.SensitiveData
-	Y2         *tpm2.ECCParams
+	SignHandle handle `gotpm:"handle, auth"`
+	P1         tpm2b.ECCPoint
+	S2         tpm2b.SensitiveData
+	Y2         tpm2b.ECCParameter
 	Count      uint16
 }
 
