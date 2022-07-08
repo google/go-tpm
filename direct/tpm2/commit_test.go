@@ -69,6 +69,39 @@ func TestCommit(t *testing.T) {
 		t.Fatalf("could not create key: %v", err)
 	}
 
+	commit := Commit{
+		SignHandle: AuthHandle{
+			Handle: rspC.ObjectHandle,
+			Name:   rspC.Name,
+			Auth:   PasswordAuth(password),
+		},
+		P1: tpm2b.ECCPoint{
+			Point: tpms.ECCPoint{
+				X: tpm2b.ECCParameter{
+					Buffer: []byte{
+						0x1, 0x1,
+					},
+				},
+				Y: tpm2b.ECCParameter{
+					Buffer: []byte{0x1, 0x1},
+				},
+			},
+			Size: 8,
+		},
+		S2: tpm2b.SensitiveData{
+			Buffer: []byte{},
+		},
+		Y2: tpm2b.ECCParameter{
+			Buffer: []byte{},
+		},
+		Count: 0,
+	}
+
+	_, err = commit.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("could not commit: %v", err)
+	}
+
 	flushContext := FlushContext{FlushHandle: rspC.ObjectHandle}
 	defer flushContext.Execute(thetpm)
 }
