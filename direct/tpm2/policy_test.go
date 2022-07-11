@@ -290,7 +290,7 @@ func getExpectedPCRDigest(t *testing.T, thetpm transport.TPM, selection tpml.PCR
 
 	pcrReadRsp, err := pcrRead.Execute(thetpm)
 	if err != nil {
-		t.Fatalf("Failed to read PCRSelection")
+		t.Fatalf("failed to read PCRs")
 	}
 
 	var expectedVal []byte
@@ -299,6 +299,10 @@ func getExpectedPCRDigest(t *testing.T, thetpm transport.TPM, selection tpml.PCR
 	}
 
 	cryptoHashAlg, err := hashAlg.Hash()
+	if err != nil {
+		t.Fatalf("failed to get crypto hash")
+	}
+
 	hash := cryptoHashAlg.New()
 	hash.Write(expectedVal)
 	return hash.Sum(nil)
@@ -315,6 +319,7 @@ func TestPolicyPCR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
+
 	selection := tpml.PCRSelection{
 		PCRSelections: []tpms.PCRSelection{
 			{
@@ -325,7 +330,6 @@ func TestPolicyPCR(t *testing.T) {
 	}
 
 	expectedDigest := getExpectedPCRDigest(t, thetpm, selection, tpm.AlgSHA1)
-	t.Logf("expectedDigest=%x", expectedDigest)
 
 	wrongDigest := sha1.Sum(expectedDigest[:])
 
@@ -366,7 +370,7 @@ func TestPolicyPCR(t *testing.T) {
 				}
 			} else {
 				if err == nil {
-					t.Fatalf("failing test PolicyPCR is passing")
+					t.Fatalf("expected PolicyPCR to return error, got nil")
 				}
 				return
 			}
@@ -385,13 +389,7 @@ func TestPolicyPCR(t *testing.T) {
 				t.Logf("expectedDigest=%x", expectedDigest)
 
 				// Create a populated policyPCR for the PolicyCalculator
-				policyPCR = PolicyPCR{
-					PolicySession: sess.Handle(),
-					PcrDigest: tpm2b.Digest{
-						Buffer: expectedDigest[:],
-					},
-					Pcrs: selection,
-				}
+				policyPCR.PcrDigest.Buffer = expectedDigest[:]
 			}
 
 			// Use the policy helper to calculate the same policy
@@ -406,7 +404,6 @@ func TestPolicyPCR(t *testing.T) {
 				t.Errorf("policyPCR.Hash() = %x,\nwant %x", got.Digest, want.PolicyDigest.Buffer)
 			}
 
-			t.Helper()
 			if err := cleanup2(); err != nil {
 				t.Errorf("cleaning up policy session: %v", err)
 			}
