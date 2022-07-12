@@ -20,7 +20,9 @@ import (
 const (
 	// Chosen based on MAX_DIGEST_BUFFER, the length of the longest
 	// reasonable list returned by the reference implementation.
-	maxListLength uint32 = 1024
+	// The maxListLength must be greater than MAX_CONTEXT_SIZE = 1344, 
+	// in order to allow for the unmarshalling of Context.
+	maxListLength uint32 = 4096
 )
 
 // execute sends the provided command and returns the TPM's response.
