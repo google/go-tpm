@@ -543,6 +543,42 @@ type SequenceCompleteResponse struct {
 // Response implements the Response interface.
 func (*SequenceCompleteResponse) Response() tpm.CC { return tpm.CCSequenceComplete }
 
+// Certify is the input to TPM2_Certify.
+// See definition in Part 3, Commands, section 18.2.
+type Certify struct {
+	// handle of the object to be certified, Auth Index: 1, Auth Role: ADMIN
+	ObjectHandle handle `gotpm:"handle,auth"`
+	// handle of the key used to sign the attestation structure, Auth Index: 2, Auth Role: USER
+	SignHandle handle `gotpm:"handle,auth"`
+	// user provided qualifying data
+	QualifyingData tpm2b.Data
+	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
+	InScheme tpmt.SigScheme
+ }
+  
+ // Command implements the Command interface.
+ func (*Certify) Command() tpm.CC { return tpm.CCCertify }
+  
+ // Execute executes the command and returns the response.
+ func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
+	var rsp CertifyResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+ }
+  
+ // CertifyResponse is the response from TPM2_Certify.
+ type CertifyResponse struct {
+	// the structure that was signed
+	CertifyInfo tpm2b.Attest
+	// the asymmetric signature over certifyInfo using the key referenced by signHandle
+	Signature tpmt.Signature
+ }
+  
+ // Response implements the Response interface.
+ func (*CertifyResponse) Response() tpm.CC { return tpm.CCCertify } 
+
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
 type Quote struct {
