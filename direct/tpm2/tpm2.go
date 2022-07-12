@@ -378,7 +378,7 @@ type CreateLoadedResponse struct {
 	// handle of type TPM_HT_TRANSIENT for loaded object
 	ObjectHandle tpm.Handle `gotpm:"handle"`
 	// the sensitive area of the object (optional)
-	OutPrivate *tpm2b.Private `gotpm:"optional"`
+	OutPrivate tpm2b.Private `gotpm:"optional"`
 	// the public portion of the created object
 	OutPublic tpm2b.Public
 	// the name of the created object
