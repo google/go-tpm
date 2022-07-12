@@ -902,6 +902,38 @@ type PolicyOrResponse struct{}
 // Response implements the Response interface.
 func (*PolicyOrResponse) Response() tpm.CC { return tpm.CCPolicyOR }
 
+// PolicyPCR is the input to TPM2_PolicyPCR.
+// See definition in Part 3, Commands, section 23.7.
+type PolicyPCR struct {
+	// handle for the policy session being extended
+	PolicySession handle `gotpm:"handle"`
+	// expected digest value of the selected PCR using the
+	// hash algorithm of the session; may be zero length
+	PcrDigest tpm2b.Digest
+	// the PCR to include in the check digest
+	Pcrs tpml.PCRSelection
+}
+
+// Command implements the Command interface.
+func (*PolicyPCR) Command() tpm.CC { return tpm.CCPolicyPCR }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyPCR) Execute(t transport.TPM, s ...Session) error {
+	var rsp PolicyPCRResponse
+	return execute(t, cmd, &rsp, s...)
+}
+
+// Update implements the PolicyCommand interface.
+func (p *PolicyPCR) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyPCR, p.Pcrs, p.PcrDigest.Buffer)
+}
+
+// PolicyPCRResponse is the response from TPM2_PolicyPCR.
+type PolicyPCRResponse struct{}
+
+// Response implements the Response interface.
+func (*PolicyPCRResponse) Response() tpm.CC { return tpm.CCPolicyPCR }
+
 // PolicyCommandCode is the input to TPM2_PolicyCommandCode.
 // See definition in Part 3, Commands, section 23.11.
 type PolicyCommandCode struct {
