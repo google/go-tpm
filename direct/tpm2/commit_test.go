@@ -3,6 +3,7 @@ package tpm2
 import (
 	"testing"
 
+	"github.com/google/go-tpm/direct/helpers"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
 	"github.com/google/go-tpm/direct/structures/tpma"
@@ -18,10 +19,61 @@ func TestCommit(t *testing.T) {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
 
-	password := []byte{1, 2, 3}
+	password := []byte("hello")
+
+	primary := CreateLoaded{
+		ParentHandle: tpm.RHEndorsement,
+		InSensitive: tpm2b.SensitiveCreate{
+			Sensitive: tpms.SensitiveCreate{
+				UserAuth: tpm2b.Auth{
+					Buffer: password,
+				},
+			},
+		},
+		InPublic: tpm2b.Template{
+			Template: tpmt.Public{
+				Type:    tpm.AlgECC,
+				NameAlg: tpm.AlgSHA1,
+				ObjectAttributes: tpma.Object{
+					FixedTPM:            true,
+					FixedParent:         true,
+					SensitiveDataOrigin: true,
+					UserWithAuth:        true,
+					Decrypt:             true,
+					Restricted:          true,
+				},
+				Parameters: tpmu.PublicParms{
+					ECCDetail: &tpms.ECCParms{
+						Symmetric: tpmt.SymDefObject{
+							Algorithm: tpm.AlgAES,
+							KeyBits: tpmu.SymKeyBits{
+								AES: helpers.NewKeyBits(128),
+							},
+							Mode: tpmu.SymMode{
+								AES: helpers.NewAlgID(tpm.AlgCFB),
+							},
+						},
+						CurveID: tpm.ECCNistP256,
+						KDF: tpmt.KDFScheme{
+							Scheme: tpm.AlgNull,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	rspCP, err := primary.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("could not create key: %v", err)
+	}
 
 	create := CreateLoaded{
-		ParentHandle: tpm.RHEndorsement,
+		ParentHandle: AuthHandle{
+			Handle: rspCP.ObjectHandle,
+			Name:   rspCP.Name,
+			Auth:   PasswordAuth(password),
+		},
 		InSensitive: tpm2b.SensitiveCreate{
 			Sensitive: tpms.SensitiveCreate{
 				UserAuth: tpm2b.Auth{
@@ -50,7 +102,7 @@ func TestCommit(t *testing.T) {
 							Details: tpmu.AsymScheme{
 								ECDAA: &tpms.SigSchemeECDAA{
 									HashAlg: tpm.AlgSHA1,
-									Count:   0,
+									Count:   1,
 								},
 							},
 						},
