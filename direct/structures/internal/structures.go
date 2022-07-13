@@ -1223,8 +1223,7 @@ type TPMSECCPoint struct {
 // TPM2BECCPoint represents a TPM2B_ECC_POINT.
 // See definition in Part 2: Structures, section 11.2.5.3.
 type TPM2BECCPoint struct {
-	Size  uint16
-	Point TPMSECCPoint
+	Point TPMSECCPoint `gotpm:"sized"`
 }
 
 // TPMIAlgECCScheme represents a TPMI_ALG_ECC_SCHEME.
