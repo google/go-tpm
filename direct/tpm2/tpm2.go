@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/direct/structures/tpmt"
 	"github.com/google/go-tpm/direct/transport"
-	"github.com/google/go-tpm/tpm2"
 )
 
 // handle represents a TPM handle as comprehended in Part 3: Commands.
@@ -645,9 +644,9 @@ func (cmd *Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, erro
 // CommitResponse is the response from TPM2_Commit.
 type CommitResponse struct {
 	// the data read
-	K     tpm2.ECPoint
-	L     tpm2.ECPoint
-	E     tpm2.ECPoint
+	K     tpm2b.ECCPoint
+	L     tpm2b.ECCPoint
+	E     tpm2b.ECCPoint
 	Count uint16
 }
 
