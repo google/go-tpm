@@ -130,15 +130,12 @@ func TestCommit(t *testing.T) {
 		P1: tpm2b.ECCPoint{
 			Point: tpms.ECCPoint{
 				X: tpm2b.ECCParameter{
-					Buffer: []byte{
-						0x1, 0x1,
-					},
+					Buffer: []byte{1},
 				},
 				Y: tpm2b.ECCParameter{
-					Buffer: []byte{0x1, 0x1},
+					Buffer: []byte{2},
 				},
 			},
-			Size: 8,
 		},
 		S2: tpm2b.SensitiveData{
 			Buffer: []byte{},
