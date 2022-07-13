@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-tpm/direct/helpers"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
@@ -88,7 +89,7 @@ func TestCertify(t *testing.T) {
 	defer flushContextSigner.Execute(thetpm)
 
 	createPrimarySubject := CreatePrimary{
-		PrimaryHandle: tpm.RHPlatform,
+		PrimaryHandle: tpm.RHOwner,
 		InSensitive: tpm2b.SensitiveCreate{
 			Sensitive: tpms.SensitiveCreate{
 				UserAuth: tpm2b.Auth{
@@ -99,12 +100,21 @@ func TestCertify(t *testing.T) {
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
+	unique := tpmu.PublicID{
+		RSA: &tpm2b.PublicKeyRSA{
+			Buffer: []byte("subject key"),
+		},
+	}
+	createPrimarySubject.InPublic.PublicArea.Unique = unique
+
 	rspSubject, err := createPrimarySubject.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("Failed to create primary: %v", err)
 	}
 	flushContextSubject := FlushContext{FlushHandle: rspSubject.ObjectHandle}
 	defer flushContextSubject.Execute(thetpm)
+
+	originalBuffer := []byte("test nonce")
 
 	certify := Certify{
 		ObjectHandle: AuthHandle{
@@ -118,7 +128,7 @@ func TestCertify(t *testing.T) {
 			Auth:   PasswordAuth(Auth),
 		},
 		QualifyingData: tpm2b.Data{
-			Buffer: nil,
+			Buffer: originalBuffer,
 		},
 		InScheme: tpmt.SigScheme{
 			Scheme: tpm.AlgNull,
@@ -134,6 +144,7 @@ func TestCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to marshal: %v", err)
 	}
+
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.PublicArea
 	rsaPub, err := helpers.RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
@@ -143,5 +154,9 @@ func TestCertify(t *testing.T) {
 
 	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
+	}
+
+	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.AttestationData.ExtraData.Buffer) {
+		t.Errorf("Attested buffer is different from original buffer")
 	}
 }
