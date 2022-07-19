@@ -554,30 +554,30 @@ type Certify struct {
 	QualifyingData tpm2b.Data
 	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
 	InScheme tpmt.SigScheme
- }
-  
- // Command implements the Command interface.
- func (*Certify) Command() tpm.CC { return tpm.CCCertify }
-  
- // Execute executes the command and returns the response.
- func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
+}
+
+// Command implements the Command interface.
+func (*Certify) Command() tpm.CC { return tpm.CCCertify }
+
+// Execute executes the command and returns the response.
+func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
 	var rsp CertifyResponse
 	if err := execute(t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
- }
-  
- // CertifyResponse is the response from TPM2_Certify.
- type CertifyResponse struct {
+}
+
+// CertifyResponse is the response from TPM2_Certify.
+type CertifyResponse struct {
 	// the structure that was signed
 	CertifyInfo tpm2b.Attest
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature tpmt.Signature
- }
-  
- // Response implements the Response interface.
- func (*CertifyResponse) Response() tpm.CC { return tpm.CCCertify } 
+}
+
+// Response implements the Response interface.
+func (*CertifyResponse) Response() tpm.CC { return tpm.CCCertify }
 
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
@@ -1186,6 +1186,31 @@ func (cmd *CreatePrimary) Execute(t transport.TPM, s ...Session) (*CreatePrimary
 	}
 	return &rsp, nil
 }
+
+// Clear is the input to TPM2_Clear.
+// See definition in Part 3, Commands, section 24.6.
+type Clear struct {
+	// TPM_RH_LOCKOUT or TPM_RH_PLATFORM+{PP}
+	AuthHandle handle `gotpm:"handle,auth"`
+}
+
+// Command implements the Command interface.
+func (*Clear) Command() tpm.CC { return tpm.CCClear }
+
+// Execute executes the command and returns the response.
+func (cmd *Clear) Execute(t transport.TPM, s ...Session) (*ClearResponse, error) {
+	var rsp ClearResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ClearResponse is the response from TPM2_Clear.
+type ClearResponse struct{}
+
+// Response implements the Response interface.
+func (*ClearResponse) Response() tpm.CC { return tpm.CCClear }
 
 // CreatePrimaryResponse is the response from TPM2_CreatePrimary.
 type CreatePrimaryResponse struct {
