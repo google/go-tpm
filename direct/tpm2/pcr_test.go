@@ -1,15 +1,35 @@
 package tpm2
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpml"
-	"github.com/google/go-tpm/direct/transport/simulator"
-
 	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+	"github.com/google/go-tpm/direct/transport/simulator"
 )
+
+var extendsDirect = map[tpm.AlgID][]struct {
+	digest []byte
+}{
+	tpm.AlgSHA1: {
+		{bytes.Repeat([]byte{0x00}, sha1.Size)},
+		{bytes.Repeat([]byte{0x01}, sha1.Size)},
+		{bytes.Repeat([]byte{0x02}, sha1.Size)}},
+	tpm.AlgSHA256: {
+		{bytes.Repeat([]byte{0x00}, sha256.Size)},
+		{bytes.Repeat([]byte{0x01}, sha256.Size)},
+		{bytes.Repeat([]byte{0x02}, sha256.Size)}},
+	tpm.AlgSHA384: {
+		{bytes.Repeat([]byte{0x00}, sha512.Size384)},
+		{bytes.Repeat([]byte{0x01}, sha512.Size384)},
+		{bytes.Repeat([]byte{0x02}, sha512.Size384)}},
+}
 
 func TestPCRReset(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
@@ -18,55 +38,88 @@ func TestPCRReset(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	PCRs, err := CreatePCRSelection([]int{16})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
+	DebugPCR := 16
+
+	cases := []struct {
+		name    string
+		hashalg tpm.AlgID
+	}{
+		{"SHA1", tpm.AlgSHA1},
+		{"SHA256", tpm.AlgSHA256},
+		{"SHA384", tpm.AlgSHA384},
 	}
 
-	selection := tpml.PCRSelection{
-		PCRSelections: []tpms.PCRSelection{
-			{
-				Hash:      tpm.AlgSHA1,
-				PCRSelect: PCRs,
-			},
-		},
-	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			PCRs, err := CreatePCRSelection([]int{DebugPCR})
+			if err != nil {
+				t.Fatalf("Failed to create PCRSelection")
+			}
 
-	pcrRead := PCRRead{
-		PCRSelectionIn: selection,
-	}
+			authHandle := AuthHandle{
+				Handle: tpm.Handle(DebugPCR),
+				Auth:   PasswordAuth(nil),
+			}
 
-	pcrReadRsp, err := pcrRead.Execute(thetpm)
-	if err != nil {
-		t.Fatalf("failed to read PCRs")
-	}
-	preResetBuffer := pcrReadRsp.PCRValues.Digests[0].Buffer[:]
+			pcrRead := PCRRead{
+				PCRSelectionIn: tpml.PCRSelection{
+					PCRSelections: []tpms.PCRSelection{
+						{
+							Hash:      c.hashalg,
+							PCRSelect: PCRs,
+						},
+					},
+				},
+			}
+			pcrReadRsp, err := pcrRead.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("failed to read PCRs")
+			}
+			startPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
 
-	authHandle := AuthHandle{
-		Handle: 16,
-		Auth:   PasswordAuth(nil),
-	}
+			// Extending PCR 16
+			for _, d := range extendsDirect[c.hashalg] {
 
-	pcrReset := PCRReset{
-		PCRHandle: authHandle,
-	}
+				pcrExtend := PCRExtend{
+					PCRHandle: authHandle,
+					Digests: tpml.DigestValues{
+						Digests: []tpmt.HA{
+							{
+								HashAlg: c.hashalg,
+								Digest:  d.digest,
+							},
+						},
+					},
+				}
 
-	if _, err := pcrReset.Execute(thetpm); err != nil {
-		t.Fatalf("pcrReset failed: %v", err)
-	}
+				if err := pcrExtend.Execute(thetpm); err != nil {
+					t.Fatalf("failed to extend pcr for test %v", err)
+				}
+			}
 
-	pcrRead = PCRRead{
-		PCRSelectionIn: selection,
-	}
+			if pcrReadRsp, err = pcrRead.Execute(thetpm); err != nil {
+				t.Fatalf("failed to read PCRs")
+			}
+			postExtendPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
+			if bytes.Equal(startPCR16, postExtendPCR16) {
+				t.Errorf("startPCR16: %v expected to not equal postExtendPCR16: %v", startPCR16, postExtendPCR16)
+			}
 
-	pcrReadRsp, err = pcrRead.Execute(thetpm)
-	if err != nil {
-		t.Fatalf("failed to read PCRs")
-	}
+			// Resetting PCR 16
+			pcrReset := PCRReset{
+				PCRHandle: authHandle,
+			}
+			if _, err := pcrReset.Execute(thetpm); err != nil {
+				t.Fatalf("pcrReset failed: %v", err)
+			}
+			if pcrReadRsp, err = pcrRead.Execute(thetpm); err != nil {
+				t.Fatalf("failed to read PCRs")
+			}
+			postResetPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
 
-	postResetBuffer := pcrReadRsp.PCRValues.Digests[0].Buffer[:]
-
-	if !cmp.Equal(preResetBuffer, postResetBuffer) {
-		t.Errorf("pcr after reset changed.")
+			if !bytes.Equal(startPCR16, postResetPCR16) {
+				t.Errorf("startPCR16: %v expected to equal postResetPCR16: %v", startPCR16, postResetPCR16)
+			}
+		})
 	}
 }
