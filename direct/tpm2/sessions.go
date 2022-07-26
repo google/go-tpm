@@ -310,7 +310,7 @@ func AuditExclusive() AuthOption {
 	}
 }
 
-// Trial indicates that the policy session should be in tral-mode.
+// Trial indicates that the policy session should be in trial-mode.
 // This allows using the TPM to calculate policy hashes.
 // This option has no effect on non-Policy sessions.
 func Trial() AuthOption {

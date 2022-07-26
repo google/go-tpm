@@ -543,6 +543,42 @@ type SequenceCompleteResponse struct {
 // Response implements the Response interface.
 func (*SequenceCompleteResponse) Response() tpm.CC { return tpm.CCSequenceComplete }
 
+// Certify is the input to TPM2_Certify.
+// See definition in Part 3, Commands, section 18.2.
+type Certify struct {
+	// handle of the object to be certified, Auth Index: 1, Auth Role: ADMIN
+	ObjectHandle handle `gotpm:"handle,auth"`
+	// handle of the key used to sign the attestation structure, Auth Index: 2, Auth Role: USER
+	SignHandle handle `gotpm:"handle,auth"`
+	// user provided qualifying data
+	QualifyingData tpm2b.Data
+	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
+	InScheme tpmt.SigScheme
+ }
+  
+ // Command implements the Command interface.
+ func (*Certify) Command() tpm.CC { return tpm.CCCertify }
+  
+ // Execute executes the command and returns the response.
+ func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
+	var rsp CertifyResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+ }
+  
+ // CertifyResponse is the response from TPM2_Certify.
+ type CertifyResponse struct {
+	// the structure that was signed
+	CertifyInfo tpm2b.Attest
+	// the asymmetric signature over certifyInfo using the key referenced by signHandle
+	Signature tpmt.Signature
+ }
+  
+ // Response implements the Response interface.
+ func (*CertifyResponse) Response() tpm.CC { return tpm.CCCertify } 
+
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
 type Quote struct {
@@ -943,6 +979,38 @@ type PolicyOrResponse struct{}
 // Response implements the Response interface.
 func (*PolicyOrResponse) Response() tpm.CC { return tpm.CCPolicyOR }
 
+// PolicyPCR is the input to TPM2_PolicyPCR.
+// See definition in Part 3, Commands, section 23.7.
+type PolicyPCR struct {
+	// handle for the policy session being extended
+	PolicySession handle `gotpm:"handle"`
+	// expected digest value of the selected PCR using the
+	// hash algorithm of the session; may be zero length
+	PcrDigest tpm2b.Digest
+	// the PCR to include in the check digest
+	Pcrs tpml.PCRSelection
+}
+
+// Command implements the Command interface.
+func (*PolicyPCR) Command() tpm.CC { return tpm.CCPolicyPCR }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyPCR) Execute(t transport.TPM, s ...Session) error {
+	var rsp PolicyPCRResponse
+	return execute(t, cmd, &rsp, s...)
+}
+
+// Update implements the PolicyCommand interface.
+func (p *PolicyPCR) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyPCR, p.Pcrs, p.PcrDigest.Buffer)
+}
+
+// PolicyPCRResponse is the response from TPM2_PolicyPCR.
+type PolicyPCRResponse struct{}
+
+// Response implements the Response interface.
+func (*PolicyPCRResponse) Response() tpm.CC { return tpm.CCPolicyPCR }
+
 // PolicyCommandCode is the input to TPM2_PolicyCommandCode.
 // See definition in Part 3, Commands, section 23.11.
 type PolicyCommandCode struct {
@@ -1179,6 +1247,61 @@ type CreatePrimaryResponse struct {
 
 // Response implements the Response interface.
 func (*CreatePrimaryResponse) Response() tpm.CC { return tpm.CCCreatePrimary }
+
+// ContextSave is the input to TPM2_ContextSave.
+// See definition in Part 3, Commands, section 28.2
+type ContextSave struct {
+	// handle of the resource to save Auth Index: None
+	SaveHandle tpmi.DHContext
+}
+
+// Command implements the Command interface.
+func (*ContextSave) Command() tpm.CC { return tpm.CCContextSave }
+
+// Execute executes the command and returns the response.
+func (cmd *ContextSave) Execute(t transport.TPM, s ...Session) (*ContextSaveResponse, error) {
+	var rsp ContextSaveResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ContextSaveResponse is the response from TPM2_ContextSave.
+type ContextSaveResponse struct {
+	Context tpms.Context
+}
+
+// Response implements the Response interface.
+func (*ContextSaveResponse) Response() tpm.CC { return tpm.CCContextSave }
+
+// ContextLoad is the input to TPM2_ContextLoad.
+// See definition in Part 3, Commands, section 28.3
+type ContextLoad struct {
+	// the context blob
+	Context tpms.Context
+}
+
+// Command implements the Command interface.
+func (*ContextLoad) Command() tpm.CC { return tpm.CCContextLoad }
+
+// Execute executes the command and returns the response.
+func (cmd *ContextLoad) Execute(t transport.TPM, s ...Session) (*ContextLoadResponse, error) {
+	var rsp ContextLoadResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ContextLoadResponse is the response from TPM2_ContextLoad.
+type ContextLoadResponse struct {
+	// the handle assigned to the resource after it has been successfully loaded
+	LoadedHandle tpmi.DHContext
+}
+
+// Response implements the Response interface.
+func (*ContextLoadResponse) Response() tpm.CC { return tpm.CCContextLoad }
 
 // FlushContext is the input to TPM2_FlushContext.
 // See definition in Part 3, Commands, section 28.4

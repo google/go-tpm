@@ -2,6 +2,7 @@ package tpm2
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"testing"
 
 	"github.com/google/go-tpm/direct/structures/tpm"
@@ -279,6 +280,136 @@ func TestPolicyOrUpdate(t *testing.T) {
 	if !bytes.Equal(got.Digest, want.PolicyDigest.Buffer) {
 		t.Errorf("policyOr.Hash() = %x,\nwant %x", got.Digest, want.PolicyDigest.Buffer)
 	}
+}
+
+func getExpectedPCRDigest(t *testing.T, thetpm transport.TPM, selection tpml.PCRSelection, hashAlg tpm.AlgID) []byte {
+	t.Helper()
+	pcrRead := PCRRead{
+		PCRSelectionIn: selection,
+	}
+
+	pcrReadRsp, err := pcrRead.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("failed to read PCRs")
+	}
+
+	var expectedVal []byte
+	for _, digest := range pcrReadRsp.PCRValues.Digests {
+		expectedVal = append(expectedVal, digest.Buffer...)
+	}
+
+	cryptoHashAlg, err := hashAlg.Hash()
+	if err != nil {
+		t.Fatalf("failed to get crypto hash")
+	}
+
+	hash := cryptoHashAlg.New()
+	hash.Write(expectedVal)
+	return hash.Sum(nil)
+}
+
+func TestPolicyPCR(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	PCRs, err := CreatePCRSelection([]int{0, 1, 2, 3, 7})
+	if err != nil {
+		t.Fatalf("Failed to create PCRSelection")
+	}
+
+	selection := tpml.PCRSelection{
+		PCRSelections: []tpms.PCRSelection{
+			{
+				Hash:      tpm.AlgSHA1,
+				PCRSelect: PCRs,
+			},
+		},
+	}
+
+	expectedDigest := getExpectedPCRDigest(t, thetpm, selection, tpm.AlgSHA1)
+
+	wrongDigest := sha1.Sum(expectedDigest[:])
+
+	tests := []struct {
+		name              string
+		authOption        []AuthOption
+		pcrDigest         []byte
+		callShouldSucceed bool
+	}{
+		{"TrialCorrect", []AuthOption{Trial()}, expectedDigest, true},
+		{"TrialIncorrect", []AuthOption{Trial()}, wrongDigest[:], true},
+		{"TrialEmpty", []AuthOption{Trial()}, nil, true},
+		{"RealCorrect", nil, expectedDigest, true},
+		{"RealIncorrect", nil, wrongDigest[:], false},
+		{"RealEmpty", nil, nil, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sess, cleanup2, err := PolicySession(thetpm, tpm.AlgSHA1, 16, tt.authOption...)
+
+			if err != nil {
+				t.Fatalf("setting up policy session: %v", err)
+			}
+
+			policyPCR := PolicyPCR{
+				PolicySession: sess.Handle(),
+				PcrDigest: tpm2b.Digest{
+					Buffer: tt.pcrDigest,
+				},
+				Pcrs: selection,
+			}
+
+			err = policyPCR.Execute(thetpm)
+			if tt.callShouldSucceed {
+				if err != nil {
+					t.Fatalf("executing PolicyPCR: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("expected PolicyPCR to return error, got nil")
+				}
+				return
+			}
+
+			pgd := PolicyGetDigest{
+				PolicySession: sess.Handle(),
+			}
+			want, err := pgd.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("executing PolicyGetDigest: %v", err)
+			}
+
+			// If the pcrDigest is empty: see TPM 2.0 Part 3, 23.7.
+			if tt.pcrDigest == nil {
+				expectedDigest := getExpectedPCRDigest(t, thetpm, selection, tpm.AlgSHA1)
+				t.Logf("expectedDigest=%x", expectedDigest)
+
+				// Create a populated policyPCR for the PolicyCalculator
+				policyPCR.PcrDigest.Buffer = expectedDigest[:]
+			}
+
+			// Use the policy helper to calculate the same policy
+			pol, err := NewPolicyCalculator(tpm.AlgSHA1)
+			if err != nil {
+				t.Fatalf("creating policy calculator: %v", err)
+			}
+			policyPCR.Update(pol)
+			got := pol.Hash()
+
+			if !bytes.Equal(got.Digest, want.PolicyDigest.Buffer) {
+				t.Errorf("policyPCR.Hash() = %x,\nwant %x", got.Digest, want.PolicyDigest.Buffer)
+			}
+
+			if err := cleanup2(); err != nil {
+				t.Errorf("cleaning up policy session: %v", err)
+			}
+		})
+	}
+
 }
 
 func TestPolicyCpHashUpdate(t *testing.T) {
