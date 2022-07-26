@@ -152,6 +152,9 @@ func TestCommit(t *testing.T) {
 		t.Fatalf("could not commit: %v", err)
 	}
 
-	flushContext := FlushContext{FlushHandle: rspC.ObjectHandle}
-	defer flushContext.Execute(thetpm)
+	flushContextCP := FlushContext{FlushHandle: rspCP.ObjectHandle}
+	defer flushContextCP.Execute(thetpm)
+
+	flushContextC := FlushContext{FlushHandle: rspC.ObjectHandle}
+	defer flushContextC.Execute(thetpm)
 }
