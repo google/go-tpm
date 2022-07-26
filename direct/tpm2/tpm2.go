@@ -643,10 +643,10 @@ func (cmd *Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, erro
 // CommitResponse is the response from TPM2_Commit.
 type CommitResponse struct {
 	// the data read
-	K     tpm2b.ECCPoint
-	L     tpm2b.ECCPoint
-	E     tpm2b.ECCPoint
-	Count uint16
+	K      tpm2b.ECCPoint
+	L      tpm2b.ECCPoint
+	E      tpm2b.ECCPoint
+	Conter uint16
 }
 
 // Response implements the Response interface.
