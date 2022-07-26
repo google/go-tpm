@@ -689,7 +689,7 @@ type CommitResponse struct {
 	// ECC point E ≔ [r]P1
 	E tpm2b.ECCPoint
 	// least-significant 16 bits of commitCount
-	Conter uint16
+	Counter uint16
 }
 
 // Response implements the Response interface.
