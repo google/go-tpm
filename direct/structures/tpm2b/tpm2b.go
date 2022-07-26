@@ -82,7 +82,7 @@ type PrivateKeyRSA = internal.TPM2BPrivateKeyRSA
 // See definition in Part 2: Structures, section 11.2.5.1.
 type ECCParameter = internal.TPM2BECCParameter
 
-// Private represents a TPM2B_ECC_POINT.
+// ECCPoint represents a TPM2B_ECC_POINT.
 // See definition in Part 2: Structures, section 11.2.5.3
 type ECCPoint = internal.TPM2BECCPoint
 
