@@ -31,6 +31,15 @@ var extendsDirect = map[tpm.AlgID][]struct {
 		{bytes.Repeat([]byte{0x02}, sha512.Size384)}},
 }
 
+func allZero(s []byte) bool {
+    for _, v := range s {
+        if v != 0 {
+            return false
+        }
+    }
+    return true
+}
+
 func TestPCRReset(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
@@ -71,15 +80,9 @@ func TestPCRReset(t *testing.T) {
 					},
 				},
 			}
-			pcrReadRsp, err := pcrRead.Execute(thetpm)
-			if err != nil {
-				t.Fatalf("failed to read PCRs")
-			}
-			startPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
 
 			// Extending PCR 16
 			for _, d := range extendsDirect[c.hashalg] {
-
 				pcrExtend := PCRExtend{
 					PCRHandle: authHandle,
 					Digests: tpml.DigestValues{
@@ -91,18 +94,18 @@ func TestPCRReset(t *testing.T) {
 						},
 					},
 				}
-
 				if err := pcrExtend.Execute(thetpm); err != nil {
 					t.Fatalf("failed to extend pcr for test %v", err)
 				}
 			}
 
-			if pcrReadRsp, err = pcrRead.Execute(thetpm); err != nil {
+			pcrReadRsp, err := pcrRead.Execute(thetpm)
+			if err != nil {
 				t.Fatalf("failed to read PCRs")
 			}
 			postExtendPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
-			if bytes.Equal(startPCR16, postExtendPCR16) {
-				t.Errorf("startPCR16: %v expected to not equal postExtendPCR16: %v", startPCR16, postExtendPCR16)
+			if allZero(postExtendPCR16) {
+				t.Errorf("postExtendPCR16 not expected to be all Zero: %v", postExtendPCR16)
 			}
 
 			// Resetting PCR 16
@@ -117,8 +120,8 @@ func TestPCRReset(t *testing.T) {
 			}
 			postResetPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
 
-			if !bytes.Equal(startPCR16, postResetPCR16) {
-				t.Errorf("startPCR16: %v expected to equal postResetPCR16: %v", startPCR16, postResetPCR16)
+			if !allZero(postResetPCR16) {
+				t.Errorf("postResetPCR16 expected to be all Zero: %v", postExtendPCR16)
 			}
 		})
 	}
