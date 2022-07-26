@@ -621,10 +621,14 @@ func (*GetSessionAuditDigestResponse) Response() tpm.CC { return tpm.CCGetSessio
 // Commit is the input to TPM2_Commit.
 // See definition in Part 3, Commands, section 19.2.
 type Commit struct {
+	// handle of the key that will be used in the signing operation
 	SignHandle handle `gotpm:"handle,auth"`
-	P1         tpm2b.ECCPoint
-	S2         tpm2b.SensitiveData
-	Y2         tpm2b.ECCParameter
+	// a point (M) on the curve used by signHandle
+	P1 tpm2b.ECCPoint
+	// octet array used to derive x-coordinate of a base point
+	S2 tpm2b.SensitiveData
+	// y coordinate of the point associated with s2
+	Y2 tpm2b.ECCParameter
 }
 
 // Command implements the Command interface.
@@ -642,10 +646,13 @@ func (cmd *Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, erro
 
 // CommitResponse is the response from TPM2_Commit.
 type CommitResponse struct {
-	// the data read
-	K      tpm2b.ECCPoint
-	L      tpm2b.ECCPoint
-	E      tpm2b.ECCPoint
+	// ECC point K ≔ [ds](x2, y2)
+	K tpm2b.ECCPoint
+	// ECC point L ≔ [r](x2, y2)
+	L tpm2b.ECCPoint
+	// ECC point E ≔ [r]P1
+	E tpm2b.ECCPoint
+	// least-significant 16 bits of commitCount
 	Conter uint16
 }
 
