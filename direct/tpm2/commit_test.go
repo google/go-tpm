@@ -143,7 +143,6 @@ func TestCommit(t *testing.T) {
 		Y2: tpm2b.ECCParameter{
 			Buffer: []byte{},
 		},
-		Count: 0,
 	}
 
 	_, err = commit.Execute(thetpm)

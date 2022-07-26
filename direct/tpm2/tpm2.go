@@ -625,7 +625,6 @@ type Commit struct {
 	P1         tpm2b.ECCPoint
 	S2         tpm2b.SensitiveData
 	Y2         tpm2b.ECCParameter
-	Count      uint16
 }
 
 // Command implements the Command interface.
