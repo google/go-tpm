@@ -110,6 +110,10 @@ type Private = internal.TPM2BPrivate
 // See definition in Part 2: Structures, section 13.6.
 type NVPublic = internal.TPM2BNVPublic
 
+// ContextSensitive represents a TPM2B_CONTEXT_SENSITIVE.
+// See definition in Part 2: Structures, section 14.2.
+type ContextSensitive = internal.TPM2BContextSensitive
+
 // CreationData represents a TPM2B_CREATION_DATA.
 // See definition in Part 2: Structures, section 15.2.
 type CreationData = internal.TPM2BCreationData
