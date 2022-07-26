@@ -19,6 +19,8 @@ func TestCommit(t *testing.T) {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
 
+	defer thetpm.Close()
+
 	password := []byte("hello")
 
 	primary := CreateLoaded{
