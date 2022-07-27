@@ -1,6 +1,7 @@
 package tpm2
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -235,7 +236,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		SignHandle: AuthHandle{
 			Handle: rspCP.ObjectHandle,
 			Name:   rspCP.Name,
-			Auth:   PasswordAuth([]byte{}),
+			Auth:   PasswordAuth(nil),
 		},
 		ObjectHandle: NamedHandle{
 			Handle: rspCP.ObjectHandle,
@@ -253,7 +254,24 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 
 	attName := rspCC.CertifyInfo.AttestationData.Attested.Creation.ObjectName.Buffer
 	pubName := rspCP.Name.Buffer
-	if !cmp.Equal(attName, pubName) {
+	if !bytes.Equal(attName, pubName) {
 		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)
+	}
+
+	info, err := Marshal(rspCC.CertifyInfo.AttestationData)
+	if err != nil {
+		t.Fatalf("Failed to marshal: %v", err)
+	}
+
+	attestHash := sha256.Sum256(info)
+
+	pub := rspCP.OutPublic.PublicArea
+	rsaPub, err := helpers.RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	if err != nil {
+		t.Fatalf("Failed to retrive Public Key: %v", err)
+	}
+
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCC.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+		t.Errorf("Signature verification failed: %v", err)
 	}
 }
