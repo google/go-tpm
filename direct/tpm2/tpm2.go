@@ -554,30 +554,70 @@ type Certify struct {
 	QualifyingData tpm2b.Data
 	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
 	InScheme tpmt.SigScheme
- }
-  
- // Command implements the Command interface.
- func (*Certify) Command() tpm.CC { return tpm.CCCertify }
-  
- // Execute executes the command and returns the response.
- func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
+}
+
+// Command implements the Command interface.
+func (*Certify) Command() tpm.CC { return tpm.CCCertify }
+
+// Execute executes the command and returns the response.
+func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
 	var rsp CertifyResponse
 	if err := execute(t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
- }
-  
- // CertifyResponse is the response from TPM2_Certify.
- type CertifyResponse struct {
+}
+
+// CertifyResponse is the response from TPM2_Certify.
+type CertifyResponse struct {
 	// the structure that was signed
 	CertifyInfo tpm2b.Attest
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature tpmt.Signature
- }
-  
- // Response implements the Response interface.
- func (*CertifyResponse) Response() tpm.CC { return tpm.CCCertify } 
+}
+
+// Response implements the Response interface.
+func (*CertifyResponse) Response() tpm.CC { return tpm.CCCertify }
+
+// CertifyCreation is the input to TPM2_CertifyCreation.
+// See definition in Part 3, Commands, section 18.3.
+type CertifyCreation struct {
+	// handle of the key that will sign the attestation block
+	SignHandle handle `gotpm:"handle,auth"`
+	// the object associated with the creation data
+	ObjectHandle handle `gotpm:"handle"`
+	// user-provided qualifying data
+	QualifyingData tpm2b.Data
+	// hash of the creation data produced by TPM2_Create() or TPM2_CreatePrimary()
+	CreationHash tpm2b.Digest
+	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
+	InScheme tpmt.SigScheme
+	// ticket produced by TPM2_Create() or TPM2_CreatePrimary()
+	CreationTicket tpmt.TKCreation
+}
+
+// Command implements the Command interface.
+func (*CertifyCreation) Command() tpm.CC { return tpm.CCCertifyCreation }
+
+// Execute executes the command and returns the response.
+func (cmd *CertifyCreation) Execute(t transport.TPM, s ...Session) (*CertifyCreationResponse, error) {
+	var rsp CertifyCreationResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// CertifyCreationResponse is the response from TPM2_CertifyCreation.
+type CertifyCreationResponse struct {
+	// the structure that was signed
+	CertifyInfo tpm2b.Attest
+	// the signature over certifyInfo
+	Signature tpmt.Signature
+}
+
+// Response implements the Response interface.
+func (*CertifyCreationResponse) Response() tpm.CC { return tpm.CCCertifyCreation }
 
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
