@@ -1,6 +1,7 @@
 package tpm2
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -158,5 +159,119 @@ func TestCertify(t *testing.T) {
 
 	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.AttestationData.ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
+	}
+}
+
+func TestCreateAndCertifyCreation(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	public := tpm2b.Public{
+		PublicArea: tpmt.Public{
+			Type:    tpm.AlgRSA,
+			NameAlg: tpm.AlgSHA256,
+			ObjectAttributes: tpma.Object{
+				SignEncrypt:         true,
+				Restricted:          true,
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+				NoDA:                true,
+			},
+			Parameters: tpmu.PublicParms{
+				RSADetail: &tpms.RSAParms{
+					Scheme: tpmt.RSAScheme{
+						Scheme: tpm.AlgRSASSA,
+						Details: tpmu.AsymScheme{
+							RSASSA: &tpms.SigSchemeRSASSA{
+								HashAlg: tpm.AlgSHA256,
+							},
+						},
+					},
+					KeyBits: 2048,
+				},
+			},
+		},
+	}
+
+	PCR7, err := CreatePCRSelection([]int{7})
+	if err != nil {
+		t.Fatalf("Failed to create PCRSelection")
+	}
+	pcrSelection := tpml.PCRSelection{
+		PCRSelections: []tpms.PCRSelection{
+			{
+				Hash:      tpm.AlgSHA1,
+				PCRSelect: PCR7,
+			},
+		},
+	}
+
+	createPrimary := CreatePrimary{
+		PrimaryHandle: tpm.RHEndorsement,
+		InPublic:      public,
+		CreationPCR:   pcrSelection,
+	}
+	rspCP, err := createPrimary.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Failed to create primary: %v", err)
+	}
+	flushContext := FlushContext{FlushHandle: rspCP.ObjectHandle}
+	defer flushContext.Execute(thetpm)
+
+	inScheme := tpmt.SigScheme{
+		Scheme: tpm.AlgRSASSA,
+		Details: tpmu.SigScheme{
+			RSASSA: &tpms.SchemeHash{
+				HashAlg: tpm.AlgSHA256,
+			},
+		},
+	}
+
+	certifyCreation := CertifyCreation{
+		SignHandle: AuthHandle{
+			Handle: rspCP.ObjectHandle,
+			Name:   rspCP.Name,
+			Auth:   PasswordAuth(nil),
+		},
+		ObjectHandle: NamedHandle{
+			Handle: rspCP.ObjectHandle,
+			Name:   rspCP.Name,
+		},
+		CreationHash:   rspCP.CreationHash,
+		InScheme:       inScheme,
+		CreationTicket: rspCP.CreationTicket,
+	}
+
+	rspCC, err := certifyCreation.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Failed to certify creation: %v", err)
+	}
+
+	attName := rspCC.CertifyInfo.AttestationData.Attested.Creation.ObjectName.Buffer
+	pubName := rspCP.Name.Buffer
+	if !bytes.Equal(attName, pubName) {
+		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)
+	}
+
+	info, err := Marshal(rspCC.CertifyInfo.AttestationData)
+	if err != nil {
+		t.Fatalf("Failed to marshal: %v", err)
+	}
+
+	attestHash := sha256.Sum256(info)
+
+	pub := rspCP.OutPublic.PublicArea
+	rsaPub, err := helpers.RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	if err != nil {
+		t.Fatalf("Failed to retrive Public Key: %v", err)
+	}
+
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCC.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+		t.Errorf("Signature verification failed: %v", err)
 	}
 }
