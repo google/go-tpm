@@ -841,6 +841,31 @@ type PCRReadResponse struct {
 // Response implements the Response interface.
 func (*PCRReadResponse) Response() tpm.CC { return tpm.CCPCRRead }
 
+// PCRReset is the input to TPM2_PCRReset.
+// See definition in Part 3, Commands, section 22.8.
+type PCRReset struct {
+	// the PCR to reset
+	PCRHandle handle `gotpm:"handle,auth"`
+}
+
+// Command implements the Command interface.
+func (*PCRReset) Command() tpm.CC { return tpm.CCPCRReset }
+
+// Execute executes the command and returns the response.
+func (cmd *PCRReset) Execute(t transport.TPM, s ...Session) (*PCRResetResponse, error) {
+	var rsp PCRResetResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PCRResetResponse is the response from TPM2_PCRReset.
+type PCRResetResponse struct{}
+
+// Response implements the Response interface.
+func (*PCRResetResponse) Response() tpm.CC { return tpm.CCPCRReset }
+
 // PolicySigned is the input to TPM2_PolicySigned.
 // See definition in Part 3, Commands, section 23.3.
 type PolicySigned struct {
