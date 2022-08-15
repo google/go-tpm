@@ -34,7 +34,7 @@ func TestCommit(t *testing.T) {
 		InPublic: tpm2b.Template{
 			Template: tpmt.Public{
 				Type:    tpm.AlgECC,
-				NameAlg: tpm.AlgSHA1,
+				NameAlg: tpm.AlgSHA256,
 				ObjectAttributes: tpma.Object{
 					FixedTPM:            true,
 					FixedParent:         true,
@@ -51,7 +51,7 @@ func TestCommit(t *testing.T) {
 							Scheme: tpm.AlgECDAA,
 							Details: tpmu.AsymScheme{
 								ECDAA: &tpms.SigSchemeECDAA{
-									HashAlg: tpm.AlgSHA1,
+									HashAlg: tpm.AlgSHA256,
 								},
 							},
 						},
