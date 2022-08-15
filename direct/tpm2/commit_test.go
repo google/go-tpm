@@ -97,8 +97,21 @@ func TestCommit(t *testing.T) {
 		},
 	}
 
-	_, err = commit.Execute(thetpm)
+	resp, err := commit.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not commit: %v", err)
+	}
+
+	firstCounter := resp.Counter
+
+	resp, err = commit.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("could not commit: %v", err)
+	}
+
+	secondCounter := resp.Counter
+
+	if firstCounter+1 != secondCounter {
+		t.Fatalf("counter did not increment")
 	}
 }
