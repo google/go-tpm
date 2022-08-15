@@ -70,6 +70,9 @@ func TestCommit(t *testing.T) {
 		t.Fatalf("could not create key: %v", err)
 	}
 
+	flushContextCP := FlushContext{FlushHandle: rspCP.ObjectHandle}
+	defer flushContextCP.Execute(thetpm)
+
 	commit := Commit{
 		SignHandle: AuthHandle{
 			Handle: rspCP.ObjectHandle,
@@ -98,7 +101,4 @@ func TestCommit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not commit: %v", err)
 	}
-
-	flushContextCP := FlushContext{FlushHandle: rspCP.ObjectHandle}
-	defer flushContextCP.Execute(thetpm)
 }
