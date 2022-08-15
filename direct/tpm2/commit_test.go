@@ -52,7 +52,6 @@ func TestCommit(t *testing.T) {
 							Details: tpmu.AsymScheme{
 								ECDAA: &tpms.SigSchemeECDAA{
 									HashAlg: tpm.AlgSHA1,
-									Count:   1,
 								},
 							},
 						},
