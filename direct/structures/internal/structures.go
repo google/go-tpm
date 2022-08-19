@@ -1260,6 +1260,7 @@ type TPMUSignature struct {
 	RSASSA *TPMSSignatureRSA `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
 	RSAPSS *TPMSSignatureRSA `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
 	ECDSA  *TPMSSignatureECC `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
+	ECDAA  *TPMSSignatureECC `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
 }
 
 // TPMTSignature represents a TPMT_SIGNATURE.
