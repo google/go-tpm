@@ -127,6 +127,10 @@ type SigSchemeRSAPSS = internal.TPMSSigSchemeRSAPSS
 // See definition in Part 2: Structures, section 11.2.1.3.
 type SigSchemeECDSA = internal.TPMSSigSchemeECDSA
 
+// SigSchemeECDAA represents a TPMS_SIG_SCHEME_ECDAA.
+// See definition in Part 2: Structures, section 11.2.1.3.
+type SigSchemeECDAA = internal.TPMSSigSchemeECDAA
+
 // EncSchemeRSAES represents a TPMS_ENC_SCHEME_RSAES.
 // See definition in Part 2: Structures, section 11.2.2.2.
 type EncSchemeRSAES = internal.TPMSEncSchemeRSAES

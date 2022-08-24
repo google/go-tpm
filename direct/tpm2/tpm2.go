@@ -377,7 +377,7 @@ type CreateLoadedResponse struct {
 	// handle of type TPM_HT_TRANSIENT for loaded object
 	ObjectHandle tpm.Handle `gotpm:"handle"`
 	// the sensitive area of the object (optional)
-	OutPrivate *tpm2b.Private `gotpm:"optional"`
+	OutPrivate tpm2b.Private `gotpm:"optional"`
 	// the public portion of the created object
 	OutPublic tpm2b.Public
 	// the name of the created object
@@ -693,6 +693,47 @@ type GetSessionAuditDigestResponse struct {
 
 // Response implements the Response interface.
 func (*GetSessionAuditDigestResponse) Response() tpm.CC { return tpm.CCGetSessionAuditDigest }
+
+// Commit is the input to TPM2_Commit.
+// See definition in Part 3, Commands, section 19.2.
+type Commit struct {
+	// handle of the key that will be used in the signing operation
+	SignHandle handle `gotpm:"handle,auth"`
+	// a point (M) on the curve used by signHandle
+	P1 tpm2b.ECCPoint
+	// octet array used to derive x-coordinate of a base point
+	S2 tpm2b.SensitiveData
+	// y coordinate of the point associated with s2
+	Y2 tpm2b.ECCParameter
+}
+
+// Command implements the Command interface.
+func (*Commit) Command() tpm.CC { return tpm.CCCommit }
+
+// Execute executes the command and returns the response.
+func (cmd *Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, error) {
+	var rsp CommitResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+
+	return &rsp, nil
+}
+
+// CommitResponse is the response from TPM2_Commit.
+type CommitResponse struct {
+	// ECC point K ≔ [ds](x2, y2)
+	K tpm2b.ECCPoint
+	// ECC point L ≔ [r](x2, y2)
+	L tpm2b.ECCPoint
+	// ECC point E ≔ [r]P1
+	E tpm2b.ECCPoint
+	// least-significant 16 bits of commitCount
+	Counter uint16
+}
+
+// Response implements the Response interface.
+func (*CommitResponse) Response() tpm.CC { return tpm.CCCommit }
 
 // VerifySignature is the input to TPM2_VerifySignature.
 // See definition in Part 3, Commands, section 20.1
