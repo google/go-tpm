@@ -20,7 +20,6 @@ import (
 )
 
 func TestCertify(t *testing.T) {
-
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
@@ -273,5 +272,159 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 
 	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCC.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
+	}
+}
+
+func TestNVCertify(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	Auth := []byte("password")
+
+	public := tpm2b.Public{
+		PublicArea: tpmt.Public{
+			Type:    tpm.AlgRSA,
+			NameAlg: tpm.AlgSHA256,
+			ObjectAttributes: tpma.Object{
+				SignEncrypt:         true,
+				Restricted:          true,
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+			},
+			Parameters: tpmu.PublicParms{
+				RSADetail: &tpms.RSAParms{
+					Scheme: tpmt.RSAScheme{
+						Scheme: tpm.AlgRSASSA,
+						Details: tpmu.AsymScheme{
+							RSASSA: &tpms.SigSchemeRSASSA{
+								HashAlg: tpm.AlgSHA256,
+							},
+						},
+					},
+					KeyBits: 2048,
+				},
+			},
+		},
+	}
+
+	createPrimarySigner := CreatePrimary{
+		PrimaryHandle: tpm.RHOwner,
+		InSensitive: tpm2b.SensitiveCreate{
+			Sensitive: tpms.SensitiveCreate{
+				UserAuth: tpm2b.Auth{
+					Buffer: Auth,
+				},
+			},
+		},
+		InPublic: public,
+	}
+	rspSigner, err := createPrimarySigner.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Failed to create primary: %v", err)
+	}
+	flushContextSigner := FlushContext{FlushHandle: rspSigner.ObjectHandle}
+	defer flushContextSigner.Execute(thetpm)
+
+	def := NVDefineSpace{
+		AuthHandle: tpm.RHOwner,
+		PublicInfo: tpm2b.NVPublic{
+			NVPublic: tpms.NVPublic{
+				NVIndex: tpm.Handle(0x0180000F),
+				NameAlg: tpm.AlgSHA256,
+				Attributes: tpma.NV{
+					OwnerWrite: true,
+					OwnerRead:  true,
+					AuthWrite:  true,
+					AuthRead:   true,
+					NT:         tpm.NTOrdinary,
+					NoDA:       true,
+				},
+				DataSize: 4,
+			},
+		},
+	}
+	if err := def.Execute(thetpm); err != nil {
+		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
+	}
+
+	readPub := NVReadPublic{
+		NVIndex: tpm.Handle(0x0180000F),
+	}
+	nvPub, err := readPub.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Calling TPM2_NV_ReadPublic: %v", err)
+	}
+
+	prewrite := NVWrite{
+		AuthHandle: AuthHandle{
+			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Name:   nvPub.NVName,
+			Auth:   PasswordAuth(nil),
+		},
+		NVIndex: NamedHandle{
+			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Name:   nvPub.NVName,
+		},
+		Data: tpm2b.MaxNVBuffer{
+			Buffer: []byte{0x01, 0x02, 0x03, 0x04},
+		},
+		Offset: 0,
+	}
+	if err := prewrite.Execute(thetpm); err != nil {
+		t.Errorf("Calling TPM2_NV_Write: %v", err)
+	}
+
+	nvPub, err = readPub.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Calling TPM2_NV_ReadPublic: %v", err)
+	}
+
+	nvCertify := NVCertify{
+		AuthHandle: AuthHandle{
+			Handle: tpm.Handle(0x0180000F),
+			Name:   nvPub.NVName,
+			Auth:   PasswordAuth(nil),
+		},
+		SignHandle: AuthHandle{
+			Handle: rspSigner.ObjectHandle,
+			Name:   rspSigner.Name,
+			Auth:   PasswordAuth(Auth),
+		},
+		NVIndex: NamedHandle{
+			Handle: tpm.Handle(0x0180000F),
+			Name:   nvPub.NVName,
+		},
+		QualifyingData: tpm2b.Data{
+			Buffer: []byte("nonce"),
+		},
+	}
+	rspCert, err := nvCertify.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("Failed to certify: %v", err)
+	}
+
+	info, err := Marshal(rspCert.CertifyInfo.AttestationData)
+	if err != nil {
+		t.Fatalf("Failed to marshal: %v", err)
+	}
+
+	attestHash := sha256.Sum256(info)
+	pub := rspSigner.OutPublic.PublicArea
+	rsaPub, err := helpers.RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	if err != nil {
+		t.Fatalf("Failed to retrieve Public Key: %v", err)
+	}
+
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+		t.Errorf("Signature verification failed: %v", err)
+	}
+
+	if !cmp.Equal([]byte("nonce"), rspCert.CertifyInfo.AttestationData.ExtraData.Buffer) {
+		t.Errorf("Attested buffer is different from original buffer")
 	}
 }

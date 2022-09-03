@@ -29,6 +29,10 @@ type Timeout = internal.TPM2BTimeout
 // See definition in Part 2: Structures, section 10.4.5.
 type Auth = internal.TPM2BAuth
 
+// Operand represents a TPM2B_Operand.
+// See definition in Part 2: Structures, section 10.4.6.
+type Operand = internal.TPM2BOperand
+
 // MaxBuffer represents a TPM2B_MAX_BUFFER.
 // See definition in Part 2: Structures, section 10.4.8.
 type MaxBuffer = internal.TPM2BMaxBuffer
@@ -105,6 +109,10 @@ type Sensitive = internal.TPM2BSensitive
 // Private represents a TPM2B_PRIVATE.
 // See definition in Part 2: Structures, section 12.3.7.
 type Private = internal.TPM2BPrivate
+
+// IDObject represents a TPM2B_ID_OBJECT.
+// See definition in Part 2: Structures, section 12.4.3.
+type IDObject = internal.TPM2BIDObject
 
 // NVPublic represents a TPM2B_NV_PUBLIC.
 // See definition in Part 2: Structures, section 13.6.

@@ -3,6 +3,7 @@ package tpm2
 
 import (
 	"bytes"
+	"encoding/binary"
 
 	"github.com/google/go-tpm/tpm2/structures/tpm"
 	"github.com/google/go-tpm/tpm2/structures/tpm2b"
@@ -293,7 +294,7 @@ func (*LoadExternalResponse) Response() tpm.CC { return tpm.CCLoadExternal }
 // ReadPublic is the input to TPM2_ReadPublic.
 // See definition in Part 3, Commands, section 12.4
 type ReadPublic struct {
-	// TPM handle of an object, Auth Index: None
+	// TPM handle of an object
 	ObjectHandle tpmi.DHObject `gotpm:"handle"`
 }
 
@@ -321,6 +322,74 @@ type ReadPublicResponse struct {
 
 // Response implements the Response interface.
 func (*ReadPublicResponse) Response() tpm.CC { return tpm.CCReadPublic }
+
+// ActivateCredential is the input to TPM2_ActivateCredential.
+// See definition in Part 3, Commands, section 12.5.
+type ActivateCredential struct {
+	// handle of the object associated with certificate in credentialBlob
+	ActivateHandle handle `gotpm:"handle,auth"`
+	// loaded key used to decrypt the TPMS_SENSITIVE in credentialBlob
+	KeyHandle handle `gotpm:"handle,auth"`
+	// the credential
+	CredentialBlob tpm2b.IDObject
+	// keyHandle algorithm-dependent encrypted seed that protects credentialBlob
+	Secret tpm2b.EncryptedSecret
+}
+
+// Command implements the Command interface.
+func (*ActivateCredential) Command() tpm.CC { return tpm.CCActivateCredential }
+
+// Execute executes the command and returns the response.
+func (cmd *ActivateCredential) Execute(t transport.TPM, s ...Session) (*ActivateCredentialResponse, error) {
+	var rsp ActivateCredentialResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ActivateCredentialResponse is the response from TPM2_ActivateCredential.
+type ActivateCredentialResponse struct {
+	// the decrypted certificate information
+	CertInfo tpm2b.Digest
+}
+
+// Response implements the Response interface.
+func (*ActivateCredentialResponse) Response() tpm.CC { return tpm.CCActivateCredential }
+
+// MakeCredential is the input to TPM2_MakeCredential.
+// See definition in Part 3, Commands, section 12.6.
+type MakeCredential struct {
+	// loaded public area, used to encrypt the sensitive area containing the credential key
+	Handle tpmi.DHObject `gotpm:"handle"`
+	// the credential information
+	Credential tpm2b.Digest
+	// Name of the object to which the credential applies
+	ObjectNamae tpm2b.Name
+}
+
+// Command implements the Command interface.
+func (*MakeCredential) Command() tpm.CC { return tpm.CCMakeCredential }
+
+// Execute executes the command and returns the response.
+func (cmd *MakeCredential) Execute(t transport.TPM, s ...Session) (*MakeCredentialResponse, error) {
+	var rsp MakeCredentialResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// MakeCredentialResponse is the response from TPM2_MakeCredential.
+type MakeCredentialResponse struct {
+	// the credential
+	CredentialBlob tpm2b.IDObject
+	// handle algorithm-dependent data that wraps the key that encrypts credentialBlob
+	Secret tpm2b.EncryptedSecret
+}
+
+// Response implements the Response interface.
+func (*MakeCredentialResponse) Response() tpm.CC { return tpm.CCMakeCredential }
 
 // Unseal is the input to TPM2_Unseal.
 // See definition in Part 3, Commands, section 12.7
@@ -386,6 +455,36 @@ type CreateLoadedResponse struct {
 
 // Response implements the Response interface.
 func (*CreateLoadedResponse) Response() tpm.CC { return tpm.CCCreateLoaded }
+
+// ECDHZGen is the input to TPM2_ECDHZGen.
+// See definition in Part 3, Commands, section 14.5
+type ECDHZGen struct {
+	// handle of a loaded ECC key
+	KeyHandle handle `gotpm:"handle,auth"`
+	// a public key
+	InPoint tpm2b.ECCPoint
+}
+
+// Command implements the Command interface.
+func (*ECDHZGen) Command() tpm.CC { return tpm.CCECDHZGen }
+
+// Execute executes the command and returns the response.
+func (cmd *ECDHZGen) Execute(t transport.TPM, s ...Session) (*ECDHZGenResponse, error) {
+	var rsp ECDHZGenResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ECDHZGenResponse is the response from TPM2_ECDHZGen.
+type ECDHZGenResponse struct {
+	// X and Y coordinates of the product of the multiplication
+	OutPoint tpm2b.ECCPoint
+}
+
+// Response implements the Response interface.
+func (*ECDHZGenResponse) Response() tpm.CC { return tpm.CCECDHZGen }
 
 // Hash is the input to TPM2_Hash.
 // See definition in Part 3, Commands, section 15.4
@@ -484,7 +583,7 @@ func (*HashSequenceStartResponse) Response() tpm.CC { return tpm.CCHashSequenceS
 // SequenceUpdate is the input to TPM2_SequenceUpdate.
 // See definition in Part 3, Commands, section 17.4
 type SequenceUpdate struct {
-	// handle for the sequence object Auth Index: 1 Auth Role: USER
+	// handle for the sequence object
 	SequenceHandle handle `gotpm:"handle,auth"`
 	// data to be added to hash
 	Buffer tpm2b.MaxBuffer
@@ -511,7 +610,7 @@ func (*SequenceUpdateResponse) Response() tpm.CC { return tpm.CCSequenceUpdate }
 // SequenceComplete is the input to TPM2_SequenceComplete.
 // See definition in Part 3, Commands, section 17.5
 type SequenceComplete struct {
-	// authorization for the sequence, Auth Index: 1, Auth Role: USER
+	// authorization for the sequence
 	SequenceHandle handle `gotpm:"handle,auth"`
 	// data to be added to the hash/HMAC
 	Buffer tpm2b.MaxBuffer
@@ -546,9 +645,9 @@ func (*SequenceCompleteResponse) Response() tpm.CC { return tpm.CCSequenceComple
 // Certify is the input to TPM2_Certify.
 // See definition in Part 3, Commands, section 18.2.
 type Certify struct {
-	// handle of the object to be certified, Auth Index: 1, Auth Role: ADMIN
+	// handle of the object to be certified
 	ObjectHandle handle `gotpm:"handle,auth"`
-	// handle of the key used to sign the attestation structure, Auth Index: 2, Auth Role: USER
+	// handle of the key used to sign the attestation structure
 	SignHandle handle `gotpm:"handle,auth"`
 	// user provided qualifying data
 	QualifyingData tpm2b.Data
@@ -769,12 +868,12 @@ func (*VerifySignatureResponse) Response() tpm.CC { return tpm.CCVerifySignature
 // Sign is the input to TPM2_Sign.
 // See definition in Part 3, Commands, section 20.2.
 type Sign struct {
-	// Handle of key that will perform signing, Auth Index: 1, Auth Role: USER
+	// Handle of key that will perform signing
 	KeyHandle handle `gotpm:"handle,auth"`
 	// digest to be signed
 	Digest tpm2b.Digest
 	// signing scheme to use if the scheme for keyHandle is TPM_ALG_NULL
-	InScheme tpmt.SigScheme
+	InScheme tpmt.SigScheme `gotpm:"nullable"`
 	// proof that digest was created by the TPM
 	// If keyHandle is not a restricted signing key, then this
 	// may be a NULL Ticket with tag = TPM_ST_CHECKHASH.
@@ -1076,6 +1175,52 @@ type PolicyPCRResponse struct{}
 // Response implements the Response interface.
 func (*PolicyPCRResponse) Response() tpm.CC { return tpm.CCPolicyPCR }
 
+// PolicyNV is the input to TPM2_PolicyNV.
+// See definition in Part 3, Commands, section 23.9.
+type PolicyNV struct {
+	// handle indicating the source of the authorization value
+	AuthHandle handle `gotpm:"handle,auth"`
+	// the NV Index of the area to read
+	NVIndex handle `gotpm:"handle"`
+	// handle for the policy session being extended
+	PolicySession handle `gotpm:"handle"`
+	// the second operand
+	OperandB tpm2b.Operand
+	// the octet offset in the NV Index for the start of operand A
+	Offset uint16
+	// the comparison to make
+	Operation tpm.EO
+}
+
+// Command implements the Command interface.
+func (*PolicyNV) Command() tpm.CC { return tpm.CCPolicyNV }
+
+// Execute executes the command and returns the response.
+func (cmd *PolicyNV) Execute(t transport.TPM, s ...Session) error {
+	var rsp PolicyNVResponse
+	return execute(t, cmd, &rsp, s...)
+}
+
+// Update implements the PolicyCommand interface.
+func (cmd *PolicyNV) Update(policy *PolicyCalculator) error {
+	alg, err := policy.alg.Hash()
+	if err != nil {
+		return err
+	}
+	h := alg.New()
+	h.Write(cmd.OperandB.Buffer)
+	binary.Write(h, binary.BigEndian, cmd.Offset)
+	binary.Write(h, binary.BigEndian, cmd.Operation)
+	args := h.Sum(nil)
+	return policy.Update(tpm.CCPolicyNV, args, cmd.NVIndex.KnownName().Buffer)
+}
+
+// PolicyPCRResponse is the response from TPM2_PolicyPCR.
+type PolicyNVResponse struct{}
+
+// Response implements the Response interface.
+func (*PolicyNVResponse) Response() tpm.CC { return tpm.CCPolicyNV }
+
 // PolicyCommandCode is the input to TPM2_PolicyCommandCode.
 // See definition in Part 3, Commands, section 23.11.
 type PolicyCommandCode struct {
@@ -1313,10 +1458,35 @@ type CreatePrimaryResponse struct {
 // Response implements the Response interface.
 func (*CreatePrimaryResponse) Response() tpm.CC { return tpm.CCCreatePrimary }
 
+// Clear is the input to TPM2_Clear.
+// See definition in Part 3, Commands, section 24.6
+type Clear struct {
+	// TPM_RH_LOCKOUT or TPM_RH_PLATFORM+{PP}
+	AuthHandle handle `gotpm:"handle,auth"`
+}
+
+// Command implements the Command interface.
+func (*Clear) Command() tpm.CC { return tpm.CCClear }
+
+// Execute executes the command and returns the response.
+func (cmd *Clear) Execute(t transport.TPM, s ...Session) error {
+	var rsp ClearResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ClearResponse is the response from TPM2_Clear.
+type ClearResponse struct{}
+
+// Response implements the Response interface.
+func (*ClearResponse) Response() tpm.CC { return tpm.CCClear }
+
 // ContextSave is the input to TPM2_ContextSave.
 // See definition in Part 3, Commands, section 28.2
 type ContextSave struct {
-	// handle of the resource to save Auth Index: None
+	// handle of the resource to save
 	SaveHandle tpmi.DHContext
 }
 
@@ -1554,6 +1724,30 @@ type NVWriteResponse struct{}
 // Response implements the Response interface.
 func (*NVWriteResponse) Response() tpm.CC { return tpm.CCNVWrite }
 
+// NVIncrement is the input to TPM2_NV_Increment.
+// See definition in Part 3, Commands, section 31.8.
+type NVIncrement struct {
+	// handle indicating the source of the authorization value
+	AuthHandle handle `gotpm:"handle,auth"`
+	// the NV index of the area to write
+	NVIndex handle `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (*NVIncrement) Command() tpm.CC { return tpm.CCNVIncrement }
+
+// Execute executes the command and returns the response.
+func (cmd *NVIncrement) Execute(t transport.TPM, s ...Session) error {
+	var rsp NVIncrementResponse
+	return execute(t, cmd, &rsp, s...)
+}
+
+// NVIncrementResponse is the response from TPM2_NV_Increment.
+type NVIncrementResponse struct{}
+
+// Response implements the Response interface.
+func (*NVIncrementResponse) Response() tpm.CC { return tpm.CCNVIncrement }
+
 // NVWriteLock is the input to TPM2_NV_WriteLock.
 // See definition in Part 3, Commands, section 31.11.
 type NVWriteLock struct {
@@ -1611,3 +1805,45 @@ type NVReadResponse struct {
 
 // Response implements the Response interface.
 func (*NVReadResponse) Response() tpm.CC { return tpm.CCNVRead }
+
+// NVCertify is the input to TPM2_NV_Certify.
+// See definition in Part 3, Commands, section 31.16.
+type NVCertify struct {
+	// handle of the key used to sign the attestation structure
+	SignHandle handle `gotpm:"handle,auth"`
+	// handle indicating the source of the authorization value
+	AuthHandle handle `gotpm:"handle,auth"`
+	// Index for the area to be certified
+	NVIndex handle `gotpm:"handle"`
+	// user-provided qualifying data
+	QualifyingData tpm2b.Data
+	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
+	InScheme tpmt.SigScheme `gotpm:"nullable"`
+	// number of octets to certify
+	Size uint16
+	// octet offset into the NV area
+	Offset uint16
+}
+
+// Command implements the Command interface.
+func (*NVCertify) Command() tpm.CC { return tpm.CCNVCertify }
+
+// Execute executes the command and returns the response.
+func (cmd *NVCertify) Execute(t transport.TPM, s ...Session) (*NVCertifyResponse, error) {
+	var rsp NVCertifyResponse
+	if err := execute(t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVCertifyResponse is the response from TPM2_NV_Read.
+type NVCertifyResponse struct {
+	// the structure that was signed
+	CertifyInfo tpm2b.Attest
+	// the asymmetric signature over certifyInfo using the key referenced by signHandle
+	Signature tpmt.Signature
+}
+
+// Response implements the Response interface.
+func (*NVCertifyResponse) Response() tpm.CC { return tpm.CCNVCertify }

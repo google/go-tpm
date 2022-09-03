@@ -65,6 +65,10 @@ type RC = internal.TPMRC
 // Fmt1Error represents a TPM 2.0 format-1 error, with additional information.
 type Fmt1Error = internal.TPMFmt1Error
 
+// EO represents a TPM_EO.
+// See definition in Part 2: Structures, section 6.8.
+type EO = internal.TPMEO
+
 // ST represents a TPM_ST.
 // See definition in Part 2: Structures, section 6.9.
 type ST = internal.TPMST

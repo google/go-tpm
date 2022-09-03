@@ -108,6 +108,10 @@ type TPMCC uint32
 // See definition in Part 2: Structures, section 6.6.
 type TPMRC uint32
 
+// TPMEO represents a TPM_EO.
+// See definition in Part 2: Structures, section 6.8.
+type TPMEO uint16
+
 // TPMST represents a TPM_ST.
 // See definition in Part 2: Structures, section 6.9.
 type TPMST uint16
@@ -543,6 +547,10 @@ type TPM2BTimeout TPM2BData
 // TPM2BAuth represents a TPM2B_AUTH.
 // See definition in Part 2: Structures, section 10.4.5.
 type TPM2BAuth TPM2BDigest
+
+// TPM2BOperand represents a TPM2B_Operand.
+// See definition in Part 2: Structures, section 10.4.6.
+type TPM2BOperand TPM2BDigest
 
 // TPM2BMaxBuffer represents a TPM2B_MAX_BUFFER.
 // See definition in Part 2: Structures, section 10.4.8.
@@ -1491,6 +1499,10 @@ type TPMSCreationData struct {
 	// association with additional information added by the key
 	OutsideInfo TPM2BData
 }
+
+// TPM2BIDObject represents a TPM2B_ID_OBJECT.
+// See definition in Part 2: Structures, section 12.4.3.
+type TPM2BIDObject TPM2BData
 
 // TPMNT represents a TPM_NT.
 // See definition in Part 2: Structures, section 13.4.

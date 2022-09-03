@@ -286,6 +286,22 @@ const (
 	RCNVUnavailable  = internal.TPMRCNVUnavailable
 )
 
+// EO values come from Part 2: Structures, section 6.8.
+const (
+	EOEq         = internal.TPMEOEq
+	EONeq        = internal.TPMEONeq
+	EOSignedGT   = internal.TPMEOSignedGT
+	EOUnsignedGT = internal.TPMEOUnsignedGT
+	EOSignedLT   = internal.TPMEOSignedLT
+	EOUnsignedLT = internal.TPMEOUnsignedLT
+	EOSignedGE   = internal.TPMEOSignedGE
+	EOUnsignedGE = internal.TPMEOUnsignedGE
+	EOSignedLE   = internal.TPMEOSignedLE
+	EOUnsignedLE = internal.TPMEOUnsignedLE
+	EOBitSet     = internal.TPMEOBitSet
+	EOBitClear   = internal.TPMEOBitClear
+)
+
 // ST values come from Part 2: Structures, section  6.9.
 const (
 	STRspCommand         = internal.TPMSTRspCommand
