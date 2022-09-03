@@ -577,7 +577,7 @@ type TPMTTKCreation struct {
 	Digest TPM2BDigest
 }
 
-// TPMTTVerified represents a TPMT_TK_Verified.
+// TPMTTKVerified represents a TPMT_TK_Verified.
 // See definition in Part 2: Structures, section 10.7.4.
 type TPMTTKVerified struct {
 	// ticket structure tag

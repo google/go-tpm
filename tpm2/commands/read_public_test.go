@@ -13,7 +13,7 @@ import (
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
-// TestReadPublicKey compares the CreatePrimary reponse parameter outPublic with the output of ReadPublic outPublic.
+// TestReadPublicKey compares the CreatePrimary response parameter outPublic with the output of ReadPublic outPublic.
 func TestReadPublicKey(t *testing.T) {
 	// Open simulated TPM for testing.
 	thetpm, err := simulator.OpenSimulator()

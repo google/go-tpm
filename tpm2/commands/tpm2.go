@@ -441,16 +441,16 @@ func (cmd *GetRandom) Execute(t transport.TPM, s ...Session) (*GetRandomResponse
 	return &rsp, nil
 }
 
-// GetRandomReponse is the reponse from TPM2_GetRandom.
+// GetRandomReponse is the response from TPM2_GetRandom.
 type GetRandomResponse struct {
 	// the random octets
 	RandomBytes tpm2b.Digest
 }
 
-// Reponse implements the Response interface.
+// Response implements the Response interface.
 func (*GetRandomResponse) Response() tpm.CC { return tpm.CCGetRandom }
 
-// Quote is the input to TPM2_HashSequenceStart.
+// HashSequenceStart is the input to TPM2_HashSequenceStart.
 // See definition in Part 3, Commands, section 17.3
 type HashSequenceStart struct {
 	// authorization value for subsequent use of the sequence

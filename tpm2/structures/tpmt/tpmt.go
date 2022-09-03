@@ -11,7 +11,7 @@ type HA = internal.TPMTHA
 // See definition in Part 2: Structures, section 10.7.3.
 type TKCreation = internal.TPMTTKCreation
 
-// TVerified represents a TPMT_TK_Verified.
+// TKVerified represents a TPMT_TK_Verified.
 // See definition in Part 2: Structures, section 10.7.4.
 type TKVerified = internal.TPMTTKVerified
 
@@ -19,7 +19,7 @@ type TKVerified = internal.TPMTTKVerified
 // See definition in Part 2: Structures, section 10.7.5.
 type TKAuth = internal.TPMTTKAuth
 
-// TPMTTKHashCheck represents a TPMT_TK_HASHCHECK.
+// TKHashCheck represents a TPMT_TK_HASHCHECK.
 // See definition in Part 2: Structures, section 10.7.6.
 type TKHashCheck = internal.TPMTTKHashCheck
 
