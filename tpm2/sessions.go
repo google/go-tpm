@@ -562,11 +562,9 @@ func attrsToBytes(attrs TPMASession) []byte {
 // pHash cpHash for a command, or an rpHash for a response.
 // nonceNewer in a command is the new nonceCaller sent in the command session packet.
 // nonceNewer in a response is the new nonceTPM sent in the response session packet.
-// nonceOlder in a command is the last nonceTPM sent by the TPM for this
-//   session. This may be when the session was created, or the last time it was
-//   used.
-// nonceOlder in a response is the corresponding nonceCaller sent in the
-//   command.
+// nonceOlder in a command is the last nonceTPM sent by the TPM for this session.
+// This may be when the session was created, or the last time it was used.
+// nonceOlder in a response is the corresponding nonceCaller sent in the command.
 func computeHMAC(alg TPMIAlgHash, key, pHash, nonceNewer, nonceOlder, addNonces []byte, attrs TPMASession) ([]byte, error) {
 	ha, err := alg.Hash()
 	if err != nil {
