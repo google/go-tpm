@@ -1,3 +1,4 @@
+// Package templates provides standard templates for TPM 2.0 primary keys.
 package templates
 
 import (

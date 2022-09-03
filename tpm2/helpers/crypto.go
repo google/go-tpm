@@ -1,3 +1,4 @@
+// Package helpers provides helper functionality for interacting with the TPM 2.0 API.
 package helpers
 
 import (

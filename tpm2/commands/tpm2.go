@@ -949,8 +949,8 @@ func policyUpdate(policy *PolicyCalculator, cc tpm.CC, arg2, arg3 []byte) error 
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicySigned) Update(policy *PolicyCalculator) error {
-	return policyUpdate(policy, tpm.CCPolicySigned, p.AuthObject.KnownName().Buffer, p.PolicyRef.Buffer)
+func (cmd *PolicySigned) Update(policy *PolicyCalculator) error {
+	return policyUpdate(policy, tpm.CCPolicySigned, cmd.AuthObject.KnownName().Buffer, cmd.PolicyRef.Buffer)
 }
 
 // PolicySignedResponse is the response from TPM2_PolicySigned.
@@ -995,8 +995,8 @@ func (cmd *PolicySecret) Execute(t transport.TPM, s ...Session) (*PolicySecretRe
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicySecret) Update(policy *PolicyCalculator) {
-	policyUpdate(policy, tpm.CCPolicySecret, p.AuthHandle.KnownName().Buffer, p.PolicyRef.Buffer)
+func (cmd *PolicySecret) Update(policy *PolicyCalculator) {
+	policyUpdate(policy, tpm.CCPolicySecret, cmd.AuthHandle.KnownName().Buffer, cmd.PolicyRef.Buffer)
 }
 
 // PolicySecretResponse is the response from TPM2_PolicySecret.
@@ -1029,10 +1029,10 @@ func (cmd *PolicyOr) Execute(t transport.TPM, s ...Session) error {
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyOr) Update(policy *PolicyCalculator) error {
+func (cmd *PolicyOr) Update(policy *PolicyCalculator) error {
 	policy.Reset()
 	var digests bytes.Buffer
-	for _, digest := range p.PHashList.Digests {
+	for _, digest := range cmd.PHashList.Digests {
 		digests.Write(digest.Buffer)
 	}
 	return policy.Update(tpm.CCPolicyOR, digests.Bytes())
@@ -1066,8 +1066,8 @@ func (cmd *PolicyPCR) Execute(t transport.TPM, s ...Session) error {
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyPCR) Update(policy *PolicyCalculator) error {
-	return policy.Update(tpm.CCPolicyPCR, p.Pcrs, p.PcrDigest.Buffer)
+func (cmd *PolicyPCR) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyPCR, cmd.Pcrs, cmd.PcrDigest.Buffer)
 }
 
 // PolicyPCRResponse is the response from TPM2_PolicyPCR.
@@ -1095,8 +1095,8 @@ func (cmd *PolicyCommandCode) Execute(t transport.TPM, s ...Session) error {
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyCommandCode) Update(policy *PolicyCalculator) error {
-	return policy.Update(tpm.CCPolicyCommandCode, p.Code)
+func (cmd *PolicyCommandCode) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyCommandCode, cmd.Code)
 }
 
 // PolicyCommandCodeResponse is the response from TPM2_PolicyCommandCode.
@@ -1124,8 +1124,8 @@ func (cmd *PolicyCPHash) Execute(t transport.TPM, s ...Session) error {
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyCPHash) Update(policy *PolicyCalculator) error {
-	return policy.Update(tpm.CCPolicyCpHash, p.CPHashA.Buffer)
+func (cmd *PolicyCPHash) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyCpHash, cmd.CPHashA.Buffer)
 }
 
 // PolicyCPHashResponse is the response from TPM2_PolicyCpHash.
@@ -1159,8 +1159,8 @@ func (cmd *PolicyAuthorize) Execute(t transport.TPM, s ...Session) error {
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyAuthorize) Update(policy *PolicyCalculator) error {
-	return policyUpdate(policy, tpm.CCPolicyAuthorize, p.KeySign.Buffer, p.PolicyRef.Buffer)
+func (cmd *PolicyAuthorize) Update(policy *PolicyCalculator) error {
+	return policyUpdate(policy, tpm.CCPolicyAuthorize, cmd.KeySign.Buffer, cmd.PolicyRef.Buffer)
 }
 
 // PolicyAuthorizeResponse is the response from TPM2_PolicyAuthorize.
@@ -1220,8 +1220,8 @@ func (cmd *PolicyNVWritten) Execute(t transport.TPM, s ...Session) (*PolicyNVWri
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyNVWritten) Update(policy *PolicyCalculator) error {
-	return policy.Update(tpm.CCPolicyNvWritten, p.WrittenSet)
+func (cmd *PolicyNVWritten) Update(policy *PolicyCalculator) error {
+	return policy.Update(tpm.CCPolicyNvWritten, cmd.WrittenSet)
 }
 
 // PolicyNVWrittenResponse is the response from TPM2_PolicyNvWritten.
@@ -1252,9 +1252,9 @@ func (cmd *PolicyAuthorizeNV) Execute(t transport.TPM, s ...Session) error {
 }
 
 // Update implements the PolicyCommand interface.
-func (p *PolicyAuthorizeNV) Update(policy *PolicyCalculator) error {
+func (cmd *PolicyAuthorizeNV) Update(policy *PolicyCalculator) error {
 	policy.Reset()
-	return policy.Update(tpm.CCPolicyAuthorizeNV, p.NVIndex.KnownName().Buffer)
+	return policy.Update(tpm.CCPolicyAuthorizeNV, cmd.NVIndex.KnownName().Buffer)
 }
 
 // PolicyAuthorizeNVResponse is the response from TPM2_PolicyAuthorizeNV.
