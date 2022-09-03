@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// maxTPMResponse is the largest possible response from the TPM We need to know
+// maxTPMResponse is the largest possible response from the TPM. We need to know
 // this because we don't always know the length of the TPM response, and
 // /dev/tpm insists on giving it all back in a single value rather than
 // returning a header and a body in separate responses.

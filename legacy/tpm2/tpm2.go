@@ -24,7 +24,7 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-// GetRandom gets random bytes from the TPM
+// GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriter, size uint16) ([]byte, error) {
 	resp, err := runCommand(rw, TagNoSessions, CmdGetRandom, size)
 	if err != nil {
@@ -39,8 +39,8 @@ func GetRandom(rw io.ReadWriter, size uint16) ([]byte, error) {
 }
 
 // FlushContext removes an object or session under handle to be removed from
-// the TPM This must be called for any loaded handle to avoid out-of-memory
-// errors in TPM
+// the TPM. This must be called for any loaded handle to avoid out-of-memory
+// errors in TPM.
 func FlushContext(rw io.ReadWriter, handle tpmutil.Handle) error {
 	_, err := runCommand(rw, TagNoSessions, CmdFlushContext, handle)
 	return err
@@ -179,7 +179,7 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 	return vals, nil
 }
 
-// ReadPCRs reads PCR values from the TPM
+// ReadPCRs reads PCR values from the TPM.
 // This is only a wrapper over TPM2_PCR_Read() call, thus can only return
 // at most 8 PCRs digests.
 func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
@@ -204,7 +204,7 @@ func decodeReadClock(in []byte) (uint64, uint64, error) {
 	return curTime, curClock, nil
 }
 
-// ReadClock returns current clock values from the TPM
+// ReadClock returns current clock values from the TPM.
 //
 // First return value is time in milliseconds since TPM was initialized (since
 // system startup).
@@ -615,7 +615,7 @@ func decodeImport(resp []byte) ([]byte, error) {
 }
 
 // Import allows a user to import a key created on a different computer
-// or in a different TPM The publicBlob and privateBlob must always be
+// or in a different TPM. The publicBlob and privateBlob must always be
 // provided. symSeed should be non-nil iff an "outer wrapper" is used. Both of
 // encryptionKey and sym should be non-nil iff an "inner wrapper" is used.
 func Import(rw io.ReadWriter, parentHandle tpmutil.Handle, auth AuthCommand, publicBlob, privateBlob, symSeed, encryptionKey []byte, sym *SymScheme) ([]byte, error) {
@@ -663,7 +663,7 @@ func decodeLoad(in []byte) (tpmutil.Handle, []byte, error) {
 	return handle, b.Bytes(), nil
 }
 
-// Load loads public/private blobs into an object in the TPM
+// Load loads public/private blobs into an object in the TPM.
 // Returns loaded object handle and its name.
 func Load(rw io.ReadWriter, parentHandle tpmutil.Handle, parentAuth string, publicBlob, privateBlob []byte) (tpmutil.Handle, []byte, error) {
 	auth := AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession, Auth: []byte(parentAuth)}
@@ -708,7 +708,7 @@ func decodeLoadExternal(in []byte) (tpmutil.Handle, []byte, error) {
 }
 
 // LoadExternal loads a public (and optionally a private) key into an object in
-// the TPM Returns loaded object handle and its name.
+// the TPM. Returns loaded object handle and its name.
 func LoadExternal(rw io.ReadWriter, pub Public, private Private, hierarchy tpmutil.Handle) (tpmutil.Handle, []byte, error) {
 	Cmd, err := encodeLoadExternal(pub, private, hierarchy)
 	if err != nil {
@@ -1180,7 +1180,7 @@ func HierarchyChangeAuth(rw io.ReadWriter, handle tpmutil.Handle, auth AuthComma
 }
 
 // ContextSave returns an encrypted version of the session, object or sequence
-// context for storage outside of the TPM The handle references context to
+// context for storage outside of the TPM. The handle references context to
 // store.
 func ContextSave(rw io.ReadWriter, handle tpmutil.Handle) ([]byte, error) {
 	return runCommand(rw, TagNoSessions, CmdContextSave, handle)

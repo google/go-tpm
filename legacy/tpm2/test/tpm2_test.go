@@ -1909,7 +1909,7 @@ func TestECDHKeyGen(t *testing.T) {
 	rw := openTPM(t)
 	defer rw.Close()
 
-	// Generate my key and load the public point into the TPM
+	// Generate my key and load the public point into the TPM.
 	myPriv, myPubX, myPubY, err := elliptic.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatalf("GenerateKey failed: %v", err)
@@ -1952,7 +1952,7 @@ func TestECDHZGen(t *testing.T) {
 		t.Fatalf("GenerateKey failed: %v", err)
 	}
 
-	// Generate a key in the TPM
+	// Generate a key in the TPM.
 	handle, _, err := CreatePrimary(rw, HandleOwner, PCRSelection{}, emptyPassword, defaultPassword, Public{
 		Type:       AlgECC,
 		NameAlg:    AlgSHA256,
@@ -1966,7 +1966,7 @@ func TestECDHZGen(t *testing.T) {
 	}
 	defer FlushContext(rw, handle)
 
-	// Read the public key from the TPM
+	// Read the public key from the TPM.
 	yourPub, _, _, err := ReadPublic(rw, handle)
 	if err != nil {
 		t.Fatalf("ReadPublic failed: %v", err)

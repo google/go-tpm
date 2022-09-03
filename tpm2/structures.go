@@ -781,7 +781,7 @@ type TPMSClockInfo struct {
 	// occurred since the last TPM Reset or TPM2_Clear().
 	RestartCount uint32
 	// no value of Clock greater than the current value of Clock has been
-	// previously reported by the TPM Set to YES on TPM2_Clear().
+	// previously reported by the TPM. Set to YES on TPM2_Clear().
 	Safe TPMIYesNo
 }
 

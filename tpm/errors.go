@@ -202,7 +202,7 @@ var tpmErrMsgs = map[tpmError]string{
 	errWriteLocked:           "the NV area has already been written to",
 	errBadAttributes:         "the NV area attributes conflict",
 	errInvalidStructure:      "the structure tag and version are invalid or inconsistent",
-	errKeyOwnerControl:       "the key is under control of the TPM Owner and can only be evicted by the TPM Owner",
+	errKeyOwnerControl:       "the key is under control of the TPM. Owner and can only be evicted by the TPM. Owner",
 	errBadCounter:            "the counter handle is incorrect",
 	errNotFullWrite:          "the write is not a complete write of the area",
 	errContextGap:            "the gap between saved context counts is too large",

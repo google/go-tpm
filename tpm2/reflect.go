@@ -102,7 +102,7 @@ func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) e
 		return err
 	}
 	if hasSessions {
-		// We don't need the TPM RC here because we would have errored
+		// We don't need the TPM. RC here because we would have errored
 		// out from rspHeader
 		// TODO: Authenticate the error code with sessions, if desired.
 		err = rspSessions(rspBuf, TPMRCSuccess, cc, names, rspParms, sess)

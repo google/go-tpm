@@ -252,7 +252,7 @@ const (
 
 const unknownCode = "unknown error code"
 
-// Error is returned for all Format 0 errors from the TPM It is used for general
+// Error is returned for all Format 0 errors from the TPM. It is used for general
 // errors not specific to a parameter, handle or session.
 type Error struct {
 	Code RCFmt0

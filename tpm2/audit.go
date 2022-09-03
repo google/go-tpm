@@ -7,7 +7,7 @@ import (
 )
 
 // CommandAudit represents an audit session for attesting the execution of a
-// series of commands in the TPM It is useful for both command and session
+// series of commands in the TPM. It is useful for both command and session
 // auditing.
 type CommandAudit struct {
 	hash   TPMIAlgHash

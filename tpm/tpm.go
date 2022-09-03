@@ -1210,7 +1210,7 @@ func GetCapabilityRaw(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	return getCapability(rw, cap, subcap)
 }
 
-// OwnerClear uses owner auth to clear the TPM After this operation, the TPM
+// OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth Digest) error {
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
@@ -1421,7 +1421,7 @@ func createWrapKeyHelper(rw io.ReadWriter, srkAuth []byte, keyFlags KeyFlags, us
 	return k, nil
 }
 
-// CreateWrapKey creates a new RSA key for signatures inside the TPM It is
+// CreateWrapKey creates a new RSA key for signatures inside the TPM. It is
 // wrapped by the SRK (which is to say, the SRK is the parent key). The key can
 // be bound to the specified PCR numbers so that it can only be used for
 // signing if the PCR values of those registers match. The pcrs parameter can

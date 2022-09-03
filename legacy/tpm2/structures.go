@@ -864,7 +864,7 @@ type IDObject struct {
 }
 
 // CreationData describes the attributes and environment for an object created
-// on the TPM This structure encodes/decodes to/from TPMS_CREATION_DATA.
+// on the TPM. This structure encodes/decodes to/from TPMS_CREATION_DATA.
 type CreationData struct {
 	PCRSelection        PCRSelection
 	PCRDigest           tpmutil.U16Bytes

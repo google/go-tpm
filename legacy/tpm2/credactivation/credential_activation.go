@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package credactivation implements generation of data blobs to be used
-// when invoking the ActivateCredential command, on a TPM
+// when invoking the ActivateCredential command, on a TPM.
 package credactivation
 
 import (
@@ -44,7 +44,7 @@ const (
 // specification, revision 14.
 // The pub parameter must be a pointer to rsa.PublicKey.
 // The secret parameter must not be longer than the longest digest size implemented
-// by the TPM A 32 byte secret is a safe, recommended default.
+// by the TPM. A 32 byte secret is a safe, recommended default.
 //
 // This function implements Credential Protection as defined in section 24 of the TPM
 // specification revision 2 part 1, with the additional caveat of not supporting ECC EKs.
