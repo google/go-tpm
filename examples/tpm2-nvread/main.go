@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 // Binary tpm2-nvread reads data from NVRAM at a specified index. The data is
@@ -9,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
 
