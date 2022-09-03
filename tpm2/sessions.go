@@ -560,10 +560,8 @@ func attrsToBytes(attrs TPMASession) []byte {
 // This applies to both commands and responses.
 // The value of key depends on whether the session is bound and/or salted.
 // pHash cpHash for a command, or an rpHash for a response.
-// nonceNewer in a command is the new nonceCaller sent in the command session
-//   packet.
-// nonceNewer in a response is the new nonceTPM sent in the response session
-//   packet.
+// nonceNewer in a command is the new nonceCaller sent in the command session packet.
+// nonceNewer in a response is the new nonceTPM sent in the response session packet.
 // nonceOlder in a command is the last nonceTPM sent by the TPM for this
 //   session. This may be when the session was created, or the last time it was
 //   used.
