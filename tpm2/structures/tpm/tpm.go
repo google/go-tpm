@@ -1,4 +1,4 @@
-// package tpm contains the TPM 2.0 structures prefixed with "TPM_"
+// Package tpm contains the TPM 2.0 structures prefixed with "TPM_"
 package tpm
 
 import (

@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 // Copyright (c) 2018, Ian Haken. All rights reserved.

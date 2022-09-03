@@ -1,12 +1,17 @@
-// package tpma contains the TPM 2.0 structures prefixed by "TPMA_"
+// Package tpma contains the TPM 2.0 structures prefixed by "TPMA_"
 package tpma
 
 import (
 	"github.com/google/go-tpm/tpm2/structures/internal"
 )
 
+// Bitfield represents a TPM bitfield (i.e., TPMA_*) type.
 type Bitfield = internal.Bitfield
+
+// BitSetter represents a TPM bitfield (i.e., TPMA_*) type that can be written.
 type BitSetter = internal.BitSetter
+
+// BitGetter represents a TPM bitfield (i.e., TPMA_*) type that can be read.
 type BitGetter = internal.BitGetter
 
 // Algorithm represents a TPMA_ALGORITHM.

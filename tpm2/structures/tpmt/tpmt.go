@@ -1,4 +1,4 @@
-// package tpmt contains TPM 2.0 structures prefixed with "TPMT_"
+// Package tpmt contains TPM 2.0 structures prefixed with "TPMT_"
 package tpmt
 
 import "github.com/google/go-tpm/tpm2/structures/internal"

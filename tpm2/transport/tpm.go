@@ -1,4 +1,4 @@
-// package transport implements types for physically talking to TPMs.
+// Package transport implements types for physically talking to TPMs.
 package transport
 
 import (
@@ -18,7 +18,6 @@ type TPMCloser interface {
 	io.Closer
 }
 
-
 // wrappedRW represents a struct that wraps an io.ReadWriter
 // to a transport.TPM to be compatible with tpmdirect.
 type wrappedRW struct {
@@ -31,7 +30,7 @@ type wrappedRWC struct {
 	transport io.ReadWriteCloser
 }
 
-// wrappedTPM represents a struct that wraps a transport.TPM's underlying 
+// wrappedTPM represents a struct that wraps a transport.TPM's underlying
 // transport to use with legacy code that expects an io.ReadWriter.
 type wrappedTPM struct {
 	response []byte

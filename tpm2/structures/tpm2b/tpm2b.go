@@ -1,4 +1,4 @@
-// package tpm2b contains the TPM 2.0 structures prefixed with "TPM2B_"
+// Package tpm2b contains the TPM 2.0 structures prefixed with "TPM2B_"
 package tpm2b
 
 import (
@@ -29,11 +29,11 @@ type Timeout = internal.TPM2BTimeout
 // See definition in Part 2: Structures, section 10.4.5.
 type Auth = internal.TPM2BAuth
 
-// TPM2BMaxBuffer represents a TPM2B_MAX_BUFFER.
+// MaxBuffer represents a TPM2B_MAX_BUFFER.
 // See definition in Part 2: Structures, section 10.4.8.
 type MaxBuffer = internal.TPM2BMaxBuffer
 
-// TPM2BMaxNVBuffer represents a TPM2B_MAX_NV_BUFFER.
+// MaxNVBuffer represents a TPM2B_MAX_NV_BUFFER.
 // See definition in Part 2: Structures, section 10.4.9.
 type MaxNVBuffer = internal.TPM2BMaxNVBuffer
 

@@ -1,4 +1,4 @@
-// package tpmu contains TPM 2.0 structures prefixed with "TPMU_"
+// Package tpmu contains TPM 2.0 structures prefixed with "TPMU_"
 package tpmu
 
 import "github.com/google/go-tpm/tpm2/structures/internal"

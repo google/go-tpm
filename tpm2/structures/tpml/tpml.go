@@ -1,4 +1,4 @@
-// package tpml contains TPM 2.0 structures prefixed with "TPML_"
+// Package tpml contains TPM 2.0 structures prefixed with "TPML_"
 package tpml
 
 import (

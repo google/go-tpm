@@ -1,4 +1,4 @@
-// package tpmi contains the TPM 2.0 structures prefixed by "TPMI_"
+// Package tpmi contains the TPM 2.0 structures prefixed by "TPMI_"
 package tpmi
 
 import (

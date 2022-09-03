@@ -1,4 +1,4 @@
-// package tpms contains the TPM 2.0 structures prefixed by "TPMS_"
+// Package tpms contains the TPM 2.0 structures prefixed by "TPMS_"
 package tpms
 
 import "github.com/google/go-tpm/tpm2/structures/internal"

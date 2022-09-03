@@ -3,8 +3,6 @@
 package transport
 
 import (
-	"io"
-
 	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 

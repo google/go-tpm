@@ -1,4 +1,4 @@
-// package simulator provides access to a local simulator for TPM testing.
+// Package simulator provides access to a local simulator for TPM testing.
 package simulator
 
 import (

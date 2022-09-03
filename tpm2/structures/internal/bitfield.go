@@ -80,4 +80,3 @@ func (r *bitfield32) SetReservedBit(pos int, val bool) {
 		*r &= ^(1 << pos)
 	}
 }
-
