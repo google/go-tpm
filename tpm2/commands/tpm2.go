@@ -441,7 +441,7 @@ func (cmd *GetRandom) Execute(t transport.TPM, s ...Session) (*GetRandomResponse
 	return &rsp, nil
 }
 
-// GetRandomReponse is the response from TPM2_GetRandom.
+// GetRandomResponse is the response from TPM2_GetRandom.
 type GetRandomResponse struct {
 	// the random octets
 	RandomBytes tpm2b.Digest

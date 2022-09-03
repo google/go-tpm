@@ -150,7 +150,7 @@ func TestCertify(t *testing.T) {
 	pub := rspSigner.OutPublic.PublicArea
 	rsaPub, err := helpers.RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
-		t.Fatalf("Failed to retreive Public Key: %v", err)
+		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
 	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
