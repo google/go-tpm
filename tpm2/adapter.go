@@ -11,7 +11,7 @@ import (
 // StartupClear tells the TPM to perform a Reset and not a Restart.
 var StartupClear = tpm2.StartupClear
 
-// Startup initializes the TPM.
+// Startup initializes the TPM
 func Startup(rw io.ReadWriter, typ tpm2.StartupType) error {
 	return tpm2.Startup(rw, typ)
 }

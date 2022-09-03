@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package credactivation implements generation of data blobs to be used
-// when invoking the ActivateCredential command, on a TPM.
+// when invoking the ActivateCredential command, on a TPM
 package credactivation
 
 import (
@@ -28,7 +28,6 @@ import (
 	"io"
 
 	"github.com/google/go-tpm/legacy/tpm2"
-	"github.com/google/go-tpm/tpm2/helpers"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -45,7 +44,7 @@ const (
 // specification, revision 14.
 // The pub parameter must be a pointer to rsa.PublicKey.
 // The secret parameter must not be longer than the longest digest size implemented
-// by the TPM. A 32 byte secret is a safe, recommended default.
+// by the TPM A 32 byte secret is a safe, recommended default.
 //
 // This function implements Credential Protection as defined in section 24 of the TPM
 // specification revision 2 part 1, with the additional caveat of not supporting ECC EKs.
@@ -92,7 +91,7 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating symmetric key: %v", err)
 	}
-	symmetricKey := helpers.KDFaHash(h, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
+	symmetricKey := tpm2.KDFaHash(h, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
 	c, err := aes.NewCipher(symmetricKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("symmetric cipher setup: %v", err)
@@ -109,7 +108,7 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
 	// See section 24.5 of the TPM specification revision 2 part 1.
-	macKey := helpers.KDFaHash(h, seed, labelIntegrity, nil, nil, crypothash.Size()*8)
+	macKey := tpm2.KDFaHash(h, seed, labelIntegrity, nil, nil, crypothash.Size()*8)
 
 	mac := hmac.New(crypothash.New, macKey)
 	mac.Write(encIdentity)

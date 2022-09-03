@@ -57,7 +57,7 @@ func PcrExtend(rw io.ReadWriter, pcrIndex uint32, pcr pcrValue) ([]byte, error) 
 	return d[:], nil
 }
 
-// ReadPCR reads a PCR value from the TPM.
+// ReadPCR reads a PCR value from the TPM
 func ReadPCR(rw io.ReadWriter, pcrIndex uint32) ([]byte, error) {
 	in := []interface{}{pcrIndex}
 	var v pcrValue
@@ -86,7 +86,7 @@ func FetchPCRValues(rw io.ReadWriter, pcrVals []int) ([]byte, error) {
 	return pcrs, nil
 }
 
-// GetRandom gets random bytes from the TPM.
+// GetRandom gets random bytes from the TPM
 func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 	var b tpmutil.U32Bytes
 	in := []interface{}{size}
@@ -181,7 +181,7 @@ func Quote2(rw io.ReadWriter, handle tpmutil.Handle, data []byte, pcrVals []int,
 }
 
 // GetPubKey retrieves an opaque blob containing a public key corresponding to
-// a handle from the TPM.
+// a handle from the TPM
 func GetPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, srkAuth []byte) ([]byte, error) {
 	// Run OSAP for the handle, reading a random OddOSAP for our initial
 	// command and getting back a secret and a response.
@@ -405,7 +405,7 @@ func Reseal(rw io.ReadWriter, loc Locality, pcrs map[int][]byte, data []byte, sr
 	return sealHelper(rw, pcrInfo, data, srkAuth)
 }
 
-// Unseal decrypts data encrypted by the TPM.
+// Unseal decrypts data encrypted by the TPM
 func Unseal(rw io.ReadWriter, sealed []byte, srkAuth []byte) ([]byte, error) {
 	// Run OSAP for the SRK, reading a random OddOSAP for our initial
 	// command and getting back a secret and a handle.
@@ -1210,7 +1210,7 @@ func GetCapabilityRaw(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	return getCapability(rw, cap, subcap)
 }
 
-// OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
+// OwnerClear uses owner auth to clear the TPM After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth Digest) error {
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command
@@ -1248,7 +1248,7 @@ func OwnerClear(rw io.ReadWriter, ownerAuth Digest) error {
 
 // TakeOwnership takes over a TPM and inserts a new owner auth value and
 // generates a new SRK, associating it with a new SRK auth value. This
-// operation can only be performed if there isn't already an owner for the TPM.
+// operation can only be performed if there isn't already an owner for the TPM
 // The pub EK blob can be acquired by calling ReadPubEK if there is no owner, or
 // OwnerReadPubEK if there is.
 func TakeOwnership(rw io.ReadWriter, newOwnerAuth Digest, newSRKAuth Digest, pubEK []byte) error {
@@ -1421,7 +1421,7 @@ func createWrapKeyHelper(rw io.ReadWriter, srkAuth []byte, keyFlags KeyFlags, us
 	return k, nil
 }
 
-// CreateWrapKey creates a new RSA key for signatures inside the TPM. It is
+// CreateWrapKey creates a new RSA key for signatures inside the TPM It is
 // wrapped by the SRK (which is to say, the SRK is the parent key). The key can
 // be bound to the specified PCR numbers so that it can only be used for
 // signing if the PCR values of those registers match. The pcrs parameter can
@@ -1623,7 +1623,7 @@ func PcrReset(rw io.ReadWriter, pcrs []int) error {
 
 // ForceClear is normally used by firmware but on some platforms
 // vendors got it wrong and didn't call TPM_DisableForceClear.
-// It removes forcefully the ownership of the TPM.
+// It removes forcefully the ownership of the TPM
 func ForceClear(rw io.ReadWriter) error {
 	in := []interface{}{}
 	out := []interface{}{}
@@ -1632,7 +1632,7 @@ func ForceClear(rw io.ReadWriter) error {
 	return err
 }
 
-// Startup performs TPM_Startup(TPM_ST_CLEAR) to initialize the TPM.
+// Startup performs TPM_Startup(TPM_ST_CLEAR) to initialize the TPM
 func startup(rw io.ReadWriter) error {
 	var typ uint16 = 0x0001 // TPM_ST_CLEAR
 	in := []interface{}{typ}
@@ -1642,7 +1642,7 @@ func startup(rw io.ReadWriter) error {
 	return err
 }
 
-// createEK performs TPM_CreateEndorsementKeyPair to create the EK in the TPM.
+// createEK performs TPM_CreateEndorsementKeyPair to create the EK in the TPM
 func createEK(rw io.ReadWriter) error {
 	antiReplay := Nonce{}
 	keyInfo := []byte{

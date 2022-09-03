@@ -139,7 +139,7 @@ type commandHeader struct {
 	Cmd  Command
 }
 
-// ResponseCode is a response code returned by TPM.
+// ResponseCode is a response code returned by TPM
 type ResponseCode uint32
 
 // RCSuccess is response code for successful command. Identical for TPM 1.2 and

@@ -236,7 +236,7 @@ const (
 // EmptyAuth represents the empty authorization value.
 var EmptyAuth []byte
 
-// KeyProp is a bitmask used in Attributes field of key templates. Individual
+// KeyProp is a bitmask used in Attributes field of key  Individual
 // flags should be OR-ed to form a full mask.
 type KeyProp uint32
 

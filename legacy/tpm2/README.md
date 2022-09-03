@@ -5,7 +5,7 @@
 This library contains unit tests in `github.com/google/go-tpm/tpm2`, which just
 tests that various encoding and error checking functions work correctly. It also
 contains more comprehensive integration tests in
-`github.com/google/go-tpm/tpm2/test`, which run actual commands on a TPM.
+`github.com/google/go-tpm/tpm2/test`, which run actual commands on a TPM
 
 By default, these integration tests are run against the
 [`go-tpm-tools`](https://github.com/google/go-tpm-tools)

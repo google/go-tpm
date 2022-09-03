@@ -66,7 +66,7 @@ func osap(rw io.ReadWriter, osap *osapCommand) (*osapResponse, error) {
 	return &resp, nil
 }
 
-// seal performs a seal operation on the TPM.
+// seal performs a seal operation on the TPM
 func seal(rw io.ReadWriter, sc *sealCommand, pcrs *pcrInfoLong, data tpmutil.U32Bytes, ca *commandAuth) (*tpmStoredData, *responseAuth, uint32, error) {
 	pcrsize := binary.Size(pcrs)
 	if pcrsize < 0 {
@@ -88,7 +88,7 @@ func seal(rw io.ReadWriter, sc *sealCommand, pcrs *pcrInfoLong, data tpmutil.U32
 	return &tsd, &ra, ret, nil
 }
 
-// unseal data sealed by the TPM.
+// unseal data sealed by the TPM
 func unseal(rw io.ReadWriter, keyHandle tpmutil.Handle, sealed *tpmStoredData, ca1 *commandAuth, ca2 *commandAuth) ([]byte, *responseAuth, *responseAuth, uint32, error) {
 	in := []interface{}{keyHandle, sealed, ca1, ca2}
 	var outb tpmutil.U32Bytes
@@ -121,7 +121,7 @@ func authorizeMigrationKey(rw io.ReadWriter, migrationScheme MigrationScheme, mi
 	return authBlob, &ra, ret, nil
 }
 
-// createMigrationBlob migrates a key from the TPM.
+// createMigrationBlob migrates a key from the TPM
 func createMigrationBlob(rw io.ReadWriter, parentHandle tpmutil.Handle, migrationScheme MigrationScheme, migrationKey []byte, encData tpmutil.U32Bytes, ca1 *commandAuth, ca2 *commandAuth) ([]byte, []byte, *responseAuth, *responseAuth, uint32, error) {
 	in := []interface{}{parentHandle, migrationScheme, migrationKey, encData, ca1, ca2}
 	var rand tpmutil.U32Bytes
@@ -137,7 +137,7 @@ func createMigrationBlob(rw io.ReadWriter, parentHandle tpmutil.Handle, migratio
 	return rand, outData, &ra1, &ra2, ret, nil
 }
 
-// flushSpecific removes a handle from the TPM. Note that removing a handle
+// flushSpecific removes a handle from the TPM Note that removing a handle
 // doesn't require any authentication.
 func flushSpecific(rw io.ReadWriter, handle tpmutil.Handle, resourceType uint32) error {
 	// In this case, all the information is in err, so we don't check the
@@ -146,7 +146,7 @@ func flushSpecific(rw io.ReadWriter, handle tpmutil.Handle, resourceType uint32)
 	return err
 }
 
-// loadKey2 loads a key into the TPM. It's a tagRQUAuth1Command, so it only
+// loadKey2 loads a key into the TPM It's a tagRQUAuth1Command, so it only
 // needs one auth parameter.
 // TODO(tmroeder): support key12, too.
 func loadKey2(rw io.ReadWriter, k *key, ca *commandAuth) (tpmutil.Handle, *responseAuth, uint32, error) {
@@ -390,8 +390,8 @@ func ownerReadInternalPub(rw io.ReadWriter, kh tpmutil.Handle, ca *commandAuth) 
 	return &pk, &ra, ret, nil
 }
 
-// readPubEK requests the public part of the endorsement key from the TPM. Note
-// that this call can only be made when there is no owner in the TPM. Once an
+// readPubEK requests the public part of the endorsement key from the TPM Note
+// that this call can only be made when there is no owner in the TPM Once an
 // owner is established, the endorsement key can be retrieved using
 // ownerReadInternalPub.
 func readPubEK(rw io.ReadWriter, n Nonce) (*pubKey, Digest, uint32, error) {
@@ -407,7 +407,7 @@ func readPubEK(rw io.ReadWriter, n Nonce) (*pubKey, Digest, uint32, error) {
 	return &pk, d, ret, nil
 }
 
-// ownerClear uses owner auth to clear the TPM. After this operation, a caller
+// ownerClear uses owner auth to clear the TPM After this operation, a caller
 // can take ownership of the TPM with TPM_TakeOwnership.
 func ownerClear(rw io.ReadWriter, ca *commandAuth) (*responseAuth, uint32, error) {
 	in := []interface{}{ca}

@@ -340,7 +340,7 @@ type key12 struct {
 	EncData         tpmutil.U32Bytes
 }
 
-// A pubKey represents a public key known to the TPM.
+// A pubKey represents a public key known to the TPM
 type pubKey struct {
 	AlgorithmParams keyParams
 	Key             tpmutil.U32Bytes
@@ -360,7 +360,7 @@ type symKey struct {
 	Key       tpmutil.U16Bytes // TPM_SYMMETRIC_KEY uses a 16-bit header for Key data
 }
 
-// A tpmStoredData holds sealed data from the TPM.
+// A tpmStoredData holds sealed data from the TPM
 type tpmStoredData struct {
 	Version uint32
 	Info    tpmutil.U32Bytes
@@ -372,7 +372,7 @@ func (tsd tpmStoredData) String() string {
 	return fmt.Sprintf("tpmStoreddata{Version: %x, Info: % x, Enc: % x\n", tsd.Version, tsd.Info, tsd.Enc)
 }
 
-// A quoteInfo structure is the structure signed by the TPM.
+// A quoteInfo structure is the structure signed by the TPM
 type quoteInfo struct {
 	// The Version must be 0x01010000
 	Version uint32

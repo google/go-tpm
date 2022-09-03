@@ -108,7 +108,7 @@ var errorDescriptions = map[Error]string{
 	ErrInvalidOutputPointer:   "A specified output pointer is bad.",
 	ErrInvalidContext:         "The specified context handle does not refer to a valid context.",
 	ErrInsufficientBuffer:     "The specified output buffer is too small.",
-	ErrIOError:                "An error occurred while communicating with the TPM.",
+	ErrIOError:                "An error occurred while communicating with the TPM",
 	ErrInvalidContextParam:    "A context parameter that is not valid was passed when attempting to create a TBS context.",
 	ErrServiceNotRunning:      "The TBS service is not running and could not be started.",
 	ErrTooManyTBSContexts:     "A new context could not be created because there are too many open contexts.",

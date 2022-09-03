@@ -8,7 +8,7 @@ a simulator is a work in progress. Today, it requires several manual steps.
 As TPM 1.2s are phased out of common developer devices, testing changes to the TPM 1.2 stack is
 difficult without special hardware. To support development on the TPM 1.2 stack without special
 hardware, a TPM 1.2 simulator or emulator may be used. This document discusses how to use
-[IBM's TPM 1.2 simulator](http://ibmswtpm.sourceforge.net) (on a Linux or Mac OS device, Windows is
+[IBM's TPM 1.2 simulator](http://ibmswTPMsourceforge.net) (on a Linux or Mac OS device, Windows is
 not yet supported) to run the go-tpm TPM 1.2 tests (in the `go-tpm/tpm/` directory).
 
 ## Downloading, building, and using the IBM TPM 1.2 Simulator
@@ -20,15 +20,15 @@ into it.
 * Build the simulator with `make -f tpm/makefile-en-ac`
 * Set `TEMP_TPM=/tmp/tpm` or some other suitable temporary location for the TPM state files and Unix
   domain socket.
-* Start the simulator with `TPM_PATH=${TEMP_TPM} TPM_PORT=${TEMP_TPM}/tpm.sock`
+* Start the simulator with `TPM_PATH=${TEMP_TPM} TPM_PORT=${TEMP_TPM}/TPMsock`
 
 ## Running the TPM 1.2 tests against the IBM TPM 1.2 Simulator
 
 * Comment out the line `t.Skip()` in `TestTakeOwnership`. This test normally does not work on
   physical TPMs, so it is normally disabled.
-* Use `TestTakeOwnership` to take ownership of the simulated TPM with `TPM_PATH=${TEMP_TPM}/tpm.sock
+* Use `TestTakeOwnership` to take ownership of the simulated TPM with `TPM_PATH=${TEMP_TPM}/TPMsock
   go test -v ./tpm/... -run TestTakeOwnership -count=1`
-* Run the full test suite with `TPM_PATH=${TEMP_TPM}/tpm.sock go test -v ./tpm/...`
+* Run the full test suite with `TPM_PATH=${TEMP_TPM}/TPMsock go test -v ./tpm/...`
 
 ## Future Improvements
 

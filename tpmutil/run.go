@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// maxTPMResponse is the largest possible response from the TPM. We need to know
+// maxTPMResponse is the largest possible response from the TPM We need to know
 // this because we don't always know the length of the TPM response, and
 // /dev/tpm insists on giving it all back in a single value rather than
 // returning a header and a body in separate responses.
@@ -60,7 +60,7 @@ func RunCommandRaw(rw io.ReadWriter, inb []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Resize the buffer to match the amount read from the TPM.
+		// Resize the buffer to match the amount read from the TPM
 		outb = outb[:outlen]
 
 		_, err = Unpack(outb, &rh)
