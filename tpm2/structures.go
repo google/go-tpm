@@ -1,4 +1,4 @@
-// Package internal defines all the TPM 2.0 structures together to avoid import cycles
+// Package tpm2 defines all the TPM 2.0 structures together to avoid import cycles
 package tpm2
 
 import (

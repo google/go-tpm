@@ -116,7 +116,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 			}
 			defer func() {
 				// Flush the EK
-				flush := FlushContext{createEKRsp.ObjectHandle}
+				flush := FlushContext{FlushHandle: createEKRsp.ObjectHandle}
 				if err := flush.Execute(thetpm); err != nil {
 					t.Errorf("%v", err)
 				}

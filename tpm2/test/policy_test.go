@@ -91,8 +91,8 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		undefine := NVUndefineSpace{
 			AuthHandle: TPMRHOwner,
 			NVIndex: NamedHandle{
-				defSpace.PublicInfo.NVPublic.NVIndex,
-				readRsp.NVName,
+				Handle: defSpace.PublicInfo.NVPublic.NVIndex,
+				Name:   readRsp.NVName,
 			},
 		}
 		if err := undefine.Execute(thetpm); err != nil {
