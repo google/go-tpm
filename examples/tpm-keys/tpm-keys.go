@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 // Copyright (c) 2016, Kevin Walsh.  All rights reserved.
 //
