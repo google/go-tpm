@@ -1215,7 +1215,7 @@ func (cmd *PolicyNV) Update(policy *PolicyCalculator) error {
 	return policy.Update(tpm.CCPolicyNV, args, cmd.NVIndex.KnownName().Buffer)
 }
 
-// PolicyPCRResponse is the response from TPM2_PolicyPCR.
+// PolicyNVResponse is the response from TPM2_PolicyPCR.
 type PolicyNVResponse struct{}
 
 // Response implements the Response interface.
@@ -1471,10 +1471,7 @@ func (*Clear) Command() tpm.CC { return tpm.CCClear }
 // Execute executes the command and returns the response.
 func (cmd *Clear) Execute(t transport.TPM, s ...Session) error {
 	var rsp ClearResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
-		return err
-	}
-	return nil
+	return execute(t, cmd, &rsp, s...)
 }
 
 // ClearResponse is the response from TPM2_Clear.
