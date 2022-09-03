@@ -17,7 +17,7 @@ func TestReadPublicKey(t *testing.T) {
 	}
 
 	// Defer the close of the simulated TPM to after use.
-	// Without this, other programs/tests may not be able to get a handle to the TPM
+	// Without this, other programs/tests may not be able to get a handle to the TPM.
 	defer thetpm.Close()
 
 	// Fill in the CreatePrimary struct.

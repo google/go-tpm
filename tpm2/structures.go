@@ -1589,7 +1589,7 @@ type TPMANV struct {
 	// authorization failure counter and authorizations of this Index are
 	// not allowed when the TPM is in Lockout mode.
 	NoDA bool `gotpm:"bit=25"`
-	// SET (1): NV Index state is only required to be saved when the TPM
+	// SET (1): NV Index state is only required to be saved when the TPM.
 	// performs an orderly shutdown (TPM2_Shutdown()).
 	// CLEAR (0): NV Index state is required to be persistent after the
 	// command to update the Index completes successfully (that is, the NV

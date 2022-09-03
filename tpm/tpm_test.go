@@ -214,7 +214,7 @@ func TestGetRandom(t *testing.T) {
 	rwc := openTPMOrSkip(t)
 	defer rwc.Close()
 
-	// Try to get 16 bytes of randomness from the TPM
+	// Try to get 16 bytes of randomness from the TPM.
 	b, err := GetRandom(rwc, 16)
 	if err != nil {
 		t.Fatal("Couldn't get 16 bytes of randomness from the TPM:", err)
@@ -632,7 +632,7 @@ func TestTakeOwnership(t *testing.T) {
 
 func TestForceClear(t *testing.T) {
 	// Only enable this if you know what you're doing.
-	// TPM force clear clears the ownership of the TPM
+	// TPM force clear clears the ownership of the TPM.
 	// Beware of running this test on a production system.
 	t.Skip()
 	rwc := openTPMOrSkip(t)
@@ -721,7 +721,7 @@ func TestKeyMigration(t *testing.T) {
 		t.Fatalf("error authorizing migration key: %v", err)
 	}
 
-	// Create a migratable key in the TPM
+	// Create a migratable key in the TPM.
 	_, privkey, err := CreateMigratableWrapKey(
 		rwc,
 		srkAuth[:],

@@ -66,7 +66,7 @@ func osap(rw io.ReadWriter, osap *osapCommand) (*osapResponse, error) {
 	return &resp, nil
 }
 
-// seal performs a seal operation on the TPM
+// seal performs a seal operation on the TPM.
 func seal(rw io.ReadWriter, sc *sealCommand, pcrs *pcrInfoLong, data tpmutil.U32Bytes, ca *commandAuth) (*tpmStoredData, *responseAuth, uint32, error) {
 	pcrsize := binary.Size(pcrs)
 	if pcrsize < 0 {
@@ -88,7 +88,7 @@ func seal(rw io.ReadWriter, sc *sealCommand, pcrs *pcrInfoLong, data tpmutil.U32
 	return &tsd, &ra, ret, nil
 }
 
-// unseal data sealed by the TPM
+// unseal data sealed by the TPM.
 func unseal(rw io.ReadWriter, keyHandle tpmutil.Handle, sealed *tpmStoredData, ca1 *commandAuth, ca2 *commandAuth) ([]byte, *responseAuth, *responseAuth, uint32, error) {
 	in := []interface{}{keyHandle, sealed, ca1, ca2}
 	var outb tpmutil.U32Bytes
@@ -121,7 +121,7 @@ func authorizeMigrationKey(rw io.ReadWriter, migrationScheme MigrationScheme, mi
 	return authBlob, &ra, ret, nil
 }
 
-// createMigrationBlob migrates a key from the TPM
+// createMigrationBlob migrates a key from the TPM.
 func createMigrationBlob(rw io.ReadWriter, parentHandle tpmutil.Handle, migrationScheme MigrationScheme, migrationKey []byte, encData tpmutil.U32Bytes, ca1 *commandAuth, ca2 *commandAuth) ([]byte, []byte, *responseAuth, *responseAuth, uint32, error) {
 	in := []interface{}{parentHandle, migrationScheme, migrationKey, encData, ca1, ca2}
 	var rand tpmutil.U32Bytes
@@ -163,7 +163,7 @@ func loadKey2(rw io.ReadWriter, k *key, ca *commandAuth) (tpmutil.Handle, *respo
 	return keyHandle, &ra, ret, nil
 }
 
-// getPubKey gets a public key from the TPM
+// getPubKey gets a public key from the TPM.
 func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pubKey, *responseAuth, uint32, error) {
 	in := []interface{}{keyHandle, ca}
 	var pk pubKey
@@ -177,7 +177,7 @@ func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pu
 	return &pk, &ra, ret, nil
 }
 
-// getCapability reads the requested capability and sub-capability from the TPM
+// getCapability reads the requested capability and sub-capability from the TPM.
 func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	subCapBytes, err := tpmutil.Pack(subcap)
 	if err != nil {

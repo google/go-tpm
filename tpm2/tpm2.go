@@ -15,7 +15,7 @@ import (
 // behavior for AuthHandle, due to the fact that referencing Session from this
 // interface would break the ability to make TPMHandle implement it.
 type handle interface {
-	// HandleValue is the numeric concrete handle value in the TPM
+	// HandleValue is the numeric concrete handle value in the TPM.
 	HandleValue() uint32
 	// KnownName is the TPM Name of the associated entity. See Part 1, section 16.
 	KnownName() *TPM2BName
@@ -220,7 +220,7 @@ type CreateResponse struct {
 	// digest of creationData using nameAlg of outPublic
 	CreationHash TPM2BDigest
 	// ticket used by TPM2_CertifyCreation() to validate that the
-	// creation data was produced by the TPM
+	// creation data was produced by the TPM.
 	CreationTicket TPMTTKCreation
 }
 
@@ -878,7 +878,7 @@ type Sign struct {
 	Digest TPM2BDigest
 	// signing scheme to use if the scheme for keyHandle is TPM_ALG_NULL
 	InScheme TPMTSigScheme `gotpm:"nullable"`
-	// proof that digest was created by the TPM
+	// proof that digest was created by the TPM.
 	// If keyHandle is not a restricted signing key, then this
 	// may be a NULL Ticket with tag = TPM_ST_CHECKHASH.
 	Validation TPMTTKHashCheck
@@ -1453,7 +1453,7 @@ type CreatePrimaryResponse struct {
 	// digest of creationData using nameAlg of outPublic
 	CreationHash TPM2BDigest
 	// ticket used by TPM2_CertifyCreation() to validate that the
-	// creation data was produced by the TPM
+	// creation data was produced by the TPM.
 	CreationTicket TPMTTKCreation
 	// the name of the created object
 	Name TPM2BName

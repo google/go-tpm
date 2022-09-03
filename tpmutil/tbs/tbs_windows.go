@@ -53,7 +53,7 @@ const (
 	LowPriority    CommandPriority = 100 // For low priority application use
 	NormalPriority CommandPriority = 200 // For normal priority application use
 	HighPriority   CommandPriority = 300 // For high priority application use
-	SystemPriority CommandPriority = 400 // For system tasks that access the TPM
+	SystemPriority CommandPriority = 400 // For system tasks that access the TPM.
 
 	commandLocalityZero uint32 = 0 // Windows currently only supports TBS_COMMAND_LOCALITY_ZERO.
 )

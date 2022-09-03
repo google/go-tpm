@@ -897,7 +897,7 @@ func decodeStartAuthSession(in []byte) (tpmutil.Handle, []byte, error) {
 }
 
 // StartAuthSession initializes a session object.
-// Returns session handle and the initial nonce from the TPM
+// Returns session handle and the initial nonce from the TPM.
 func StartAuthSession(rw io.ReadWriter, tpmKey, bindKey tpmutil.Handle, nonceCaller, secret []byte, se SessionType, sym, hashAlg Algorithm) (tpmutil.Handle, []byte, error) {
 	Cmd, err := encodeStartAuthSession(tpmKey, bindKey, nonceCaller, secret, se, sym, hashAlg)
 	if err != nil {
@@ -1121,7 +1121,7 @@ func encodeEvictControl(ownerAuth string, owner, objectHandle, persistentHandle 
 	return concat(ha, auth, params)
 }
 
-// EvictControl toggles persistence of an object within the TPM
+// EvictControl toggles persistence of an object within the TPM.
 func EvictControl(rw io.ReadWriter, ownerAuth string, owner, objectHandle, persistentHandle tpmutil.Handle) error {
 	Cmd, err := encodeEvictControl(ownerAuth, owner, objectHandle, persistentHandle)
 	if err != nil {
@@ -1716,7 +1716,7 @@ func decodeSign(buf []byte) (*Signature, error) {
 // SignWithSession computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type. Used for keys with non-password authorization policies.
 // If 'key' references a Restricted Decryption key, 'validation' must be a valid hash verification
-// ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM
+// ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM.
 // If 'validation' is nil, a NULL ticket is passed to TPM2_Sign.
 func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, password string, digest []byte, validation *Ticket, sigScheme *SigScheme) (*Signature, error) {
 	Cmd, err := encodeSign(sessionHandle, key, password, digest, sigScheme, validation)
@@ -1733,7 +1733,7 @@ func SignWithSession(rw io.ReadWriter, sessionHandle, key tpmutil.Handle, passwo
 // Sign computes a signature for digest using a given loaded key. Signature
 // algorithm depends on the key type.
 // If 'key' references a Restricted Decryption key, 'validation' must be a valid hash verification
-// ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM
+// ticket from the TPM, which can be obtained by using Hash() to hash the data with the TPM.
 // If 'validation' is nil, a NULL ticket is passed to TPM2_Sign.
 func Sign(rw io.ReadWriter, key tpmutil.Handle, password string, digest []byte, validation *Ticket, sigScheme *SigScheme) (*Signature, error) {
 	return SignWithSession(rw, HandlePasswordSession, key, password, digest, validation, sigScheme)

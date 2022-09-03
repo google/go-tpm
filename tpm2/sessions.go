@@ -14,7 +14,7 @@ import (
 	"github.com/google/go-tpm/tpm2/transport"
 )
 
-// Session represents a session in the TPM
+// Session represents a session in the TPM.
 type Session interface {
 	// Initializes the session, if needed. Has no effect if not needed or
 	// already done. Some types of sessions may need to be initialized
@@ -263,7 +263,7 @@ const (
 )
 
 // AESEncryption uses the session to encrypt the first parameter sent to/from
-// the TPM
+// the TPM.
 // Note that only commands whose first command/response parameter is a 2B can
 // support session encryption.
 func AESEncryption(keySize TPMKeyBits, dir parameterEncryptiontpm2ion) AuthOption {

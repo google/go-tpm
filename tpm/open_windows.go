@@ -22,7 +22,7 @@ import (
 	"github.com/google/go-tpm/tpmutil/tbs"
 )
 
-// OpenTPM opens a channel to the TPM
+// OpenTPM opens a channel to the TPM.
 func OpenTPM() (io.ReadWriteCloser, error) {
 	info, err := tbs.GetDeviceInfo()
 	if err != nil {

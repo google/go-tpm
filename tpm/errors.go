@@ -18,7 +18,7 @@ import (
 	"strconv"
 )
 
-// A tpmError is an error value from the TPM
+// A tpmError is an error value from the TPM.
 type tpmError uint32
 
 // Error produces a string for the given TPM Error code

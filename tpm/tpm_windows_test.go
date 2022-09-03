@@ -19,7 +19,7 @@ import (
 	"testing"
 )
 
-// Skip the test if we can't open the TPM
+// Skip the test if we can't open the TPM.
 func openTPMOrSkip(t *testing.T) io.ReadWriteCloser {
 	rwc, err := OpenTPM()
 	if err != nil {
