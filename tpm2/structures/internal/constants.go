@@ -295,7 +295,23 @@ const (
 	rcS                 TPMRC = 0x00000800
 )
 
-// TPMST values come from Part 2: Structures, section  6.9.
+// TPMEO values come from Part 2: Structures, section 6.8.
+const (
+	TPMEOEq         TPMEO = 0x0000
+	TPMEONeq        TPMEO = 0x0001
+	TPMEOSignedGT   TPMEO = 0x0002
+	TPMEOUnsignedGT TPMEO = 0x0003
+	TPMEOSignedLT   TPMEO = 0x0004
+	TPMEOUnsignedLT TPMEO = 0x0005
+	TPMEOSignedGE   TPMEO = 0x0006
+	TPMEOUnsignedGE TPMEO = 0x0007
+	TPMEOSignedLE   TPMEO = 0x0008
+	TPMEOUnsignedLE TPMEO = 0x0009
+	TPMEOBitSet     TPMEO = 0x000A
+	TPMEOBitClear   TPMEO = 0x000B
+)
+
+// TPMST values come from Part 2: Structures, section 6.9.
 const (
 	TPMSTRspCommand         TPMST = 0x00C4
 	TPMSTNull               TPMST = 0x8000

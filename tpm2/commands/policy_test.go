@@ -569,6 +569,62 @@ func TestPolicyNVWrittenUpdate(t *testing.T) {
 	}
 }
 
+func TestPolicyNVUpdate(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	nv, cleanup := nvIndex(t, thetpm)
+	defer cleanup()
+
+	// Use a trial session to calculate this policy
+	sess, cleanup2, err := PolicySession(thetpm, tpm.AlgSHA256, 16, Trial())
+	if err != nil {
+		t.Fatalf("setting up policy session: %v", err)
+	}
+	defer func() {
+		t.Helper()
+		if err := cleanup2(); err != nil {
+			t.Errorf("cleaning up policy session: %v", err)
+		}
+	}()
+
+	policyNV := PolicyNV{
+		AuthHandle:    NamedHandle{Handle: nv.Handle, Name: nv.Name},
+		PolicySession: sess.Handle(),
+		NVIndex:       nv,
+		OperandB:      tpm2b.Operand{Buffer: []byte("operandB")},
+		Offset:        2,
+		Operation:     tpm.EOSignedLE,
+	}
+
+	if err := policyNV.Execute(thetpm); err != nil {
+		t.Fatalf("executing PolicyAuthorizeNV: %v", err)
+	}
+
+	pgd := PolicyGetDigest{
+		PolicySession: sess.Handle(),
+	}
+	want, err := pgd.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("executing PolicyGetDigest: %v", err)
+	}
+
+	// Use the policy helper to calculate the same policy
+	pol, err := NewPolicyCalculator(tpm.AlgSHA256)
+	if err != nil {
+		t.Fatalf("creating policy calculator: %v", err)
+	}
+	policyNV.Update(pol)
+	got := pol.Hash()
+
+	if !bytes.Equal(got.Digest, want.PolicyDigest.Buffer) {
+		t.Errorf("PolicyAuthorizeNV.Hash() = %x,\nwant %x", got.Digest, want.PolicyDigest.Buffer)
+	}
+}
+
 func TestPolicyAuthorizeNVUpdate(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
