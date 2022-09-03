@@ -1,4 +1,4 @@
-// +build !windows
+//go:build !windows
 
 // Copyright (c) 2018, Google LLC All rights reserved.
 //
@@ -23,7 +23,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
 

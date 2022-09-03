@@ -1,4 +1,4 @@
-// +build !windows
+//go:build !windows
 
 // Binary tpm2-ekcert reads an x509 certificate from a specific NVRAM index.
 package main
@@ -13,7 +13,7 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
 
