@@ -46,7 +46,7 @@ const (
 // The secret parameter must not be longer than the longest digest size implemented
 // by the TPM. A 32 byte secret is a safe, recommended default.
 //
-// This function implements Credential Protection as defined in section 24 of the TPM.
+// This function implements Credential Protection as defined in section 24 of the TPM
 // specification revision 2 part 1, with the additional caveat of not supporting ECC EKs.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 func Generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secret []byte) ([]byte, []byte, error) {
