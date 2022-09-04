@@ -25,6 +25,8 @@ lint_task:
       -E misspell
       -E revive
       --exclude-use-default=false
+      --exclude stutters
+      --exclude underscores
       --max-same-issues=0
       --max-issues-per-linter=0
       ./tpmutil/...
