@@ -9,7 +9,7 @@ import (
 // Wrap the legacy OpenTPM function so callers don't have to import both the
 // legacy and the new TPM 2.0 API.
 // TODO: When we delete the legacy API, we can make this the only copy of
-// OpenTPM
+// OpenTPM.
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
 // device, then it treats it like a normal TPM device, and if the file is a

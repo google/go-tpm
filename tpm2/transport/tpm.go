@@ -1,4 +1,4 @@
-// Package transport implements types for physically talking to TPMS
+// Package transport implements types for physically talking to TPMs.
 package transport
 
 import (
@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
-// TPM represents a logical connection to a TPM
+// TPM represents a logical connection to a TPM.
 type TPM interface {
 	Send(input []byte) ([]byte, error)
 }
@@ -44,7 +44,7 @@ func FromReadWriter(rw io.ReadWriter) TPM {
 }
 
 // ToReadWriter takes in a transport TPM and returns an
-// io.ReadWriter wrapping the transport TPM
+// io.ReadWriter wrapping the transport TPM.
 func ToReadWriter(tpm TPM) io.ReadWriter {
 	return &wrappedTPM{tpm: tpm}
 }

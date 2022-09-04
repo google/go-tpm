@@ -67,7 +67,7 @@ func main() {
 }
 
 func run(pcr int, tpmPath string) (retErr error) {
-	// Open the TPM.
+	// Open the TPM
 	rwc, err := tpm2.OpenTPM(tpmPath)
 	if err != nil {
 		return fmt.Errorf("can't open TPM %q: %v", tpmPath, err)

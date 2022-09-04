@@ -102,7 +102,7 @@ func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) e
 		return err
 	}
 	if hasSessions {
-		// We don't need the TPM. RC here because we would have errored
+		// We don't need the TPM RC here because we would have errored
 		// out from rspHeader
 		// TODO: Authenticate the error code with sessions, if desired.
 		err = rspSessions(rspBuf, TPMRCSuccess, cc, names, rspParms, sess)
@@ -780,12 +780,8 @@ func cmdAuths(cmd Command) ([]Session, error) {
 	authHandles := taggedMembers(reflect.ValueOf(cmd).Elem(), "auth", false)
 	var result []Session
 	for i, authHandle := range authHandles {
-		// Dynamically check if the caller provided auth in an AuthHandle.
-		// If not, use an empty password auth.
-		// A cleaner way to do this would be to have an interface method that
-		// returns a Session, but that would require Session to live inside
-		// the internal package, so that TPMHandle can return it.
-		// So instead, we live with a little more magic reflection behavior.
+		// TODO: A cleaner way to do this would be to have an interface method that
+		// returns a Session.
 		if h, ok := authHandle.Interface().(AuthHandle); ok {
 			if h.Auth == nil {
 				return nil, fmt.Errorf("missing auth for '%v' parameter",

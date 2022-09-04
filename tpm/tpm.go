@@ -100,7 +100,7 @@ func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 	return b, nil
 }
 
-// LoadKey2 loads a key blob (a serialized TPM_KEY or TPM_KEY12) into the TPM.
+// LoadKey2 loads a key blob (a serialized TPM_KEY or TPM_KEY12) into the TPM
 // and returns a handle for this key.
 func LoadKey2(rw io.ReadWriter, keyBlob []byte, srkAuth []byte) (tpmutil.Handle, error) {
 	// Deserialize the keyBlob as a key
@@ -1210,7 +1210,7 @@ func GetCapabilityRaw(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	return getCapability(rw, cap, subcap)
 }
 
-// OwnerClear uses owner auth to clear the TPM. After this operation, the TPM.
+// OwnerClear uses owner auth to clear the TPM. After this operation, the TPM
 // can change ownership.
 func OwnerClear(rw io.ReadWriter, ownerAuth Digest) error {
 	// Run OSAP for the Owner, reading a random OddOSAP for our initial command

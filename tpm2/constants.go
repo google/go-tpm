@@ -416,7 +416,7 @@ const (
 	TPMPTNVCountersMax TPMPT = 0x00000116
 	// the maximum size of an NV Index data area
 	TPMPTNVIndexMax TPMPT = 0x00000117
-	// a TPMA_MEMORY indicating the memory management method for the TPM.
+	// a TPMA_MEMORY indicating the memory management method for the TPM
 	TPMPTMemory TPMPT = 0x00000118
 	// interval, in milliseconds, between updates to the copy of
 	// TPMS_CLOCK_INFO.clock in NV
@@ -435,7 +435,7 @@ const (
 	TPMPTMaxCommandSize TPMPT = 0x0000011E
 	// the maximum value for responseSize in a response
 	TPMPTMaxResponseSize TPMPT = 0x0000011F
-	// the maximum size of a digest that can be produced by the TPM.
+	// the maximum size of a digest that can be produced by the TPM
 	TPMPTMaxDigest TPMPT = 0x00000120
 	// the maximum size of an object context that will be returned by
 	// TPM2_ContextSave
@@ -454,9 +454,9 @@ const (
 	TPMPTPSDayOfYear TPMPT = 0x00000126
 	// the platform-specific TPM specification year using the CE
 	TPMPTPSYear TPMPT = 0x00000127
-	// the number of split signing operations supported by the TPM.
+	// the number of split signing operations supported by the TPM
 	TPMPTSplitMax TPMPT = 0x00000128
-	// total number of commands implemented in the TPM.
+	// total number of commands implemented in the TPM
 	TPMPTTotalCommands TPMPT = 0x00000129
 	// number of commands from the TPM library that are implemented
 	TPMPTLibraryCommands TPMPT = 0x0000012A
@@ -483,7 +483,7 @@ const (
 	// could be loaded into TPM RAM
 	TPMPTHRLoadedAvail TPMPT = 0x00000204
 	// the number of active authorization sessions currently being tracked
-	// by the TPM.
+	// by the TPM
 	TPMPTHRActive TPMPT = 0x00000205
 	// the number of additional authorization sessions, of any type, that
 	// could be created
@@ -502,7 +502,7 @@ const (
 	// the number of additional NV Indexes that can be defined with their
 	// TPM_NT of TPM_NV_COUNTER and the TPMA_NV_ORDERLY attribute SET
 	TPMPTNVCountersAvail TPMPT = 0x0000020B
-	// code that limits the algorithms that may be used with the TPM.
+	// code that limits the algorithms that may be used with the TPM
 	TPMPTAlgorithmSet TPMPT = 0x0000020C
 	// the number of loaded ECC curves
 	TPMPTLoadedCurves TPMPT = 0x0000020D

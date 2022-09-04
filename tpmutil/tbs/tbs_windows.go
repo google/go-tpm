@@ -53,7 +53,7 @@ const (
 	LowPriority    CommandPriority = 100 // For low priority application use
 	NormalPriority CommandPriority = 200 // For normal priority application use
 	HighPriority   CommandPriority = 300 // For high priority application use
-	SystemPriority CommandPriority = 400 // For system tasks that access the TPM.
+	SystemPriority CommandPriority = 400 // For system tasks that access the TPM
 
 	commandLocalityZero uint32 = 0 // Windows currently only supports TBS_COMMAND_LOCALITY_ZERO.
 )
@@ -108,7 +108,7 @@ var errorDescriptions = map[Error]string{
 	ErrInvalidOutputPointer:   "A specified output pointer is bad.",
 	ErrInvalidContext:         "The specified context handle does not refer to a valid context.",
 	ErrInsufficientBuffer:     "The specified output buffer is too small.",
-	ErrIOError:                "An error occurred while communicating with the TPM",
+	ErrIOError:                "An error occurred while communicating with the TPM.",
 	ErrInvalidContextParam:    "A context parameter that is not valid was passed when attempting to create a TBS context.",
 	ErrServiceNotRunning:      "The TBS service is not running and could not be started.",
 	ErrTooManyTBSContexts:     "A new context could not be created because there are too many open contexts.",

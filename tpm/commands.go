@@ -163,7 +163,7 @@ func loadKey2(rw io.ReadWriter, k *key, ca *commandAuth) (tpmutil.Handle, *respo
 	return keyHandle, &ra, ret, nil
 }
 
-// getPubKey gets a public key from the TPM.
+// getPubKey gets a public key from the TPM
 func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pubKey, *responseAuth, uint32, error) {
 	in := []interface{}{keyHandle, ca}
 	var pk pubKey
@@ -177,7 +177,7 @@ func getPubKey(rw io.ReadWriter, keyHandle tpmutil.Handle, ca *commandAuth) (*pu
 	return &pk, &ra, ret, nil
 }
 
-// getCapability reads the requested capability and sub-capability from the TPM.
+// getCapability reads the requested capability and sub-capability from the TPM
 func getCapability(rw io.ReadWriter, cap, subcap uint32) ([]byte, error) {
 	subCapBytes, err := tpmutil.Pack(subcap)
 	if err != nil {
