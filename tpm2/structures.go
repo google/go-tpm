@@ -1418,9 +1418,12 @@ type TPMTTemplate struct {
 
 // TPM2BPublic represents a TPM2B_PUBLIC.
 // See definition in Part 2: Structures, section 12.2.5.
-type TPM2BPublic struct {
-	// the public area
-	PublicArea TPMTPublic `gotpm:"sized"`
+type TPM2BPublic = tpm2b[TPMTPublic]
+
+// NewTPM2BPublic instantiates a TPM2BPublic with the given contents
+// (which may be either a TPMTPublic or a flat byte array)
+func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) TPM2BPublic {
+	return tpm2bHelper[TPMTPublic](contents)
 }
 
 // TPM2BTemplate represents a TPM2B_TEMPLATE.

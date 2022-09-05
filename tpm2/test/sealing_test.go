@@ -43,9 +43,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 				},
 			},
 		},
-		InPublic: TPM2BPublic{
-			PublicArea: srkTemplate,
-		},
+		InPublic: NewTPM2BPublic(&srkTemplate),
 	}
 	createSRKRsp, err := createSRKCmd.Execute(thetpm)
 	if err != nil {
@@ -81,18 +79,16 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 				},
 			},
 		},
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgKeyedHash,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:     true,
-					FixedParent:  true,
-					UserWithAuth: true,
-					NoDA:         true,
-				},
+		InPublic: NewTPM2BPublic(&TPMTPublic{
+			Type:    TPMAlgKeyedHash,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:     true,
+				FixedParent:  true,
+				UserWithAuth: true,
+				NoDA:         true,
 			},
-		},
+		}),
 	}
 	var createBlobRsp *CreateResponse
 
@@ -179,7 +175,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 			Name:   createSRKRsp.Name,
 			Auth: HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptInOut),
-				Salted(createSRKRsp.ObjectHandle, createSRKRsp.OutPublic.PublicArea)),
+				Salted(createSRKRsp.ObjectHandle, *createSRKRsp.OutPublic.Unwrap())),
 		}
 		createBlobRsp, err = createBlobCmd.Execute(thetpm)
 		if err != nil {

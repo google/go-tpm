@@ -25,38 +25,37 @@ func TestAuditSession(t *testing.T) {
 	// Create the AK for audit
 	createAKCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:             true,
-					STClear:              false,
-					FixedParent:          true,
-					SensitiveDataOrigin:  true,
-					UserWithAuth:         true,
-					AdminWithPolicy:      false,
-					NoDA:                 true,
-					EncryptedDuplication: false,
-					Restricted:           true,
-					Decrypt:              false,
-					SignEncrypt:          true,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDSA,
-							Details: TPMUAsymScheme{
-								ECDSA: &TPMSSigSchemeECDSA{
-									HashAlg: TPMAlgSHA256,
-								},
+		InPublic: NewTPM2BPublic(&TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:             true,
+				STClear:              false,
+				FixedParent:          true,
+				SensitiveDataOrigin:  true,
+				UserWithAuth:         true,
+				AdminWithPolicy:      false,
+				NoDA:                 true,
+				EncryptedDuplication: false,
+				Restricted:           true,
+				Decrypt:              false,
+				SignEncrypt:          true,
+			},
+			Parameters: TPMUPublicParms{
+				ECCDetail: &TPMSECCParms{
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDSA,
+						Details: TPMUAsymScheme{
+							ECDSA: &TPMSSigSchemeECDSA{
+								HashAlg: TPMAlgSHA256,
 							},
 						},
-						CurveID: TPMECCNistP256,
 					},
+					CurveID: TPMECCNistP256,
 				},
 			},
 		},
+		),
 	}
 	createAKRsp, err := createAKCmd.Execute(thetpm)
 	if err != nil {

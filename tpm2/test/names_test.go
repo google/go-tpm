@@ -25,9 +25,7 @@ func TestObjectName(t *testing.T) {
 
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic: TPM2BPublic{
-			PublicArea: ECCEKTemplate,
-		},
+		InPublic:      NewTPM2BPublic(&ECCEKTemplate),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {
@@ -38,7 +36,7 @@ func TestObjectName(t *testing.T) {
 	public := rsp.OutPublic
 
 	want := rsp.Name
-	name, err := ObjectName(&public.PublicArea)
+	name, err := ObjectName(public.Unwrap())
 	if err != nil {
 		t.Fatalf("error from ObjectName: %v", err)
 	}

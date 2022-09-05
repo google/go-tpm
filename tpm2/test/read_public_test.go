@@ -25,32 +25,30 @@ func TestReadPublicKey(t *testing.T) {
 	// See tpm2/templates/go for more TPMTPublic examples.
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:            true,
-					FixedParent:         true,
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-					SignEncrypt:         true,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDSA,
-							Details: TPMUAsymScheme{
-								ECDSA: &TPMSSigSchemeECDSA{
-									HashAlg: TPMAlgSHA256,
-								},
+		InPublic: NewTPM2BPublic(&TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+				SignEncrypt:         true,
+			},
+			Parameters: TPMUPublicParms{
+				ECCDetail: &TPMSECCParms{
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDSA,
+						Details: TPMUAsymScheme{
+							ECDSA: &TPMSSigSchemeECDSA{
+								HashAlg: TPMAlgSHA256,
 							},
 						},
-						CurveID: TPMECCNistP256,
 					},
+					CurveID: TPMECCNistP256,
 				},
 			},
-		},
+		}),
 	}
 
 	// Executing the command uses reflection to pack the bytes into a
@@ -89,8 +87,8 @@ func TestReadPublicKey(t *testing.T) {
 	// PublicArea.Unique represents the unique identifier of the TPMTPublic.
 	// Notice how this test uses verification of another TPM command that is
 	// able to produce similar results to validate the response.
-	rspCPUnique := rspCP.OutPublic.PublicArea.Unique
-	rspRPUnique := rspRP.OutPublic.PublicArea.Unique
+	rspCPUnique := rspCP.OutPublic.Unwrap().Unique
+	rspRPUnique := rspRP.OutPublic.Unwrap().Unique
 	if !cmp.Equal(rspCPUnique, rspRPUnique) {
 		t.Error("Mismatch between public returned from CreatePrimary & ReadPublic")
 	}

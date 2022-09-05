@@ -14,32 +14,30 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:            true,
-					FixedParent:         true,
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-					SignEncrypt:         true,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDSA,
-							Details: TPMUAsymScheme{
-								ECDSA: &TPMSSigSchemeECDSA{
-									HashAlg: TPMAlgSHA256,
-								},
+		InPublic: NewTPM2BPublic(&TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+				SignEncrypt:         true,
+			},
+			Parameters: TPMUPublicParms{
+				ECCDetail: &TPMSECCParms{
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDSA,
+						Details: TPMUAsymScheme{
+							ECDSA: &TPMSSigSchemeECDSA{
+								HashAlg: TPMAlgSHA256,
 							},
 						},
-						CurveID: TPMECCNistP256,
 					},
+					CurveID: TPMECCNistP256,
 				},
 			},
-		},
+		}),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {

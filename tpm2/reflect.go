@@ -137,6 +137,13 @@ func Marshal(vs ...interface{}) ([]byte, error) {
 // marshal will serialize the given value, appending onto the given buffer.
 // Returns an error if the value is not marshallable.
 func marshal(buf *bytes.Buffer, v reflect.Value) error {
+	// If the type implements marshallable, use that implementation.
+	u, ok := v.Interface().(marshallable)
+	if ok {
+		return u.marshal(buf)
+	}
+
+	// Otherwise, use reflection.
 	switch v.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return marshalNumeric(buf, v)
@@ -408,6 +415,16 @@ func Unmarshal(data []byte, vs ...interface{}) error {
 // Returns an error if the buffer does not contain enough data to satisfy the
 // type.
 func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
+	// If the type implements unmarshallable, use that implementation.
+	u, ok := v.Addr().Interface().(unmarshallable)
+	if ok {
+		fmt.Printf("Unmarshalling a %v\n", v.Type().Name())
+		err := u.unmarshal(buf)
+		fmt.Printf("Got:\n%x\n", u)
+		return err
+	}
+
+	// Otherwise, use reflection.
 	switch v.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if err := unmarshalNumeric(buf, v); err != nil {

@@ -25,33 +25,32 @@ func TestCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
-	public := TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				SignEncrypt:         true,
-				Restricted:          true,
-				FixedTPM:            true,
-				FixedParent:         true,
-				SensitiveDataOrigin: true,
-				UserWithAuth:        true,
-			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Scheme: TPMTRSAScheme{
-						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme{
-							RSASSA: &TPMSSigSchemeRSASSA{
-								HashAlg: TPMAlgSHA256,
-							},
+	public := NewTPM2BPublic(&TPMTPublic{
+		Type:    TPMAlgRSA,
+		NameAlg: TPMAlgSHA256,
+		ObjectAttributes: TPMAObject{
+			SignEncrypt:         true,
+			Restricted:          true,
+			FixedTPM:            true,
+			FixedParent:         true,
+			SensitiveDataOrigin: true,
+			UserWithAuth:        true,
+		},
+		Parameters: TPMUPublicParms{
+			RSADetail: &TPMSRSAParms{
+				Scheme: TPMTRSAScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: TPMUAsymScheme{
+						RSASSA: &TPMSSigSchemeRSASSA{
+							HashAlg: TPMAlgSHA256,
 						},
 					},
-					KeyBits: 2048,
 				},
+				KeyBits: 2048,
 			},
 		},
-	}
+	},
+	)
 
 	pcrSelection := TPMLPCRSelection{
 		PCRSelections: []TPMSPCRSelection{
@@ -98,7 +97,7 @@ func TestCertify(t *testing.T) {
 			Buffer: []byte("subject key"),
 		},
 	}
-	createPrimarySubject.InPublic.PublicArea.Unique = unique
+	createPrimarySubject.InPublic.Unwrap().Unique = unique
 
 	rspSubject, err := createPrimarySubject.Execute(thetpm)
 	if err != nil {
@@ -139,7 +138,7 @@ func TestCertify(t *testing.T) {
 	}
 
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.PublicArea
+	pub := rspSigner.OutPublic.Unwrap()
 	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
@@ -161,34 +160,32 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				SignEncrypt:         true,
-				Restricted:          true,
-				FixedTPM:            true,
-				FixedParent:         true,
-				SensitiveDataOrigin: true,
-				UserWithAuth:        true,
-				NoDA:                true,
-			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Scheme: TPMTRSAScheme{
-						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme{
-							RSASSA: &TPMSSigSchemeRSASSA{
-								HashAlg: TPMAlgSHA256,
-							},
+	public := NewTPM2BPublic(&TPMTPublic{
+		Type:    TPMAlgRSA,
+		NameAlg: TPMAlgSHA256,
+		ObjectAttributes: TPMAObject{
+			SignEncrypt:         true,
+			Restricted:          true,
+			FixedTPM:            true,
+			FixedParent:         true,
+			SensitiveDataOrigin: true,
+			UserWithAuth:        true,
+			NoDA:                true,
+		},
+		Parameters: TPMUPublicParms{
+			RSADetail: &TPMSRSAParms{
+				Scheme: TPMTRSAScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: TPMUAsymScheme{
+						RSASSA: &TPMSSigSchemeRSASSA{
+							HashAlg: TPMAlgSHA256,
 						},
 					},
-					KeyBits: 2048,
 				},
+				KeyBits: 2048,
 			},
 		},
-	}
+	})
 
 	PCR7, err := CreatePCRSelection([]int{7})
 	if err != nil {
@@ -257,7 +254,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 
 	attestHash := sha256.Sum256(info)
 
-	pub := rspCP.OutPublic.PublicArea
+	pub := rspCP.OutPublic.Unwrap()
 	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
@@ -277,33 +274,31 @@ func TestNVCertify(t *testing.T) {
 
 	Auth := []byte("password")
 
-	public := TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				SignEncrypt:         true,
-				Restricted:          true,
-				FixedTPM:            true,
-				FixedParent:         true,
-				SensitiveDataOrigin: true,
-				UserWithAuth:        true,
-			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Scheme: TPMTRSAScheme{
-						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme{
-							RSASSA: &TPMSSigSchemeRSASSA{
-								HashAlg: TPMAlgSHA256,
-							},
+	public := NewTPM2BPublic(&TPMTPublic{
+		Type:    TPMAlgRSA,
+		NameAlg: TPMAlgSHA256,
+		ObjectAttributes: TPMAObject{
+			SignEncrypt:         true,
+			Restricted:          true,
+			FixedTPM:            true,
+			FixedParent:         true,
+			SensitiveDataOrigin: true,
+			UserWithAuth:        true,
+		},
+		Parameters: TPMUPublicParms{
+			RSADetail: &TPMSRSAParms{
+				Scheme: TPMTRSAScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: TPMUAsymScheme{
+						RSASSA: &TPMSSigSchemeRSASSA{
+							HashAlg: TPMAlgSHA256,
 						},
 					},
-					KeyBits: 2048,
 				},
+				KeyBits: 2048,
 			},
 		},
-	}
+	})
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
@@ -407,7 +402,7 @@ func TestNVCertify(t *testing.T) {
 	}
 
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.PublicArea
+	pub := rspSigner.OutPublic.Unwrap()
 	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)

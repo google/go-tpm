@@ -37,32 +37,30 @@ func TestCombinedContext(t *testing.T) {
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgRSA,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					SignEncrypt:         true,
-					FixedTPM:            true,
-					FixedParent:         true,
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-				},
-				Parameters: TPMUPublicParms{
-					RSADetail: &TPMSRSAParms{
-						Scheme: TPMTRSAScheme{
-							Scheme: TPMAlgRSASSA,
-							Details: TPMUAsymScheme{
-								RSASSA: &TPMSSigSchemeRSASSA{
-									HashAlg: TPMAlgSHA256,
-								},
+		InPublic: NewTPM2BPublic(&TPMTPublic{
+			Type:    TPMAlgRSA,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				SignEncrypt:         true,
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+			},
+			Parameters: TPMUPublicParms{
+				RSADetail: &TPMSRSAParms{
+					Scheme: TPMTRSAScheme{
+						Scheme: TPMAlgRSASSA,
+						Details: TPMUAsymScheme{
+							RSASSA: &TPMSSigSchemeRSASSA{
+								HashAlg: TPMAlgSHA256,
 							},
 						},
-						KeyBits: 2048,
 					},
+					KeyBits: 2048,
 				},
 			},
-		},
+		}),
 		CreationPCR: TPMLPCRSelection{
 			PCRSelections: []TPMSPCRSelection{
 				{

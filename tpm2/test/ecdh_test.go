@@ -21,46 +21,44 @@ func TestECDH(t *testing.T) {
 	// Create a TPM ECDH key
 	tpmCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:             true,
-					STClear:              false,
-					FixedParent:          true,
-					SensitiveDataOrigin:  true,
-					UserWithAuth:         true,
-					AdminWithPolicy:      false,
-					NoDA:                 true,
-					EncryptedDuplication: false,
-					Restricted:           false,
-					Decrypt:              true,
-					SignEncrypt:          false,
-					X509Sign:             false,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						CurveID: TPMECCNistP256,
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDH,
-							Details: TPMUAsymScheme{
-								ECDH: &TPMSKeySchemeECDH{
-									HashAlg: TPMAlgSHA256,
-								},
+		InPublic: NewTPM2BPublic(&TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:             true,
+				STClear:              false,
+				FixedParent:          true,
+				SensitiveDataOrigin:  true,
+				UserWithAuth:         true,
+				AdminWithPolicy:      false,
+				NoDA:                 true,
+				EncryptedDuplication: false,
+				Restricted:           false,
+				Decrypt:              true,
+				SignEncrypt:          false,
+				X509Sign:             false,
+			},
+			Parameters: TPMUPublicParms{
+				ECCDetail: &TPMSECCParms{
+					CurveID: TPMECCNistP256,
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDH,
+						Details: TPMUAsymScheme{
+							ECDH: &TPMSKeySchemeECDH{
+								HashAlg: TPMAlgSHA256,
 							},
 						},
 					},
 				},
 			},
-		},
+		}),
 	}
 
 	tpmCreateRsp, err := tpmCreate.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not create the TPM key: %v", err)
 	}
-	tpmPub := tpmCreateRsp.OutPublic.PublicArea.Unique.ECC
+	tpmPub := tpmCreateRsp.OutPublic.Unwrap().Unique.ECC
 	tpmX := big.NewInt(0).SetBytes(tpmPub.X.Buffer)
 	tpmY := big.NewInt(0).SetBytes(tpmPub.Y.Buffer)
 

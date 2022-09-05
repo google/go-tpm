@@ -20,27 +20,25 @@ func decodeHex(t *testing.T, h string) []byte {
 func TestLoadExternal(t *testing.T) {
 	loads := map[string]*LoadExternal{
 		"ECCNoSensitive": {
-			InPublic: TPM2BPublic{
-				PublicArea: TPMTPublic{
-					Type:    TPMAlgECC,
-					NameAlg: TPMAlgSHA256,
-					ObjectAttributes: TPMAObject{
-						SignEncrypt: true,
-					},
-					Parameters: TPMUPublicParms{
-						ECCDetail: &TPMSECCParms{
-							CurveID: TPMECCNistP256,
-						},
-					},
-					Unique: TPMUPublicID{
-						// This happens to be a P256 EKpub from the simulator
-						ECC: &TPMSECCPoint{
-							X: TPM2BECCParameter{Buffer: decodeHex(t, "9855efa3514873b88067ab127b2d4692864a395db3d9e4ccad0592478a245c16")},
-							Y: TPM2BECCParameter{Buffer: decodeHex(t, "e802a26649839a2d7b13c812a5dc0b61c110cbe62db784d96e60a823448c8993")},
-						},
+			InPublic: NewTPM2BPublic(&TPMTPublic{
+				Type:    TPMAlgECC,
+				NameAlg: TPMAlgSHA256,
+				ObjectAttributes: TPMAObject{
+					SignEncrypt: true,
+				},
+				Parameters: TPMUPublicParms{
+					ECCDetail: &TPMSECCParms{
+						CurveID: TPMECCNistP256,
 					},
 				},
-			},
+				Unique: TPMUPublicID{
+					// This happens to be a P256 EKpub from the simulator
+					ECC: &TPMSECCPoint{
+						X: TPM2BECCParameter{Buffer: decodeHex(t, "9855efa3514873b88067ab127b2d4692864a395db3d9e4ccad0592478a245c16")},
+						Y: TPM2BECCParameter{Buffer: decodeHex(t, "e802a26649839a2d7b13c812a5dc0b61c110cbe62db784d96e60a823448c8993")},
+					},
+				},
+			}),
 		},
 		"KeyedHashSensitive": {
 			InPrivate: &TPM2BSensitive{
@@ -56,18 +54,16 @@ func TestLoadExternal(t *testing.T) {
 					},
 				},
 			},
-			InPublic: TPM2BPublic{
-				PublicArea: TPMTPublic{
-					Type:    TPMAlgKeyedHash,
-					NameAlg: TPMAlgSHA256,
-					Unique: TPMUPublicID{
-						KeyedHash: &TPM2BDigest{
-							// SHA256("obfuscation is my middle name!!!secrets")
-							Buffer: decodeHex(t, "ed4fe8e2bff97665e7bfbe27c2365d07a9be91dd92d997cd91cc706b6074eb08"),
-						},
+			InPublic: NewTPM2BPublic(&TPMTPublic{
+				Type:    TPMAlgKeyedHash,
+				NameAlg: TPMAlgSHA256,
+				Unique: TPMUPublicID{
+					KeyedHash: &TPM2BDigest{
+						// SHA256("obfuscation is my middle name!!!secrets")
+						Buffer: decodeHex(t, "ed4fe8e2bff97665e7bfbe27c2365d07a9be91dd92d997cd91cc706b6074eb08"),
 					},
 				},
-			},
+			}),
 		},
 	}
 
