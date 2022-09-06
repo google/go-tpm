@@ -26,8 +26,8 @@ func TestMarshal2B(t *testing.T) {
 	// one instantiated by the contents
 	var boxed1 TPM2BPublic
 	var boxed2 TPM2BPublic
-	boxed1 = NewTPM2BPublic(&pub)
-	boxed2 = NewTPM2BPublic(pubBytes)
+	boxed1 = *NewTPM2BPublic(&pub)
+	boxed2 = *NewTPM2BPublic(pubBytes)
 
 	boxed1Bytes := Marshal(&boxed1)
 	boxed2Bytes := Marshal(&boxed2)
@@ -47,7 +47,7 @@ func TestMarshal2B(t *testing.T) {
 	}
 
 	// Make a nonsense 2B_Public, demonstrating that the library doesn't have to understand the serialization
-	boxed1 = NewTPM2BPublic([]byte{0xff})
+	boxed1 = *NewTPM2BPublic([]byte{0xff})
 }
 
 func TestMarshalT(t *testing.T) {

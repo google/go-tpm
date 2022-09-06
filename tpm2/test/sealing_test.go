@@ -36,14 +36,13 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 	srkAuth := []byte("mySRK")
 	createSRKCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+		InSensitive: *NewTPM2BSensitiveCreate(
+			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: srkAuth,
 				},
-			},
-		},
-		InPublic: NewTPM2BPublic(&srkTemplate),
+			}),
+		InPublic: *NewTPM2BPublic(&srkTemplate),
 	}
 	createSRKRsp, err := createSRKCmd.Execute(thetpm)
 	if err != nil {
@@ -69,17 +68,16 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 			Name:   createSRKRsp.Name,
 			Auth:   PasswordAuth(srkAuth),
 		},
-		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+		InSensitive: *NewTPM2BSensitiveCreate(
+			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: auth,
 				},
-				Data: TPM2BSensitiveData{
+				Data: *NewTPMUSensitiveCreate(&TPM2BSensitiveData{
 					Buffer: data,
-				},
-			},
-		},
-		InPublic: NewTPM2BPublic(&TPMTPublic{
+				}),
+			}),
+		InPublic: *NewTPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgKeyedHash,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{

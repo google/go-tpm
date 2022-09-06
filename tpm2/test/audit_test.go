@@ -25,7 +25,7 @@ func TestAuditSession(t *testing.T) {
 	// Create the AK for audit
 	createAKCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: NewTPM2BPublic(&TPMTPublic{
+		InPublic: *NewTPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgECC,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{

@@ -13,8 +13,8 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 
 	cl := CreateLoaded{
 		ParentHandle: TPMRHOwner,
-		InPublic: NewTPM2BTemplate(
-			&TPMTPublic{
+		InPublic: *NewTPM2BTemplate(
+			NewTPMUTemplate(&TPMTPublic{
 				Type:    TPMAlgKeyedHash,
 				NameAlg: TPMAlgSHA256,
 				ObjectAttributes: TPMAObject{
@@ -36,7 +36,7 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 						},
 					},
 				},
-			}),
+			})),
 	}
 	rsp, err := cl.Execute(thetpm)
 	if err != nil {
@@ -60,18 +60,18 @@ func TestCreateLoaded(t *testing.T) {
 	createLoadeds := map[string]*CreateLoaded{
 		"PrimaryKey": {
 			ParentHandle: TPMRHEndorsement,
-			InPublic:     NewTPM2BTemplate(&ECCEKTemplate),
+			InPublic:     *NewTPM2BTemplate(NewTPMUTemplate(&ECCEKTemplate)),
 		},
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,
-			InSensitive: NewTPM2BSensitiveCreate(
+			InSensitive: *NewTPM2BSensitiveCreate(
 				&TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
 				}),
-			InPublic: NewTPM2BTemplate(
-				&TPMTPublic{
+			InPublic: *NewTPM2BTemplate(
+				NewTPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
@@ -84,36 +84,36 @@ func TestCreateLoaded(t *testing.T) {
 							CurveID: TPMECCNistP256,
 						},
 					},
-				}),
+				})),
 		},
 		"DataBlob": {
 			ParentHandle: TPMRHOwner,
-			InSensitive: NewTPM2BSensitiveCreate(
+			InSensitive: *NewTPM2BSensitiveCreate(
 				&TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: TPM2BSensitiveData{
+					Data: *NewTPMUSensitiveCreate(&TPM2BSensitiveData{
 						Buffer: []byte("secrets"),
-					},
+					}),
 				}),
-			InPublic: NewTPM2BTemplate(
-				&TPMTPublic{
+			InPublic: *NewTPM2BTemplate(
+				NewTPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgKeyedHash,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
 						UserWithAuth: true,
 					},
-				}),
+				})),
 		},
 		"Derived": {
 			ParentHandle: deriver,
-			InSensitive: NewTPM2BSensitiveCreate(
+			InSensitive: *NewTPM2BSensitiveCreate(
 				&TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: NewTPM2BDerive(
+					Data: *NewTPMUSensitiveCreate(NewTPM2BDerive(
 						&TPMSDerive{
 							Label: TPM2BLabel{
 								Buffer: []byte("label"),
@@ -121,10 +121,10 @@ func TestCreateLoaded(t *testing.T) {
 							Context: TPM2BLabel{
 								Buffer: []byte("context"),
 							},
-						}),
+						})),
 				}),
-			InPublic: TPM2BTemplate{
-				Template: TPMTPublic{
+			InPublic: *NewTPM2BTemplate(
+				NewTPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
@@ -137,8 +137,7 @@ func TestCreateLoaded(t *testing.T) {
 							CurveID: TPMECCNistP256,
 						},
 					},
-				},
-			},
+				})),
 		},
 	}
 

@@ -22,7 +22,7 @@ func TestECDH(t *testing.T) {
 	// Create a TPM ECDH key
 	tpmCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: NewTPM2BPublic(&TPMTPublic{
+		InPublic: *NewTPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgECC,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
@@ -87,16 +87,14 @@ func TestECDH(t *testing.T) {
 			Name:   tpmCreateRsp.Name,
 			Auth:   PasswordAuth(nil),
 		},
-		InPoint: TPM2BECCPoint{
-			Point: swPub,
-		},
+		InPoint: *NewTPM2BECCPoint(&swPub),
 	}
 	ecdhRsp, err := ecdh.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("ECDH_ZGen failed: %v", err)
 	}
 
-	if !cmp.Equal(z.X, ecdhRsp.OutPoint.Point.X, cmpopts.IgnoreUnexported(z.X)) {
-		t.Errorf("want %x got %x", z, ecdhRsp.OutPoint.Point)
+	if !cmp.Equal(z.X, ecdhRsp.OutPoint.Unwrap().X, cmpopts.IgnoreUnexported(z.X)) {
+		t.Errorf("want %x got %x", z, ecdhRsp.OutPoint.Unwrap())
 	}
 }

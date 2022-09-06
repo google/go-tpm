@@ -14,7 +14,7 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: NewTPM2BPublic(&TPMTPublic{
+		InPublic: *NewTPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgECC,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
@@ -62,8 +62,8 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	defSpace := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: TPM2BNVPublic{
-			NVPublic: TPMSNVPublic{
+		PublicInfo: *NewTPM2BNVPublic(
+			&TPMSNVPublic{
 				NVIndex: 0x01800001,
 				NameAlg: TPMAlgSHA256,
 				Attributes: TPMANV{
@@ -71,14 +71,13 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 					AuthRead:   true,
 					NT:         TPMNTOrdinary,
 				},
-			},
-		},
+			}),
 	}
 	if err := defSpace.Execute(thetpm); err != nil {
 		t.Fatalf("could not create NV index: %v", err)
 	}
 	readPub := NVReadPublic{
-		NVIndex: defSpace.PublicInfo.NVPublic.NVIndex,
+		NVIndex: defSpace.PublicInfo.Unwrap().NVIndex,
 	}
 	readRsp, err := readPub.Execute(thetpm)
 	if err != nil {
@@ -89,7 +88,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		undefine := NVUndefineSpace{
 			AuthHandle: TPMRHOwner,
 			NVIndex: NamedHandle{
-				Handle: defSpace.PublicInfo.NVPublic.NVIndex,
+				Handle: defSpace.PublicInfo.Unwrap().NVIndex,
 				Name:   readRsp.NVName,
 			},
 		}
@@ -98,7 +97,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		}
 	}
 	return NamedHandle{
-		Handle: defSpace.PublicInfo.NVPublic.NVIndex,
+		Handle: defSpace.PublicInfo.Unwrap().NVIndex,
 		Name:   readRsp.NVName,
 	}, cleanup
 }

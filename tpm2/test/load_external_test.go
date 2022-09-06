@@ -20,7 +20,7 @@ func decodeHex(t *testing.T, h string) []byte {
 func TestLoadExternal(t *testing.T) {
 	loads := map[string]*LoadExternal{
 		"ECCNoSensitive": {
-			InPublic: NewTPM2BPublic(&TPMTPublic{
+			InPublic: *NewTPM2BPublic(&TPMTPublic{
 				Type:    TPMAlgECC,
 				NameAlg: TPMAlgSHA256,
 				ObjectAttributes: TPMAObject{
@@ -41,8 +41,8 @@ func TestLoadExternal(t *testing.T) {
 			}),
 		},
 		"KeyedHashSensitive": {
-			InPrivate: &TPM2BSensitive{
-				SensitiveArea: TPMTSensitive{
+			InPrivate: NewTPM2BSensitive(
+				&TPMTSensitive{
 					SensitiveType: TPMAlgKeyedHash,
 					SeedValue: TPM2BDigest{
 						Buffer: []byte("obfuscation is my middle name!!!"),
@@ -52,9 +52,8 @@ func TestLoadExternal(t *testing.T) {
 							Buffer: []byte("secrets"),
 						},
 					},
-				},
-			},
-			InPublic: NewTPM2BPublic(&TPMTPublic{
+				}),
+			InPublic: *NewTPM2BPublic(&TPMTPublic{
 				Type:    TPMAlgKeyedHash,
 				NameAlg: TPMAlgSHA256,
 				Unique: TPMUPublicID{

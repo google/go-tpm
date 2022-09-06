@@ -25,7 +25,7 @@ func TestCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
-	public := NewTPM2BPublic(&TPMTPublic{
+	public := *NewTPM2BPublic(&TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -63,7 +63,7 @@ func TestCertify(t *testing.T) {
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: NewTPM2BSensitiveCreate(
+		InSensitive: *NewTPM2BSensitiveCreate(
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
@@ -81,7 +81,7 @@ func TestCertify(t *testing.T) {
 
 	createPrimarySubject := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: NewTPM2BSensitiveCreate(
+		InSensitive: *NewTPM2BSensitiveCreate(
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
@@ -155,7 +155,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := NewTPM2BPublic(&TPMTPublic{
+	public := *NewTPM2BPublic(&TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -269,7 +269,7 @@ func TestNVCertify(t *testing.T) {
 
 	Auth := []byte("password")
 
-	public := NewTPM2BPublic(&TPMTPublic{
+	public := *NewTPM2BPublic(&TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -297,7 +297,7 @@ func TestNVCertify(t *testing.T) {
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: NewTPM2BSensitiveCreate(
+		InSensitive: *NewTPM2BSensitiveCreate(
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
@@ -314,7 +314,7 @@ func TestNVCertify(t *testing.T) {
 
 	def := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: NewTPM2BNVPublic(
+		PublicInfo: *NewTPM2BNVPublic(
 			&TPMSNVPublic{
 				NVIndex: TPMHandle(0x0180000F),
 				NameAlg: TPMAlgSHA256,

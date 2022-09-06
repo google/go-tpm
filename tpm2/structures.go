@@ -6,7 +6,6 @@ import (
 	"crypto"
 	"crypto/elliptic"
 	"encoding/binary"
-	"reflect"
 
 	// Register the relevant hash implementations.
 	_ "crypto/sha1"
@@ -965,7 +964,7 @@ type TPM2BAttest = tpm2b[TPMSAttest]
 
 // NewTPM2BAttest instantiates a TPM2BPublic with the given contents
 // (which may be either a TPMSAttest or a flat byte array)
-func NewTPM2BAttest[C bytesOr[TPMSAttest]](contents C) TPM2BAttest {
+func NewTPM2BAttest[C bytesOr[TPMSAttest]](contents C) *TPM2BAttest {
 	return tpm2bHelper[TPMSAttest](contents)
 }
 
@@ -1080,8 +1079,39 @@ type TPM2BDerive = tpm2b[TPMSDerive]
 
 // NewTPM2BDerive instantiates a TPM2BDerive with the given contents
 // (which may be either a TPMSDerive or a flat byte array)
-func NewTPM2BDerive[C bytesOr[TPMSDerive]](contents C) TPM2BDerive {
+func NewTPM2BDerive[C bytesOr[TPMSDerive]](contents C) *TPM2BDerive {
 	return tpm2bHelper[TPMSDerive](contents)
+}
+
+// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.13.
+// Since the TPM cannot return this type, and it is not marshalled using a hint,
+// it can contain an interface.
+type TPMUSensitiveCreate struct {
+	contents Marshallable
+}
+
+type tpmuSensitiveCreate interface {
+	Marshallable
+	*TPM2BDerive | *TPM2BSensitiveData
+}
+
+// marshal implements the Marshallable interface.
+func (u *TPMUSensitiveCreate) marshal(buf *bytes.Buffer) error {
+	if u.contents != nil {
+		_, err := buf.Write(Marshal(u.contents))
+		return err
+	}
+	// If this is a zero-valued structure, marshal a default TPM2BSensitive data.
+	var defaultValue TPM2BSensitiveData
+	_, err := buf.Write(Marshal(&defaultValue))
+	return err
+}
+
+// NewTPMUSensitiveCreate instantiates a TPMUSensitiveCreate with the given contents
+// (which may be either a TPM2BDerive or a TPM2BSensitiveData)
+func NewTPMUSensitiveCreate[C tpmuSensitiveCreate](contents C) *TPMUSensitiveCreate {
+	return &TPMUSensitiveCreate{contents: contents}
 }
 
 // TPM2BSensitiveData represents a TPM2B_SENSITIVE_DATA.
@@ -1098,21 +1128,37 @@ type TPMSSensitiveCreate struct {
 	Data TPMUSensitiveCreate
 }
 
-// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
-// See definition in Part 2: Structures, section 11.1.13.
-// Since the TPM cannot return this type, it can be a type constraint.
-type TPMUSensitiveCreate interface {
-	*TPM2BSensitiveData | *TPM2BDerive
-}
-
 // TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
 // See definition in Part 2: Structures, section 11.1.16.
-type TPM2BSensitiveCreate = tpm2b[TPMSSensitiveCreate]
+// This is a structure instead of an alias to tpm2b[TPMSSensitiveCreate],
+// see the implementation of marshal below.
+type TPM2BSensitiveCreate struct {
+	contents *tpm2b[TPMSSensitiveCreate]
+}
 
 // NewTPM2BSensitiveCreate instantiates a TPM2BSensitiveCreate with the given contents
 // (which may be either a TPMSSensitiveCreate or a flat byte array)
-func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) TPM2BSensitiveCreate {
-	return tpm2bHelper[TPMSSensitiveCreate](contents)
+func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) *TPM2BSensitiveCreate {
+	return &TPM2BSensitiveCreate{
+		contents: tpm2bHelper[TPMSSensitiveCreate](contents),
+	}
+}
+
+// Quirk: When this structure is omitted, we need to marshal
+// something better than the default [0x00, 0x00] (an empty 2B).
+// This is because this actually needs to contain a small
+// structure containing some empty values.
+func (c *TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) error {
+	if c.contents != nil {
+		buf.Write(Marshal(c.contents))
+		return nil
+	}
+	// If no value was provided (i.e., this is a zero-valued structure),
+	// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
+	defaultValue := NewTPM2BSensitiveCreate(&TPMSSensitiveCreate{
+		Data: *NewTPMUSensitiveCreate(&TPM2BSensitiveData{}),
+	})
+	return defaultValue.marshal(buf)
 }
 
 // TPMSSchemeHash represents a TPMS_SCHEME_HASH.
@@ -1316,7 +1362,7 @@ type TPM2BECCPoint = tpm2b[TPMSECCPoint]
 
 // NewTPM2BECCPoint instantiates a TPM2BECCPoint with the given contents
 // (which may be either a TPMSECCPoint or a flat byte array)
-func NewTPM2BECCPoint[C bytesOr[TPMSECCPoint]](contents C) TPM2BECCPoint {
+func NewTPM2BECCPoint[C bytesOr[TPMSECCPoint]](contents C) *TPM2BECCPoint {
 	return tpm2bHelper[TPMSECCPoint](contents)
 }
 
@@ -1515,37 +1561,45 @@ type TPM2BPublic = tpm2b[TPMTPublic]
 
 // NewTPM2BPublic instantiates a TPM2BPublic with the given contents
 // (which may be either a TPMTPublic or a flat byte array)
-func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) TPM2BPublic {
+func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) *TPM2BPublic {
 	return tpm2bHelper[TPMTPublic](contents)
 }
 
 // TPMUTemplate represents the possible contents of a TPM2B_Template. It is not
 // defined or named in the spec, which instead describes how its contents may
 // differ in the case of CreateLoaded with a derivation parent.
-// Since the TPM cannot return this type, it can be a type constraint.
-type TPMUTemplate interface {
-	[]byte | *TPMTPublic | *TPMTTemplate
+// Since the TPM cannot return this type, and it is not marshalled using a hint,
+// it can contain an interface.
+type TPMUTemplate struct {
+	contents Marshallable
+}
+
+// marshal implements the Marshallable interface.
+func (u *TPMUTemplate) marshal(buf *bytes.Buffer) error {
+	_, err := buf.Write(Marshal(u.contents))
+	return err
+}
+
+type tpmuTemplate interface {
+	Marshallable
+	*TPMTPublic | *TPMTTemplate
+}
+
+// NewTPMUTemplate instantiates a TPMUTemplate with the given contents
+// (which may be either a TPMTPublic or a TPMTTemplate)
+func NewTPMUTemplate[C tpmuTemplate](contents C) *TPMUTemplate {
+	return &TPMUTemplate{contents: contents}
 }
 
 // TPM2BTemplate represents a TPM2B_TEMPLATE.
 // See definition in Part 2: Structures, section 12.2.6.
-type TPM2BTemplate TPM2BData
+type TPM2BTemplate = tpm2b[TPMUTemplate]
 
 // NewTPM2BTemplate instantiates a TPM2BTemplate with the given contents
 // (which may be either a TPMUTemplate or a flat byte array)
-func NewTPM2BTemplate[C TPMUTemplate](contents C) TPM2BTemplate {
-	var buf bytes.Buffer
-	// This is always safe for the given types on the constraint.
-	marshal(&buf, reflect.ValueOf(contents))
-	return TPM2BTemplate{
-		Buffer: buf.Bytes(),
-	}
+func NewTPM2BTemplate[C bytesOr[TPMUTemplate]](contents C) *TPM2BTemplate {
+	return tpm2bHelper[TPMUTemplate](contents)
 }
-
-func (TPMTPublic) tpmutemplate()               {}
-func (TPMTPublic) marshallableByReflection()   {}
-func (TPMTTemplate) tpmutemplate()             {}
-func (TPMTTemplate) marshallableByReflection() {}
 
 // TPMUSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
 // See definition in Part 2: Structures, section 12.3.2.3.
@@ -1582,7 +1636,7 @@ type TPM2BSensitive = tpm2b[TPMTSensitive]
 
 // NewTPM2BSensitive instantiates a TPM2BSensitive with the given contents
 // (which may be either a TPMTSensitive or a flat byte array)
-func NewTPM2BSensitive[C bytesOr[TPMTSensitive]](contents C) TPM2BSensitive {
+func NewTPM2BSensitive[C bytesOr[TPMTSensitive]](contents C) *TPM2BSensitive {
 	return tpm2bHelper[TPMTSensitive](contents)
 }
 
@@ -1753,7 +1807,7 @@ type TPM2BNVPublic = tpm2b[TPMSNVPublic]
 
 // NewTPM2BNVPublic instantiates a TPM2BNVPublic with the given contents
 // (which may be either a TPMSNVPublic or a flat byte array)
-func NewTPM2BNVPublic[C bytesOr[TPMSNVPublic]](contents C) TPM2BNVPublic {
+func NewTPM2BNVPublic[C bytesOr[TPMSNVPublic]](contents C) *TPM2BNVPublic {
 	return tpm2bHelper[TPMSNVPublic](contents)
 }
 
@@ -1773,13 +1827,9 @@ type TPMSContextData struct {
 
 // TPM2BContextData represents a TPM2B_CONTEXT_DATA
 // See definition in Part 2: Structures, section 14.4.
-type TPM2BContextData = tpm2b[TPMSContextData]
-
-// NewTPM2BContextData instantiates a TPM2BContextData with the given contents
-// (which may be either a TPMSContextData or a flat byte array)
-func NewTPM2BContextData[C bytesOr[TPMSContextData]](contents C) TPM2BContextData {
-	return tpm2bHelper[TPMSContextData](contents)
-}
+// Represented here as a flat buffer because how a TPM chooses
+// to represent its context data is implementation-dependent.
+type TPM2BContextData TPM2BData
 
 // TPMSContext represents a TPMS_CONTEXT
 // See definition in Part 2: Structures, section 14.5.
@@ -1801,6 +1851,6 @@ type TPM2BCreationData = tpm2b[TPMSCreationData]
 
 // NewTPM2BCreationData instantiates a TPM2BCreationData with the given contents
 // (which may be either a TPMSCreationData or a flat byte array)
-func NewTPM2BCreationData[C bytesOr[TPMSCreationData]](contents C) TPM2BCreationData {
+func NewTPM2BCreationData[C bytesOr[TPMSCreationData]](contents C) *TPM2BCreationData {
 	return tpm2bHelper[TPMSCreationData](contents)
 }

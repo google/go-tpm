@@ -405,9 +405,9 @@ func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
 	// If the type is not marshalled by reflection, try to call the custom unmarshal method.
 	if !isMarshalledByReflection(v) {
-		u, ok := v.Addr().Interface().(Marshallable)
+		u, ok := v.Addr().Interface().(Unmarshallable)
 		if !ok {
-			return fmt.Errorf("can't unmarshal: type %v does not implement Marshallable or marshallableByReflection", v.Type().Name())
+			return fmt.Errorf("can't unmarshal: type %v does not implement Unmarshallable or marshallableByReflection", v.Type().Name())
 		}
 		return u.unmarshal(buf)
 	}

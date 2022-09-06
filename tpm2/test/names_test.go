@@ -25,7 +25,7 @@ func TestObjectName(t *testing.T) {
 
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic:      NewTPM2BPublic(&ECCEKTemplate),
+		InPublic:      *NewTPM2BPublic(&ECCEKTemplate),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {
@@ -52,8 +52,8 @@ func TestNVName(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := TPM2BNVPublic{
-		NVPublic: TPMSNVPublic{
+	public := *NewTPM2BNVPublic(
+		&TPMSNVPublic{
 			NVIndex: TPMHandle(0x0180000F),
 			NameAlg: TPMAlgSHA256,
 			Attributes: TPMANV{
@@ -62,8 +62,7 @@ func TestNVName(t *testing.T) {
 				NT:         TPMNTOrdinary,
 			},
 			DataSize: 4,
-		},
-	}
+		})
 
 	defineSpace := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
@@ -74,7 +73,7 @@ func TestNVName(t *testing.T) {
 	}
 
 	readPublic := NVReadPublic{
-		NVIndex: public.NVPublic.NVIndex,
+		NVIndex: public.Unwrap().NVIndex,
 	}
 	rsp, err := readPublic.Execute(thetpm)
 	if err != nil {
@@ -82,7 +81,7 @@ func TestNVName(t *testing.T) {
 	}
 
 	want := rsp.NVName
-	name, err := NVName(&public.NVPublic)
+	name, err := NVName(public.Unwrap())
 	if err != nil {
 		t.Fatalf("error from NVIndexName: %v", err)
 	}

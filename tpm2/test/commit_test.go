@@ -19,43 +19,44 @@ func TestCommit(t *testing.T) {
 
 	create := CreateLoaded{
 		ParentHandle: TPMRHOwner,
-		InSensitive: NewTPM2BSensitiveCreate(
+		InSensitive: *NewTPM2BSensitiveCreate(
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: password,
 				},
 			}),
-		InPublic: NewTPM2BTemplate(
-			&TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:            true,
-					FixedParent:         true,
-					UserWithAuth:        true,
-					SensitiveDataOrigin: true,
-					SignEncrypt:         true,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Symmetric: TPMTSymDefObject{
-							Algorithm: TPMAlgNull,
-						},
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDAA,
-							Details: TPMUAsymScheme{
-								ECDAA: &TPMSSigSchemeECDAA{
-									HashAlg: TPMAlgSHA256,
+		InPublic: *NewTPM2BTemplate(
+			NewTPMUTemplate(
+				&TPMTPublic{
+					Type:    TPMAlgECC,
+					NameAlg: TPMAlgSHA256,
+					ObjectAttributes: TPMAObject{
+						FixedTPM:            true,
+						FixedParent:         true,
+						UserWithAuth:        true,
+						SensitiveDataOrigin: true,
+						SignEncrypt:         true,
+					},
+					Parameters: TPMUPublicParms{
+						ECCDetail: &TPMSECCParms{
+							Symmetric: TPMTSymDefObject{
+								Algorithm: TPMAlgNull,
+							},
+							Scheme: TPMTECCScheme{
+								Scheme: TPMAlgECDAA,
+								Details: TPMUAsymScheme{
+									ECDAA: &TPMSSigSchemeECDAA{
+										HashAlg: TPMAlgSHA256,
+									},
 								},
 							},
-						},
-						CurveID: TPMECCBNP256,
-						KDF: TPMTKDFScheme{
-							Scheme: TPMAlgNull,
+							CurveID: TPMECCBNP256,
+							KDF: TPMTKDFScheme{
+								Scheme: TPMAlgNull,
+							},
 						},
 					},
-				},
-			}),
+				})),
 	}
 
 	rspCP, err := create.Execute(thetpm)
@@ -72,7 +73,7 @@ func TestCommit(t *testing.T) {
 			Name:   rspCP.Name,
 			Auth:   PasswordAuth(password),
 		},
-		P1: NewTPM2BECCPoint(
+		P1: *NewTPM2BECCPoint(
 			&TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: []byte{1},
