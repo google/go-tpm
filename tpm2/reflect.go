@@ -118,29 +118,40 @@ func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) e
 	return nil
 }
 
-// Marshal will serialize the given values, returning them as a byte slice.
-// Returns an error if any of the values are not marshallable.
-func Marshal(vs ...interface{}) ([]byte, error) {
-	var reflects []reflect.Value
-	for _, v := range vs {
-		reflects = append(reflects, reflect.ValueOf(v))
+func isMarshalledByReflection(v reflect.Value) bool {
+	var mbr marshallableByReflection
+	if v.Type().AssignableTo(reflect.TypeOf(&mbr).Elem()) {
+		return true
 	}
-	var buf bytes.Buffer
-	for _, reflect := range reflects {
-		if err := marshal(&buf, reflect); err != nil {
-			return nil, err
+	// basic types are also marshalled by reflection, as are empty structs
+	switch v.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Array, reflect.Slice, reflect.Ptr:
+		return true
+	case reflect.Struct:
+		if v.NumField() == 0 {
+			return true
 		}
 	}
-	return buf.Bytes(), nil
+	return false
 }
 
 // marshal will serialize the given value, appending onto the given buffer.
 // Returns an error if the value is not marshallable.
 func marshal(buf *bytes.Buffer, v reflect.Value) error {
-	// If the type implements marshallable, use that implementation.
-	u, ok := v.Interface().(marshallable)
-	if ok {
-		return u.marshal(buf)
+	// If the type is not marshalled by reflection, try to call the custom marshal method.
+	if !isMarshalledByReflection(v) {
+		u, ok := v.Interface().(Marshallable)
+		if ok {
+			return u.marshal(buf)
+		}
+		if v.CanAddr() {
+			// Maybe we got an addressable value whose pointer implements Marshallable
+			pu, ok := v.Addr().Interface().(Marshallable)
+			if ok {
+				return pu.marshal(buf)
+			}
+		}
+		return fmt.Errorf("can't marshal: type %v does not implement Marshallable or marshallableByReflection", v.Type().Name())
 	}
 
 	// Otherwise, use reflection.
@@ -152,7 +163,7 @@ func marshal(buf *bytes.Buffer, v reflect.Value) error {
 	case reflect.Struct:
 		return marshalStruct(buf, v)
 	case reflect.Ptr:
-		return marshalStruct(buf, v.Elem())
+		return marshal(buf, v.Elem())
 	case reflect.Interface:
 		// Special case: there are very few TPM types which, for TPM spec
 		// backwards-compatibility reasons, are implemented as Go interfaces
@@ -374,7 +385,7 @@ func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 	for i := 0; i < v.NumField(); i++ {
 		sel, ok := numericTag(v.Type().Field(i), "selector")
 		if !ok {
-			return fmt.Errorf("'%v' union member '%v' did not have a selector tag", v.Type().Name(), v.Type().Field(i).Name)
+			continue
 		}
 		if sel == selector {
 			if v.Field(i).IsNil() {
@@ -388,43 +399,19 @@ func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 	return fmt.Errorf("selector value '%v' not handled for type '%v'", selector, v.Type().Name())
 }
 
-// Unmarshal deserializes the given values from the byte slice.
-// Returns an error if the buffer does not contain enough data to satisfy the
-// types, or if the types are not unmarshallable.
-func Unmarshal(data []byte, vs ...interface{}) error {
-	var reflects []reflect.Value
-	for _, v := range vs {
-		if reflect.ValueOf(v).Kind() != reflect.Ptr {
-			return fmt.Errorf("all parameters to Unmarshal must be pointers")
-		}
-		reflects = append(reflects, reflect.ValueOf(v).Elem())
-	}
-	var buf bytes.Buffer
-	if _, err := buf.Write(data); err != nil {
-		return err
-	}
-	for _, reflect := range reflects {
-		if err := unmarshal(&buf, reflect); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // unmarshal will deserialize the given value from the given buffer.
 // Returns an error if the buffer does not contain enough data to satisfy the
 // type.
 func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
-	// If the type implements unmarshallable, use that implementation.
-	u, ok := v.Addr().Interface().(unmarshallable)
-	if ok {
-		fmt.Printf("Unmarshalling a %v\n", v.Type().Name())
-		err := u.unmarshal(buf)
-		fmt.Printf("Got:\n%x\n", u)
-		return err
+	// If the type is not marshalled by reflection, try to call the custom unmarshal method.
+	if !isMarshalledByReflection(v) {
+		u, ok := v.Addr().Interface().(Marshallable)
+		if !ok {
+			return fmt.Errorf("can't unmarshal: type %v does not implement Marshallable or marshallableByReflection", v.Type().Name())
+		}
+		return u.unmarshal(buf)
 	}
 
-	// Otherwise, use reflection.
 	switch v.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if err := unmarshalNumeric(buf, v); err != nil {
@@ -456,14 +443,13 @@ func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
 			return err
 		}
 		v.Set(tmp)
+		return nil
 	case reflect.Array:
-		if err := unmarshalArray(buf, v); err != nil {
-			return err
-		}
+		return unmarshalArray(buf, v)
 	case reflect.Struct:
-		if err := unmarshalStruct(buf, v); err != nil {
-			return err
-		}
+		return unmarshalStruct(buf, v)
+	case reflect.Ptr:
+		return unmarshal(buf, v.Elem())
 	default:
 		return fmt.Errorf("not unmarshallable: %v", v.Type())
 	}
@@ -682,7 +668,7 @@ func unmarshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 	for i := 0; i < v.NumField(); i++ {
 		sel, ok := numericTag(v.Type().Field(i), "selector")
 		if !ok {
-			return fmt.Errorf("'%v' union member '%v' did not have a selector tag", v.Type().Name(), v.Type().Field(i).Name)
+			continue
 		}
 		if sel == selector {
 			val := reflect.New(v.Type().Field(i).Type.Elem())

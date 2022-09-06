@@ -3,24 +3,69 @@ package tpm2
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
 )
 
-// marshallable represents any TPM type that has its own custom logic for marshalling.
-type marshallable interface {
+var notImplError = errors.New("not implemented")
+
+// Marshallable represents any TPM type that can be marshalled/unmarshalled.
+type Marshallable interface {
 	// marshal will serialize the given value, appending onto the given buffer.
 	// Returns an error if the value is not marshallable.
 	marshal(buf *bytes.Buffer) error
-}
-
-// unmarshallable represents any TPM type that has its own custom logic for unmarshalling.
-type unmarshallable interface {
-	// unmarshal will deserialize the given value from the given buffer.
-	// Returns an error if the buffer does not contain enough data to satisfy the type.
+	// marshal will deserialize the given value from the given buffer.
+	// Returns an error if there was an unmarshalling error or if there was not
+	// enough data in the buffer.
 	unmarshal(buf *bytes.Buffer) error
 }
+
+// Marshal will serialize the given values, returning them as a byte slice.
+func Marshal[T Marshallable](v T) []byte {
+	var buf bytes.Buffer
+	if err := marshal(&buf, reflect.ValueOf(v)); err != nil {
+		panic(fmt.Sprintf("unexpected error marshalling %v: %v", reflect.TypeOf(v).Name(), err))
+	}
+	return buf.Bytes()
+}
+
+// Returns an error if the buffer does not contain enough data to satisfy the
+// types, or if the types are not unmarshallable.
+func Unmarshal[T any, P interface {
+	// *T must satisfy Marshallable
+	*T
+	Marshallable
+}](data []byte) (*T, error) {
+	buf := bytes.NewBuffer(data)
+	var t T
+	value := reflect.New(reflect.TypeOf(t))
+	if err := unmarshal(buf, value.Elem()); err != nil {
+		return nil, err
+	}
+	return value.Interface().(*T), nil
+}
+
+// marshallableByReflection is a placeholder interface, to hint to the unmarshalling
+// library that it is supposed to use reflection.
+type marshallableByReflection interface {
+	reflectionSafe()
+}
+
+// marshalByReflection is embedded into any type that can be marshalled by reflection,
+// needing no custom logic.
+type marshalByReflection struct{}
+
+func (_ marshalByReflection) reflectionSafe() {}
+
+// Placeholder: because this type implements the defaultMarshallable interface,
+// the reflection library knows not to call this.
+func (_ *marshalByReflection) marshal(_ *bytes.Buffer) error { return notImplError }
+
+// Placeholder: because this type implements the defaultMarshallable interface,
+// the reflection library knows not to call this.
+func (_ *marshalByReflection) unmarshal(_ *bytes.Buffer) error { return notImplError }
 
 // tpm2b is a helper type for a field that can be provided either by structure or by byte-array.
 // When deserialized (e.g., from a TPM response), both Contents and Buffer are populated.
@@ -43,10 +88,10 @@ func tpm2bHelper[T any, C bytesOr[T]](contents C) tpm2b[T] {
 }
 
 // marshal implements the marshallable interface.
-func (value tpm2b[T]) marshal(buf *bytes.Buffer) error {
+func (value *tpm2b[T]) marshal(buf *bytes.Buffer) error {
 	if value.Contents != nil {
 		var temp bytes.Buffer
-		if err := marshal(&temp, reflect.ValueOf(*value.Contents)); err != nil {
+		if err := marshal(&temp, reflect.ValueOf(value.Contents)); err != nil {
 			return err
 		}
 		binary.Write(buf, binary.BigEndian, uint16(temp.Len()))
@@ -58,7 +103,7 @@ func (value tpm2b[T]) marshal(buf *bytes.Buffer) error {
 	return nil
 }
 
-// unmarshal implements the unmarshallable interface.
+// unmarshal implements the marshallable interface.
 func (value *tpm2b[T]) unmarshal(buf *bytes.Buffer) error {
 	var size uint16
 	binary.Read(buf, binary.BigEndian, &size)
@@ -72,7 +117,7 @@ func (value *tpm2b[T]) unmarshal(buf *bytes.Buffer) error {
 	}
 	rdr := bytes.NewBuffer(value.Buffer)
 	value.Contents = new(T)
-	return unmarshal(rdr, reflect.ValueOf(value.Contents).Elem())
+	return unmarshal(rdr, reflect.ValueOf(value.Contents))
 }
 
 // CheckUnwrap returns the structured contents of the tpm2b.

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
@@ -103,7 +104,7 @@ func TestCombinedContext(t *testing.T) {
 	rspCLName := ReadPublicName(t, rspCL.LoadedHandle, thetpm)
 	rspCPName := ReadPublicName(t, rspCP.ObjectHandle, thetpm)
 
-	if !cmp.Equal(rspCLName, rspCPName) {
+	if !cmp.Equal(rspCLName, rspCPName, cmpopts.IgnoreUnexported(rspCLName)) {
 		t.Error("Mismatch between public returned from ContextLoad & CreateLoaded")
 	}
 }

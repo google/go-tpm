@@ -132,10 +132,7 @@ func TestCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info, err := Marshal(rspCert.CertifyInfo.AttestationData)
-	if err != nil {
-		t.Fatalf("Failed to marshal: %v", err)
-	}
+	info := Marshal(&rspCert.CertifyInfo.AttestationData)
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Unwrap()
@@ -247,7 +244,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)
 	}
 
-	info, err := Marshal(rspCC.CertifyInfo.AttestationData)
+	info := Marshal(&rspCC.CertifyInfo.AttestationData)
 	if err != nil {
 		t.Fatalf("Failed to marshal: %v", err)
 	}
@@ -396,10 +393,7 @@ func TestNVCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info, err := Marshal(rspCert.CertifyInfo.AttestationData)
-	if err != nil {
-		t.Fatalf("Failed to marshal: %v", err)
-	}
+	info := Marshal(&rspCert.CertifyInfo.AttestationData)
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Unwrap()

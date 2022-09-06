@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
@@ -95,7 +96,7 @@ func TestECDH(t *testing.T) {
 		t.Fatalf("ECDH_ZGen failed: %v", err)
 	}
 
-	if !cmp.Equal(z, ecdhRsp.OutPoint.Point) {
+	if !cmp.Equal(z.X, ecdhRsp.OutPoint.Point.X, cmpopts.IgnoreUnexported(z.X)) {
 		t.Errorf("want %x got %x", z, ecdhRsp.OutPoint.Point)
 	}
 }

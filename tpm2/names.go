@@ -1,7 +1,9 @@
 package tpm2
 
 import (
+	"bytes"
 	"encoding/binary"
+	"reflect"
 )
 
 // HandleName returns the TPM Name of a PCR, session, or permanent value
@@ -30,11 +32,11 @@ func objectOrNVName(alg TPMAlgID, pub interface{}) (*TPM2BName, error) {
 	// Calculate the hash of the entire Public contents and append it to the
 	// result.
 	ha := h.New()
-	marshalledPub, err := Marshal(pub)
-	if err != nil {
+	var buf bytes.Buffer
+	if err := marshal(&buf, reflect.ValueOf(pub)); err != nil {
 		return nil, err
 	}
-	ha.Write(marshalledPub)
+	ha.Write(buf.Bytes())
 	result = ha.Sum(result)
 
 	return &TPM2BName{

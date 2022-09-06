@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
@@ -87,9 +88,9 @@ func TestReadPublicKey(t *testing.T) {
 	// PublicArea.Unique represents the unique identifier of the TPMTPublic.
 	// Notice how this test uses verification of another TPM command that is
 	// able to produce similar results to validate the response.
-	rspCPUnique := rspCP.OutPublic.Unwrap().Unique
-	rspRPUnique := rspRP.OutPublic.Unwrap().Unique
-	if !cmp.Equal(rspCPUnique, rspRPUnique) {
+	rspCPX := rspCP.OutPublic.Unwrap().Unique.ECC.X
+	rspRPX := rspRP.OutPublic.Unwrap().Unique.ECC.X
+	if !cmp.Equal(rspCPX, rspRPX, cmpopts.IgnoreUnexported(rspCPX)) {
 		t.Error("Mismatch between public returned from CreatePrimary & ReadPublic")
 	}
 }
