@@ -2,9 +2,11 @@
 package tpm2
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/elliptic"
 	"encoding/binary"
+	"reflect"
 
 	// Register the relevant hash implementations.
 	_ "crypto/sha1"
@@ -959,10 +961,12 @@ type TPMSAttest struct {
 // See definition in Part 2: Structures, section 10.12.13.
 // Note that in the spec, this is just a 2B_DATA with enough room for an S_ATTEST.
 // For ergonomics, pretend that TPM2B_Attest wraps a TPMS_Attest just like other 2Bs.
-type TPM2BAttest struct {
-	marshalByReflection
-	// the signed structure
-	AttestationData TPMSAttest `gotpm:"sized"`
+type TPM2BAttest = tpm2b[TPMSAttest]
+
+// NewTPM2BAttest instantiates a TPM2BPublic with the given contents
+// (which may be either a TPMSAttest or a flat byte array)
+func NewTPM2BAttest[C bytesOr[TPMSAttest]](contents C) TPM2BAttest {
+	return tpm2bHelper[TPMSAttest](contents)
 }
 
 // TPMSAuthCommand represents a TPMS_AUTH_COMMAND.
@@ -1072,21 +1076,13 @@ type TPMSDerive struct {
 
 // TPM2BDerive represents a TPM2B_DERIVE.
 // See definition in Part 2: Structures, section 11.1.12.
-type TPM2BDerive struct {
-	marshalByReflection
-	Buffer TPMSDerive `gotpm:"sized"`
-}
+type TPM2BDerive = tpm2b[TPMSDerive]
 
-// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
-// See definition in Part 2: Structures, section 11.1.13.
-// Since the TPM cannot return this type, it can be an interface.
-type TPMUSensitiveCreate interface {
-	tpmusensitivecreate()
-	marshallableByReflection
+// NewTPM2BDerive instantiates a TPM2BDerive with the given contents
+// (which may be either a TPMSDerive or a flat byte array)
+func NewTPM2BDerive[C bytesOr[TPMSDerive]](contents C) TPM2BDerive {
+	return tpm2bHelper[TPMSDerive](contents)
 }
-
-func (TPM2BSensitiveData) tpmusensitivecreate() {}
-func (TPM2BDerive) tpmusensitivecreate()        {}
 
 // TPM2BSensitiveData represents a TPM2B_SENSITIVE_DATA.
 // See definition in Part 2: Structures, section 11.1.14.
@@ -1102,12 +1098,21 @@ type TPMSSensitiveCreate struct {
 	Data TPMUSensitiveCreate
 }
 
+// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.13.
+// Since the TPM cannot return this type, it can be a type constraint.
+type TPMUSensitiveCreate interface {
+	*TPM2BSensitiveData | *TPM2BDerive
+}
+
 // TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
 // See definition in Part 2: Structures, section 11.1.16.
-type TPM2BSensitiveCreate struct {
-	marshalByReflection
-	// data to be sealed or a symmetric key value.
-	Sensitive TPMSSensitiveCreate `gotpm:"sized"`
+type TPM2BSensitiveCreate = tpm2b[TPMSSensitiveCreate]
+
+// NewTPM2BSensitiveCreate instantiates a TPM2BSensitiveCreate with the given contents
+// (which may be either a TPMSSensitiveCreate or a flat byte array)
+func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) TPM2BSensitiveCreate {
+	return tpm2bHelper[TPMSSensitiveCreate](contents)
 }
 
 // TPMSSchemeHash represents a TPMS_SCHEME_HASH.
@@ -1307,9 +1312,12 @@ type TPMSECCPoint struct {
 
 // TPM2BECCPoint represents a TPM2B_ECC_POINT.
 // See definition in Part 2: Structures, section 11.2.5.3.
-type TPM2BECCPoint struct {
-	marshalByReflection
-	Point TPMSECCPoint `gotpm:"sized"`
+type TPM2BECCPoint = tpm2b[TPMSECCPoint]
+
+// NewTPM2BECCPoint instantiates a TPM2BECCPoint with the given contents
+// (which may be either a TPMSECCPoint or a flat byte array)
+func NewTPM2BECCPoint[C bytesOr[TPMSECCPoint]](contents C) TPM2BECCPoint {
+	return tpm2bHelper[TPMSECCPoint](contents)
 }
 
 // TPMIAlgECCScheme represents a TPMI_ALG_ECC_SCHEME.
@@ -1511,26 +1519,33 @@ func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) TPM2BPublic {
 	return tpm2bHelper[TPMTPublic](contents)
 }
 
-// TPM2BTemplate represents a TPM2B_TEMPLATE.
-// See definition in Part 2: Structures, section 12.2.6.
-type TPM2BTemplate struct {
-	marshalByReflection
-	Template TPMUTemplate `gotpm:"sized"`
-}
-
 // TPMUTemplate represents the possible contents of a TPM2B_Template. It is not
 // defined or named in the spec, which instead describes how its contents may
 // differ in the case of CreateLoaded with a derivation parent.
-// Since the TPM cannot return this type, it can be an interface.
+// Since the TPM cannot return this type, it can be a type constraint.
 type TPMUTemplate interface {
-	tpmutemplate()
-	marshallableByReflection
+	[]byte | *TPMTPublic | *TPMTTemplate
 }
 
-func (TPMTPublic) tpmutemplate()                {}
-func (TPMTPublic) defaultMarshalling() []byte   { return nil }
-func (TPMTTemplate) tpmutemplate()              {}
-func (TPMTTemplate) defaultMarshalling() []byte { return nil }
+// TPM2BTemplate represents a TPM2B_TEMPLATE.
+// See definition in Part 2: Structures, section 12.2.6.
+type TPM2BTemplate TPM2BData
+
+// NewTPM2BTemplate instantiates a TPM2BTemplate with the given contents
+// (which may be either a TPMUTemplate or a flat byte array)
+func NewTPM2BTemplate[C TPMUTemplate](contents C) TPM2BTemplate {
+	var buf bytes.Buffer
+	// This is always safe for the given types on the constraint.
+	marshal(&buf, reflect.ValueOf(contents))
+	return TPM2BTemplate{
+		Buffer: buf.Bytes(),
+	}
+}
+
+func (TPMTPublic) tpmutemplate()               {}
+func (TPMTPublic) marshallableByReflection()   {}
+func (TPMTTemplate) tpmutemplate()             {}
+func (TPMTTemplate) marshallableByReflection() {}
 
 // TPMUSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
 // See definition in Part 2: Structures, section 12.3.2.3.
@@ -1563,10 +1578,12 @@ type TPMTSensitive struct {
 
 // TPM2BSensitive represents a TPM2B_SENSITIVE.
 // See definition in Part 2: Structures, section 12.3.3.
-type TPM2BSensitive struct {
-	marshalByReflection
-	// an unencrypted sensitive area
-	SensitiveArea TPMTSensitive `gotpm:"sized"`
+type TPM2BSensitive = tpm2b[TPMTSensitive]
+
+// NewTPM2BSensitive instantiates a TPM2BSensitive with the given contents
+// (which may be either a TPMTSensitive or a flat byte array)
+func NewTPM2BSensitive[C bytesOr[TPMTSensitive]](contents C) TPM2BSensitive {
+	return tpm2bHelper[TPMTSensitive](contents)
 }
 
 // TPM2BPrivate represents a TPM2B_PRIVATE.
@@ -1732,19 +1749,17 @@ type TPMSNVPublic struct {
 
 // TPM2BNVPublic represents a TPM2B_NV_PUBLIC.
 // See definition in Part 2: Structures, section 13.6.
-type TPM2BNVPublic struct {
-	marshalByReflection
-	NVPublic TPMSNVPublic `gotpm:"sized"`
+type TPM2BNVPublic = tpm2b[TPMSNVPublic]
+
+// NewTPM2BNVPublic instantiates a TPM2BNVPublic with the given contents
+// (which may be either a TPMSNVPublic or a flat byte array)
+func NewTPM2BNVPublic[C bytesOr[TPMSNVPublic]](contents C) TPM2BNVPublic {
+	return tpm2bHelper[TPMSNVPublic](contents)
 }
 
 // TPM2BContextSensitive represents a TPM2B_CONTEXT_SENSITIVE
 // See definition in Part 2: Structures, section 14.2.
-type TPM2BContextSensitive struct {
-	marshalByReflection
-	Size uint16
-	// the sensitive data
-	Buffer []byte
-}
+type TPM2BContextSensitive TPM2BData
 
 // TPMSContextData represents a TPMS_CONTEXT_DATA
 // See definition in Part 2: Structures, section 14.3.
@@ -1758,9 +1773,12 @@ type TPMSContextData struct {
 
 // TPM2BContextData represents a TPM2B_CONTEXT_DATA
 // See definition in Part 2: Structures, section 14.4.
-type TPM2BContextData struct {
-	marshalByReflection
-	Buffer TPMSContextData `gotpm:"sized"`
+type TPM2BContextData = tpm2b[TPMSContextData]
+
+// NewTPM2BContextData instantiates a TPM2BContextData with the given contents
+// (which may be either a TPMSContextData or a flat byte array)
+func NewTPM2BContextData[C bytesOr[TPMSContextData]](contents C) TPM2BContextData {
+	return tpm2bHelper[TPMSContextData](contents)
 }
 
 // TPMSContext represents a TPMS_CONTEXT
@@ -1779,7 +1797,10 @@ type TPMSContext struct {
 
 // TPM2BCreationData represents a TPM2B_CREATION_DATA.
 // See definition in Part 2: Structures, section 15.2.
-type TPM2BCreationData struct {
-	marshalByReflection
-	CreationData TPMSCreationData `gotpm:"sized"`
+type TPM2BCreationData = tpm2b[TPMSCreationData]
+
+// NewTPM2BCreationData instantiates a TPM2BCreationData with the given contents
+// (which may be either a TPMSCreationData or a flat byte array)
+func NewTPM2BCreationData[C bytesOr[TPMSCreationData]](contents C) TPM2BCreationData {
+	return tpm2bHelper[TPMSCreationData](contents)
 }

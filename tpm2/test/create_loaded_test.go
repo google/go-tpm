@@ -13,8 +13,8 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 
 	cl := CreateLoaded{
 		ParentHandle: TPMRHOwner,
-		InPublic: TPM2BTemplate{
-			Template: TPMTPublic{
+		InPublic: NewTPM2BTemplate(
+			&TPMTPublic{
 				Type:    TPMAlgKeyedHash,
 				NameAlg: TPMAlgSHA256,
 				ObjectAttributes: TPMAObject{
@@ -36,8 +36,7 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 						},
 					},
 				},
-			},
-		},
+			}),
 	}
 	rsp, err := cl.Execute(thetpm)
 	if err != nil {
@@ -61,21 +60,18 @@ func TestCreateLoaded(t *testing.T) {
 	createLoadeds := map[string]*CreateLoaded{
 		"PrimaryKey": {
 			ParentHandle: TPMRHEndorsement,
-			InPublic: TPM2BTemplate{
-				Template: ECCEKTemplate,
-			},
+			InPublic:     NewTPM2BTemplate(&ECCEKTemplate),
 		},
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,
-			InSensitive: TPM2BSensitiveCreate{
-				Sensitive: TPMSSensitiveCreate{
+			InSensitive: NewTPM2BSensitiveCreate(
+				&TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-				},
-			},
-			InPublic: TPM2BTemplate{
-				Template: TPMTPublic{
+				}),
+			InPublic: NewTPM2BTemplate(
+				&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
@@ -88,50 +84,45 @@ func TestCreateLoaded(t *testing.T) {
 							CurveID: TPMECCNistP256,
 						},
 					},
-				},
-			},
+				}),
 		},
 		"DataBlob": {
 			ParentHandle: TPMRHOwner,
-			InSensitive: TPM2BSensitiveCreate{
-				Sensitive: TPMSSensitiveCreate{
+			InSensitive: NewTPM2BSensitiveCreate(
+				&TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
 					Data: TPM2BSensitiveData{
 						Buffer: []byte("secrets"),
 					},
-				},
-			},
-			InPublic: TPM2BTemplate{
-				Template: TPMTPublic{
+				}),
+			InPublic: NewTPM2BTemplate(
+				&TPMTPublic{
 					Type:    TPMAlgKeyedHash,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
 						UserWithAuth: true,
 					},
-				},
-			},
+				}),
 		},
 		"Derived": {
 			ParentHandle: deriver,
-			InSensitive: TPM2BSensitiveCreate{
-				Sensitive: TPMSSensitiveCreate{
+			InSensitive: NewTPM2BSensitiveCreate(
+				&TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: TPM2BDerive{
-						Buffer: TPMSDerive{
+					Data: NewTPM2BDerive(
+						&TPMSDerive{
 							Label: TPM2BLabel{
 								Buffer: []byte("label"),
 							},
 							Context: TPM2BLabel{
 								Buffer: []byte("context"),
 							},
-						},
-					},
-				},
-			},
+						}),
+				}),
 			InPublic: TPM2BTemplate{
 				Template: TPMTPublic{
 					Type:    TPMAlgECC,

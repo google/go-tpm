@@ -63,13 +63,12 @@ func TestCertify(t *testing.T) {
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+		InSensitive: NewTPM2BSensitiveCreate(
+			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
-			},
-		},
+			}),
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
@@ -82,13 +81,12 @@ func TestCertify(t *testing.T) {
 
 	createPrimarySubject := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+		InSensitive: NewTPM2BSensitiveCreate(
+			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
-			},
-		},
+			}),
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
@@ -132,7 +130,7 @@ func TestCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info := Marshal(&rspCert.CertifyInfo.AttestationData)
+	info := Marshal(rspCert.CertifyInfo.Unwrap())
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Unwrap()
@@ -145,7 +143,7 @@ func TestCertify(t *testing.T) {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
-	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.AttestationData.ExtraData.Buffer) {
+	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.Unwrap().ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }
@@ -238,13 +236,13 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("Failed to certify creation: %v", err)
 	}
 
-	attName := rspCC.CertifyInfo.AttestationData.Attested.Creation.ObjectName.Buffer
+	attName := rspCC.CertifyInfo.Unwrap().Attested.Creation.ObjectName.Buffer
 	pubName := rspCP.Name.Buffer
 	if !bytes.Equal(attName, pubName) {
 		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)
 	}
 
-	info := Marshal(&rspCC.CertifyInfo.AttestationData)
+	info := Marshal(rspCC.CertifyInfo.Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to marshal: %v", err)
 	}
@@ -299,13 +297,12 @@ func TestNVCertify(t *testing.T) {
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+		InSensitive: NewTPM2BSensitiveCreate(
+			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
-			},
-		},
+			}),
 		InPublic: public,
 	}
 	rspSigner, err := createPrimarySigner.Execute(thetpm)
@@ -317,8 +314,8 @@ func TestNVCertify(t *testing.T) {
 
 	def := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: TPM2BNVPublic{
-			NVPublic: TPMSNVPublic{
+		PublicInfo: NewTPM2BNVPublic(
+			&TPMSNVPublic{
 				NVIndex: TPMHandle(0x0180000F),
 				NameAlg: TPMAlgSHA256,
 				Attributes: TPMANV{
@@ -330,8 +327,7 @@ func TestNVCertify(t *testing.T) {
 					NoDA:       true,
 				},
 				DataSize: 4,
-			},
-		},
+			}),
 	}
 	if err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
@@ -347,12 +343,12 @@ func TestNVCertify(t *testing.T) {
 
 	prewrite := NVWrite{
 		AuthHandle: AuthHandle{
-			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Handle: def.PublicInfo.Unwrap().NVIndex,
 			Name:   nvPub.NVName,
 			Auth:   PasswordAuth(nil),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Handle: def.PublicInfo.Unwrap().NVIndex,
 			Name:   nvPub.NVName,
 		},
 		Data: TPM2BMaxNVBuffer{
@@ -393,7 +389,7 @@ func TestNVCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info := Marshal(&rspCert.CertifyInfo.AttestationData)
+	info := Marshal(rspCert.CertifyInfo.Unwrap())
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Unwrap()
@@ -406,7 +402,7 @@ func TestNVCertify(t *testing.T) {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
-	if !cmp.Equal([]byte("nonce"), rspCert.CertifyInfo.AttestationData.ExtraData.Buffer) {
+	if !cmp.Equal([]byte("nonce"), rspCert.CertifyInfo.Unwrap().ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }
