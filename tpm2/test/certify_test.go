@@ -95,7 +95,7 @@ func TestCertify(t *testing.T) {
 			Buffer: []byte("subject key"),
 		},
 	}
-	createPrimarySubject.InPublic.Unwrap().Unique = unique
+	createPrimarySubject.InPublic.Contents().Unwrap().Unique = unique
 
 	rspSubject, err := createPrimarySubject.Execute(thetpm)
 	if err != nil {
@@ -130,10 +130,10 @@ func TestCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info := Marshal(rspCert.CertifyInfo.Unwrap())
+	info := Marshal(rspCert.CertifyInfo.Contents().Unwrap())
 
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.Unwrap()
+	pub := rspSigner.OutPublic.Contents().Unwrap()
 	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
@@ -143,7 +143,7 @@ func TestCertify(t *testing.T) {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
-	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.Unwrap().ExtraData.Buffer) {
+	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.Contents().Unwrap().ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }
@@ -236,20 +236,20 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("Failed to certify creation: %v", err)
 	}
 
-	attName := Unwrap[TPMSCreationInfo](&rspCC.CertifyInfo.Unwrap().Attested).ObjectName.Buffer
+	attName := Unwrap[TPMSCreationInfo](&rspCC.CertifyInfo.Contents().Unwrap().Attested).ObjectName.Buffer
 	pubName := rspCP.Name.Buffer
 	if !bytes.Equal(attName, pubName) {
 		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)
 	}
 
-	info := Marshal(rspCC.CertifyInfo.Unwrap())
+	info := Marshal(rspCC.CertifyInfo.Contents().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to marshal: %v", err)
 	}
 
 	attestHash := sha256.Sum256(info)
 
-	pub := rspCP.OutPublic.Unwrap()
+	pub := rspCP.OutPublic.Contents().Unwrap()
 	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
@@ -343,12 +343,12 @@ func TestNVCertify(t *testing.T) {
 
 	prewrite := NVWrite{
 		AuthHandle: AuthHandle{
-			Handle: def.PublicInfo.Unwrap().NVIndex,
+			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
 			Name:   nvPub.NVName,
 			Auth:   PasswordAuth(nil),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.Unwrap().NVIndex,
+			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
 			Name:   nvPub.NVName,
 		},
 		Data: TPM2BMaxNVBuffer{
@@ -389,10 +389,10 @@ func TestNVCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info := Marshal(rspCert.CertifyInfo.Unwrap())
+	info := Marshal(rspCert.CertifyInfo.Contents().Unwrap())
 
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.Unwrap()
+	pub := rspSigner.OutPublic.Contents().Unwrap()
 	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
@@ -402,7 +402,7 @@ func TestNVCertify(t *testing.T) {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
-	if !cmp.Equal([]byte("nonce"), rspCert.CertifyInfo.Unwrap().ExtraData.Buffer) {
+	if !cmp.Equal([]byte("nonce"), rspCert.CertifyInfo.Contents().Unwrap().ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }

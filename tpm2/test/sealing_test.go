@@ -173,7 +173,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 			Name:   createSRKRsp.Name,
 			Auth: HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptInOut),
-				Salted(createSRKRsp.ObjectHandle, *createSRKRsp.OutPublic.Unwrap())),
+				Salted(createSRKRsp.ObjectHandle, *createSRKRsp.OutPublic.Contents().Unwrap())),
 		}
 		createBlobRsp, err = createBlobCmd.Execute(thetpm)
 		if err != nil {

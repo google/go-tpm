@@ -139,7 +139,7 @@ func TestSign(t *testing.T) {
 		t.Fatalf("Failed to Sign Digest: %v", err)
 	}
 
-	pub := rspCP.OutPublic.Unwrap()
+	pub := rspCP.OutPublic.Contents().Unwrap()
 	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)

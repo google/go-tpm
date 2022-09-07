@@ -36,7 +36,7 @@ func TestMarshal2B(t *testing.T) {
 		t.Errorf("got %x want %x", boxed2Bytes, boxed1Bytes)
 	}
 
-	boxed3, err := Unmarshal[TPM2BPublic](boxed1Bytes)
+	boxed3, err := Unmarshal[TPM2BPublic](boxed1Bytes).CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPM2BPublic: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestMarshalT(t *testing.T) {
 	// Marshal each component of the parameters
 	symBytes := Marshal(&pub.Parameters.ECCDetail.Symmetric)
 	t.Logf("Symmetric: %x\n", symBytes)
-	sym, err := Unmarshal[TPMTSymDefObject](symBytes)
+	sym, err := Unmarshal[TPMTSymDefObject](symBytes).CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPMTSymDefObject: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestMarshalT(t *testing.T) {
 	}
 	schemeBytes := Marshal(&pub.Parameters.ECCDetail.Scheme)
 	t.Logf("Scheme: %x\n", symBytes)
-	scheme, err := Unmarshal[TPMTECCScheme](schemeBytes)
+	scheme, err := Unmarshal[TPMTECCScheme](schemeBytes).CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPMTECCScheme: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestMarshalT(t *testing.T) {
 	}
 	kdfBytes := Marshal(&pub.Parameters.ECCDetail.KDF)
 	t.Logf("KDF: %x\n", kdfBytes)
-	kdf, err := Unmarshal[TPMTKDFScheme](kdfBytes)
+	kdf, err := Unmarshal[TPMTKDFScheme](kdfBytes).CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPMTKDFScheme: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestMarshalT(t *testing.T) {
 	// Marshal the parameters
 	parmsBytes := Marshal(pub.Parameters.ECCDetail)
 	t.Logf("Parms: %x\n", parmsBytes)
-	parms, err := Unmarshal[TPMSECCParms](parmsBytes)
+	parms, err := Unmarshal[TPMSECCParms](parmsBytes).CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPMSECCParms: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestMarshalT(t *testing.T) {
 	// Marshal the unique area
 	uniqueBytes := Marshal(pub.Unique.ECC)
 	t.Logf("Unique: %x\n", uniqueBytes)
-	unique, err := Unmarshal[TPMSECCPoint](uniqueBytes)
+	unique, err := Unmarshal[TPMSECCPoint](uniqueBytes).CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPMSECCPoint: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestMarshalT(t *testing.T) {
 	// Get the wire-format version of the whole thing
 	pubBytes := Marshal(&pub)
 
-	pub2, err := Unmarshal[TPMTPublic](pubBytes)
+	pub2, err := Unmarshal[TPMTPublic](pubBytes).CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPMTPublic: %v", err)
 	}

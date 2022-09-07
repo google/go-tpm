@@ -36,7 +36,7 @@ func TestObjectName(t *testing.T) {
 	public := rsp.OutPublic
 
 	want := rsp.Name
-	name, err := ObjectName(public.Unwrap())
+	name, err := ObjectName(public.Contents().Unwrap())
 	if err != nil {
 		t.Fatalf("error from ObjectName: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestNVName(t *testing.T) {
 	}
 
 	readPublic := NVReadPublic{
-		NVIndex: public.Unwrap().NVIndex,
+		NVIndex: public.Contents().Unwrap().NVIndex,
 	}
 	rsp, err := readPublic.Execute(thetpm)
 	if err != nil {
@@ -81,7 +81,7 @@ func TestNVName(t *testing.T) {
 	}
 
 	want := rsp.NVName
-	name, err := NVName(public.Unwrap())
+	name, err := NVName(public.Contents().Unwrap())
 	if err != nil {
 		t.Fatalf("error from NVIndexName: %v", err)
 	}

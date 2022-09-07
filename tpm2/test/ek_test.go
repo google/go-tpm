@@ -108,8 +108,8 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 			if err != nil {
 				t.Fatalf("%v", err)
 			}
-			if createEKRsp.OutPublic.Unwrap().Unique.ECC != nil {
-				t.Logf("EK pub:\n%x\n%x\n", createEKRsp.OutPublic.Unwrap().Unique.ECC.X, createEKRsp.OutPublic.Unwrap().Unique.ECC.Y)
+			if createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC != nil {
+				t.Logf("EK pub:\n%x\n%x\n", createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC.X, createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC.Y)
 				t.Logf("EK name: %x", createEKRsp.Name)
 			}
 			defer func() {
@@ -158,7 +158,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 				options = append(options, Bound(createEKRsp.ObjectHandle, createEKRsp.Name, nil))
 			}
 			if c.salted {
-				options = append(options, Salted(createEKRsp.ObjectHandle, *createEKRsp.OutPublic.Unwrap()))
+				options = append(options, Salted(createEKRsp.ObjectHandle, *createEKRsp.OutPublic.Contents().Unwrap()))
 			}
 
 			var s Session

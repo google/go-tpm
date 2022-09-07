@@ -77,7 +77,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		t.Fatalf("could not create NV index: %v", err)
 	}
 	readPub := NVReadPublic{
-		NVIndex: defSpace.PublicInfo.Unwrap().NVIndex,
+		NVIndex: defSpace.PublicInfo.Contents().Unwrap().NVIndex,
 	}
 	readRsp, err := readPub.Execute(thetpm)
 	if err != nil {
@@ -88,7 +88,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		undefine := NVUndefineSpace{
 			AuthHandle: TPMRHOwner,
 			NVIndex: NamedHandle{
-				Handle: defSpace.PublicInfo.Unwrap().NVIndex,
+				Handle: defSpace.PublicInfo.Contents().Unwrap().NVIndex,
 				Name:   readRsp.NVName,
 			},
 		}
@@ -97,7 +97,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		}
 	}
 	return NamedHandle{
-		Handle: defSpace.PublicInfo.Unwrap().NVIndex,
+		Handle: defSpace.PublicInfo.Contents().Unwrap().NVIndex,
 		Name:   readRsp.NVName,
 	}, cleanup
 }

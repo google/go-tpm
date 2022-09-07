@@ -8,6 +8,30 @@ import (
 	"reflect"
 )
 
+// maybe represents some type that came out of an unmarshalling process.
+// We may have the value, or we may have an error.
+type maybe[T any] struct {
+	err   error
+	value *T
+}
+
+// Unwrap unwraps the result of an unmarshalling operation.
+// Panics if the data was not unmarshalled.
+func (m maybe[T]) Unwrap() *T {
+	if m.err != nil {
+		panic(fmt.Sprintf("could not unwrap: %v", m.err))
+	}
+	return m.value
+}
+
+// CheckUnwrap unwraps the result of an unmarshalling operation.
+func (m maybe[T]) CheckUnwrap() (*T, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.value, nil
+}
+
 // Marshallable represents any TPM type that can be marshalled.
 type Marshallable interface {
 	// marshal will serialize the given value, appending onto the given buffer.
@@ -42,20 +66,25 @@ func Marshal[T Marshallable](v T) []byte {
 	return buf.Bytes()
 }
 
+// Unmarshal unmarshals the given type from the byte array.
 // Returns an error if the buffer does not contain enough data to satisfy the
 // types, or if the types are not unmarshallable.
 func Unmarshal[T any, P interface {
 	// *T must satisfy Marshallable
 	*T
 	Unmarshallable
-}](data []byte) (*T, error) {
+}](data []byte) maybe[T] {
 	buf := bytes.NewBuffer(data)
 	var t T
 	value := reflect.New(reflect.TypeOf(t))
 	if err := unmarshal(buf, value.Elem()); err != nil {
-		return nil, err
+		return maybe[T]{
+			err: err,
+		}
 	}
-	return value.Interface().(*T), nil
+	return maybe[T]{
+		value: value.Interface().(*T),
+	}
 }
 
 // marshallableByReflection is a placeholder interface, to hint to the unmarshalling
@@ -90,7 +119,8 @@ func (_ *marshalByReflection) unmarshal(_ *bytes.Buffer) error {
 // tpm2b is a helper type for a field that can be provided either by structure or by byte-array.
 // When deserialized (e.g., from a TPM response), both contents and Buffer are populated.
 // When serialized, if contents is non-nil, the value of contents is used.
-//   Else, the value of Buffer is used.
+//
+//	Else, the value of Buffer is used.
 type tpm2b[T any] struct {
 	contents *T
 	buffer   []byte
@@ -137,33 +167,27 @@ func (value *tpm2b[T]) unmarshal(buf *bytes.Buffer) error {
 	return unmarshal(rdr, reflect.ValueOf(value.contents))
 }
 
-// CheckUnwrap returns the structured contents of the tpm2b.
-// Never returns an error if the tpm2b's underlying value is an actual structure.
-// May return an error if the underlying value was a byte array, and there were errors parsing it.
-func (value *tpm2b[T]) CheckUnwrap() (*T, error) {
+// Contents returns the structured contents of the tpm2b.
+func (value *tpm2b[T]) Contents() maybe[T] {
 	if value.contents != nil {
-		return value.contents, nil
+		return maybe[T]{
+			value: value.contents,
+		}
 	}
 	if value.buffer == nil {
-		return nil, fmt.Errorf("TPMB had no contents or buffer")
+		return maybe[T]{
+			err: fmt.Errorf("TPMB had no contents or buffer"),
+		}
 	}
 	var result T
 	if err := unmarshal(bytes.NewBuffer(value.buffer), reflect.ValueOf(&result).Elem()); err != nil {
-		return nil, err
+		return maybe[T]{
+			err: err,
+		}
 	}
-	return &result, nil
-}
-
-// Unwrap returns the structured contents of the tpm2b.
-// Never panics if the tpm2b's underlying value is an actual structure.
-// Panics if the underlying value was a byte array, and there were errors parsing it.
-// To unmarshal a byte array-backed TPM2B safely, use CheckUnmarshal.
-func (value *tpm2b[T]) Unwrap() *T {
-	result, err := value.CheckUnwrap()
-	if err != nil {
-		panic(fmt.Sprintf("could not unwrap %v: %v", reflect.TypeOf(result).Elem(), err))
+	return maybe[T]{
+		value: &result,
 	}
-	return result
 }
 
 // CheckUnwrap returns the structured contents of an UnmarshallableWithHint (i.e., TPMU).
@@ -176,7 +200,7 @@ func CheckUnwrap[T any, P interface {
 	// Trade off a litle performance for a lot less complexity:
 	// Marshal the contents and unmarshal them back as the given type.
 	marshalled := Marshal(u)
-	return Unmarshal[T, P](marshalled)
+	return Unmarshal[T, P](marshalled).CheckUnwrap()
 }
 
 // Unwrap returns the structured contents of an UnmarshallableWithHint (i.e., TPMU).
