@@ -23,9 +23,9 @@ var (
 			RSADetail: &TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
+					KeyBits: *NewTPMUSymKeyBits(
+						TPMKeyBits(128),
+					),
 					Mode: TPMUSymMode{
 						AES: NewAlgID(TPMAlgCFB),
 					},
@@ -69,9 +69,9 @@ var (
 			RSADetail: &TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
+					KeyBits: *NewTPMUSymKeyBits(
+						TPMKeyBits(128),
+					),
 					Mode: TPMUSymMode{
 						AES: NewAlgID(TPMAlgCFB),
 					},
@@ -108,9 +108,9 @@ var (
 			ECCDetail: &TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
+					KeyBits: *NewTPMUSymKeyBits(
+						TPMKeyBits(128),
+					),
 					Mode: TPMUSymMode{
 						AES: NewAlgID(TPMAlgCFB),
 					},
@@ -160,9 +160,9 @@ var (
 			ECCDetail: &TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
+					KeyBits: *NewTPMUSymKeyBits(
+						TPMKeyBits(128),
+					),
 					Mode: TPMUSymMode{
 						AES: NewAlgID(TPMAlgCFB),
 					},

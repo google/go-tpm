@@ -53,17 +53,82 @@ func TestMarshal2B(t *testing.T) {
 func TestMarshalT(t *testing.T) {
 	// Define some TPMT_Public
 	pub := TPMTPublic{
-		Type:    TPMAlgKeyedHash,
+		Type:    TPMAlgECC,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
-			FixedTPM:     true,
-			FixedParent:  true,
-			UserWithAuth: true,
-			NoDA:         true,
+			SignEncrypt: true,
+		},
+		Parameters: TPMUPublicParms{
+			ECCDetail: &TPMSECCParms{
+				CurveID: TPMECCNistP256,
+			},
+		},
+		Unique: TPMUPublicID{
+			// This happens to be a P256 EKpub from the simulator
+			ECC: &TPMSECCPoint{
+				X: TPM2BECCParameter{},
+				Y: TPM2BECCParameter{},
+			},
 		},
 	}
 
-	// Get the wire-format version
+	// Marshal each component of the parameters
+	symBytes := Marshal(&pub.Parameters.ECCDetail.Symmetric)
+	t.Logf("Symmetric: %x\n", symBytes)
+	sym, err := Unmarshal[TPMTSymDefObject](symBytes)
+	if err != nil {
+		t.Fatalf("could not unmarshal TPMTSymDefObject: %v", err)
+	}
+	symBytes2 := Marshal(sym)
+	if !bytes.Equal(symBytes, symBytes2) {
+		t.Errorf("want %x\ngot %x", symBytes, symBytes2)
+	}
+	schemeBytes := Marshal(&pub.Parameters.ECCDetail.Scheme)
+	t.Logf("Scheme: %x\n", symBytes)
+	scheme, err := Unmarshal[TPMTECCScheme](schemeBytes)
+	if err != nil {
+		t.Fatalf("could not unmarshal TPMTECCScheme: %v", err)
+	}
+	schemeBytes2 := Marshal(scheme)
+	if !bytes.Equal(schemeBytes, schemeBytes2) {
+		t.Errorf("want %x\ngot %x", schemeBytes, schemeBytes2)
+	}
+	kdfBytes := Marshal(&pub.Parameters.ECCDetail.KDF)
+	t.Logf("KDF: %x\n", kdfBytes)
+	kdf, err := Unmarshal[TPMTKDFScheme](kdfBytes)
+	if err != nil {
+		t.Fatalf("could not unmarshal TPMTKDFScheme: %v", err)
+	}
+	kdfBytes2 := Marshal(kdf)
+	if !bytes.Equal(kdfBytes, kdfBytes2) {
+		t.Errorf("want %x\ngot %x", kdfBytes, kdfBytes2)
+	}
+
+	// Marshal the parameters
+	parmsBytes := Marshal(pub.Parameters.ECCDetail)
+	t.Logf("Parms: %x\n", parmsBytes)
+	parms, err := Unmarshal[TPMSECCParms](parmsBytes)
+	if err != nil {
+		t.Fatalf("could not unmarshal TPMSECCParms: %v", err)
+	}
+	parmsBytes2 := Marshal(parms)
+	if !bytes.Equal(parmsBytes, parmsBytes2) {
+		t.Errorf("want %x\ngot %x", parmsBytes, parmsBytes2)
+	}
+
+	// Marshal the unique area
+	uniqueBytes := Marshal(pub.Unique.ECC)
+	t.Logf("Unique: %x\n", uniqueBytes)
+	unique, err := Unmarshal[TPMSECCPoint](uniqueBytes)
+	if err != nil {
+		t.Fatalf("could not unmarshal TPMSECCPoint: %v", err)
+	}
+	uniqueBytes2 := Marshal(unique)
+	if !bytes.Equal(uniqueBytes, uniqueBytes2) {
+		t.Errorf("want %x\ngot %x", uniqueBytes, uniqueBytes2)
+	}
+
+	// Get the wire-format version of the whole thing
 	pubBytes := Marshal(&pub)
 
 	pub2, err := Unmarshal[TPMTPublic](pubBytes)

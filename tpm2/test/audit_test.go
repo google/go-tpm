@@ -111,7 +111,7 @@ func TestAuditSession(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 		// TODO check the signature with the AK pub
-		aud := getAuditRsp.AuditInfo.Unwrap().Attested.SessionAudit
+		aud := Unwrap[TPMSSessionAuditInfo](&getAuditRsp.AuditInfo.Unwrap().Attested)
 		if aud == nil {
 			t.Fatalf("got nil session audit attestation")
 		}

@@ -6,6 +6,7 @@ import (
 	"crypto"
 	"crypto/elliptic"
 	"encoding/binary"
+	"reflect"
 
 	// Register the relevant hash implementations.
 	_ "crypto/sha1"
@@ -60,6 +61,17 @@ type TPMKeySize uint16
 // a key size in bits
 // See definition in Part 2, Structures, section 5.3.
 type TPMKeyBits uint16
+
+// Boxed implements the Boxable interface.
+func (b TPMKeyBits) Boxed() Marshallable {
+	return &BoxedTPMKeyBits{TPMKeyBits: b}
+}
+
+// BoxedTPMKeyBits is a struct so it can be a member of a union.
+type BoxedTPMKeyBits struct {
+	marshalByReflection
+	TPMKeyBits
+}
 
 // TPMGenerated represents a TPM_GENERATED.
 // See definition in Part 2: Structures, section 6.2.
@@ -474,6 +486,17 @@ type TPMIRHACT = TPMHandle
 // See definition in Part 2: Structures, section 9.27.
 type TPMIAlgHash = TPMAlgID
 
+// BoxedTPMAlgID is a struct so it can be a member of a union.
+type BoxedTPMAlgID struct {
+	marshalByReflection
+	TPMAlgID
+}
+
+// Boxed implements the Boxable interface.
+func (a TPMAlgID) Boxed() Marshallable {
+	return &BoxedTPMAlgID{TPMAlgID: a}
+}
+
 // Hash returns the crypto.Hash associated with a TPMIAlgHash.
 func (a TPMIAlgHash) Hash() (crypto.Hash, error) {
 	switch TPMAlgID(a) {
@@ -779,21 +802,72 @@ type TPMLACTData struct {
 	ACTData []TPMSACTData `gotpm:"list"`
 }
 
-// TPMUCapabilities represents a TPMU_CAPABILITIES.
+// tpmuCapabilities represents a TPMU_CAPABILITIES.
 // See definition in Part 2: Structures, section 10.10.1.
-type TPMUCapabilities struct {
-	marshalByReflection
-	Algorithms    *TPMLAlgProperty       `gotpm:"selector=0x00000000"` // TPM_CAP_ALGS
-	Handles       *TPMLHandle            `gotpm:"selector=0x00000001"` // TPM_CAP_HANDLES
-	Command       *TPMLCCA               `gotpm:"selector=0x00000002"` // TPM_CAP_COMMANDS
-	PPCommands    *TPMLCC                `gotpm:"selector=0x00000003"` // TPM_CAP_PP_COMMANDS
-	AuditCommands *TPMLCC                `gotpm:"selector=0x00000004"` // TPM_CAP_AUDIT_COMMANDS
-	AssignedPCR   *TPMLPCRSelection      `gotpm:"selector=0x00000005"` // TPM_CAP_PCRS
-	TPMProperties *TPMLTaggedTPMProperty `gotpm:"selector=0x00000006"` // TPM_CAP_TPM_PROPERTIES
-	PCRProperties *TPMLTaggedPCRProperty `gotpm:"selector=0x00000007"` // TPM_CAP_PCR_PROPERTIES
-	ECCCurves     *TPMLECCCurve          `gotpm:"selector=0x00000008"` // TPM_CAP_ECC_CURVES
-	AuthPolicies  *TPMLTaggedPolicy      `gotpm:"selector=0x00000009"` // TPM_CAP_AUTH_POLICIES
-	ACTData       *TPMLACTData           `gotpm:"selector=0x0000000A"` // TPM_CAP_ACT
+type tpmuCapabilities struct {
+	contents Marshallable
+}
+
+type capabilitiesContents interface {
+	Marshallable
+	*TPMLAlgProperty | *TPMLHandle | *TPMLCCA | *TPMLCC | *TPMLPCRSelection | *TPMLTaggedTPMProperty |
+		*TPMLTaggedPCRProperty | *TPMLECCCurve | *TPMLTaggedPolicy | *TPMLACTData
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuCapabilities) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuCapabilities) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMCap(hint) {
+	case TPMCapAlgs:
+		contents := TPMLAlgProperty{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapHandles:
+		contents := TPMLHandle{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapCommands:
+		contents := TPMLCCA{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapPPCommands, TPMCapAuditCommands:
+		contents := TPMLCC{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapPCRs:
+		contents := TPMLPCRSelection{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapTPMProperties:
+		contents := TPMLTaggedTPMProperty{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapPCRProperties:
+		contents := TPMLTaggedPCRProperty{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapECCCurves:
+		contents := TPMLECCCurve{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapAuthPolicies:
+		contents := TPMLTaggedPolicy{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMCapACT:
+		contents := TPMLACTData{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUCapabilities instantiates a TPMUCapabilities with the given contents.
+func NewTPMUCapabilities[C capabilitiesContents](contents C) *tpmuCapabilities {
+	return &tpmuCapabilities{contents: contents}
 }
 
 // TPMSCapabilityData represents a TPMS_CAPABILITY_DATA.
@@ -803,7 +877,7 @@ type TPMSCapabilityData struct {
 	// the capability
 	Capability TPMCap
 	// the capability data
-	Data TPMUCapabilities `gotpm:"tag=Capability"`
+	Data tpmuCapabilities `gotpm:"tag=Capability"`
 }
 
 // TPMSClockInfo represents a TPMS_CLOCK_INFO.
@@ -922,18 +996,64 @@ type TPMSNVDigestCertifyInfo struct {
 // See definition in Part 2: Structures, section 10.12.10.
 type TPMISTAttest = TPMST
 
-// TPMUAttest represents a TPMU_ATTEST.
+// tpmuAttest represents a TPMU_ATTEST.
 // See definition in Part 2: Structures, section 10.12.11.
-type TPMUAttest struct {
-	marshalByReflection
-	NV           *TPMSNVCertifyInfo       `gotpm:"selector=0x8014"` // TPM_ST_ATTEST_NV
-	CommandAudit *TPMSCommandAuditInfo    `gotpm:"selector=0x8015"` // TPM_ST_ATTEST_COMMAND_AUDIT
-	SessionAudit *TPMSSessionAuditInfo    `gotpm:"selector=0x8016"` // TPM_ST_ATTEST_SESSION_AUDIT
-	Certify      *TPMSCertifyInfo         `gotpm:"selector=0x8017"` // TPM_ST_ATTEST_CERTIFY
-	Quote        *TPMSQuoteInfo           `gotpm:"selector=0x8018"` // TPM_ST_ATTEST_QUOTE
-	Time         *TPMSTimeAttestInfo      `gotpm:"selector=0x8019"` // TPM_ST_ATTEST_TIME
-	Creation     *TPMSCreationInfo        `gotpm:"selector=0x801A"` // TPM_ST_ATTEST_CREATION
-	NVDigest     *TPMSNVDigestCertifyInfo `gotpm:"selector=0x801C"` // TPM_ST_ATTEST_NV_DIGEST
+type tpmuAttest struct {
+	contents Marshallable
+}
+
+type attestContents interface {
+	Marshallable
+	*TPMSNVCertifyInfo | *TPMSCommandAuditInfo | *TPMSSessionAuditInfo | *TPMSCertifyInfo |
+		*TPMSQuoteInfo | *TPMSTimeAttestInfo | *TPMSCreationInfo | *TPMSNVDigestCertifyInfo
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuAttest) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuAttest) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMST(hint) {
+	case TPMSTAttestNV:
+		contents := TPMSNVCertifyInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestCommandAudit:
+		contents := TPMSCommandAuditInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestSessionAudit:
+		contents := TPMSSessionAuditInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestCertify:
+		contents := TPMSCertifyInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestQuote:
+		contents := TPMSQuoteInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestTime:
+		contents := TPMSTimeAttestInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestCreation:
+		contents := TPMSCreationInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestNVDigest:
+		contents := TPMSNVDigestCertifyInfo{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUAttest instantiates a TPMUAttest with the given contents.
+func NewTPMUAttest[C attestContents](contents C) *tpmuAttest {
+	return &tpmuAttest{contents: contents}
 }
 
 // TPMSAttest represents a TPMS_ATTEST.
@@ -953,7 +1073,7 @@ type TPMSAttest struct {
 	// TPM-vendor-specific value identifying the version number of the firmware
 	FirmwareVersion uint64
 	// the type-specific attestation information
-	Attested TPMUAttest `gotpm:"tag=Type"`
+	Attested tpmuAttest `gotpm:"tag=Type"`
 }
 
 // TPM2BAttest represents a TPM2B_ATTEST.
@@ -987,14 +1107,49 @@ type TPMSAuthResponse struct {
 	Authorization TPM2BData
 }
 
-// TPMUSymKeyBits represents a TPMU_SYM_KEY_BITS.
+// tpmuSymKeyBits represents a TPMU_SYM_KEY_BITS.
 // See definition in Part 2: Structures, section 11.1.3.
-type TPMUSymKeyBits struct {
-	marshalByReflection
+type tpmuSymKeyBits struct {
+	contents Marshallable
+}
+
+type symKeyBitsContents interface {
+	Boxable
 	// TODO: The rest of the symmetric algorithms get their own entry
 	// in this union.
-	AES *TPMKeyBits  `gotpm:"selector=0x0006"` // TPM_ALG_AES
-	XOR *TPMIAlgHash `gotpm:"selector=0x000A"` // TPM_ALG_XOR
+	TPMKeyBits | TPMAlgID
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuSymKeyBits) marshal(buf *bytes.Buffer) {
+	if u.contents != nil {
+		buf.Write(Marshal(u.contents))
+	} else {
+		// If this is a zero-valued structure, marshal a default KeyBits.
+		var defaultValue BoxedTPMKeyBits
+		buf.Write(Marshal(&defaultValue))
+	}
+}
+
+func (u *tpmuSymKeyBits) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	case TPMAlgAES:
+		contents := BoxedTPMKeyBits{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgXOR:
+		contents := BoxedTPMAlgID{}
+		u.contents = &contents
+		return reflect.ValueOf(&contents), nil
+	default:
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUSymKeyBits instantiates a tpmuSymKeyBits with the given contents.
+func NewTPMUSymKeyBits[C symKeyBitsContents](contents C) *tpmuSymKeyBits {
+	boxed := contents.Boxed()
+	return &tpmuSymKeyBits{contents: boxed}
 }
 
 // TPMUSymMode represents a TPMU_SYM_MODE.
@@ -1024,7 +1179,7 @@ type TPMTSymDef struct {
 	// indicates a symmetric algorithm
 	Algorithm TPMIAlgSym `gotpm:"nullable"`
 	// the key size
-	KeyBits TPMUSymKeyBits `gotpm:"tag=Algorithm"`
+	KeyBits tpmuSymKeyBits `gotpm:"tag=Algorithm"`
 	// the mode for the key
 	Mode TPMUSymMode `gotpm:"tag=Algorithm"`
 	// contains the additional algorithm details
@@ -1040,7 +1195,7 @@ type TPMTSymDefObject struct {
 	// be a supported block cipher and not TPM_ALG_NULL
 	Algorithm TPMIAlgSymObject `gotpm:"nullable"`
 	// the key size
-	KeyBits TPMUSymKeyBits `gotpm:"tag=Algorithm"`
+	KeyBits tpmuSymKeyBits `gotpm:"tag=Algorithm"`
 	// default mode
 	// When used in the parameter area of a parent object, this shall
 	// be TPM_ALG_CFB.
@@ -1083,35 +1238,34 @@ func NewTPM2BDerive[C bytesOr[TPMSDerive]](contents C) *TPM2BDerive {
 	return tpm2bHelper[TPMSDerive](contents)
 }
 
-// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
+// tpmuSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
 // See definition in Part 2: Structures, section 11.1.13.
 // Since the TPM cannot return this type, and it is not marshalled using a hint,
 // it can contain an interface.
-type TPMUSensitiveCreate struct {
+type tpmuSensitiveCreate struct {
 	contents Marshallable
 }
 
-type tpmuSensitiveCreate interface {
+type sensitiveCreateContents interface {
 	Marshallable
 	*TPM2BDerive | *TPM2BSensitiveData
 }
 
 // marshal implements the Marshallable interface.
-func (u *TPMUSensitiveCreate) marshal(buf *bytes.Buffer) error {
+func (u *tpmuSensitiveCreate) marshal(buf *bytes.Buffer) {
 	if u.contents != nil {
-		_, err := buf.Write(Marshal(u.contents))
-		return err
+		buf.Write(Marshal(u.contents))
+	} else {
+		// If this is a zero-valued structure, marshal a default TPM2BSensitiveData.
+		var defaultValue TPM2BSensitiveData
+		buf.Write(Marshal(&defaultValue))
 	}
-	// If this is a zero-valued structure, marshal a default TPM2BSensitive data.
-	var defaultValue TPM2BSensitiveData
-	_, err := buf.Write(Marshal(&defaultValue))
-	return err
 }
 
 // NewTPMUSensitiveCreate instantiates a TPMUSensitiveCreate with the given contents
 // (which may be either a TPM2BDerive or a TPM2BSensitiveData)
-func NewTPMUSensitiveCreate[C tpmuSensitiveCreate](contents C) *TPMUSensitiveCreate {
-	return &TPMUSensitiveCreate{contents: contents}
+func NewTPMUSensitiveCreate[C sensitiveCreateContents](contents C) *tpmuSensitiveCreate {
+	return &tpmuSensitiveCreate{contents: contents}
 }
 
 // TPM2BSensitiveData represents a TPM2B_SENSITIVE_DATA.
@@ -1125,7 +1279,7 @@ type TPMSSensitiveCreate struct {
 	// the USER auth secret value.
 	UserAuth TPM2BAuth
 	// data to be sealed, a key, or derivation values.
-	Data TPMUSensitiveCreate
+	Data tpmuSensitiveCreate
 }
 
 // TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
@@ -1148,17 +1302,17 @@ func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) *TPM2BS
 // something better than the default [0x00, 0x00] (an empty 2B).
 // This is because this actually needs to contain a small
 // structure containing some empty values.
-func (c *TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) error {
+func (c *TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) {
 	if c.contents != nil {
 		buf.Write(Marshal(c.contents))
-		return nil
+	} else {
+		// If no value was provided (i.e., this is a zero-valued structure),
+		// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
+		defaultValue := NewTPM2BSensitiveCreate(&TPMSSensitiveCreate{
+			Data: *NewTPMUSensitiveCreate(&TPM2BSensitiveData{}),
+		})
+		defaultValue.marshal(buf)
 	}
-	// If no value was provided (i.e., this is a zero-valued structure),
-	// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
-	defaultValue := NewTPM2BSensitiveCreate(&TPMSSensitiveCreate{
-		Data: *NewTPMUSensitiveCreate(&TPM2BSensitiveData{}),
-	})
-	return defaultValue.marshal(buf)
 }
 
 // TPMSSchemeHash represents a TPMS_SCHEME_HASH.
@@ -1204,6 +1358,10 @@ type TPMUSchemeKeyedHash struct {
 	marshalByReflection
 	HMAC *TPMSSchemeHMAC `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
 	XOR  *TPMSSchemeXOR  `gotpm:"selector=0x000A"` // TPM_ALG_XOR
+}
+
+type tpmuSchemeKeyedHash interface {
+	*TPMSSchemeHMAC | *TPMSSchemeXOR
 }
 
 // TPMTKeyedHashScheme represents a TPMT_KEYEDHASH_SCHEME.
@@ -1565,40 +1723,39 @@ func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) *TPM2BPublic {
 	return tpm2bHelper[TPMTPublic](contents)
 }
 
-// TPMUTemplate represents the possible contents of a TPM2B_Template. It is not
+// tpmuTemplate represents the possible contents of a TPM2B_Template. It is not
 // defined or named in the spec, which instead describes how its contents may
 // differ in the case of CreateLoaded with a derivation parent.
 // Since the TPM cannot return this type, and it is not marshalled using a hint,
 // it can contain an interface.
-type TPMUTemplate struct {
+type tpmuTemplate struct {
 	contents Marshallable
 }
 
 // marshal implements the Marshallable interface.
-func (u *TPMUTemplate) marshal(buf *bytes.Buffer) error {
-	_, err := buf.Write(Marshal(u.contents))
-	return err
+func (u *tpmuTemplate) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
 }
 
-type tpmuTemplate interface {
+type templateContents interface {
 	Marshallable
 	*TPMTPublic | *TPMTTemplate
 }
 
 // NewTPMUTemplate instantiates a TPMUTemplate with the given contents
 // (which may be either a TPMTPublic or a TPMTTemplate)
-func NewTPMUTemplate[C tpmuTemplate](contents C) *TPMUTemplate {
-	return &TPMUTemplate{contents: contents}
+func NewTPMUTemplate[C templateContents](contents C) *tpmuTemplate {
+	return &tpmuTemplate{contents: contents}
 }
 
 // TPM2BTemplate represents a TPM2B_TEMPLATE.
 // See definition in Part 2: Structures, section 12.2.6.
-type TPM2BTemplate = tpm2b[TPMUTemplate]
+type TPM2BTemplate = tpm2b[tpmuTemplate]
 
 // NewTPM2BTemplate instantiates a TPM2BTemplate with the given contents
 // (which may be either a TPMUTemplate or a flat byte array)
-func NewTPM2BTemplate[C bytesOr[TPMUTemplate]](contents C) *TPM2BTemplate {
-	return tpm2bHelper[TPMUTemplate](contents)
+func NewTPM2BTemplate[C bytesOr[tpmuTemplate]](contents C) *TPM2BTemplate {
+	return tpm2bHelper[tpmuTemplate](contents)
 }
 
 // TPMUSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.

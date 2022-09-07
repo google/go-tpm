@@ -71,11 +71,15 @@ func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) e
 	command = append(command, sessions...)
 	command = append(command, parms...)
 
+	fmt.Printf("Command: %x\n", command)
+
 	// Send the command via the transport.
 	response, err := t.Send(command)
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Response: %x\n\n", response)
 
 	// Parse the command tpm2ly into the response structure.
 	rspBuf := bytes.NewBuffer(response)
@@ -142,13 +146,15 @@ func marshal(buf *bytes.Buffer, v reflect.Value) error {
 	if !isMarshalledByReflection(v) {
 		u, ok := v.Interface().(Marshallable)
 		if ok {
-			return u.marshal(buf)
+			u.marshal(buf)
+			return nil
 		}
 		if v.CanAddr() {
 			// Maybe we got an addressable value whose pointer implements Marshallable
 			pu, ok := v.Addr().Interface().(Marshallable)
 			if ok {
-				return pu.marshal(buf)
+				pu.marshal(buf)
+				return nil
 			}
 		}
 		return fmt.Errorf("can't marshal: type %v does not implement Marshallable or marshallableByReflection", v.Type().Name())
@@ -288,13 +294,24 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			// Check that the tagged value was present (and numeric
 			// and smaller than MaxInt64)
 			tagValue, ok := possibleSelectors[tag]
+			// Don't marshal anything if the tag value was TPM_ALG_NULL
+			if tagValue == int64(TPMAlgNull) {
+				continue
+			}
 			if !ok {
 				return fmt.Errorf("union tag '%v' for member '%v' of struct '%v' did not reference "+
 					"a numeric field of int64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			if err := marshalUnion(&res, v.Field(i), tagValue); err != nil {
-				return err
+			if _, ok := v.Field(i).Addr().Interface().(UnmarshallableWithHint); ok {
+				if err := marshal(buf, v.Field(i)); err != nil {
+					return err
+				}
+			} else {
+				// TODO: Delete this in favor of UnmarshallableWithHint for all unions
+				if err := marshalUnion(&res, v.Field(i), tagValue); err != nil {
+					return err
+				}
 			}
 		} else if v.Field(i).IsZero() && v.Field(i).Kind() == reflect.Uint32 && hasTag(v.Type().Field(i), "nullable") {
 			// Special case: Anything with the same underlying type
@@ -405,11 +422,10 @@ func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
 	// If the type is not marshalled by reflection, try to call the custom unmarshal method.
 	if !isMarshalledByReflection(v) {
-		u, ok := v.Addr().Interface().(Unmarshallable)
-		if !ok {
-			return fmt.Errorf("can't unmarshal: type %v does not implement Unmarshallable or marshallableByReflection", v.Type().Name())
+		if u, ok := v.Addr().Interface().(Unmarshallable); ok {
+			return u.unmarshal(buf)
 		}
-		return u.unmarshal(buf)
+		return fmt.Errorf("can't unmarshal: type %v does not implement Unmarshallable or marshallableByReflection", v.Type().Name())
 	}
 
 	switch v.Kind() {
@@ -589,13 +605,41 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			// Check that the tagged value was present (and numeric
 			// and smaller than MaxInt64)
 			tagValue, ok := possibleSelectors[tag]
+			// Don't marshal anything if the tag value was TPM_ALG_NULL
+			if tagValue == int64(TPMAlgNull) {
+				continue
+			}
 			if !ok {
 				return fmt.Errorf("union tag '%v' for member '%v' of struct '%v' did not reference "+
 					"a numeric field of in64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			if err := unmarshalUnion(bufToReadFrom, v.Field(i), tagValue); err != nil {
-				return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+			var uwh UnmarshallableWithHint
+			if v.Field(i).CanAddr() && v.Field(i).Addr().Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
+				u := v.Field(i).Addr().Interface().(UnmarshallableWithHint)
+				contents, err := u.allocateAndGet(tagValue)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
+				err = unmarshal(buf, contents)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
+			} else if v.Field(i).Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
+				u := v.Field(i).Interface().(UnmarshallableWithHint)
+				contents, err := u.allocateAndGet(tagValue)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
+				err = unmarshal(buf, contents)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
+			} else {
+				// TODO: Delete this in favor of UnmarshallableWithHint for all unions
+				if err := unmarshalUnion(bufToReadFrom, v.Field(i), tagValue); err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
 			}
 		} else {
 			if err := unmarshal(bufToReadFrom, v.Field(i)); err != nil {

@@ -236,7 +236,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("Failed to certify creation: %v", err)
 	}
 
-	attName := rspCC.CertifyInfo.Unwrap().Attested.Creation.ObjectName.Buffer
+	attName := Unwrap[TPMSCreationInfo](&rspCC.CertifyInfo.Unwrap().Attested).ObjectName.Buffer
 	pubName := rspCP.Name.Buffer
 	if !bytes.Equal(attName, pubName) {
 		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)

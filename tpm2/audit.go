@@ -78,7 +78,7 @@ func auditRPHash(h TPMIAlgHash, r Response) ([]byte, error) {
 	parameters := taggedMembers(reflect.ValueOf(r).Elem(), "handle", true)
 	for i, parameter := range parameters {
 		if err := marshal(&parms, parameter); err != nil {
-			return nil, fmt.Errorf("marshalling parameter %v: %w", i, err)
+			return nil, fmt.Errorf("marshalling parameter %v: %w", i+1, err)
 		}
 	}
 	return rpHash(h, TPMRCSuccess, cc, parms.Bytes())

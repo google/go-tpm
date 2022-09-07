@@ -3,19 +3,16 @@ package tpm2
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
 )
 
-var notImplError = errors.New("not implemented")
-
 // Marshallable represents any TPM type that can be marshalled.
 type Marshallable interface {
 	// marshal will serialize the given value, appending onto the given buffer.
 	// Returns an error if the value is not marshallable.
-	marshal(buf *bytes.Buffer) error
+	marshal(buf *bytes.Buffer)
 }
 
 // Unmarshallable represents any TPM type that can be marshalled or unmarshalled.
@@ -25,6 +22,15 @@ type Unmarshallable interface {
 	// Returns an error if there was an unmarshalling error or if there was not
 	// enough data in the buffer.
 	unmarshal(buf *bytes.Buffer) error
+}
+
+// UnmarshallableWithHint represents any TPM type that can be marshalled or unmarshalled,
+// but that requires a selector ("hint") value when unmarshalling. Most TPMU_ are
+// an example of this.
+type UnmarshallableWithHint interface {
+	Marshallable
+	// allocateAndGet will instantiate and return the corresponding union member.
+	allocateAndGet(hint int64) (reflect.Value, error)
 }
 
 // Marshal will serialize the given values, returning them as a byte slice.
@@ -64,13 +70,22 @@ type marshalByReflection struct{}
 
 func (_ marshalByReflection) reflectionSafe() {}
 
-// Placeholder: because this type implements the defaultMarshallable interface,
-// the reflection library knows not to call this.
-func (_ *marshalByReflection) marshal(_ *bytes.Buffer) error { return notImplError }
+// These placeholders are required because a type constraint cannot union another interface
+// that contains methods.
+// Otherwise, marshalByReflection would not implement Unmarshallable, and the Marshal/Unmarshal
+// functions would accept interface{ Marshallable | marshallableByReflection } instead.
 
 // Placeholder: because this type implements the defaultMarshallable interface,
 // the reflection library knows not to call this.
-func (_ *marshalByReflection) unmarshal(_ *bytes.Buffer) error { return notImplError }
+func (_ *marshalByReflection) marshal(_ *bytes.Buffer) {
+	panic("not implemented")
+}
+
+// Placeholder: because this type implements the defaultMarshallable interface,
+// the reflection library knows not to call this.
+func (_ *marshalByReflection) unmarshal(_ *bytes.Buffer) error {
+	panic("not implemented")
+}
 
 // tpm2b is a helper type for a field that can be provided either by structure or by byte-array.
 // When deserialized (e.g., from a TPM response), both contents and Buffer are populated.
@@ -93,19 +108,16 @@ func tpm2bHelper[T any, C bytesOr[T]](contents C) *tpm2b[T] {
 }
 
 // marshal implements the marshallable interface.
-func (value *tpm2b[T]) marshal(buf *bytes.Buffer) error {
+func (value *tpm2b[T]) marshal(buf *bytes.Buffer) {
 	if value.contents != nil {
 		var temp bytes.Buffer
-		if err := marshal(&temp, reflect.ValueOf(value.contents)); err != nil {
-			return err
-		}
+		marshal(&temp, reflect.ValueOf(value.contents))
 		binary.Write(buf, binary.BigEndian, uint16(temp.Len()))
 		io.Copy(buf, &temp)
-		return nil
+	} else {
+		binary.Write(buf, binary.BigEndian, uint16(len(value.buffer)))
+		buf.Write(value.buffer)
 	}
-	binary.Write(buf, binary.BigEndian, uint16(len(value.buffer)))
-	buf.Write(value.buffer)
-	return nil
 }
 
 // unmarshal implements the marshallable interface.
@@ -152,4 +164,38 @@ func (value *tpm2b[T]) Unwrap() *T {
 		panic(fmt.Sprintf("could not unwrap %v: %v", reflect.TypeOf(result).Elem(), err))
 	}
 	return result
+}
+
+// CheckUnwrap returns the structured contents of an UnmarshallableWithHint (i.e., TPMU).
+// Returns an error if the incorrect type was passed.
+func CheckUnwrap[T any, P interface {
+	// *T must satisfy Marshallable
+	*T
+	Unmarshallable
+}](u UnmarshallableWithHint) (*T, error) {
+	// Trade off a litle performance for a lot less complexity:
+	// Marshal the contents and unmarshal them back as the given type.
+	marshalled := Marshal(u)
+	return Unmarshal[T, P](marshalled)
+}
+
+// Unwrap returns the structured contents of an UnmarshallableWithHint (i.e., TPMU).
+// Panics if the incorrect type was passed.
+func Unwrap[T any, P interface {
+	// *T must satisfy Marshallable
+	*T
+	Unmarshallable
+}](u UnmarshallableWithHint) *T {
+	result, err := CheckUnwrap[T, P](u)
+	if err != nil {
+		panic(fmt.Sprintf("could not unwrap %v: %v", reflect.TypeOf(result).Elem(), err))
+	}
+	return result
+}
+
+// Boxable represents any basic TPM type that can be put into a box.
+// Some structures (e.g., unions) require all their members to be structures.
+type Boxable interface {
+	// Returns the value in a box
+	Boxed() Marshallable
 }
