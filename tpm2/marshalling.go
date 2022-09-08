@@ -201,33 +201,6 @@ func (value *tpm2b[T]) Contents() maybe[T] {
 	return asMaybe(&result)
 }
 
-// CheckUnwrap returns the structured contents of an UnmarshallableWithHint (i.e., TPMU).
-// Returns an error if the incorrect type was passed.
-func CheckUnwrap[T any, P interface {
-	// *T must satisfy Marshallable
-	*T
-	Unmarshallable
-}](u UnmarshallableWithHint) (*T, error) {
-	// Trade off a litle performance for a lot less complexity:
-	// Marshal the contents and unmarshal them back as the given type.
-	marshalled := Marshal(u)
-	return Unmarshal[T, P](marshalled).CheckUnwrap()
-}
-
-// Unwrap returns the structured contents of an UnmarshallableWithHint (i.e., TPMU).
-// Panics if the incorrect type was passed.
-func Unwrap[T any, P interface {
-	// *T must satisfy Marshallable
-	*T
-	Unmarshallable
-}](u UnmarshallableWithHint) *T {
-	result, err := CheckUnwrap[T, P](u)
-	if err != nil {
-		panic(fmt.Sprintf("could not unwrap %v: %v", reflect.TypeOf(result).Elem(), err))
-	}
-	return result
-}
-
 // boxable represents any basic TPM type that can be put into a box.
 // Some structures (e.g., unions) require all their members to be structures.
 type boxable interface {
