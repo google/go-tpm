@@ -2757,7 +2757,7 @@ type tpmuTemplate struct {
 }
 
 // marshal implements the Marshallable interface.
-// TPM2Bal(buf *bytes.Buffer) {
+func (u *tpmuTemplate) marshal(buf *bytes.Buffer) {
 	buf.Write(Marshal(u.contents))
 }
 
