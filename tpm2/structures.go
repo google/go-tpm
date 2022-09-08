@@ -519,7 +519,9 @@ type TPMISTCommandTag = TPMST
 
 // TPMSEmpty represents a TPMS_EMPTY.
 // See definition in Part 2: Structures, section 10.1.
-type TPMSEmpty = struct{}
+type TPMSEmpty struct {
+	marshalByReflection
+}
 
 // TPMTHA represents a TPMT_HA.
 // See definition in Part 2: Structures, section 10.3.2.
@@ -1687,10 +1689,6 @@ type TPMSSigSchemeRSAPSS TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.1.3.
 type TPMSSigSchemeECDSA TPMSSchemeHash
 
-// TPMSSigSchemeECDAA represents a TPMS_SIG_SCHEME_ECDAA.
-// See definition in Part 2: Structures, section 11.2.1.3.
-type TPMSSigSchemeECDAA TPMSSchemeECDAA
-
 // tpmuSigScheme represents a TPMU_SIG_SCHEME.
 // See definition in Part 2: Structures, section 11.2.1.4.
 type tpmuSigScheme struct {
@@ -1826,11 +1824,6 @@ type tpmuKDFScheme struct {
 	contents Marshallable
 }
 
-// MGF1         *TPMSKDFSchemeMGF1         `gotpm:"selector=0x0007"` // TPM_ALG_MGF1
-// ECDH         *TPMSKDFSchemeECDH         `gotpm:"selector=0x0019"` // TPM_ALG_ECDH
-// KDF1SP80056A *TPMSKDFSchemeKDF1SP80056A `gotpm:"selector=0x0020"` // TPM_ALG_KDF1_SP800_56A
-// KDF2         *TPMSKDFSchemeKDF2         `gotpm:"selector=0x0021"` // TPM_ALG_KDF2
-// KDF1SP800108 *TPMSKDFSchemeKDF1SP800108 `gotpm:"selector=0x0022"` // TPM_ALG_KDF1_SP800_108
 type kdfSchemeContents interface {
 	Marshallable
 	*TPMSKDFSchemeMGF1 | *TPMSKDFSchemeECDH | *TPMSKDFSchemeKDF1SP80056A |
@@ -1934,18 +1927,129 @@ type TPMTKDFScheme struct {
 	Details tpmuKDFScheme `gotpm:"tag=Scheme"`
 }
 
-// TPMUAsymScheme represents a TPMU_ASYM_SCHEME.
+// tpmuAsymScheme represents a TPMU_ASYM_SCHEME.
 // See definition in Part 2: Structures, section 11.2.3.5.
-type TPMUAsymScheme struct {
-	marshalByReflection
-	// TODO every asym scheme gets an entry in this union.
-	RSASSA *TPMSSigSchemeRSASSA `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
-	RSAES  *TPMSEncSchemeRSAES  `gotpm:"selector=0x0015"` // TPM_ALG_RSAES
-	RSAPSS *TPMSSigSchemeRSAPSS `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
-	OAEP   *TPMSEncSchemeOAEP   `gotpm:"selector=0x0017"` // TPM_ALG_OAEP
-	ECDSA  *TPMSSigSchemeECDSA  `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
-	ECDH   *TPMSKeySchemeECDH   `gotpm:"selector=0x0019"` // TPM_ALG_ECDH
-	ECDAA  *TPMSSigSchemeECDAA  `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
+type tpmuAsymScheme struct {
+	selector TPMAlgID
+	contents Marshallable
+}
+
+type asymSchemeContents interface {
+	Marshallable
+	*TPMSSigSchemeRSASSA | *TPMSEncSchemeRSAES | *TPMSSigSchemeRSAPSS | *TPMSEncSchemeOAEP |
+		*TPMSSigSchemeECDSA | *TPMSKeySchemeECDH | *TPMSSchemeECDAA
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuAsymScheme) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuAsymScheme) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	// TODO: The rest of the symmetric algorithms get their own entry
+	// in this union.
+	case TPMAlgRSASSA:
+		var contents TPMSSigSchemeRSASSA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSAES:
+		var contents TPMSEncSchemeRSAES
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSAPSS:
+		var contents TPMSSigSchemeRSAPSS
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgOAEP:
+		var contents TPMSEncSchemeOAEP
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDSA:
+		var contents TPMSSigSchemeECDSA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDH:
+		var contents TPMSKeySchemeECDH
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDAA:
+		var contents TPMSSchemeECDAA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUAsymScheme instantiates a tpmuAsymScheme with the given contents.
+func NewTPMUAsymScheme[C asymSchemeContents](selector TPMAlgID, contents C) *tpmuAsymScheme {
+	return &tpmuAsymScheme{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// RSASSA returns the 'rsassa' member of the union.
+func (u *tpmuAsymScheme) RSASSA() maybe[TPMSSigSchemeRSASSA] {
+	if u.selector == TPMAlgRSASSA {
+		return asMaybe(u.contents.(*TPMSSigSchemeRSASSA))
+	}
+	return maybeNot[TPMSSigSchemeRSASSA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+}
+
+// RSAES returns the 'rsaes' member of the union.
+func (u *tpmuAsymScheme) RSAES() maybe[TPMSEncSchemeRSAES] {
+	if u.selector == TPMAlgRSAES {
+		return asMaybe(u.contents.(*TPMSEncSchemeRSAES))
+	}
+	return maybeNot[TPMSEncSchemeRSAES](fmt.Errorf("did not contain rsaes (selector value was %v)", u.selector))
+}
+
+// RSAPSS returns the 'rsapss' member of the union.
+func (u *tpmuAsymScheme) RSAPSS() maybe[TPMSSigSchemeRSAPSS] {
+	if u.selector == TPMAlgRSAPSS {
+		return asMaybe(u.contents.(*TPMSSigSchemeRSAPSS))
+	}
+	return maybeNot[TPMSSigSchemeRSAPSS](fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector))
+}
+
+// OAEP returns the 'oaep' member of the union.
+func (u *tpmuAsymScheme) OAEP() maybe[TPMSEncSchemeOAEP] {
+	if u.selector == TPMAlgOAEP {
+		return asMaybe(u.contents.(*TPMSEncSchemeOAEP))
+	}
+	return maybeNot[TPMSEncSchemeOAEP](fmt.Errorf("did not contain oaep (selector value was %v)", u.selector))
+}
+
+// ECDSA returns the 'ecdsa' member of the union.
+func (u *tpmuAsymScheme) ECDSA() maybe[TPMSSigSchemeECDSA] {
+	if u.selector == TPMAlgECDSA {
+		return asMaybe(u.contents.(*TPMSSigSchemeECDSA))
+	}
+	return maybeNot[TPMSSigSchemeECDSA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+}
+
+// ECDH returns the 'ecdh' member of the union.
+func (u *tpmuAsymScheme) ECDH() maybe[TPMSKeySchemeECDH] {
+	if u.selector == TPMAlgRSASSA {
+		return asMaybe(u.contents.(*TPMSKeySchemeECDH))
+	}
+	return maybeNot[TPMSKeySchemeECDH](fmt.Errorf("did not contain ecdh (selector value was %v)", u.selector))
+}
+
+// ECDAA returns the 'ecdaa' member of the union.
+func (u *tpmuAsymScheme) ECDAA() maybe[TPMSSchemeECDAA] {
+	if u.selector == TPMAlgECDAA {
+		return asMaybe(u.contents.(*TPMSSchemeECDAA))
+	}
+	return maybeNot[TPMSSchemeECDAA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
 }
 
 // TPMIAlgRSAScheme represents a TPMI_ALG_RSA_SCHEME.
@@ -1959,7 +2063,7 @@ type TPMTRSAScheme struct {
 	// scheme selector
 	Scheme TPMIAlgRSAScheme `gotpm:"nullable"`
 	// scheme parameters
-	Details TPMUAsymScheme `gotpm:"tag=Scheme"`
+	Details tpmuAsymScheme `gotpm:"tag=Scheme"`
 }
 
 // TPM2BPublicKeyRSA represents a TPM2B_PUBLIC_KEY_RSA.
@@ -2013,7 +2117,7 @@ type TPMTECCScheme struct {
 	// scheme selector
 	Scheme TPMIAlgECCScheme `gotpm:"nullable"`
 	// scheme parameters
-	Details TPMUAsymScheme `gotpm:"tag=Scheme"`
+	Details tpmuAsymScheme `gotpm:"tag=Scheme"`
 }
 
 // TPMSSignatureRSA represents a TPMS_SIGNATURE_RSA.

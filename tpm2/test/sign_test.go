@@ -83,11 +83,12 @@ func TestSign(t *testing.T) {
 				RSADetail: &TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme{
-							RSASSA: &TPMSSigSchemeRSASSA{
+						Details: *NewTPMUAsymScheme(
+							TPMAlgRSASSA,
+							&TPMSSigSchemeRSASSA{
 								HashAlg: TPMAlgSHA256,
 							},
-						},
+						),
 					},
 					KeyBits: 2048,
 				},

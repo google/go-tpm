@@ -380,13 +380,13 @@ func getEncryptedSaltRSA(nameAlg TPMIAlgHash, parms *TPMSRSAParms, pub *TPM2BPub
 	var hAlg TPMIAlgHash
 	switch parms.Scheme.Scheme {
 	case TPMAlgRSASSA:
-		hAlg = parms.Scheme.Details.RSASSA.HashAlg
+		hAlg = parms.Scheme.Details.RSASSA().Unwrap().HashAlg
 	case TPMAlgRSAES:
 		hAlg = nameAlg
 	case TPMAlgRSAPSS:
-		hAlg = parms.Scheme.Details.RSAPSS.HashAlg
+		hAlg = parms.Scheme.Details.RSAPSS().Unwrap().HashAlg
 	case TPMAlgOAEP:
-		hAlg = parms.Scheme.Details.OAEP.HashAlg
+		hAlg = parms.Scheme.Details.OAEP().Unwrap().HashAlg
 	case TPMAlgNull:
 		hAlg = nameAlg
 	default:

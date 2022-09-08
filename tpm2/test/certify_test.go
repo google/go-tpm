@@ -40,11 +40,12 @@ func TestCertify(t *testing.T) {
 			RSADetail: &TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
-					Details: TPMUAsymScheme{
-						RSASSA: &TPMSSigSchemeRSASSA{
+					Details: *NewTPMUAsymScheme(
+						TPMAlgRSASSA,
+						&TPMSSigSchemeRSASSA{
 							HashAlg: TPMAlgSHA256,
 						},
-					},
+					),
 				},
 				KeyBits: 2048,
 			},
@@ -171,11 +172,12 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 			RSADetail: &TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
-					Details: TPMUAsymScheme{
-						RSASSA: &TPMSSigSchemeRSASSA{
+					Details: *NewTPMUAsymScheme(
+						TPMAlgRSASSA,
+						&TPMSSigSchemeRSASSA{
 							HashAlg: TPMAlgSHA256,
 						},
-					},
+					),
 				},
 				KeyBits: 2048,
 			},
@@ -285,11 +287,12 @@ func TestNVCertify(t *testing.T) {
 			RSADetail: &TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
-					Details: TPMUAsymScheme{
-						RSASSA: &TPMSSigSchemeRSASSA{
+					Details: *NewTPMUAsymScheme(
+						TPMAlgRSASSA,
+						&TPMSSigSchemeRSASSA{
 							HashAlg: TPMAlgSHA256,
 						},
-					},
+					),
 				},
 				KeyBits: 2048,
 			},

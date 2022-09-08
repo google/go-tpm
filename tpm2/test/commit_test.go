@@ -44,11 +44,12 @@ func TestCommit(t *testing.T) {
 							},
 							Scheme: TPMTECCScheme{
 								Scheme: TPMAlgECDAA,
-								Details: TPMUAsymScheme{
-									ECDAA: &TPMSSigSchemeECDAA{
+								Details: *NewTPMUAsymScheme(
+									TPMAlgECDAA,
+									&TPMSSchemeECDAA{
 										HashAlg: TPMAlgSHA256,
 									},
-								},
+								),
 							},
 							CurveID: TPMECCBNP256,
 							KDF: TPMTKDFScheme{

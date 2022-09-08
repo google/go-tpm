@@ -28,11 +28,12 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 				ECCDetail: &TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
-						Details: TPMUAsymScheme{
-							ECDSA: &TPMSSigSchemeECDSA{
+						Details: *NewTPMUAsymScheme(
+							TPMAlgECDSA,
+							&TPMSSigSchemeECDSA{
 								HashAlg: TPMAlgSHA256,
 							},
-						},
+						),
 					},
 					CurveID: TPMECCNistP256,
 				},
