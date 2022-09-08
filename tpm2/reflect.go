@@ -702,19 +702,6 @@ func hasTag(t reflect.StructField, query string) bool {
 	return ok
 }
 
-// Returns the numeric tag value, or false if the tag is not present.
-func numericTag(t reflect.StructField, query string) (int64, bool) {
-	val, ok := tag(t, query)
-	if !ok {
-		return 0, false
-	}
-	v, err := strconv.ParseInt(val, 0, 64)
-	if err != nil {
-		return 0, false
-	}
-	return v, true
-}
-
 // Returns the range on a tag like 4:3 or 4.
 // If there is no colon, the low and high part of the range are equal.
 func rangeTag(t reflect.StructField, query string) (int, int, bool) {

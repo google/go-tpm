@@ -2077,7 +2077,7 @@ func (u *tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
 
 // TPMUKDFScheme represents a TPMU_KDF_SCHEME.
 // See definition in Part 2: Structures, section 11.2.3.2.
-func TPMUKDFScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuKDFScheme {
+func TPMUKDFScheme[C kdfSchemeContents](selector TPMAlgID, contents C) tpmuKDFScheme {
 	return tpmuKDFScheme{
 		selector: selector,
 		contents: contents,
