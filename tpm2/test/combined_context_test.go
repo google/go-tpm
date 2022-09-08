@@ -52,7 +52,7 @@ func TestCombinedContext(t *testing.T) {
 				RSADetail: &TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
-						Details: NewTPMUAsymScheme(
+						Details: TPMUAsymScheme(
 							TPMAlgRSASSA, &TPMSSigSchemeRSASSA{
 								HashAlg: TPMAlgSHA256,
 							},

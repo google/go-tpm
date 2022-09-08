@@ -44,7 +44,7 @@ func TestECDH(t *testing.T) {
 					CurveID: TPMECCNistP256,
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDH,
-						Details: NewTPMUAsymScheme(
+						Details: TPMUAsymScheme(
 							TPMAlgECDH,
 							&TPMSKeySchemeECDH{
 								HashAlg: TPMAlgSHA256,

@@ -26,7 +26,7 @@ func TestCommit(t *testing.T) {
 				},
 			}),
 		InPublic: NewTPM2BTemplate(
-			NewTPMUTemplate(
+			TPMUTemplate(
 				&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
@@ -44,7 +44,7 @@ func TestCommit(t *testing.T) {
 							},
 							Scheme: TPMTECCScheme{
 								Scheme: TPMAlgECDAA,
-								Details: NewTPMUAsymScheme(
+								Details: TPMUAsymScheme(
 									TPMAlgECDAA,
 									&TPMSSchemeECDAA{
 										HashAlg: TPMAlgSHA256,

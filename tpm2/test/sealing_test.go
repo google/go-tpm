@@ -73,7 +73,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 				UserAuth: TPM2BAuth{
 					Buffer: auth,
 				},
-				Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
+				Data: TPMUSensitiveCreate(&TPM2BSensitiveData{
 					Buffer: data,
 				}),
 			}),

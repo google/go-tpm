@@ -779,8 +779,6 @@ type TPMLACTData struct {
 	ACTData []TPMSACTData `gotpm:"list"`
 }
 
-// tpmuCapabilities represents a TPMU_CAPABILITIES.
-// See definition in Part 2: Structures, section 10.10.1.
 type tpmuCapabilities struct {
 	selector TPMCap
 	contents Marshallable
@@ -919,8 +917,9 @@ func (u *tpmuCapabilities) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUCapabilities instantiates a TPMUCapabilities with the given contents.
-func NewTPMUCapabilities[C capabilitiesContents](selector TPMCap, contents C) tpmuCapabilities {
+// TPMUCapabilities represents a TPMU_CAPABILITIES.
+// See definition in Part 2: Structures, section 10.10.1.
+func TPMUCapabilities[C capabilitiesContents](selector TPMCap, contents C) tpmuCapabilities {
 	return tpmuCapabilities{
 		selector: selector,
 		contents: contents,
@@ -1141,8 +1140,6 @@ type TPMSNVDigestCertifyInfo struct {
 // See definition in Part 2: Structures, section 10.12.10.
 type TPMISTAttest = TPMST
 
-// tpmuAttest represents a TPMU_ATTEST.
-// See definition in Part 2: Structures, section 10.12.11.
 type tpmuAttest struct {
 	selector TPMST
 	contents Marshallable
@@ -1259,8 +1256,9 @@ func (u *tpmuAttest) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUAttest instantiates a TPMUAttest with the given contents.
-func NewTPMUAttest[C attestContents](selector TPMST, contents C) tpmuAttest {
+// TPMUAttest represents a TPMU_ATTEST.
+// See definition in Part 2: Structures, section 10.12.11.
+func TPMUAttest[C attestContents](selector TPMST, contents C) tpmuAttest {
 	return tpmuAttest{
 		selector: selector,
 		contents: contents,
@@ -1382,8 +1380,6 @@ type TPMSAuthResponse struct {
 	Authorization TPM2BData
 }
 
-// tpmuSymKeyBits represents a TPMU_SYM_KEY_BITS.
-// See definition in Part 2: Structures, section 11.1.3.
 type tpmuSymKeyBits struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -1432,8 +1428,9 @@ func (u *tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUSymKeyBits instantiates a tpmuSymKeyBits with the given contents.
-func NewTPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) tpmuSymKeyBits {
+// TPMUSymKeyBits represents a TPMU_SYM_KEY_BITS.
+// See definition in Part 2: Structures, section 11.1.3.
+func TPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) tpmuSymKeyBits {
 	boxed := box(&contents)
 	return tpmuSymKeyBits{
 		selector: selector,
@@ -1459,8 +1456,6 @@ func (u *tpmuSymKeyBits) XOR() maybe[TPMAlgID] {
 	return maybeNot[TPMAlgID](fmt.Errorf("did not contain xor (selector value was %v)", u.selector))
 }
 
-// tpmuSymMode represents a TPMU_SYM_MODE.
-// See definition in Part 2: Structures, section 11.1.4.
 type tpmuSymMode struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -1509,8 +1504,9 @@ func (u *tpmuSymMode) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUSymMode instantiates a tpmuSymMode with the given contents.
-func NewTPMUSymMode[C symModeContents](selector TPMAlgID, contents C) tpmuSymMode {
+// TPMUSymMode represents a TPMU_SYM_MODE.
+// See definition in Part 2: Structures, section 11.1.4.
+func TPMUSymMode[C symModeContents](selector TPMAlgID, contents C) tpmuSymMode {
 	boxed := box(&contents)
 	return tpmuSymMode{
 		selector: selector,
@@ -1527,8 +1523,6 @@ func (u *tpmuSymMode) AES() maybe[TPMIAlgSymMode] {
 	return maybeNot[TPMIAlgSymMode](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
 }
 
-// tpmuSymDetails represents a TPMU_SYM_DETAILS.
-// See definition in Part 2: Structures, section 11.1.5.
 type tpmuSymDetails struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -1571,8 +1565,9 @@ func (u *tpmuSymDetails) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUSymDetails instantiates a tpmuSymDetails with the given contents.
-func NewTPMUSymDetails[C symDetailsContents](selector TPMAlgID, contents C) tpmuSymMode {
+// TPMUSymDetails represents a TPMU_SYM_DETAILS.
+// See definition in Part 2: Structures, section 11.1.5.
+func TPMUSymDetails[C symDetailsContents](selector TPMAlgID, contents C) tpmuSymMode {
 	boxed := box(&contents)
 	return tpmuSymMode{
 		selector: selector,
@@ -1646,10 +1641,6 @@ func NewTPM2BDerive[C bytesOr[TPMSDerive]](contents C) TPM2BDerive {
 	return tpm2bHelper[TPMSDerive](contents)
 }
 
-// tpmuSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
-// See definition in Part 2: Structures, section 11.1.13.
-// Since the TPM cannot return this type, and it is not marshalled using a hint,
-// it can contain an interface.
 type tpmuSensitiveCreate struct {
 	contents Marshallable
 }
@@ -1670,9 +1661,11 @@ func (u *tpmuSensitiveCreate) marshal(buf *bytes.Buffer) {
 	}
 }
 
-// NewTPMUSensitiveCreate instantiates a TPMUSensitiveCreate with the given contents
-// (which may be either a TPM2BDerive or a TPM2BSensitiveData)
-func NewTPMUSensitiveCreate[C sensitiveCreateContents](contents C) tpmuSensitiveCreate {
+// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.13.
+// Since the TPM cannot return this type, and it is not marshalled using a hint,
+// it can contain an interface.
+func TPMUSensitiveCreate[C sensitiveCreateContents](contents C) tpmuSensitiveCreate {
 	return tpmuSensitiveCreate{contents: contents}
 }
 
@@ -1718,7 +1711,7 @@ func (c *TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) {
 		// If no value was provided (i.e., this is a zero-valued structure),
 		// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
 		defaultValue := NewTPM2BSensitiveCreate(&TPMSSensitiveCreate{
-			Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{}),
+			Data: TPMUSensitiveCreate(&TPM2BSensitiveData{}),
 		})
 		defaultValue.marshal(buf)
 	}
@@ -1761,8 +1754,6 @@ type TPMSSchemeXOR struct {
 	KDF TPMIAlgKDF
 }
 
-// tpmuSchemeKeyedHash represents a TPMU_SCHEME_KEYEDHASH.
-// See definition in Part 2: Structures, section 11.1.22.
 type tpmuSchemeKeyedHash struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -1812,8 +1803,9 @@ func (u *tpmuSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUSchemeKeyedHash instantiates a tpmuSchemeKeyedHash with the given contents.
-func NewTPMUSchemeKeyedHash[C schemeKeyedHashContents](selector TPMAlgID, contents C) tpmuSchemeKeyedHash {
+// TPMUSchemeKeyedHash represents a TPMU_SCHEME_KEYEDHASH.
+// See definition in Part 2: Structures, section 11.1.22.
+func TPMUSchemeKeyedHash[C schemeKeyedHashContents](selector TPMAlgID, contents C) tpmuSchemeKeyedHash {
 	return tpmuSchemeKeyedHash{
 		selector: selector,
 		contents: contents,
@@ -1858,8 +1850,6 @@ type TPMSSigSchemeRSAPSS TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.1.3.
 type TPMSSigSchemeECDSA TPMSSchemeHash
 
-// tpmuSigScheme represents a TPMU_SIG_SCHEME.
-// See definition in Part 2: Structures, section 11.2.1.4.
 type tpmuSigScheme struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -1920,8 +1910,9 @@ func (u *tpmuSigScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUSigScheme instantiates a tpmuSigScheme with the given contents.
-func NewTPMUSigScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuSigScheme {
+// TPMUSigScheme represents a TPMU_SIG_SCHEME.
+// See definition in Part 2: Structures, section 11.2.1.4.
+func TPMUSigScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuSigScheme {
 	return tpmuSigScheme{
 		selector: selector,
 		contents: contents,
@@ -2008,8 +1999,6 @@ type TPMSKDFSchemeKDF2 TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.3.1.
 type TPMSKDFSchemeKDF1SP800108 TPMSSchemeHash
 
-// tpmuKDFScheme represents a TPMU_KDF_SCHEME.
-// See definition in Part 2: Structures, section 11.2.3.2.
 type tpmuKDFScheme struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -2095,8 +2084,9 @@ func (u *tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUKDFScheme instantiates a tpmuKDFScheme with the given contents.
-func NewTPMUKDFScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuKDFScheme {
+// TPMUKDFScheme represents a TPMU_KDF_SCHEME.
+// See definition in Part 2: Structures, section 11.2.3.2.
+func TPMUKDFScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuKDFScheme {
 	return tpmuKDFScheme{
 		selector: selector,
 		contents: contents,
@@ -2153,8 +2143,6 @@ type TPMTKDFScheme struct {
 	Details tpmuKDFScheme `gotpm:"tag=Scheme"`
 }
 
-// tpmuAsymScheme represents a TPMU_ASYM_SCHEME.
-// See definition in Part 2: Structures, section 11.2.3.5.
 type tpmuAsymScheme struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -2260,8 +2248,9 @@ func (u *tpmuAsymScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUAsymScheme instantiates a tpmuAsymScheme with the given contents.
-func NewTPMUAsymScheme[C asymSchemeContents](selector TPMAlgID, contents C) tpmuAsymScheme {
+// TPMUAsymScheme represents a TPMU_ASYM_SCHEME.
+// See definition in Part 2: Structures, section 11.2.3.5.
+func TPMUAsymScheme[C asymSchemeContents](selector TPMAlgID, contents C) tpmuAsymScheme {
 	return tpmuAsymScheme{
 		selector: selector,
 		contents: contents,
@@ -2412,8 +2401,6 @@ type TPMSSignatureECC struct {
 	SignatureS TPM2BECCParameter
 }
 
-// tpmuSignature represents a TPMU_SIGNATURE.
-// See definition in Part 2: Structures, section 11.3.3.
 type tpmuSignature struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -2474,8 +2461,9 @@ func (u *tpmuSignature) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUSignature instantiates a tpmuSignature with the given contents.
-func NewTPMUSignature[C signatureContents](selector TPMAlgID, contents C) tpmuSignature {
+// TPMUSignature represents a TPMU_SIGNATURE.
+// See definition in Part 2: Structures, section 11.3.3.
+func TPMUSignature[C signatureContents](selector TPMAlgID, contents C) tpmuSignature {
 	return tpmuSignature{
 		selector: selector,
 		contents: contents,
@@ -2540,8 +2528,6 @@ type TPM2BEncryptedSecret TPM2BData
 // See definition in Part 2: Structures, section 12.2.2.
 type TPMIAlgPublic = TPMAlgID
 
-// tpmuPublicID represents a TPMU_PUBLIC_ID.
-// See definition in Part 2: Structures, section 12.2.3.2.
 type tpmuPublicID struct {
 	selector TPMAlgID
 	contents Marshallable
@@ -2613,8 +2599,9 @@ func (u *tpmuPublicID) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// NewTPMUPublicID instantiates a tpmuPublicID with the given contents.
-func NewTPMUPublicID[C publicIDContents](selector TPMAlgID, contents C) tpmuPublicID {
+// TPMUPublicID represents a TPMU_PUBLIC_ID.
+// See definition in Part 2: Structures, section 12.2.3.2.
+func TPMUPublicID[C publicIDContents](selector TPMAlgID, contents C) tpmuPublicID {
 	return tpmuPublicID{
 		selector: selector,
 		contents: contents,
@@ -2775,11 +2762,6 @@ func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) TPM2BPublic {
 	return tpm2bHelper[TPMTPublic](contents)
 }
 
-// tpmuTemplate represents the possible contents of a TPM2B_Template. It is not
-// defined or named in the spec, which instead describes how its contents may
-// differ in the case of CreateLoaded with a derivation parent.
-// Since the TPM cannot return this type, and it is not marshalled using a hint,
-// it can contain an interface.
 type tpmuTemplate struct {
 	contents Marshallable
 }
@@ -2794,9 +2776,10 @@ type templateContents interface {
 	*TPMTPublic | *TPMTTemplate
 }
 
-// NewTPMUTemplate instantiates a TPMUTemplate with the given contents
-// (which may be either a TPMTPublic or a TPMTTemplate)
-func NewTPMUTemplate[C templateContents](contents C) *tpmuTemplate {
+// TPMUTemplate represents the possible contents of a TPM2B_Template. It is not
+// defined or named in the spec, which instead describes how its contents may
+// differ in the case of CreateLoaded with a derivation parent.
+func TPMUTemplate[C templateContents](contents C) *tpmuTemplate {
 	return &tpmuTemplate{contents: contents}
 }
 

@@ -14,7 +14,7 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 	cl := CreateLoaded{
 		ParentHandle: TPMRHOwner,
 		InPublic: NewTPM2BTemplate(
-			NewTPMUTemplate(&TPMTPublic{
+			TPMUTemplate(&TPMTPublic{
 				Type:    TPMAlgKeyedHash,
 				NameAlg: TPMAlgSHA256,
 				ObjectAttributes: TPMAObject{
@@ -27,7 +27,7 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 					KeyedHashDetail: &TPMSKeyedHashParms{
 						Scheme: TPMTKeyedHashScheme{
 							Scheme: TPMAlgXOR,
-							Details: NewTPMUSchemeKeyedHash(
+							Details: TPMUSchemeKeyedHash(
 								TPMAlgXOR,
 								&TPMSSchemeXOR{
 									HashAlg: TPMAlgSHA256,
@@ -71,7 +71,7 @@ func TestCreateLoaded(t *testing.T) {
 	createLoadeds := map[string]*CreateLoaded{
 		"PrimaryKey": {
 			ParentHandle: TPMRHEndorsement,
-			InPublic:     NewTPM2BTemplate(NewTPMUTemplate(&ECCEKTemplate)),
+			InPublic:     NewTPM2BTemplate(TPMUTemplate(&ECCEKTemplate)),
 		},
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,
@@ -82,7 +82,7 @@ func TestCreateLoaded(t *testing.T) {
 					},
 				}),
 			InPublic: NewTPM2BTemplate(
-				NewTPMUTemplate(&TPMTPublic{
+				TPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
@@ -104,12 +104,12 @@ func TestCreateLoaded(t *testing.T) {
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
+					Data: TPMUSensitiveCreate(&TPM2BSensitiveData{
 						Buffer: []byte("secrets"),
 					}),
 				}),
 			InPublic: NewTPM2BTemplate(
-				NewTPMUTemplate(&TPMTPublic{
+				TPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgKeyedHash,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
@@ -124,10 +124,10 @@ func TestCreateLoaded(t *testing.T) {
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: NewTPMUSensitiveCreate(&derive),
+					Data: TPMUSensitiveCreate(&derive),
 				}),
 			InPublic: NewTPM2BTemplate(
-				NewTPMUTemplate(&TPMTPublic{
+				TPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{

@@ -67,7 +67,7 @@ func TestMarshalT(t *testing.T) {
 				CurveID: TPMECCNistP256,
 			},
 		},
-		Unique: NewTPMUPublicID(
+		Unique: TPMUPublicID(
 			// This happens to be a P256 EKpub from the simulator
 			TPMAlgECC,
 			&TPMSECCPoint{

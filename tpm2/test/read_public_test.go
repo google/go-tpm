@@ -40,7 +40,7 @@ func TestReadPublicKey(t *testing.T) {
 				ECCDetail: &TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
-						Details: NewTPMUAsymScheme(
+						Details: TPMUAsymScheme(
 							TPMAlgECDSA,
 							&TPMSSigSchemeECDSA{
 								HashAlg: TPMAlgSHA256,

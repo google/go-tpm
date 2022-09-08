@@ -31,7 +31,7 @@ func TestLoadExternal(t *testing.T) {
 						CurveID: TPMECCNistP256,
 					},
 				},
-				Unique: NewTPMUPublicID(
+				Unique: TPMUPublicID(
 					// This happens to be a P256 EKpub from the simulator
 					TPMAlgECC,
 					&TPMSECCPoint{
@@ -57,7 +57,7 @@ func TestLoadExternal(t *testing.T) {
 			InPublic: NewTPM2BPublic(&TPMTPublic{
 				Type:    TPMAlgKeyedHash,
 				NameAlg: TPMAlgSHA256,
-				Unique: NewTPMUPublicID(
+				Unique: TPMUPublicID(
 					TPMAlgKeyedHash,
 					&TPM2BDigest{
 						// SHA256("obfuscation is my middle name!!!secrets")

@@ -40,7 +40,7 @@ func TestCertify(t *testing.T) {
 			RSADetail: &TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
-					Details: NewTPMUAsymScheme(
+					Details: TPMUAsymScheme(
 						TPMAlgRSASSA,
 						&TPMSSigSchemeRSASSA{
 							HashAlg: TPMAlgSHA256,
@@ -91,7 +91,7 @@ func TestCertify(t *testing.T) {
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
-	unique := NewTPMUPublicID(
+	unique := TPMUPublicID(
 		TPMAlgRSA,
 		&TPM2BPublicKeyRSA{
 			Buffer: []byte("subject key"),
@@ -173,7 +173,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 			RSADetail: &TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
-					Details: NewTPMUAsymScheme(
+					Details: TPMUAsymScheme(
 						TPMAlgRSASSA,
 						&TPMSSigSchemeRSASSA{
 							HashAlg: TPMAlgSHA256,
@@ -212,7 +212,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 
 	inScheme := TPMTSigScheme{
 		Scheme: TPMAlgRSASSA,
-		Details: NewTPMUSigScheme(
+		Details: TPMUSigScheme(
 			TPMAlgRSASSA,
 			&TPMSSchemeHash{
 				HashAlg: TPMAlgSHA256,
@@ -288,7 +288,7 @@ func TestNVCertify(t *testing.T) {
 			RSADetail: &TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
-					Details: NewTPMUAsymScheme(
+					Details: TPMUAsymScheme(
 						TPMAlgRSASSA,
 						&TPMSSigSchemeRSASSA{
 							HashAlg: TPMAlgSHA256,
