@@ -63,7 +63,7 @@ type TPMKeySize uint16
 type TPMKeyBits uint16
 
 // Boxed implements the Boxable interface.
-func (b TPMKeyBits) Boxed() Marshallable {
+func (b TPMKeyBits) boxed() Marshallable {
 	return &BoxedTPMKeyBits{TPMKeyBits: b}
 }
 
@@ -493,7 +493,7 @@ type BoxedTPMAlgID struct {
 }
 
 // Boxed implements the Boxable interface.
-func (a TPMAlgID) Boxed() Marshallable {
+func (a TPMAlgID) boxed() Marshallable {
 	return &BoxedTPMAlgID{TPMAlgID: a}
 }
 
@@ -805,6 +805,7 @@ type TPMLACTData struct {
 // tpmuCapabilities represents a TPMU_CAPABILITIES.
 // See definition in Part 2: Structures, section 10.10.1.
 type tpmuCapabilities struct {
+	selector TPMCap
 	contents Marshallable
 }
 
@@ -824,50 +825,151 @@ func (u *tpmuCapabilities) allocateAndGet(hint int64) (reflect.Value, error) {
 	case TPMCapAlgs:
 		contents := TPMLAlgProperty{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapHandles:
 		contents := TPMLHandle{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapCommands:
 		contents := TPMLCCA{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapPPCommands, TPMCapAuditCommands:
 		contents := TPMLCC{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapPCRs:
 		contents := TPMLPCRSelection{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapTPMProperties:
 		contents := TPMLTaggedTPMProperty{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapPCRProperties:
 		contents := TPMLTaggedPCRProperty{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapECCCurves:
 		contents := TPMLECCCurve{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapAuthPolicies:
 		contents := TPMLTaggedPolicy{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMCapACT:
 		contents := TPMLACTData{}
 		u.contents = &contents
+		u.selector = TPMCap(hint)
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
 // NewTPMUCapabilities instantiates a TPMUCapabilities with the given contents.
-func NewTPMUCapabilities[C capabilitiesContents](contents C) *tpmuCapabilities {
-	return &tpmuCapabilities{contents: contents}
+func NewTPMUCapabilities[C capabilitiesContents](selector TPMCap, contents C) *tpmuCapabilities {
+	return &tpmuCapabilities{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// Algorithms returns the 'algorithms' member of the union.
+func (u *tpmuCapabilities) Algorithms() maybe[TPMLAlgProperty] {
+	if u.selector == TPMCapAlgs {
+		return asMaybe(u.contents.(*TPMLAlgProperty))
+	}
+	return maybeNot[TPMLAlgProperty](fmt.Errorf("did not contain algorithms (selector value was %v)", u.selector))
+}
+
+// Handles returns the 'handles' member of the union.
+func (u *tpmuCapabilities) Handles() maybe[TPMLHandle] {
+	if u.selector == TPMCapHandles {
+		return asMaybe(u.contents.(*TPMLHandle))
+	}
+	return maybeNot[TPMLHandle](fmt.Errorf("did not contain handles (selector value was %v)", u.selector))
+}
+
+// Command returns the 'command' member of the union.
+func (u *tpmuCapabilities) Command() maybe[TPMLCCA] {
+	if u.selector == TPMCapAlgs {
+		return asMaybe(u.contents.(*TPMLCCA))
+	}
+	return maybeNot[TPMLCCA](fmt.Errorf("did not contain command (selector value was %v)", u.selector))
+}
+
+// PPCommands returns the 'ppCommands' member of the union.
+func (u *tpmuCapabilities) PPCommands() maybe[TPMLCC] {
+	if u.selector == TPMCapPPCommands {
+		return asMaybe(u.contents.(*TPMLCC))
+	}
+	return maybeNot[TPMLCC](fmt.Errorf("did not contain ppCommands (selector value was %v)", u.selector))
+}
+
+// AuditCommands returns the 'auditCommands' member of the union.
+func (u *tpmuCapabilities) AuditCommands() maybe[TPMLCC] {
+	if u.selector == TPMCapAuditCommands {
+		return asMaybe(u.contents.(*TPMLCC))
+	}
+	return maybeNot[TPMLCC](fmt.Errorf("did not contain auditCommands (selector value was %v)", u.selector))
+}
+
+// AssignedPCR returns the 'assignedPCR' member of the union.
+func (u *tpmuCapabilities) AssignedPCR() maybe[TPMLPCRSelection] {
+	if u.selector == TPMCapPCRs {
+		return asMaybe(u.contents.(*TPMLPCRSelection))
+	}
+	return maybeNot[TPMLPCRSelection](fmt.Errorf("did not contain assignedPCR (selector value was %v)", u.selector))
+}
+
+// TPMProperties returns the 'tpmProperties' member of the union.
+func (u *tpmuCapabilities) TPMProperties() maybe[TPMLTaggedPCRProperty] {
+	if u.selector == TPMCapTPMProperties {
+		return asMaybe(u.contents.(*TPMLTaggedPCRProperty))
+	}
+	return maybeNot[TPMLTaggedPCRProperty](fmt.Errorf("did not contain tpmProperties (selector value was %v)", u.selector))
+}
+
+// PCRProperties returns the 'pcrProperties' member of the union.
+func (u *tpmuCapabilities) PCRProperties() maybe[TPMLTaggedPCRProperty] {
+	if u.selector == TPMCapPCRProperties {
+		return asMaybe(u.contents.(*TPMLTaggedPCRProperty))
+	}
+	return maybeNot[TPMLTaggedPCRProperty](fmt.Errorf("did not contain pcrProperties (selector value was %v)", u.selector))
+}
+
+// ECCCurves returns the 'eccCurves' member of the union.
+func (u *tpmuCapabilities) ECCCurves() maybe[TPMLECCCurve] {
+	if u.selector == TPMCapECCCurves {
+		return asMaybe(u.contents.(*TPMLECCCurve))
+	}
+	return maybeNot[TPMLECCCurve](fmt.Errorf("did not contain eccCurves (selector value was %v)", u.selector))
+}
+
+// AuthPolicies returns the 'authPolicies' member of the union.
+func (u *tpmuCapabilities) AuthPolicies() maybe[TPMLTaggedPolicy] {
+	if u.selector == TPMCapAuthPolicies {
+		return asMaybe(u.contents.(*TPMLTaggedPolicy))
+	}
+	return maybeNot[TPMLTaggedPolicy](fmt.Errorf("did not contain authPolicies (selector value was %v)", u.selector))
+}
+
+// ACTData returns the 'actData' member of the union.
+func (u *tpmuCapabilities) ACTData() maybe[TPMLACTData] {
+	if u.selector == TPMCapAuthPolicies {
+		return asMaybe(u.contents.(*TPMLACTData))
+	}
+	return maybeNot[TPMLACTData](fmt.Errorf("did not contain actData (selector value was %v)", u.selector))
 }
 
 // TPMSCapabilityData represents a TPMS_CAPABILITY_DATA.
@@ -999,6 +1101,7 @@ type TPMISTAttest = TPMST
 // tpmuAttest represents a TPMU_ATTEST.
 // See definition in Part 2: Structures, section 10.12.11.
 type tpmuAttest struct {
+	selector TPMST
 	contents Marshallable
 }
 
@@ -1018,42 +1121,117 @@ func (u *tpmuAttest) allocateAndGet(hint int64) (reflect.Value, error) {
 	case TPMSTAttestNV:
 		contents := TPMSNVCertifyInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMSTAttestCommandAudit:
 		contents := TPMSCommandAuditInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMSTAttestSessionAudit:
 		contents := TPMSSessionAuditInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMSTAttestCertify:
 		contents := TPMSCertifyInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMSTAttestQuote:
 		contents := TPMSQuoteInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMSTAttestTime:
 		contents := TPMSTimeAttestInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMSTAttestCreation:
 		contents := TPMSCreationInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMSTAttestNVDigest:
 		contents := TPMSNVDigestCertifyInfo{}
 		u.contents = &contents
+		u.selector = TPMST(hint)
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
 // NewTPMUAttest instantiates a TPMUAttest with the given contents.
-func NewTPMUAttest[C attestContents](contents C) *tpmuAttest {
-	return &tpmuAttest{contents: contents}
+func NewTPMUAttest[C attestContents](selector TPMST, contents C) *tpmuAttest {
+	return &tpmuAttest{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// Certify returns the 'certify' member of the union.
+func (u *tpmuAttest) Certify() maybe[TPMSCertifyInfo] {
+	if u.selector == TPMSTAttestCertify {
+		return asMaybe(u.contents.(*TPMSCertifyInfo))
+	}
+	return maybeNot[TPMSCertifyInfo](fmt.Errorf("did not contain certify (selector value was %v)", u.selector))
+}
+
+// Creation returns the 'creation' member of the union.
+func (u *tpmuAttest) Creation() maybe[TPMSCreationInfo] {
+	if u.selector == TPMSTAttestCreation {
+		return asMaybe(u.contents.(*TPMSCreationInfo))
+	}
+	return maybeNot[TPMSCreationInfo](fmt.Errorf("did not contain creation (selector value was %v)", u.selector))
+}
+
+// Quote returns the 'quote' member of the union.
+func (u *tpmuAttest) Quote() maybe[TPMSQuoteInfo] {
+	if u.selector == TPMSTAttestQuote {
+		return asMaybe(u.contents.(*TPMSQuoteInfo))
+	}
+	return maybeNot[TPMSQuoteInfo](fmt.Errorf("did not contain quote (selector value was %v)", u.selector))
+}
+
+// CommandAudit returns the 'commandAudit' member of the union.
+func (u *tpmuAttest) CommandAudit() maybe[TPMSCommandAuditInfo] {
+	if u.selector == TPMSTAttestCommandAudit {
+		return asMaybe(u.contents.(*TPMSCommandAuditInfo))
+	}
+	return maybeNot[TPMSCommandAuditInfo](fmt.Errorf("did not contain commandAudit (selector value was %v)", u.selector))
+}
+
+// SessionAudit returns the 'sessionAudit' member of the union.
+func (u *tpmuAttest) SessionAudit() maybe[TPMSSessionAuditInfo] {
+	if u.selector == TPMSTAttestSessionAudit {
+		return asMaybe(u.contents.(*TPMSSessionAuditInfo))
+	}
+	return maybeNot[TPMSSessionAuditInfo](fmt.Errorf("did not contain sessionAudit (selector value was %v)", u.selector))
+}
+
+// Time returns the 'time' member of the union.
+func (u *tpmuAttest) Time() maybe[TPMSTimeAttestInfo] {
+	if u.selector == TPMSTAttestTime {
+		return asMaybe(u.contents.(*TPMSTimeAttestInfo))
+	}
+	return maybeNot[TPMSTimeAttestInfo](fmt.Errorf("did not contain time (selector value was %v)", u.selector))
+}
+
+// NV returns the 'nv' member of the union.
+func (u *tpmuAttest) NV() maybe[TPMSNVCertifyInfo] {
+	if u.selector == TPMSTAttestNV {
+		return asMaybe(u.contents.(*TPMSNVCertifyInfo))
+	}
+	return maybeNot[TPMSNVCertifyInfo](fmt.Errorf("did not contain nv (selector value was %v)", u.selector))
+}
+
+// NVDigest returns the 'nvDigest' member of the union.
+func (u *tpmuAttest) NVDigest() maybe[TPMSNVDigestCertifyInfo] {
+	if u.selector == TPMSTAttestNVDigest {
+		return asMaybe(u.contents.(*TPMSNVDigestCertifyInfo))
+	}
+	return maybeNot[TPMSNVDigestCertifyInfo](fmt.Errorf("did not contain nvDigest (selector value was %v)", u.selector))
 }
 
 // TPMSAttest represents a TPMS_ATTEST.
@@ -1110,11 +1288,12 @@ type TPMSAuthResponse struct {
 // tpmuSymKeyBits represents a TPMU_SYM_KEY_BITS.
 // See definition in Part 2: Structures, section 11.1.3.
 type tpmuSymKeyBits struct {
+	selector TPMAlgID
 	contents Marshallable
 }
 
 type symKeyBitsContents interface {
-	Boxable
+	boxable
 	// TODO: The rest of the symmetric algorithms get their own entry
 	// in this union.
 	TPMKeyBits | TPMAlgID
@@ -1136,20 +1315,42 @@ func (u *tpmuSymKeyBits) allocateAndGet(hint int64) (reflect.Value, error) {
 	case TPMAlgAES:
 		contents := BoxedTPMKeyBits{}
 		u.contents = &contents
+		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMAlgXOR:
 		contents := BoxedTPMAlgID{}
 		u.contents = &contents
+		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
-	default:
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
 // NewTPMUSymKeyBits instantiates a tpmuSymKeyBits with the given contents.
-func NewTPMUSymKeyBits[C symKeyBitsContents](contents C) *tpmuSymKeyBits {
-	boxed := contents.Boxed()
-	return &tpmuSymKeyBits{contents: boxed}
+func NewTPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) *tpmuSymKeyBits {
+	boxed := contents.boxed()
+	return &tpmuSymKeyBits{
+		selector: selector,
+		contents: boxed,
+	}
+}
+
+// AES returns the 'aes' member of the union.
+func (u *tpmuSymKeyBits) AES() maybe[TPMKeyBits] {
+	if u.selector == TPMAlgAES {
+		value := u.contents.(*BoxedTPMKeyBits).TPMKeyBits
+		return asMaybe(&value)
+	}
+	return maybeNot[TPMKeyBits](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
+}
+
+// XOR returns the 'xor' member of the union.
+func (u *tpmuSymKeyBits) XOR() maybe[TPMAlgID] {
+	if u.selector == TPMAlgXOR {
+		value := u.contents.(*BoxedTPMAlgID).TPMAlgID
+		return asMaybe(&value)
+	}
+	return maybeNot[TPMAlgID](fmt.Errorf("did not contain xor (selector value was %v)", u.selector))
 }
 
 // TPMUSymMode represents a TPMU_SYM_MODE.
@@ -1358,10 +1559,6 @@ type TPMUSchemeKeyedHash struct {
 	marshalByReflection
 	HMAC *TPMSSchemeHMAC `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
 	XOR  *TPMSSchemeXOR  `gotpm:"selector=0x000A"` // TPM_ALG_XOR
-}
-
-type tpmuSchemeKeyedHash interface {
-	*TPMSSchemeHMAC | *TPMSSchemeXOR
 }
 
 // TPMTKeyedHashScheme represents a TPMT_KEYEDHASH_SCHEME.

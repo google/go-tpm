@@ -24,6 +24,7 @@ var (
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: *NewTPMUSymKeyBits(
+						TPMAlgAES,
 						TPMKeyBits(128),
 					),
 					Mode: TPMUSymMode{
@@ -70,6 +71,7 @@ var (
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: *NewTPMUSymKeyBits(
+						TPMAlgAES,
 						TPMKeyBits(128),
 					),
 					Mode: TPMUSymMode{
@@ -109,6 +111,7 @@ var (
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: *NewTPMUSymKeyBits(
+						TPMAlgAES,
 						TPMKeyBits(128),
 					),
 					Mode: TPMUSymMode{
@@ -161,6 +164,7 @@ var (
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: *NewTPMUSymKeyBits(
+						TPMAlgAES,
 						TPMKeyBits(128),
 					),
 					Mode: TPMUSymMode{

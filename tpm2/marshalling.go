@@ -15,6 +15,11 @@ type maybe[T any] struct {
 	value *T
 }
 
+// OK returns true if the maybe contains contents instead of an error.
+func (m maybe[_]) OK() bool {
+	return m.err == nil
+}
+
 // Unwrap unwraps the result of an unmarshalling operation.
 // Panics if the data was not unmarshalled.
 func (m maybe[T]) Unwrap() *T {
@@ -30,6 +35,20 @@ func (m maybe[T]) CheckUnwrap() (*T, error) {
 		return nil, m.err
 	}
 	return m.value, nil
+}
+
+// asMaybe returns a maybe enclosing the given contents.
+func asMaybe[T any](t *T) maybe[T] {
+	return maybe[T]{
+		value: t,
+	}
+}
+
+// maybeNot returns a maybe with the given error.
+func maybeNot[T any](err error) maybe[T] {
+	return maybe[T]{
+		err: err,
+	}
 }
 
 // Marshallable represents any TPM type that can be marshalled.
@@ -170,24 +189,16 @@ func (value *tpm2b[T]) unmarshal(buf *bytes.Buffer) error {
 // Contents returns the structured contents of the tpm2b.
 func (value *tpm2b[T]) Contents() maybe[T] {
 	if value.contents != nil {
-		return maybe[T]{
-			value: value.contents,
-		}
+		return asMaybe(value.contents)
 	}
 	if value.buffer == nil {
-		return maybe[T]{
-			err: fmt.Errorf("TPMB had no contents or buffer"),
-		}
+		return maybeNot[T](fmt.Errorf("TPMB had no contents or buffer"))
 	}
 	var result T
 	if err := unmarshal(bytes.NewBuffer(value.buffer), reflect.ValueOf(&result).Elem()); err != nil {
-		return maybe[T]{
-			err: err,
-		}
+		return maybeNot[T](err)
 	}
-	return maybe[T]{
-		value: &result,
-	}
+	return asMaybe(&result)
 }
 
 // CheckUnwrap returns the structured contents of an UnmarshallableWithHint (i.e., TPMU).
@@ -217,9 +228,9 @@ func Unwrap[T any, P interface {
 	return result
 }
 
-// Boxable represents any basic TPM type that can be put into a box.
+// boxable represents any basic TPM type that can be put into a box.
 // Some structures (e.g., unions) require all their members to be structures.
-type Boxable interface {
+type boxable interface {
 	// Returns the value in a box
-	Boxed() Marshallable
+	boxed() Marshallable
 }

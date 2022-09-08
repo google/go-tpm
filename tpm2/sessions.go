@@ -273,6 +273,7 @@ func AESEncryption(keySize TPMKeyBits, dir parameterEncryptiontpm2ion) AuthOptio
 		o.symmetric = TPMTSymDef{
 			Algorithm: TPMAlgAES,
 			KeyBits: *NewTPMUSymKeyBits(
+				TPMAlgAES,
 				TPMKeyBits(keySize),
 			),
 			Mode: TPMUSymMode{
@@ -686,7 +687,7 @@ func (s *hmacSession) Encrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := Unwrap[BoxedTPMKeyBits](&s.symmetric.KeyBits).TPMKeyBits / 8
+	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
 	keyIVBytes := int(keyBytes) + 16
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
@@ -712,7 +713,7 @@ func (s *hmacSession) Decrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := Unwrap[BoxedTPMKeyBits](&s.symmetric.KeyBits).TPMKeyBits / 8
+	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
 	keyIVBytes := int(keyBytes) + 16
 	// Part 1, 21.1
 	var sessionValue []byte
@@ -998,7 +999,7 @@ func (s *policySession) Encrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := Unwrap[BoxedTPMKeyBits](&s.symmetric.KeyBits).TPMKeyBits / 8
+	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
 	keyIVBytes := int(keyBytes) + 16
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
@@ -1024,7 +1025,7 @@ func (s *policySession) Decrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := Unwrap[BoxedTPMKeyBits](&s.symmetric.KeyBits).TPMKeyBits / 8
+	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
 	keyIVBytes := int(keyBytes) + 16
 	// Part 1, 21.1
 	var sessionValue []byte
