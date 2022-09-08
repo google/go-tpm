@@ -123,11 +123,12 @@ func TestSign(t *testing.T) {
 		},
 		InScheme: TPMTSigScheme{
 			Scheme: TPMAlgRSASSA,
-			Details: TPMUSigScheme{
-				RSASSA: &TPMSSchemeHash{
+			Details: *NewTPMUSigScheme(
+				TPMAlgRSASSA,
+				&TPMSSchemeHash{
 					HashAlg: TPMAlgSHA256,
 				},
-			},
+			),
 		},
 		Validation: TPMTTKHashCheck{
 			Tag: TPMSTHashCheck,

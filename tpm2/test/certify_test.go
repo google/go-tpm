@@ -209,11 +209,12 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 
 	inScheme := TPMTSigScheme{
 		Scheme: TPMAlgRSASSA,
-		Details: TPMUSigScheme{
-			RSASSA: &TPMSSchemeHash{
+		Details: *NewTPMUSigScheme(
+			TPMAlgRSASSA,
+			&TPMSSchemeHash{
 				HashAlg: TPMAlgSHA256,
 			},
-		},
+		),
 	}
 
 	certifyCreation := CertifyCreation{

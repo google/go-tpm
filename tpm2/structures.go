@@ -1691,15 +1691,92 @@ type TPMSSigSchemeECDSA TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.1.3.
 type TPMSSigSchemeECDAA TPMSSchemeECDAA
 
-// TPMUSigScheme represents a TPMU_SIG_SCHEME.
+// tpmuSigScheme represents a TPMU_SIG_SCHEME.
 // See definition in Part 2: Structures, section 11.2.1.4.
-type TPMUSigScheme struct {
-	marshalByReflection
-	HMAC   *TPMSSchemeHMAC  `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
-	RSASSA *TPMSSchemeHash  `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
-	RSAPSS *TPMSSchemeHash  `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
-	ECDSA  *TPMSSchemeHash  `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
-	ECDAA  *TPMSSchemeECDAA `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
+type tpmuSigScheme struct {
+	selector TPMAlgID
+	contents Marshallable
+}
+
+type sigSchemeContents interface {
+	Marshallable
+	*TPMSSchemeHMAC | *TPMSSchemeHash | *TPMSSchemeECDAA
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuSigScheme) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuSigScheme) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	// TODO: The rest of the symmetric algorithms get their own entry
+	// in this union.
+	case TPMAlgHMAC:
+		var contents TPMSSchemeHMAC
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSASSA, TPMAlgRSAPSS, TPMAlgECDSA:
+		var contents TPMSSchemeHash
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDAA:
+		var contents TPMSSchemeECDAA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUSigScheme instantiates a tpmuSigScheme with the given contents.
+func NewTPMUSigScheme[C sigSchemeContents](selector TPMAlgID, contents C) *tpmuSigScheme {
+	return &tpmuSigScheme{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// HMAC returns the 'hmac' member of the union.
+func (u *tpmuSigScheme) HMAC() maybe[TPMSSchemeHMAC] {
+	if u.selector == TPMAlgHMAC {
+		return asMaybe(u.contents.(*TPMSSchemeHMAC))
+	}
+	return maybeNot[TPMSSchemeHMAC](fmt.Errorf("did not contain hmac (selector value was %v)", u.selector))
+}
+
+// RSASSA returns the 'rsassa' member of the union.
+func (u *tpmuSigScheme) RSASSA() maybe[TPMSSchemeHash] {
+	if u.selector == TPMAlgRSASSA {
+		return asMaybe(u.contents.(*TPMSSchemeHash))
+	}
+	return maybeNot[TPMSSchemeHash](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+}
+
+// RSAPSS returns the 'rsapss' member of the union.
+func (u *tpmuSigScheme) RSAPSS() maybe[TPMSSchemeHash] {
+	if u.selector == TPMAlgRSAPSS {
+		return asMaybe(u.contents.(*TPMSSchemeHash))
+	}
+	return maybeNot[TPMSSchemeHash](fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector))
+}
+
+// ECDSA returns the 'ecdsa' member of the union.
+func (u *tpmuSigScheme) ECDSA() maybe[TPMSSchemeHash] {
+	if u.selector == TPMAlgECDSA {
+		return asMaybe(u.contents.(*TPMSSchemeHash))
+	}
+	return maybeNot[TPMSSchemeHash](fmt.Errorf("did not contain ecdsa (selector value was %v)", u.selector))
+}
+
+// ECDAA returns the 'ecdaa' member of the union.
+func (u *tpmuSigScheme) ECDAA() maybe[TPMSSchemeECDAA] {
+	if u.selector == TPMAlgECDAA {
+		return asMaybe(u.contents.(*TPMSSchemeECDAA))
+	}
+	return maybeNot[TPMSSchemeECDAA](fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector))
 }
 
 // TPMTSigScheme represents a TPMT_SIG_SCHEME.
@@ -1707,7 +1784,7 @@ type TPMUSigScheme struct {
 type TPMTSigScheme struct {
 	marshalByReflection
 	Scheme  TPMIAlgSigScheme `gotpm:"nullable"`
-	Details TPMUSigScheme    `gotpm:"tag=Scheme"`
+	Details tpmuSigScheme    `gotpm:"tag=Scheme"`
 }
 
 // TPMSEncSchemeRSAES represents a TPMS_ENC_SCHEME_RSAES.
