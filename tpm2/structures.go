@@ -1659,8 +1659,6 @@ func (u *tpmuSensitiveCreate) marshal(buf *bytes.Buffer) {
 
 // TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
 // See definition in Part 2: Structures, section 11.1.13.
-// Since the TPM cannot return this type, and it is not marshalled using a hint,
-// it can contain an interface.
 func TPMUSensitiveCreate[C sensitiveCreateContents](contents C) tpmuSensitiveCreate {
 	return tpmuSensitiveCreate{contents: contents}
 }
@@ -2759,7 +2757,7 @@ type tpmuTemplate struct {
 }
 
 // marshal implements the Marshallable interface.
-func (u *tpmuTemplate) marshal(buf *bytes.Buffer) {
+// TPM2Bal(buf *bytes.Buffer) {
 	buf.Write(Marshal(u.contents))
 }
 
