@@ -1434,7 +1434,7 @@ func (u *tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
 
 // NewTPMUSymKeyBits instantiates a tpmuSymKeyBits with the given contents.
 func NewTPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) *tpmuSymKeyBits {
-	boxed := box(contents)
+	boxed := box(&contents)
 	return &tpmuSymKeyBits{
 		selector: selector,
 		contents: &boxed,
@@ -1511,7 +1511,7 @@ func (u *tpmuSymMode) get(hint int64) (reflect.Value, error) {
 
 // NewTPMUSymMode instantiates a tpmuSymMode with the given contents.
 func NewTPMUSymMode[C symModeContents](selector TPMAlgID, contents C) *tpmuSymMode {
-	boxed := box(contents)
+	boxed := box(&contents)
 	return &tpmuSymMode{
 		selector: selector,
 		contents: &boxed,
@@ -1573,7 +1573,7 @@ func (u *tpmuSymDetails) get(hint int64) (reflect.Value, error) {
 
 // NewTPMUSymDetails instantiates a tpmuSymDetails with the given contents.
 func NewTPMUSymDetails[C symDetailsContents](selector TPMAlgID, contents C) *tpmuSymMode {
-	boxed := box(contents)
+	boxed := box(&contents)
 	return &tpmuSymMode{
 		selector: selector,
 		contents: &boxed,

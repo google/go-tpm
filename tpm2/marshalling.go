@@ -209,9 +209,9 @@ type boxed[T any] struct {
 }
 
 // box will put a value into a box.
-func box[T any](contents T) boxed[T] {
+func box[T any](contents *T) boxed[T] {
 	return boxed[T]{
-		Contents: &contents,
+		Contents: contents,
 	}
 }
 
