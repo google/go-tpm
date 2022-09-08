@@ -277,7 +277,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 		list := hasTag(v.Type().Field(i), "list")
 		sized := hasTag(v.Type().Field(i), "sized")
 		sized8 := hasTag(v.Type().Field(i), "sized8")
-		tag := tags(v.Type().Field(i))["tag"]
+		tag, _ := tag(v.Type().Field(i), "tag")
 		// Serialize to a temporary buffer, in case we need to size it
 		// (Better to simplify this complex reflection-based marshalling
 		// code than to save some unnecessary copying before talking to
@@ -585,7 +585,7 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			}
 			bufToReadFrom = bytes.NewBuffer(sizedBufArray)
 		}
-		tag := tags(v.Type().Field(i))["tag"]
+		tag, _ := tag(v.Type().Field(i), "tag")
 		if tag != "" {
 			// Make a pass to create a map of tag values
 			// UInt64-valued fields with values greater than
@@ -726,15 +726,14 @@ func unmarshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 	return fmt.Errorf("selector value '%v' not handled for type '%v'", selector, v.Type().Name())
 }
 
-// Returns all the gotpm tags on a field as a map.
+// Looks up the given gotpm tag on a field.
 // Some tags are settable (with "="). For these, the value is the RHS.
 // For all others, the value is the empty string.
-func tags(t reflect.StructField) map[string]string {
+func tag(t reflect.StructField, query string) (string, bool) {
 	allTags, ok := t.Tag.Lookup("gotpm")
 	if !ok {
-		return nil
+		return "", false
 	}
-	result := make(map[string]string)
 	tags := strings.Split(allTags, ",")
 	for _, tag := range tags {
 		// Split on the equals sign for settable tags.
@@ -742,31 +741,28 @@ func tags(t reflect.StructField) map[string]string {
 		//   un-settable tag or an empty tag (which we'll ignore).
 		// If the split returns a slice of length 2, this is a settable
 		//   tag.
-		assignment := strings.SplitN(tag, "=", 2)
-		val := ""
-		if len(assignment) > 1 {
-			val = assignment[1]
+		if tag == query {
+			return "", true
 		}
-		if len(assignment) > 0 && assignment[0] != "" {
-			key := assignment[0]
-			result[key] = val
+		if strings.HasPrefix(tag, query+"=") {
+			assignment := strings.SplitN(tag, "=", 2)
+			return assignment[1], true
 		}
 	}
-	return result
+	return "", false
 }
 
 // hasTag looks up to see if the type's gotpm-namespaced tag contains the
 // given value.
 // Returns false if there is no gotpm-namespaced tag on the type.
-func hasTag(t reflect.StructField, tag string) bool {
-	ts := tags(t)
-	_, ok := ts[tag]
+func hasTag(t reflect.StructField, query string) bool {
+	_, ok := tag(t, query)
 	return ok
 }
 
 // Returns the numeric tag value, or false if the tag is not present.
-func numericTag(t reflect.StructField, tag string) (int64, bool) {
-	val, ok := tags(t)[tag]
+func numericTag(t reflect.StructField, query string) (int64, bool) {
+	val, ok := tag(t, query)
 	if !ok {
 		return 0, false
 	}
@@ -779,8 +775,8 @@ func numericTag(t reflect.StructField, tag string) (int64, bool) {
 
 // Returns the range on a tag like 4:3 or 4.
 // If there is no colon, the low and high part of the range are equal.
-func rangeTag(t reflect.StructField, tag string) (int, int, bool) {
-	val, ok := tags(t)[tag]
+func rangeTag(t reflect.StructField, query string) (int, int, bool) {
+	val, ok := tag(t, query)
 	if !ok {
 		return 0, 0, false
 	}
