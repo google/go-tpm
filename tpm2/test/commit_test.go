@@ -25,7 +25,7 @@ func TestCommit(t *testing.T) {
 					Buffer: password,
 				},
 			}),
-		InPublic: NewTPM2BTemplate(
+		InPublic: TPM2BTemplate(
 			TPMUTemplate(
 				&TPMTPublic{
 					Type:    TPMAlgECC,
@@ -74,7 +74,7 @@ func TestCommit(t *testing.T) {
 			Name:   rspCP.Name,
 			Auth:   PasswordAuth(password),
 		},
-		P1: NewTPM2BECCPoint(
+		P1: TPM2BECCPoint(
 			&TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: []byte{1},

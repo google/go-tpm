@@ -188,7 +188,7 @@ type Create struct {
 	// the sensitive data
 	InSensitive TPM2BSensitiveCreate
 	// the public template
-	InPublic TPM2BPublic
+	InPublic tpm2bPublic
 	// data that will be included in the creation data for this
 	// object to provide permanent, verifiable linkage between this
 	// object and some object owner data
@@ -214,9 +214,9 @@ type CreateResponse struct {
 	// the private portion of the object
 	OutPrivate TPM2BPrivate
 	// the public portion of the created object
-	OutPublic TPM2BPublic
+	OutPublic tpm2bPublic
 	// contains a TPMS_CREATION_DATA
-	CreationData TPM2BCreationData
+	CreationData tpm2bCreationData
 	// digest of creationData using nameAlg of outPublic
 	CreationHash TPM2BDigest
 	// ticket used by TPM2_CertifyCreation() to validate that the
@@ -235,7 +235,7 @@ type Load struct {
 	// the private portion of the object
 	InPrivate TPM2BPrivate
 	// the public portion of the object
-	InPublic TPM2BPublic
+	InPublic tpm2bPublic
 }
 
 // Command implements the Command interface.
@@ -265,9 +265,9 @@ func (*LoadResponse) Response() TPMCC { return TPMCCLoad }
 // See definition in Part 3, Commands, section 12.3
 type LoadExternal struct {
 	// the sensitive portion of the object (optional)
-	InPrivate TPM2BSensitive `gotpm:"optional"`
+	InPrivate tpm2bSensitive `gotpm:"optional"`
 	// the public portion of the object
-	InPublic TPM2BPublic
+	InPublic tpm2bPublic
 	// hierarchy with which the object area is associated
 	Hierarchy TPMIRHHierarchy `gotpm:"nullable"`
 }
@@ -317,7 +317,7 @@ func (cmd *ReadPublic) Execute(t transport.TPM, s ...Session) (*ReadPublicRespon
 // ReadPublicResponse is the response from TPM2_ReadPublic.
 type ReadPublicResponse struct {
 	// structure containing the public area of an object
-	OutPublic TPM2BPublic
+	OutPublic tpm2bPublic
 	// name of object
 	Name TPM2BName
 	// the Qualified Name of the object
@@ -430,7 +430,7 @@ type CreateLoaded struct {
 	// the sensitive data, see TPM 2.0 Part 1 Sensitive Values
 	InSensitive TPM2BSensitiveCreate
 	// the public template
-	InPublic TPM2BTemplate
+	InPublic tpm2bTemplate
 }
 
 // Command implements the Command interface.
@@ -452,7 +452,7 @@ type CreateLoadedResponse struct {
 	// the sensitive area of the object (optional)
 	OutPrivate TPM2BPrivate `gotpm:"optional"`
 	// the public portion of the created object
-	OutPublic TPM2BPublic
+	OutPublic tpm2bPublic
 	// the name of the created object
 	Name TPM2BName
 }
@@ -466,7 +466,7 @@ type ECDHZGen struct {
 	// handle of a loaded ECC key
 	KeyHandle handle `gotpm:"handle,auth"`
 	// a public key
-	InPoint TPM2BECCPoint
+	InPoint tpm2bECCPoint
 }
 
 // Command implements the Command interface.
@@ -484,7 +484,7 @@ func (cmd *ECDHZGen) Execute(t transport.TPM, s ...Session) (*ECDHZGenResponse, 
 // ECDHZGenResponse is the response from TPM2_ECDHZGen.
 type ECDHZGenResponse struct {
 	// X and Y coordinates of the product of the multiplication
-	OutPoint TPM2BECCPoint
+	OutPoint tpm2bECCPoint
 }
 
 // Response implements the Response interface.
@@ -674,7 +674,7 @@ func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, er
 // CertifyResponse is the response from TPM2_Certify.
 type CertifyResponse struct {
 	// the structure that was signed
-	CertifyInfo TPM2BAttest
+	CertifyInfo tpm2bAttest
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature TPMTSignature
 }
@@ -714,7 +714,7 @@ func (cmd *CertifyCreation) Execute(t transport.TPM, s ...Session) (*CertifyCrea
 // CertifyCreationResponse is the response from TPM2_CertifyCreation.
 type CertifyCreationResponse struct {
 	// the structure that was signed
-	CertifyInfo TPM2BAttest
+	CertifyInfo tpm2bAttest
 	// the signature over certifyInfo
 	Signature TPMTSignature
 }
@@ -750,7 +750,7 @@ func (cmd *Quote) Execute(t transport.TPM, s ...Session) (*QuoteResponse, error)
 // QuoteResponse is the response from TPM2_Quote.
 type QuoteResponse struct {
 	// the quoted information
-	Quoted TPM2BAttest
+	Quoted tpm2bAttest
 	// the signature over quoted
 	Signature TPMTSignature
 }
@@ -789,7 +789,7 @@ func (cmd *GetSessionAuditDigest) Execute(t transport.TPM, s ...Session) (*GetSe
 // TPM2_GetSessionAuditDigest.
 type GetSessionAuditDigestResponse struct {
 	// the audit information that was signed
-	AuditInfo TPM2BAttest
+	AuditInfo tpm2bAttest
 	// the signature over auditInfo
 	Signature TPMTSignature
 }
@@ -803,7 +803,7 @@ type Commit struct {
 	// handle of the key that will be used in the signing operation
 	SignHandle handle `gotpm:"handle,auth"`
 	// a point (M) on the curve used by signHandle
-	P1 TPM2BECCPoint
+	P1 tpm2bECCPoint
 	// octet array used to derive x-coordinate of a base point
 	S2 TPM2BSensitiveData
 	// y coordinate of the point associated with s2
@@ -826,11 +826,11 @@ func (cmd *Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, erro
 // CommitResponse is the response from TPM2_Commit.
 type CommitResponse struct {
 	// ECC point K ≔ [ds](x2, y2)
-	K TPM2BECCPoint
+	K tpm2bECCPoint
 	// ECC point L ≔ [r](x2, y2)
-	L TPM2BECCPoint
+	L tpm2bECCPoint
 	// ECC point E ≔ [r]P1
-	E TPM2BECCPoint
+	E tpm2bECCPoint
 	// least-significant 16 bits of commitCount
 	Counter uint16
 }
@@ -1421,7 +1421,7 @@ type CreatePrimary struct {
 	// the sensitive data
 	InSensitive TPM2BSensitiveCreate
 	// the public template
-	InPublic TPM2BPublic
+	InPublic tpm2bPublic
 	// data that will be included in the creation data for this
 	// object to provide permanent, verifiable linkage between this
 	// object and some object owner data
@@ -1447,9 +1447,9 @@ type CreatePrimaryResponse struct {
 	// handle of type TPM_HT_TRANSIENT for created Primary Object
 	ObjectHandle TPMHandle `gotpm:"handle"`
 	// the public portion of the created object
-	OutPublic TPM2BPublic
+	OutPublic tpm2bPublic
 	// contains a TPMS_CREATION_DATA
-	CreationData TPM2BCreationData
+	CreationData tpm2bCreationData
 	// digest of creationData using nameAlg of outPublic
 	CreationHash TPM2BDigest
 	// ticket used by TPM2_CertifyCreation() to validate that the
@@ -1603,7 +1603,7 @@ type NVDefineSpace struct {
 	// the authorization value
 	Auth TPM2BAuth
 	// the public parameters of the NV area
-	PublicInfo TPM2BNVPublic
+	PublicInfo tpm2bNVPublic
 }
 
 // Command implements the Command interface.
@@ -1690,7 +1690,7 @@ func (cmd *NVReadPublic) Execute(t transport.TPM, s ...Session) (*NVReadPublicRe
 
 // NVReadPublicResponse is the response from TPM2_NV_ReadPublic.
 type NVReadPublicResponse struct {
-	NVPublic TPM2BNVPublic
+	NVPublic tpm2bNVPublic
 	NVName   TPM2BName
 }
 
@@ -1841,7 +1841,7 @@ func (cmd *NVCertify) Execute(t transport.TPM, s ...Session) (*NVCertifyResponse
 // NVCertifyResponse is the response from TPM2_NV_Read.
 type NVCertifyResponse struct {
 	// the structure that was signed
-	CertifyInfo TPM2BAttest
+	CertifyInfo tpm2bAttest
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature TPMTSignature
 }

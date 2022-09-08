@@ -13,7 +13,7 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 
 	cl := CreateLoaded{
 		ParentHandle: TPMRHOwner,
-		InPublic: NewTPM2BTemplate(
+		InPublic: TPM2BTemplate(
 			TPMUTemplate(&TPMTPublic{
 				Type:    TPMAlgKeyedHash,
 				NameAlg: TPMAlgSHA256,
@@ -58,7 +58,7 @@ func TestCreateLoaded(t *testing.T) {
 
 	deriver := getDeriver(t, thetpm)
 
-	derive := NewTPM2BDerive(
+	derive := TPM2BDerive(
 		&TPMSDerive{
 			Label: TPM2BLabel{
 				Buffer: []byte("label"),
@@ -71,7 +71,7 @@ func TestCreateLoaded(t *testing.T) {
 	createLoadeds := map[string]*CreateLoaded{
 		"PrimaryKey": {
 			ParentHandle: TPMRHEndorsement,
-			InPublic:     NewTPM2BTemplate(TPMUTemplate(&ECCEKTemplate)),
+			InPublic:     TPM2BTemplate(TPMUTemplate(&ECCEKTemplate)),
 		},
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,
@@ -81,7 +81,7 @@ func TestCreateLoaded(t *testing.T) {
 						Buffer: []byte("p@ssw0rd"),
 					},
 				}),
-			InPublic: NewTPM2BTemplate(
+			InPublic: TPM2BTemplate(
 				TPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
@@ -108,7 +108,7 @@ func TestCreateLoaded(t *testing.T) {
 						Buffer: []byte("secrets"),
 					}),
 				}),
-			InPublic: NewTPM2BTemplate(
+			InPublic: TPM2BTemplate(
 				TPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgKeyedHash,
 					NameAlg: TPMAlgSHA256,
@@ -126,7 +126,7 @@ func TestCreateLoaded(t *testing.T) {
 					},
 					Data: TPMUSensitiveCreate(&derive),
 				}),
-			InPublic: NewTPM2BTemplate(
+			InPublic: TPM2BTemplate(
 				TPMUTemplate(&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,

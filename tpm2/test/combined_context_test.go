@@ -38,7 +38,7 @@ func TestCombinedContext(t *testing.T) {
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
-		InPublic: NewTPM2BPublic(&TPMTPublic{
+		InPublic: TPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgRSA,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{

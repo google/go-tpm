@@ -25,7 +25,7 @@ func TestCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
-	public := NewTPM2BPublic(&TPMTPublic{
+	public := TPM2BPublic(&TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -157,7 +157,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := NewTPM2BPublic(&TPMTPublic{
+	public := TPM2BPublic(&TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -273,7 +273,7 @@ func TestNVCertify(t *testing.T) {
 
 	Auth := []byte("password")
 
-	public := NewTPM2BPublic(&TPMTPublic{
+	public := TPM2BPublic(&TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -319,7 +319,7 @@ func TestNVCertify(t *testing.T) {
 
 	def := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: NewTPM2BNVPublic(
+		PublicInfo: TPM2BNVPublic(
 			&TPMSNVPublic{
 				NVIndex: TPMHandle(0x0180000F),
 				NameAlg: TPMAlgSHA256,

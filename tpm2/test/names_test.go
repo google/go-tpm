@@ -25,7 +25,7 @@ func TestObjectName(t *testing.T) {
 
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic:      NewTPM2BPublic(&ECCEKTemplate),
+		InPublic:      TPM2BPublic(&ECCEKTemplate),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {
@@ -52,7 +52,7 @@ func TestNVName(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := NewTPM2BNVPublic(
+	public := TPM2BNVPublic(
 		&TPMSNVPublic{
 			NVIndex: TPMHandle(0x0180000F),
 			NameAlg: TPMAlgSHA256,
