@@ -276,9 +276,10 @@ func AESEncryption(keySize TPMKeyBits, dir parameterEncryptiontpm2ion) AuthOptio
 				TPMAlgAES,
 				TPMKeyBits(keySize),
 			),
-			Mode: TPMUSymMode{
-				AES: NewAlgID(TPMAlgCFB),
-			},
+			Mode: *NewTPMUSymMode(
+				TPMAlgAES,
+				TPMAlgCFB,
+			),
 		}
 	}
 }

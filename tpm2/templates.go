@@ -27,9 +27,10 @@ var (
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					Mode: *NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				KeyBits: 2048,
 			},
@@ -74,9 +75,10 @@ var (
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					Mode: *NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				KeyBits: 2048,
 			},
@@ -114,9 +116,10 @@ var (
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					Mode: *NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				CurveID: TPMECCNistP256,
 			},
@@ -167,9 +170,10 @@ var (
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					Mode: *NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				CurveID: TPMECCNistP256,
 			},

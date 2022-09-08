@@ -62,17 +62,6 @@ type TPMKeySize uint16
 // See definition in Part 2, Structures, section 5.3.
 type TPMKeyBits uint16
 
-// Boxed implements the Boxable interface.
-func (b TPMKeyBits) boxed() Marshallable {
-	return &BoxedTPMKeyBits{TPMKeyBits: b}
-}
-
-// BoxedTPMKeyBits is a struct so it can be a member of a union.
-type BoxedTPMKeyBits struct {
-	marshalByReflection
-	TPMKeyBits
-}
-
 // TPMGenerated represents a TPM_GENERATED.
 // See definition in Part 2: Structures, section 6.2.
 type TPMGenerated uint32
@@ -485,17 +474,6 @@ type TPMIRHACT = TPMHandle
 // TPMIAlgHash represents a TPMI_ALG_HASH.
 // See definition in Part 2: Structures, section 9.27.
 type TPMIAlgHash = TPMAlgID
-
-// BoxedTPMAlgID is a struct so it can be a member of a union.
-type BoxedTPMAlgID struct {
-	marshalByReflection
-	TPMAlgID
-}
-
-// Boxed implements the Boxable interface.
-func (a TPMAlgID) boxed() Marshallable {
-	return &BoxedTPMAlgID{TPMAlgID: a}
-}
 
 // Hash returns the crypto.Hash associated with a TPMIAlgHash.
 func (a TPMIAlgHash) Hash() (crypto.Hash, error) {
@@ -1293,7 +1271,6 @@ type tpmuSymKeyBits struct {
 }
 
 type symKeyBitsContents interface {
-	boxable
 	// TODO: The rest of the symmetric algorithms get their own entry
 	// in this union.
 	TPMKeyBits | TPMAlgID
@@ -1305,7 +1282,7 @@ func (u *tpmuSymKeyBits) marshal(buf *bytes.Buffer) {
 		buf.Write(Marshal(u.contents))
 	} else {
 		// If this is a zero-valued structure, marshal a default KeyBits.
-		var defaultValue BoxedTPMKeyBits
+		var defaultValue boxed[TPMKeyBits]
 		buf.Write(Marshal(&defaultValue))
 	}
 }
@@ -1313,12 +1290,12 @@ func (u *tpmuSymKeyBits) marshal(buf *bytes.Buffer) {
 func (u *tpmuSymKeyBits) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
-		contents := BoxedTPMKeyBits{}
+		var contents boxed[TPMKeyBits]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMAlgXOR:
-		contents := BoxedTPMAlgID{}
+		var contents boxed[TPMAlgID]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
@@ -1328,17 +1305,17 @@ func (u *tpmuSymKeyBits) allocateAndGet(hint int64) (reflect.Value, error) {
 
 // NewTPMUSymKeyBits instantiates a tpmuSymKeyBits with the given contents.
 func NewTPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) *tpmuSymKeyBits {
-	boxed := contents.boxed()
+	boxed := box(contents)
 	return &tpmuSymKeyBits{
 		selector: selector,
-		contents: boxed,
+		contents: &boxed,
 	}
 }
 
 // AES returns the 'aes' member of the union.
 func (u *tpmuSymKeyBits) AES() maybe[TPMKeyBits] {
 	if u.selector == TPMAlgAES {
-		value := u.contents.(*BoxedTPMKeyBits).TPMKeyBits
+		value := u.contents.(*boxed[TPMKeyBits]).unbox()
 		return asMaybe(&value)
 	}
 	return maybeNot[TPMKeyBits](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
@@ -1347,20 +1324,64 @@ func (u *tpmuSymKeyBits) AES() maybe[TPMKeyBits] {
 // XOR returns the 'xor' member of the union.
 func (u *tpmuSymKeyBits) XOR() maybe[TPMAlgID] {
 	if u.selector == TPMAlgXOR {
-		value := u.contents.(*BoxedTPMAlgID).TPMAlgID
+		value := u.contents.(*boxed[TPMAlgID]).unbox()
 		return asMaybe(&value)
 	}
 	return maybeNot[TPMAlgID](fmt.Errorf("did not contain xor (selector value was %v)", u.selector))
 }
 
-// TPMUSymMode represents a TPMU_SYM_MODE.
+// tpmuSymMode represents a TPMU_SYM_MODE.
 // See definition in Part 2: Structures, section 11.1.4.
-type TPMUSymMode struct {
-	marshalByReflection
+type tpmuSymMode struct {
+	selector TPMAlgID
+	contents Marshallable
 	// TODO: The rest of the symmetric algorithms get their own entry
 	// in this union.
-	AES *TPMIAlgSymMode `gotpm:"selector=0x0006"` // TPM_ALG_AES
-	XOR *struct{}       `gotpm:"selector=0x000A"` // TPM_ALG_XOR
+	// AES *TPMIAlgSymMode `gotpm:"selector=0x0006"` // TPM_ALG_AES
+	// XOR *struct{}       `gotpm:"selector=0x000A"` // TPM_ALG_XOR
+}
+
+type symModeContents interface {
+	TPMIAlgSymMode | TPMSEmpty
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuSymMode) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuSymMode) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	case TPMAlgAES:
+		var contents boxed[TPMKeyBits]
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgXOR:
+		var contents boxed[TPMSEmpty]
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUSymMode instantiates a tpmuSymMode with the given contents.
+func NewTPMUSymMode[C symModeContents](selector TPMAlgID, contents C) *tpmuSymMode {
+	boxed := box(contents)
+	return &tpmuSymMode{
+		selector: selector,
+		contents: &boxed,
+	}
+}
+
+// AES returns the 'aes' member of the union.
+func (u *tpmuSymMode) AES() maybe[TPMIAlgSymMode] {
+	if u.selector == TPMAlgAES {
+		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
+		return asMaybe(&value)
+	}
+	return maybeNot[TPMIAlgSymMode](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
 }
 
 // TPMUSymDetails represents a TPMU_SYM_DETAILS.
@@ -1382,7 +1403,7 @@ type TPMTSymDef struct {
 	// the key size
 	KeyBits tpmuSymKeyBits `gotpm:"tag=Algorithm"`
 	// the mode for the key
-	Mode TPMUSymMode `gotpm:"tag=Algorithm"`
+	Mode tpmuSymMode `gotpm:"tag=Algorithm"`
 	// contains the additional algorithm details
 	Details TPMUSymDetails `gotpm:"tag=Algorithm"`
 }
@@ -1400,7 +1421,7 @@ type TPMTSymDefObject struct {
 	// default mode
 	// When used in the parameter area of a parent object, this shall
 	// be TPM_ALG_CFB.
-	Mode TPMUSymMode `gotpm:"tag=Algorithm"`
+	Mode tpmuSymMode `gotpm:"tag=Algorithm"`
 	// contains the additional algorithm details, if any
 	Details TPMUSymDetails `gotpm:"tag=Algorithm"`
 }
