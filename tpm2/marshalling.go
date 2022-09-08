@@ -201,25 +201,26 @@ func (value *tpm2b[T]) Contents() maybe[T] {
 	return asMaybe(&result)
 }
 
-// boxable represents any basic TPM type that can be put into a box.
-// Some structures (e.g., unions) require all their members to be structures.
-// type boxable interface {
-// 	// Returns the value in a box
-// 	boxed() Marshallable
-// }
-
 // boxed is a helper type for corner cases such as unions, where all members must be structs.
 type boxed[T any] struct {
-	marshalByReflection
-	Contents T
+	Contents *T
 }
 
 func box[T any](contents T) boxed[T] {
 	return boxed[T]{
-		Contents: contents,
+		Contents: &contents,
 	}
 }
 
-func (b boxed[T]) unbox() T {
+func (b boxed[T]) unbox() *T {
 	return b.Contents
+}
+
+func (b *boxed[T]) marshal(buf *bytes.Buffer) {
+	marshal(buf, reflect.ValueOf(b.Contents))
+}
+
+func (b *boxed[T]) unmarshal(buf *bytes.Buffer) error {
+	b.Contents = new(T)
+	return unmarshal(buf, reflect.ValueOf(b.Contents))
 }

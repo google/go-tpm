@@ -1316,7 +1316,7 @@ func NewTPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) *tpm
 func (u *tpmuSymKeyBits) AES() maybe[TPMKeyBits] {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMKeyBits]).unbox()
-		return asMaybe(&value)
+		return asMaybe(value)
 	}
 	return maybeNot[TPMKeyBits](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
 }
@@ -1325,7 +1325,7 @@ func (u *tpmuSymKeyBits) AES() maybe[TPMKeyBits] {
 func (u *tpmuSymKeyBits) XOR() maybe[TPMAlgID] {
 	if u.selector == TPMAlgXOR {
 		value := u.contents.(*boxed[TPMAlgID]).unbox()
-		return asMaybe(&value)
+		return asMaybe(value)
 	}
 	return maybeNot[TPMAlgID](fmt.Errorf("did not contain xor (selector value was %v)", u.selector))
 }
@@ -1335,10 +1335,6 @@ func (u *tpmuSymKeyBits) XOR() maybe[TPMAlgID] {
 type tpmuSymMode struct {
 	selector TPMAlgID
 	contents Marshallable
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
-	// AES *TPMIAlgSymMode `gotpm:"selector=0x0006"` // TPM_ALG_AES
-	// XOR *struct{}       `gotpm:"selector=0x000A"` // TPM_ALG_XOR
 }
 
 type symModeContents interface {
@@ -1352,6 +1348,8 @@ func (u *tpmuSymMode) marshal(buf *bytes.Buffer) {
 
 func (u *tpmuSymMode) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
+	// TODO: The rest of the symmetric algorithms get their own entry
+	// in this union.
 	case TPMAlgAES:
 		var contents boxed[TPMKeyBits]
 		u.contents = &contents
@@ -1379,19 +1377,55 @@ func NewTPMUSymMode[C symModeContents](selector TPMAlgID, contents C) *tpmuSymMo
 func (u *tpmuSymMode) AES() maybe[TPMIAlgSymMode] {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
-		return asMaybe(&value)
+		return asMaybe(value)
 	}
 	return maybeNot[TPMIAlgSymMode](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
 }
 
-// TPMUSymDetails represents a TPMU_SYM_DETAILS.
+// tpmuSymDetails represents a TPMU_SYM_DETAILS.
 // See definition in Part 2: Structures, section 11.1.5.
-type TPMUSymDetails struct {
-	marshalByReflection
+type tpmuSymDetails struct {
+	selector TPMAlgID
+	contents Marshallable
+}
+
+type symDetailsContents interface {
+	TPMSEmpty
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuSymDetails) marshal(buf *bytes.Buffer) {
+	if u.contents != nil {
+		buf.Write(Marshal(u.contents))
+	}
+	// By default, marshal nothing.
+}
+
+func (u *tpmuSymDetails) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
 	// TODO: The rest of the symmetric algorithms get their own entry
 	// in this union.
-	AES *struct{} `gotpm:"selector=0x0006"` // TPM_ALG_AES
-	XOR *struct{} `gotpm:"selector=0x000A"` // TPM_ALG_XOR
+	case TPMAlgAES:
+		var contents boxed[TPMSEmpty]
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgXOR:
+		var contents boxed[TPMSEmpty]
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUSymDetails instantiates a tpmuSymDetails with the given contents.
+func NewTPMUSymDetails[C symDetailsContents](selector TPMAlgID, contents C) *tpmuSymMode {
+	boxed := box(contents)
+	return &tpmuSymMode{
+		selector: selector,
+		contents: &boxed,
+	}
 }
 
 // TPMTSymDef represents a TPMT_SYM_DEF.
@@ -1405,7 +1439,7 @@ type TPMTSymDef struct {
 	// the mode for the key
 	Mode tpmuSymMode `gotpm:"tag=Algorithm"`
 	// contains the additional algorithm details
-	Details TPMUSymDetails `gotpm:"tag=Algorithm"`
+	Details tpmuSymDetails `gotpm:"tag=Algorithm"`
 }
 
 // TPMTSymDefObject represents a TPMT_SYM_DEF_OBJECT.
@@ -1423,7 +1457,7 @@ type TPMTSymDefObject struct {
 	// be TPM_ALG_CFB.
 	Mode tpmuSymMode `gotpm:"tag=Algorithm"`
 	// contains the additional algorithm details, if any
-	Details TPMUSymDetails `gotpm:"tag=Algorithm"`
+	Details tpmuSymDetails `gotpm:"tag=Algorithm"`
 }
 
 // TPM2BSymKey represents a TPM2B_SYM_KEY.
@@ -1574,12 +1608,63 @@ type TPMSSchemeXOR struct {
 	KDF TPMIAlgKDF
 }
 
-// TPMUSchemeKeyedHash represents a TPMU_SCHEME_KEYEDHASH.
+// tpmuSchemeKeyedHash represents a TPMU_SCHEME_KEYEDHASH.
 // See definition in Part 2: Structures, section 11.1.22.
-type TPMUSchemeKeyedHash struct {
-	marshalByReflection
-	HMAC *TPMSSchemeHMAC `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
-	XOR  *TPMSSchemeXOR  `gotpm:"selector=0x000A"` // TPM_ALG_XOR
+type tpmuSchemeKeyedHash struct {
+	selector TPMAlgID
+	contents Marshallable
+}
+
+type schemeKeyedHashContents interface {
+	Marshallable
+	*TPMSSchemeHMAC | *TPMSSchemeXOR
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuSchemeKeyedHash) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuSchemeKeyedHash) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	case TPMAlgHMAC:
+		var contents TPMSSchemeHMAC
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgXOR:
+		var contents TPMSSchemeXOR
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUSchemeKeyedHash instantiates a tpmuSchemeKeyedHash with the given contents.
+func NewTPMUSchemeKeyedHash[C schemeKeyedHashContents](selector TPMAlgID, contents C) *tpmuSchemeKeyedHash {
+	return &tpmuSchemeKeyedHash{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// HMAC returns the 'hmac' member of the union.
+func (u *tpmuSchemeKeyedHash) HMAC() maybe[TPMSSchemeHMAC] {
+	if u.selector == TPMAlgHMAC {
+		value := u.contents.(*TPMSSchemeHMAC)
+		return asMaybe(value)
+	}
+	return maybeNot[TPMSSchemeHMAC](fmt.Errorf("did not contain hmac (selector value was %v)", u.selector))
+}
+
+// XOR returns the 'xor' member of the union.
+func (u *tpmuSchemeKeyedHash) XOR() maybe[TPMSSchemeXOR] {
+	if u.selector == TPMAlgXOR {
+		value := u.contents.(*TPMSSchemeXOR)
+		return asMaybe(value)
+	}
+	return maybeNot[TPMSSchemeXOR](fmt.Errorf("did not contain xor (selector value was %v)", u.selector))
 }
 
 // TPMTKeyedHashScheme represents a TPMT_KEYEDHASH_SCHEME.
@@ -1587,7 +1672,7 @@ type TPMUSchemeKeyedHash struct {
 type TPMTKeyedHashScheme struct {
 	marshalByReflection
 	Scheme  TPMIAlgKeyedHashScheme `gotpm:"nullable"`
-	Details TPMUSchemeKeyedHash    `gotpm:"tag=Scheme"`
+	Details tpmuSchemeKeyedHash    `gotpm:"tag=Scheme"`
 }
 
 // TPMSSigSchemeRSASSA represents a TPMS_SIG_SCHEME_RSASSA.

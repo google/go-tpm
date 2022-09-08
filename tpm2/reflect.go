@@ -420,6 +420,7 @@ func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 // Returns an error if the buffer does not contain enough data to satisfy the
 // type.
 func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
+	fmt.Printf("Unmarshalling '%v'\n", v.Type().Name())
 	// If the type is not marshalled by reflection, try to call the custom unmarshal method.
 	if !isMarshalledByReflection(v) {
 		if u, ok := v.Addr().Interface().(Unmarshallable); ok {

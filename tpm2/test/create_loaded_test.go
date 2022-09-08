@@ -27,12 +27,13 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 					KeyedHashDetail: &TPMSKeyedHashParms{
 						Scheme: TPMTKeyedHashScheme{
 							Scheme: TPMAlgXOR,
-							Details: TPMUSchemeKeyedHash{
-								XOR: &TPMSSchemeXOR{
+							Details: *NewTPMUSchemeKeyedHash(
+								TPMAlgXOR,
+								&TPMSSchemeXOR{
 									HashAlg: TPMAlgSHA256,
 									KDF:     TPMAlgKDF1SP800108,
 								},
-							},
+							),
 						},
 					},
 				},
