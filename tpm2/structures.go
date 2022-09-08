@@ -792,8 +792,8 @@ type capabilitiesContents interface {
 		*TPMLTaggedPCRProperty | *TPMLECCCurve | *TPMLTaggedPolicy | *TPMLACTData
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuCapabilities) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuCapabilities) create(hint int64) (reflect.Value, error) {
 	switch TPMCap(hint) {
 	case TPMCapAlgs:
 		contents := TPMLAlgProperty{}
@@ -1154,8 +1154,8 @@ type attestContents interface {
 		*TPMSQuoteInfo | *TPMSTimeAttestInfo | *TPMSCreationInfo | *TPMSNVDigestCertifyInfo
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuAttest) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuAttest) create(hint int64) (reflect.Value, error) {
 	switch TPMST(hint) {
 	case TPMSTAttestNV:
 		contents := TPMSNVCertifyInfo{}
@@ -1393,8 +1393,8 @@ type symKeyBitsContents interface {
 	TPMKeyBits | TPMAlgID
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuSymKeyBits) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuSymKeyBits) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
 		var contents boxed[TPMKeyBits]
@@ -1470,8 +1470,8 @@ type symModeContents interface {
 	TPMIAlgSymMode | TPMSEmpty
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuSymMode) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuSymMode) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
 		var contents boxed[TPMAlgID]
@@ -1538,8 +1538,8 @@ type symDetailsContents interface {
 	TPMSEmpty
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuSymDetails) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuSymDetails) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
 		var contents boxed[TPMSEmpty]
@@ -1772,8 +1772,8 @@ type schemeKeyedHashContents interface {
 	*TPMSSchemeHMAC | *TPMSSchemeXOR
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuSchemeKeyedHash) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuSchemeKeyedHash) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
 		var contents TPMSSchemeHMAC
@@ -1869,8 +1869,8 @@ type sigSchemeContents interface {
 	*TPMSSchemeHMAC | *TPMSSchemeHash | *TPMSSchemeECDAA
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuSigScheme) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuSigScheme) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
 		var contents TPMSSchemeHMAC
@@ -2020,8 +2020,8 @@ type kdfSchemeContents interface {
 		*TPMSKDFSchemeKDF2 | *TPMSKDFSchemeKDF1SP800108
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuKDFScheme) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuKDFScheme) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgMGF1:
 		var contents TPMSKDFSchemeMGF1
@@ -2165,8 +2165,8 @@ type asymSchemeContents interface {
 		*TPMSSigSchemeECDSA | *TPMSKeySchemeECDH | *TPMSSchemeECDAA
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuAsymScheme) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuAsymScheme) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgRSASSA:
 		var contents TPMSSigSchemeRSASSA
@@ -2423,8 +2423,8 @@ type signatureContents interface {
 	*TPMTHA | *TPMSSignatureRSA | *TPMSSignatureECC
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuSignature) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuSignature) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
 		var contents TPMTHA
@@ -2551,8 +2551,8 @@ type publicIDContents interface {
 	*TPM2BDigest | *TPM2BPublicKeyRSA | *TPMSECCPoint
 }
 
-// allocateAndGet implements the UnmarshallableWithHint interface.
-func (u *tpmuPublicID) allocateAndGet(hint int64) (reflect.Value, error) {
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuPublicID) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgKeyedHash:
 		var contents TPM2BDigest

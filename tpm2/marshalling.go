@@ -71,8 +71,8 @@ type Unmarshallable interface {
 // but that requires a selector ("hint") value when unmarshalling. Most TPMU_ are
 // an example of this.
 type UnmarshallableWithHint interface {
-	// allocateAndGet will instantiate and return the corresponding union member.
-	allocateAndGet(hint int64) (reflect.Value, error)
+	// create will instantiate and return the corresponding union member.
+	create(hint int64) (reflect.Value, error)
 	// get will return the corresponding union member by copy. If the union is
 	// uninitialized, it will initialize a new zero-valued one.
 	get(hint int64) (reflect.Value, error)
@@ -158,7 +158,7 @@ func tpm2bHelper[T any, C bytesOr[T]](contents C) *tpm2b[T] {
 	return &tpm2b[T]{buffer: any(contents).([]byte)}
 }
 
-// marshal implements the marshallable interface.
+// marshal implements the Marshallable interface.
 func (value *tpm2b[T]) marshal(buf *bytes.Buffer) {
 	if value.contents != nil {
 		var temp bytes.Buffer
@@ -171,7 +171,7 @@ func (value *tpm2b[T]) marshal(buf *bytes.Buffer) {
 	}
 }
 
-// unmarshal implements the marshallable interface.
+// unmarshal implements the Marshallable interface.
 func (value *tpm2b[T]) unmarshal(buf *bytes.Buffer) error {
 	var size uint16
 	binary.Read(buf, binary.BigEndian, &size)
@@ -208,16 +208,19 @@ type boxed[T any] struct {
 	Contents *T
 }
 
+// box will put a value into a box.
 func box[T any](contents T) boxed[T] {
 	return boxed[T]{
 		Contents: &contents,
 	}
 }
 
+// unbox will take a value out of a box.
 func (b boxed[T]) unbox() *T {
 	return b.Contents
 }
 
+// marshal implements the Marshallable interface.
 func (b *boxed[T]) marshal(buf *bytes.Buffer) {
 	if b.Contents == nil {
 		var contents T
@@ -227,6 +230,7 @@ func (b *boxed[T]) marshal(buf *bytes.Buffer) {
 	}
 }
 
+// unmarshal implements the Unmarshallable interface.
 func (b *boxed[T]) unmarshal(buf *bytes.Buffer) error {
 	b.Contents = new(T)
 	return unmarshal(buf, reflect.ValueOf(b.Contents))

@@ -617,7 +617,7 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			var uwh UnmarshallableWithHint
 			if v.Field(i).CanAddr() && v.Field(i).Addr().Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
 				u := v.Field(i).Addr().Interface().(UnmarshallableWithHint)
-				contents, err := u.allocateAndGet(tagValue)
+				contents, err := u.create(tagValue)
 				if err != nil {
 					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
 				}
@@ -627,7 +627,7 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 				}
 			} else if v.Field(i).Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
 				u := v.Field(i).Interface().(UnmarshallableWithHint)
-				contents, err := u.allocateAndGet(tagValue)
+				contents, err := u.create(tagValue)
 				if err != nil {
 					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
 				}
