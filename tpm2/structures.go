@@ -490,9 +490,6 @@ func (a TPMIAlgHash) Hash() (crypto.Hash, error) {
 	return crypto.SHA256, fmt.Errorf("unsupported hash algorithm: %v", a)
 }
 
-// TODO: Provide a placeholder interface here so we can explicitly enumerate
-// these for compile-time protection.
-
 // TPMIAlgSym represents a TPMI_ALG_SYM.
 // See definition in Part 2: Structures, section 9.29.
 type TPMIAlgSym = TPMAlgID
@@ -1393,8 +1390,6 @@ type tpmuSymKeyBits struct {
 }
 
 type symKeyBitsContents interface {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	TPMKeyBits | TPMAlgID
 }
 
@@ -1478,8 +1473,6 @@ type symModeContents interface {
 // allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSymMode) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgAES:
 		var contents boxed[TPMAlgID]
 		u.contents = &contents
@@ -1500,8 +1493,6 @@ func (u *tpmuSymMode) get(hint int64) (reflect.Value, error) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgAES:
 		var contents boxed[TPMAlgID]
 		if u.contents != nil {
@@ -1550,8 +1541,6 @@ type symDetailsContents interface {
 // allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSymDetails) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgAES:
 		var contents boxed[TPMSEmpty]
 		u.contents = &contents
@@ -1572,8 +1561,6 @@ func (u *tpmuSymDetails) get(hint int64) (reflect.Value, error) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgAES, TPMAlgXOR:
 		var contents boxed[TPMSEmpty]
 		if u.contents != nil {
@@ -1885,8 +1872,6 @@ type sigSchemeContents interface {
 // allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSigScheme) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgHMAC:
 		var contents TPMSSchemeHMAC
 		u.contents = &contents
@@ -1912,8 +1897,6 @@ func (u *tpmuSigScheme) get(hint int64) (reflect.Value, error) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgHMAC:
 		var contents TPMSSchemeHMAC
 		if u.contents != nil {
