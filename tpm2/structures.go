@@ -1819,15 +1819,109 @@ type TPMSKDFSchemeKDF2 TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.3.1.
 type TPMSKDFSchemeKDF1SP800108 TPMSSchemeHash
 
-// TPMUKDFScheme represents a TPMU_KDF_SCHEME.
+// tpmuKDFScheme represents a TPMU_KDF_SCHEME.
 // See definition in Part 2: Structures, section 11.2.3.2.
-type TPMUKDFScheme struct {
-	marshalByReflection
-	MGF1         *TPMSKDFSchemeMGF1         `gotpm:"selector=0x0007"` // TPM_ALG_MGF1
-	ECDH         *TPMSKDFSchemeECDH         `gotpm:"selector=0x0019"` // TPM_ALG_ECDH
-	KDF1SP80056A *TPMSKDFSchemeKDF1SP80056A `gotpm:"selector=0x0020"` // TPM_ALG_KDF1_SP800_56A
-	KDF2         *TPMSKDFSchemeKDF2         `gotpm:"selector=0x0021"` // TPM_ALG_KDF2
-	KDF1SP800108 *TPMSKDFSchemeKDF1SP800108 `gotpm:"selector=0x0022"` // TPM_ALG_KDF1_SP800_108
+type tpmuKDFScheme struct {
+	selector TPMAlgID
+	contents Marshallable
+}
+
+// MGF1         *TPMSKDFSchemeMGF1         `gotpm:"selector=0x0007"` // TPM_ALG_MGF1
+// ECDH         *TPMSKDFSchemeECDH         `gotpm:"selector=0x0019"` // TPM_ALG_ECDH
+// KDF1SP80056A *TPMSKDFSchemeKDF1SP80056A `gotpm:"selector=0x0020"` // TPM_ALG_KDF1_SP800_56A
+// KDF2         *TPMSKDFSchemeKDF2         `gotpm:"selector=0x0021"` // TPM_ALG_KDF2
+// KDF1SP800108 *TPMSKDFSchemeKDF1SP800108 `gotpm:"selector=0x0022"` // TPM_ALG_KDF1_SP800_108
+type kdfSchemeContents interface {
+	Marshallable
+	*TPMSKDFSchemeMGF1 | *TPMSKDFSchemeECDH | *TPMSKDFSchemeKDF1SP80056A |
+		*TPMSKDFSchemeKDF2 | *TPMSKDFSchemeKDF1SP800108
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuKDFScheme) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuKDFScheme) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	// TODO: The rest of the symmetric algorithms get their own entry
+	// in this union.
+	case TPMAlgMGF1:
+		var contents TPMSKDFSchemeMGF1
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDH:
+		var contents TPMSKDFSchemeECDH
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgKDF1SP80056A:
+		var contents TPMSKDFSchemeKDF1SP80056A
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgKDF2:
+		var contents TPMSKDFSchemeKDF2
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+
+	case TPMAlgKDF1SP800108:
+		var contents TPMSKDFSchemeKDF1SP800108
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUKDFScheme instantiates a tpmuKDFScheme with the given contents.
+func NewTPMUKDFScheme[C sigSchemeContents](selector TPMAlgID, contents C) *tpmuKDFScheme {
+	return &tpmuKDFScheme{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// MGF1 returns the 'mgf1' member of the union.
+func (u *tpmuKDFScheme) MGF1() maybe[TPMSKDFSchemeMGF1] {
+	if u.selector == TPMAlgMGF1 {
+		return asMaybe(u.contents.(*TPMSKDFSchemeMGF1))
+	}
+	return maybeNot[TPMSKDFSchemeMGF1](fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector))
+}
+
+// MGF1 returns the 'ecdh' member of the union.
+func (u *tpmuKDFScheme) ECDH() maybe[TPMSKDFSchemeECDH] {
+	if u.selector == TPMAlgECDH {
+		return asMaybe(u.contents.(*TPMSKDFSchemeECDH))
+	}
+	return maybeNot[TPMSKDFSchemeECDH](fmt.Errorf("did not contain ecdh (selector value was %v)", u.selector))
+}
+
+// KDF1SP80056A returns the 'kdf1sp80056a' member of the union.
+func (u *tpmuKDFScheme) KDF1SP80056A() maybe[TPMSKDFSchemeKDF1SP80056A] {
+	if u.selector == TPMAlgMGF1 {
+		return asMaybe(u.contents.(*TPMSKDFSchemeKDF1SP80056A))
+	}
+	return maybeNot[TPMSKDFSchemeKDF1SP80056A](fmt.Errorf("did not contain kdf1sp80056a (selector value was %v)", u.selector))
+}
+
+// KDF2 returns the 'kdf2' member of the union.
+func (u *tpmuKDFScheme) KDF2() maybe[TPMSKDFSchemeKDF2] {
+	if u.selector == TPMAlgMGF1 {
+		return asMaybe(u.contents.(*TPMSKDFSchemeKDF2))
+	}
+	return maybeNot[TPMSKDFSchemeKDF2](fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector))
+}
+
+// KDF1SP800108 returns the 'kdf1sp800108' member of the union.
+func (u *tpmuKDFScheme) KDF1SP800108() maybe[TPMSKDFSchemeKDF1SP800108] {
+	if u.selector == TPMAlgMGF1 {
+		return asMaybe(u.contents.(*TPMSKDFSchemeKDF1SP800108))
+	}
+	return maybeNot[TPMSKDFSchemeKDF1SP800108](fmt.Errorf("did not contain kdf1sp800108 (selector value was %v)", u.selector))
 }
 
 // TPMTKDFScheme represents a TPMT_KDF_SCHEME.
@@ -1837,7 +1931,7 @@ type TPMTKDFScheme struct {
 	// scheme selector
 	Scheme TPMIAlgKDF `gotpm:"nullable"`
 	// scheme parameters
-	Details TPMUKDFScheme `gotpm:"tag=Scheme"`
+	Details tpmuKDFScheme `gotpm:"tag=Scheme"`
 }
 
 // TPMUAsymScheme represents a TPMU_ASYM_SCHEME.
