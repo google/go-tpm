@@ -118,7 +118,7 @@ type marshallableByReflection interface {
 // needing no custom logic.
 type marshalByReflection struct{}
 
-func (_ marshalByReflection) reflectionSafe() {}
+func (marshalByReflection) reflectionSafe() {}
 
 // These placeholders are required because a type constraint cannot union another interface
 // that contains methods.
@@ -127,13 +127,13 @@ func (_ marshalByReflection) reflectionSafe() {}
 
 // Placeholder: because this type implements the defaultMarshallable interface,
 // the reflection library knows not to call this.
-func (_ *marshalByReflection) marshal(_ *bytes.Buffer) {
+func (*marshalByReflection) marshal(_ *bytes.Buffer) {
 	panic("not implemented")
 }
 
 // Placeholder: because this type implements the defaultMarshallable interface,
 // the reflection library knows not to call this.
-func (_ *marshalByReflection) unmarshal(_ *bytes.Buffer) error {
+func (*marshalByReflection) unmarshal(_ *bytes.Buffer) error {
 	panic("not implemented")
 }
 
