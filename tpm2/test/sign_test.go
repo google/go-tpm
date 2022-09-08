@@ -142,7 +142,7 @@ func TestSign(t *testing.T) {
 	}
 
 	pub := rspCP.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}

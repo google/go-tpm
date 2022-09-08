@@ -91,12 +91,13 @@ func TestCertify(t *testing.T) {
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
-	unique := TPMUPublicID{
-		RSA: &TPM2BPublicKeyRSA{
+	unique := NewTPMUPublicID(
+		TPMAlgRSA,
+		&TPM2BPublicKeyRSA{
 			Buffer: []byte("subject key"),
 		},
-	}
-	createPrimarySubject.InPublic.Contents().Unwrap().Unique = unique
+	)
+	createPrimarySubject.InPublic.Contents().Unwrap().Unique = *unique
 
 	rspSubject, err := createPrimarySubject.Execute(thetpm)
 	if err != nil {
@@ -135,7 +136,7 @@ func TestCertify(t *testing.T) {
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
@@ -253,7 +254,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	attestHash := sha256.Sum256(info)
 
 	pub := rspCP.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
@@ -397,7 +398,7 @@ func TestNVCertify(t *testing.T) {
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}

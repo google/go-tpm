@@ -71,9 +71,11 @@ type Unmarshallable interface {
 // but that requires a selector ("hint") value when unmarshalling. Most TPMU_ are
 // an example of this.
 type UnmarshallableWithHint interface {
-	Marshallable
 	// allocateAndGet will instantiate and return the corresponding union member.
 	allocateAndGet(hint int64) (reflect.Value, error)
+	// get will return the corresponding union member by copy. If the union is
+	// uninitialized, it will initialize a new zero-valued one.
+	get(hint int64) (reflect.Value, error)
 }
 
 // Marshal will serialize the given values, returning them as a byte slice.
@@ -217,7 +219,12 @@ func (b boxed[T]) unbox() *T {
 }
 
 func (b *boxed[T]) marshal(buf *bytes.Buffer) {
-	marshal(buf, reflect.ValueOf(b.Contents))
+	if b.Contents == nil {
+		var contents T
+		marshal(buf, reflect.ValueOf(&contents))
+	} else {
+		marshal(buf, reflect.ValueOf(b.Contents))
+	}
 }
 
 func (b *boxed[T]) unmarshal(buf *bytes.Buffer) error {

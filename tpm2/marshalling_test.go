@@ -63,13 +63,14 @@ func TestMarshalT(t *testing.T) {
 				CurveID: TPMECCNistP256,
 			},
 		},
-		Unique: TPMUPublicID{
+		Unique: *NewTPMUPublicID(
 			// This happens to be a P256 EKpub from the simulator
-			ECC: &TPMSECCPoint{
+			TPMAlgECC,
+			&TPMSECCPoint{
 				X: TPM2BECCParameter{},
 				Y: TPM2BECCParameter{},
 			},
-		},
+		),
 	}
 
 	// Marshal each component of the parameters
@@ -117,7 +118,7 @@ func TestMarshalT(t *testing.T) {
 	}
 
 	// Marshal the unique area
-	uniqueBytes := Marshal(pub.Unique.ECC)
+	uniqueBytes := Marshal(pub.Unique.ECC().Unwrap())
 	t.Logf("Unique: %x\n", uniqueBytes)
 	unique, err := Unmarshal[TPMSECCPoint](uniqueBytes).CheckUnwrap()
 	if err != nil {

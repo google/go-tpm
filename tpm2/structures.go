@@ -795,11 +795,7 @@ type capabilitiesContents interface {
 		*TPMLTaggedPCRProperty | *TPMLECCCurve | *TPMLTaggedPolicy | *TPMLACTData
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuCapabilities) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuCapabilities) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMCap(hint) {
 	case TPMCapAlgs:
@@ -851,6 +847,76 @@ func (u *tpmuCapabilities) allocateAndGet(hint int64) (reflect.Value, error) {
 		contents := TPMLACTData{}
 		u.contents = &contents
 		u.selector = TPMCap(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuCapabilities) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMCap(hint) {
+	case TPMCapAlgs:
+		contents := TPMLAlgProperty{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLAlgProperty)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapHandles:
+		contents := TPMLHandle{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLHandle)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapCommands:
+		contents := TPMLCCA{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLCCA)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapPPCommands, TPMCapAuditCommands:
+		contents := TPMLCC{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLCC)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapPCRs:
+		contents := TPMLPCRSelection{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLPCRSelection)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapTPMProperties:
+		contents := TPMLTaggedTPMProperty{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLTaggedTPMProperty)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapPCRProperties:
+		contents := TPMLTaggedPCRProperty{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLTaggedPCRProperty)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapECCCurves:
+		contents := TPMLECCCurve{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLECCCurve)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapAuthPolicies:
+		contents := TPMLTaggedPolicy{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLTaggedPolicy)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMCapACT:
+		contents := TPMLACTData{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMLACTData)
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1091,11 +1157,7 @@ type attestContents interface {
 		*TPMSQuoteInfo | *TPMSTimeAttestInfo | *TPMSCreationInfo | *TPMSNVDigestCertifyInfo
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuAttest) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuAttest) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMST(hint) {
 	case TPMSTAttestNV:
@@ -1137,6 +1199,64 @@ func (u *tpmuAttest) allocateAndGet(hint int64) (reflect.Value, error) {
 		contents := TPMSNVDigestCertifyInfo{}
 		u.contents = &contents
 		u.selector = TPMST(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuAttest) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMST(hint) {
+	case TPMSTAttestNV:
+		contents := TPMSNVCertifyInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSNVCertifyInfo)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestCommandAudit:
+		contents := TPMSCommandAuditInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSCommandAuditInfo)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestSessionAudit:
+		contents := TPMSSessionAuditInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSessionAuditInfo)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestCertify:
+		contents := TPMSCertifyInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSCertifyInfo)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestQuote:
+		contents := TPMSQuoteInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSQuoteInfo)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestTime:
+		contents := TPMSTimeAttestInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSTimeAttestInfo)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestCreation:
+		contents := TPMSCreationInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSCreationInfo)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMSTAttestNVDigest:
+		contents := TPMSNVDigestCertifyInfo{}
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSNVDigestCertifyInfo)
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1278,17 +1398,7 @@ type symKeyBitsContents interface {
 	TPMKeyBits | TPMAlgID
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuSymKeyBits) marshal(buf *bytes.Buffer) {
-	if u.contents != nil {
-		buf.Write(Marshal(u.contents))
-	} else {
-		// If this is a zero-valued structure, marshal a default KeyBits.
-		var defaultValue boxed[TPMKeyBits]
-		buf.Write(Marshal(&defaultValue))
-	}
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSymKeyBits) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
@@ -1300,6 +1410,28 @@ func (u *tpmuSymKeyBits) allocateAndGet(hint int64) (reflect.Value, error) {
 		var contents boxed[TPMAlgID]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgAES:
+		var contents boxed[TPMKeyBits]
+		if u.contents != nil {
+			contents = *u.contents.(*boxed[TPMKeyBits])
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgXOR:
+		var contents boxed[TPMAlgID]
+		if u.contents != nil {
+			contents = *u.contents.(*boxed[TPMAlgID])
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1343,17 +1475,13 @@ type symModeContents interface {
 	TPMIAlgSymMode | TPMSEmpty
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuSymMode) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSymMode) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	// TODO: The rest of the symmetric algorithms get their own entry
 	// in this union.
 	case TPMAlgAES:
-		var contents boxed[TPMKeyBits]
+		var contents boxed[TPMAlgID]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
@@ -1361,6 +1489,30 @@ func (u *tpmuSymMode) allocateAndGet(hint int64) (reflect.Value, error) {
 		var contents boxed[TPMSEmpty]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuSymMode) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	// TODO: The rest of the symmetric algorithms get their own entry
+	// in this union.
+	case TPMAlgAES:
+		var contents boxed[TPMAlgID]
+		if u.contents != nil {
+			contents = *u.contents.(*boxed[TPMAlgID])
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgXOR:
+		var contents boxed[TPMSEmpty]
+		if u.contents != nil {
+			contents = *u.contents.(*boxed[TPMSEmpty])
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1395,14 +1547,7 @@ type symDetailsContents interface {
 	TPMSEmpty
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuSymDetails) marshal(buf *bytes.Buffer) {
-	if u.contents != nil {
-		buf.Write(Marshal(u.contents))
-	}
-	// By default, marshal nothing.
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSymDetails) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	// TODO: The rest of the symmetric algorithms get their own entry
@@ -1416,6 +1561,24 @@ func (u *tpmuSymDetails) allocateAndGet(hint int64) (reflect.Value, error) {
 		var contents boxed[TPMSEmpty]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuSymDetails) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	// TODO: The rest of the symmetric algorithms get their own entry
+	// in this union.
+	case TPMAlgAES, TPMAlgXOR:
+		var contents boxed[TPMSEmpty]
+		if u.contents != nil {
+			contents = *u.contents.(*boxed[TPMSEmpty])
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1622,11 +1785,7 @@ type schemeKeyedHashContents interface {
 	*TPMSSchemeHMAC | *TPMSSchemeXOR
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuSchemeKeyedHash) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSchemeKeyedHash) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
@@ -1638,6 +1797,28 @@ func (u *tpmuSchemeKeyedHash) allocateAndGet(hint int64) (reflect.Value, error) 
 		var contents TPMSSchemeXOR
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgHMAC:
+		var contents TPMSSchemeHMAC
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSchemeHMAC)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgXOR:
+		var contents TPMSSchemeXOR
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSchemeXOR)
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1701,11 +1882,7 @@ type sigSchemeContents interface {
 	*TPMSSchemeHMAC | *TPMSSchemeHash | *TPMSSchemeECDAA
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuSigScheme) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSigScheme) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	// TODO: The rest of the symmetric algorithms get their own entry
@@ -1724,6 +1901,36 @@ func (u *tpmuSigScheme) allocateAndGet(hint int64) (reflect.Value, error) {
 		var contents TPMSSchemeECDAA
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuSigScheme) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	// TODO: The rest of the symmetric algorithms get their own entry
+	// in this union.
+	case TPMAlgHMAC:
+		var contents TPMSSchemeHMAC
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSchemeHMAC)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSASSA, TPMAlgRSAPSS, TPMAlgECDSA:
+		var contents TPMSSchemeHash
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSchemeHash)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDAA:
+		var contents TPMSSchemeECDAA
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSchemeECDAA)
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1830,15 +2037,9 @@ type kdfSchemeContents interface {
 		*TPMSKDFSchemeKDF2 | *TPMSKDFSchemeKDF1SP800108
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuKDFScheme) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuKDFScheme) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgMGF1:
 		var contents TPMSKDFSchemeMGF1
 		u.contents = &contents
@@ -1864,6 +2065,47 @@ func (u *tpmuKDFScheme) allocateAndGet(hint int64) (reflect.Value, error) {
 		var contents TPMSKDFSchemeKDF1SP800108
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgMGF1:
+		var contents TPMSKDFSchemeMGF1
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKDFSchemeMGF1)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDH:
+		var contents TPMSKDFSchemeECDH
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKDFSchemeECDH)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgKDF1SP80056A:
+		var contents TPMSKDFSchemeKDF1SP80056A
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKDFSchemeKDF1SP80056A)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgKDF2:
+		var contents TPMSKDFSchemeKDF2
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKDFSchemeKDF2)
+		}
+		return reflect.ValueOf(&contents), nil
+
+	case TPMAlgKDF1SP800108:
+		var contents TPMSKDFSchemeKDF1SP800108
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKDFSchemeKDF1SP800108)
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -1940,15 +2182,9 @@ type asymSchemeContents interface {
 		*TPMSSigSchemeECDSA | *TPMSKeySchemeECDH | *TPMSSchemeECDAA
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuAsymScheme) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuAsymScheme) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
-	// TODO: The rest of the symmetric algorithms get their own entry
-	// in this union.
 	case TPMAlgRSASSA:
 		var contents TPMSSigSchemeRSASSA
 		u.contents = &contents
@@ -1983,6 +2219,58 @@ func (u *tpmuAsymScheme) allocateAndGet(hint int64) (reflect.Value, error) {
 		var contents TPMSSchemeECDAA
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuAsymScheme) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgRSASSA:
+		var contents TPMSSigSchemeRSASSA
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSigSchemeRSASSA)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSAES:
+		var contents TPMSEncSchemeRSAES
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSEncSchemeRSAES)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSAPSS:
+		var contents TPMSSigSchemeRSAPSS
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSigSchemeRSAPSS)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgOAEP:
+		var contents TPMSEncSchemeOAEP
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSEncSchemeOAEP)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDSA:
+		var contents TPMSSigSchemeECDSA
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSigSchemeECDSA)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDH:
+		var contents TPMSKeySchemeECDH
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKeySchemeECDH)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDAA:
+		var contents TPMSSchemeECDAA
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSchemeECDAA)
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -2152,11 +2440,7 @@ type signatureContents interface {
 	*TPMTHA | *TPMSSignatureRSA | *TPMSSignatureECC
 }
 
-// marshal implements the Marshallable interface.
-func (u *tpmuSignature) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
+// allocateAndGet implements the UnmarshallableWithHint interface.
 func (u *tpmuSignature) allocateAndGet(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
@@ -2170,9 +2454,37 @@ func (u *tpmuSignature) allocateAndGet(hint int64) (reflect.Value, error) {
 		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
 	case TPMAlgECDSA, TPMAlgECDAA:
-		var contents TPMSEncSchemeRSAES
+		var contents TPMSSignatureECC
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuSignature) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgHMAC:
+		var contents TPMTHA
+		if u.contents != nil {
+			contents = *u.contents.(*TPMTHA)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSASSA, TPMAlgRSAPSS:
+		var contents TPMSSignatureRSA
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSignatureRSA)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDSA, TPMAlgECDAA:
+		var contents TPMSSignatureECC
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSignatureECC)
+		}
 		return reflect.ValueOf(&contents), nil
 	}
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
@@ -2226,12 +2538,6 @@ func (u *tpmuSignature) ECDAA() maybe[TPMSSignatureECC] {
 	return maybeNot[TPMSSignatureECC](fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector))
 }
 
-// HMAC   *TPMTHA           `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
-// RSASSA *TPMSSignatureRSA `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
-// RSAPSS *TPMSSignatureRSA `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
-// ECDSA  *TPMSSignatureECC `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
-// ECDAA  *TPMSSignatureECC `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
-
 // TPMTSignature represents a TPMT_SIGNATURE.
 // See definition in Part 2: Structures, section 11.3.4.
 type TPMTSignature struct {
@@ -2250,14 +2556,117 @@ type TPM2BEncryptedSecret TPM2BData
 // See definition in Part 2: Structures, section 12.2.2.
 type TPMIAlgPublic = TPMAlgID
 
-// TPMUPublicID represents a TPMU_PUBLIC_ID.
+// tpmuPublicID represents a TPMU_PUBLIC_ID.
 // See definition in Part 2: Structures, section 12.2.3.2.
-type TPMUPublicID struct {
-	marshalByReflection
-	KeyedHash *TPM2BDigest       `gotpm:"selector=0x0008"` // TPM_ALG_KEYEDHASH
-	Sym       *TPM2BDigest       `gotpm:"selector=0x0025"` // TPM_ALG_SYMCIPHER
-	RSA       *TPM2BPublicKeyRSA `gotpm:"selector=0x0001"` // TPM_ALG_RSA
-	ECC       *TPMSECCPoint      `gotpm:"selector=0x0023"` // TPM_ALG_ECC
+type tpmuPublicID struct {
+	selector TPMAlgID
+	contents Marshallable
+}
+
+type publicIDContents interface {
+	Marshallable
+	*TPM2BDigest | *TPM2BPublicKeyRSA | *TPMSECCPoint
+}
+
+// allocateAndGet implements the UnmarshallableWithHint interface.
+func (u *tpmuPublicID) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	case TPMAlgKeyedHash:
+		var contents TPM2BDigest
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgSymCipher:
+		var contents TPM2BDigest
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSA:
+		var contents TPM2BPublicKeyRSA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECC:
+		var contents TPMSECCPoint
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuPublicID) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgKeyedHash:
+		var contents TPM2BDigest
+		if u.contents != nil {
+			contents = *u.contents.(*TPM2BDigest)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgSymCipher:
+		var contents TPM2BDigest
+		if u.contents != nil {
+			contents = *u.contents.(*TPM2BDigest)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSA:
+		var contents TPM2BPublicKeyRSA
+		if u.contents != nil {
+			contents = *u.contents.(*TPM2BPublicKeyRSA)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECC:
+		var contents TPMSECCPoint
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSECCPoint)
+		}
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUPublicID instantiates a tpmuPublicID with the given contents.
+func NewTPMUPublicID[C publicIDContents](selector TPMAlgID, contents C) *tpmuPublicID {
+	return &tpmuPublicID{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// KeyedHash returns the 'keyedHash' member of the union.
+func (u *tpmuPublicID) KeyedHash() maybe[TPM2BDigest] {
+	if u.selector == TPMAlgKeyedHash {
+		return asMaybe(u.contents.(*TPM2BDigest))
+	}
+	return maybeNot[TPM2BDigest](fmt.Errorf("did not contain keyedHash (selector value was %v)", u.selector))
+}
+
+// SymCipher returns the 'symCipher' member of the union.
+func (u *tpmuPublicID) SymCipher() maybe[TPM2BDigest] {
+	if u.selector == TPMAlgSymCipher {
+		return asMaybe(u.contents.(*TPM2BDigest))
+	}
+	return maybeNot[TPM2BDigest](fmt.Errorf("did not contain symCipher (selector value was %v)", u.selector))
+}
+
+// RSA returns the 'rsa' member of the union.
+func (u *tpmuPublicID) RSA() maybe[TPM2BPublicKeyRSA] {
+	if u.selector == TPMAlgRSA {
+		return asMaybe(u.contents.(*TPM2BPublicKeyRSA))
+	}
+	return maybeNot[TPM2BPublicKeyRSA](fmt.Errorf("did not contain rsa (selector value was %v)", u.selector))
+}
+
+// ECC returns the 'ecc' member of the union.
+func (u *tpmuPublicID) ECC() maybe[TPMSECCPoint] {
+	if u.selector == TPMAlgECC {
+		return asMaybe(u.contents.(*TPMSECCPoint))
+	}
+	return maybeNot[TPMSECCPoint](fmt.Errorf("did not contain ecc (selector value was %v)", u.selector))
 }
 
 // TPMSKeyedHashParms represents a TPMS_KEYEDHASH_PARMS.
@@ -2348,7 +2757,7 @@ type TPMTPublic struct {
 	Parameters TPMUPublicParms `gotpm:"tag=Type"`
 	// the unique identifier of the structure
 	// For an asymmetric key, this would be the public key.
-	Unique TPMUPublicID `gotpm:"tag=Type"`
+	Unique tpmuPublicID `gotpm:"tag=Type"`
 }
 
 // TPMTTemplate represents a TPMT_TEMPLATE. It is not defined in the spec.

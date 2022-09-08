@@ -108,10 +108,13 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 			if err != nil {
 				t.Fatalf("%v", err)
 			}
-			if createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC != nil {
-				t.Logf("EK pub:\n%x\n%x\n", createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC.X, createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC.Y)
-				t.Logf("EK name: %x", createEKRsp.Name)
+			switch createEKRsp.OutPublic.Contents().Unwrap().Type {
+			case TPMAlgRSA:
+				t.Logf("EK pub:\n%x\n", createEKRsp.OutPublic.Contents().Unwrap().Unique.RSA().Unwrap().Buffer)
+			case TPMAlgECC:
+				t.Logf("EK pub:\n%x\n%x\n", createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap().X, createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap().Y)
 			}
+			t.Logf("EK name: %x", createEKRsp.Name)
 			defer func() {
 				// Flush the EK
 				flush := FlushContext{FlushHandle: createEKRsp.ObjectHandle}

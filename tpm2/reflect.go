@@ -71,15 +71,11 @@ func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) e
 	command = append(command, sessions...)
 	command = append(command, parms...)
 
-	fmt.Printf("Command: %x\n", command)
-
 	// Send the command via the transport.
 	response, err := t.Send(command)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Response: %x\n\n", response)
 
 	// Parse the command tpm2ly into the response structure.
 	rspBuf := bytes.NewBuffer(response)
@@ -303,8 +299,12 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 					"a numeric field of int64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			if _, ok := v.Field(i).Addr().Interface().(UnmarshallableWithHint); ok {
-				if err := marshal(buf, v.Field(i)); err != nil {
+			if u, ok := v.Field(i).Addr().Interface().(UnmarshallableWithHint); ok {
+				v, err := u.get(tagValue)
+				if err != nil {
+					return err
+				}
+				if err := marshal(buf, v); err != nil {
 					return err
 				}
 			} else {
@@ -420,7 +420,6 @@ func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
 // Returns an error if the buffer does not contain enough data to satisfy the
 // type.
 func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
-	fmt.Printf("Unmarshalling '%v'\n", v.Type().Name())
 	// If the type is not marshalled by reflection, try to call the custom unmarshal method.
 	if !isMarshalledByReflection(v) {
 		if u, ok := v.Addr().Interface().(Unmarshallable); ok {

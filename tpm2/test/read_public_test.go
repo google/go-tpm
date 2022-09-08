@@ -89,8 +89,8 @@ func TestReadPublicKey(t *testing.T) {
 	// PublicArea.Unique represents the unique identifier of the TPMTPublic.
 	// Notice how this test uses verification of another TPM command that is
 	// able to produce similar results to validate the response.
-	rspCPX := rspCP.OutPublic.Contents().Unwrap().Unique.ECC.X
-	rspRPX := rspRP.OutPublic.Contents().Unwrap().Unique.ECC.X
+	rspCPX := rspCP.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap().X
+	rspRPX := rspRP.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap().X
 	if !cmp.Equal(rspCPX, rspRPX, cmpopts.IgnoreUnexported(rspCPX)) {
 		t.Error("Mismatch between public returned from CreatePrimary & ReadPublic")
 	}

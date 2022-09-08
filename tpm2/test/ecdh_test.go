@@ -60,7 +60,7 @@ func TestECDH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not create the TPM key: %v", err)
 	}
-	tpmPub := tpmCreateRsp.OutPublic.Contents().Unwrap().Unique.ECC
+	tpmPub := tpmCreateRsp.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap()
 	tpmX := big.NewInt(0).SetBytes(tpmPub.X.Buffer)
 	tpmY := big.NewInt(0).SetBytes(tpmPub.Y.Buffer)
 

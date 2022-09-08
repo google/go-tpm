@@ -35,11 +35,12 @@ var (
 				KeyBits: 2048,
 			},
 		},
-		Unique: TPMUPublicID{
-			RSA: &TPM2BPublicKeyRSA{
+		Unique: *NewTPMUPublicID(
+			TPMAlgRSA,
+			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
 			},
-		},
+		),
 	}
 	// RSAEKTemplate contains the TCG reference RSA-2048 EK template.
 	RSAEKTemplate = TPMTPublic{
@@ -83,11 +84,12 @@ var (
 				KeyBits: 2048,
 			},
 		},
-		Unique: TPMUPublicID{
-			RSA: &TPM2BPublicKeyRSA{
+		Unique: *NewTPMUPublicID(
+			TPMAlgRSA,
+			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
 			},
-		},
+		),
 	}
 
 	// ECCSRKTemplate contains the TCG reference ECC-P256 SRK template.
@@ -124,8 +126,9 @@ var (
 				CurveID: TPMECCNistP256,
 			},
 		},
-		Unique: TPMUPublicID{
-			ECC: &TPMSECCPoint{
+		Unique: *NewTPMUPublicID(
+			TPMAlgECC,
+			&TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: make([]byte, 32),
 				},
@@ -133,7 +136,7 @@ var (
 					Buffer: make([]byte, 32),
 				},
 			},
-		},
+		),
 	}
 
 	// ECCEKTemplate contains the TCG reference ECC-P256 EK template.
@@ -178,8 +181,9 @@ var (
 				CurveID: TPMECCNistP256,
 			},
 		},
-		Unique: TPMUPublicID{
-			ECC: &TPMSECCPoint{
+		Unique: *NewTPMUPublicID(
+			TPMAlgECC,
+			&TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: make([]byte, 32),
 				},
@@ -187,6 +191,6 @@ var (
 					Buffer: make([]byte, 32),
 				},
 			},
-		},
+		),
 	}
 )
