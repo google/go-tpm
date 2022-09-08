@@ -186,7 +186,7 @@ type Create struct {
 	// handle of parent for new object
 	ParentHandle handle `gotpm:"handle,auth"`
 	// the sensitive data
-	InSensitive TPM2BSensitiveCreate
+	InSensitive tpm2bSensitiveCreate
 	// the public template
 	InPublic tpm2bPublic
 	// data that will be included in the creation data for this
@@ -428,7 +428,7 @@ type CreateLoaded struct {
 	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER, TPM_RH_PLATFORM+{PP}, or TPM_RH_NULL
 	ParentHandle handle `gotpm:"handle,auth,nullable"`
 	// the sensitive data, see TPM 2.0 Part 1 Sensitive Values
-	InSensitive TPM2BSensitiveCreate
+	InSensitive tpm2bSensitiveCreate
 	// the public template
 	InPublic tpm2bTemplate
 }
@@ -1419,7 +1419,7 @@ type CreatePrimary struct {
 	// or TPM_RH_NULL
 	PrimaryHandle handle `gotpm:"handle,auth"`
 	// the sensitive data
-	InSensitive TPM2BSensitiveCreate
+	InSensitive tpm2bSensitiveCreate
 	// the public template
 	InPublic tpm2bPublic
 	// data that will be included in the creation data for this

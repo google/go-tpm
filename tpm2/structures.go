@@ -1677,19 +1677,17 @@ type TPMSSensitiveCreate struct {
 	Data tpmuSensitiveCreate
 }
 
-// TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
-// See definition in Part 2: Structures, section 11.1.16.
 // This is a structure instead of an alias to tpm2b[TPMSSensitiveCreate],
 // see the implementation of marshal below.
-type TPM2BSensitiveCreate struct {
+type tpm2bSensitiveCreate struct {
 	contents *tpm2b[TPMSSensitiveCreate]
 }
 
-// NewTPM2BSensitiveCreate instantiates a TPM2BSensitiveCreate with the given contents
-// (which may be either a TPMSSensitiveCreate or a flat byte array)
-func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) TPM2BSensitiveCreate {
+// TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.16.
+func TPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) tpm2bSensitiveCreate {
 	data := tpm2bHelper[TPMSSensitiveCreate](contents)
-	return TPM2BSensitiveCreate{
+	return tpm2bSensitiveCreate{
 		contents: &data,
 	}
 }
@@ -1698,13 +1696,13 @@ func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) TPM2BSe
 // something better than the default [0x00, 0x00] (an empty 2B).
 // This is because this actually needs to contain a small
 // structure containing some empty values.
-func (c *TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) {
+func (c *tpm2bSensitiveCreate) marshal(buf *bytes.Buffer) {
 	if c.contents != nil {
 		buf.Write(Marshal(c.contents))
 	} else {
 		// If no value was provided (i.e., this is a zero-valued structure),
 		// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
-		defaultValue := NewTPM2BSensitiveCreate(&TPMSSensitiveCreate{
+		defaultValue := TPM2BSensitiveCreate(&TPMSSensitiveCreate{
 			Data: TPMUSensitiveCreate(&TPM2BSensitiveData{}),
 		})
 		defaultValue.marshal(buf)

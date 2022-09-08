@@ -131,7 +131,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 					Handle: createEKRsp.ObjectHandle,
 					Name:   createEKRsp.Name,
 				},
-				InSensitive: NewTPM2BSensitiveCreate(
+				InSensitive: TPM2BSensitiveCreate(
 					&TPMSSensitiveCreate{
 						Data: TPMUSensitiveCreate(&TPM2BSensitiveData{
 							Buffer: data,
