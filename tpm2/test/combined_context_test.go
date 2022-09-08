@@ -48,8 +48,9 @@ func TestCombinedContext(t *testing.T) {
 				SensitiveDataOrigin: true,
 				UserWithAuth:        true,
 			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
+			Parameters: TPMUPublicParms(
+				TPMAlgRSA,
+				&TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
 						Details: TPMUAsymScheme(
@@ -60,7 +61,7 @@ func TestCombinedContext(t *testing.T) {
 					},
 					KeyBits: 2048,
 				},
-			},
+			),
 		}),
 		CreationPCR: TPMLPCRSelection{
 			PCRSelections: []TPMSPCRSelection{

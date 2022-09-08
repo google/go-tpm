@@ -24,8 +24,9 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 				UserWithAuth:        true,
 				SignEncrypt:         true,
 			},
-			Parameters: TPMUPublicParms{
-				ECCDetail: &TPMSECCParms{
+			Parameters: TPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
 						Details: TPMUAsymScheme(
@@ -37,7 +38,7 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 					},
 					CurveID: TPMECCNistP256,
 				},
-			},
+			),
 		}),
 	}
 	rsp, err := createPrimary.Execute(thetpm)

@@ -2027,7 +2027,6 @@ func (u *tpmuKDFScheme) create(hint int64) (reflect.Value, error) {
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
-
 	case TPMAlgKDF1SP800108:
 		var contents TPMSKDFSchemeKDF1SP800108
 		u.contents = &contents
@@ -2689,17 +2688,117 @@ type TPMSECCParms struct {
 	KDF TPMTKDFScheme
 }
 
+type tpmuPublicParms struct {
+	selector TPMAlgID
+	contents Marshallable
+}
+
+type publicParmsContents interface {
+	Marshallable
+	*TPMSKeyedHashParms | *TPMSSymCipherParms | *TPMSRSAParms |
+		*TPMSECCParms
+}
+
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuPublicParms) create(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	case TPMAlgKeyedHash:
+		var contents TPMSKeyedHashParms
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgSymCipher:
+		var contents TPMSSymCipherParms
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSA:
+		var contents TPMSRSAParms
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECC:
+		var contents TPMSECCParms
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuPublicParms) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgKeyedHash:
+		var contents TPMSKeyedHashParms
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKeyedHashParms)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgSymCipher:
+		var contents TPMSSymCipherParms
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSSymCipherParms)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSA:
+		var contents TPMSRSAParms
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSRSAParms)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECC:
+		var contents TPMSECCParms
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSECCParms)
+		}
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
 // TPMUPublicParms represents a TPMU_PUBLIC_PARMS.
 // See definition in Part 2: Structures, section 12.2.3.7.
-type TPMUPublicParms struct {
-	// sign | decrypt | neither
-	KeyedHashDetail *TPMSKeyedHashParms `gotpm:"selector=0x0008"` // TPM_ALG_KEYEDHASH
-	// sign | decrypt | neither
-	SymCipherDetail *TPMSSymCipherParms `gotpm:"selector=0x0025"` // TPM_ALG_SYMCIPHER
-	// decrypt + sign
-	RSADetail *TPMSRSAParms `gotpm:"selector=0x0001"` // TPM_ALG_RSA
-	// decrypt + sign
-	ECCDetail *TPMSECCParms `gotpm:"selector=0x0023"` // TPM_ALG_ECC
+func TPMUPublicParms[C publicParmsContents](selector TPMAlgID, contents C) tpmuPublicParms {
+	return tpmuPublicParms{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// KeyedHashDetail returns the 'keyedHashDetail' member of the union.
+func (u *tpmuPublicParms) KeyedHashDetail() maybe[TPMSKeyedHashParms] {
+	if u.selector == TPMAlgKeyedHash {
+		return asMaybe(u.contents.(*TPMSKeyedHashParms))
+	}
+	return maybeNot[TPMSKeyedHashParms](fmt.Errorf("did not contain keyedHashDetail (selector value was %v)", u.selector))
+}
+
+// SymDetail returns the 'symDetail' member of the union.
+func (u *tpmuPublicParms) SymDetail() maybe[TPMSSymCipherParms] {
+	if u.selector == TPMAlgSymCipher {
+		return asMaybe(u.contents.(*TPMSSymCipherParms))
+	}
+	return maybeNot[TPMSSymCipherParms](fmt.Errorf("did not contain symDetail (selector value was %v)", u.selector))
+}
+
+// RSADetail returns the 'rsaDetail' member of the union.
+func (u *tpmuPublicParms) RSADetail() maybe[TPMSRSAParms] {
+	if u.selector == TPMAlgRSA {
+		return asMaybe(u.contents.(*TPMSRSAParms))
+	}
+	return maybeNot[TPMSRSAParms](fmt.Errorf("did not contain rsaDetail (selector value was %v)", u.selector))
+}
+
+// ECCDetail returns the 'eccDetail' member of the union.
+func (u *tpmuPublicParms) ECCDetail() maybe[TPMSECCParms] {
+	if u.selector == TPMAlgECC {
+		return asMaybe(u.contents.(*TPMSECCParms))
+	}
+	return maybeNot[TPMSECCParms](fmt.Errorf("did not contain eccDetail (selector value was %v)", u.selector))
 }
 
 // TPMTPublic represents a TPMT_PUBLIC.
@@ -2717,7 +2816,7 @@ type TPMTPublic struct {
 	// The policy is computed using the nameAlg of the object.
 	AuthPolicy TPM2BDigest
 	// the algorithm or structure details
-	Parameters TPMUPublicParms `gotpm:"tag=Type"`
+	Parameters tpmuPublicParms `gotpm:"tag=Type"`
 	// the unique identifier of the structure
 	// For an asymmetric key, this would be the public key.
 	Unique tpmuPublicID `gotpm:"tag=Type"`
@@ -2739,7 +2838,7 @@ type TPMTTemplate struct {
 	// The policy is computed using the nameAlg of the object.
 	AuthPolicy TPM2BDigest
 	// the algorithm or structure details
-	Parameters TPMUPublicParms `gotpm:"tag=Type"`
+	Parameters tpmuPublicParms `gotpm:"tag=Type"`
 	// the derivation parameters
 	Unique TPMSDerive
 }
@@ -2781,19 +2880,131 @@ func TPM2BTemplate[C bytesOr[tpmuTemplate]](contents C) tpm2bTemplate {
 	return tpm2bHelper[tpmuTemplate](contents)
 }
 
-// TPMUSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
-// See definition in Part 2: Structures, section 12.3.2.3.
-type TPMUSensitiveComposite struct {
-	marshalByReflection
-	// a prime factor of the public key
-	RSA *TPM2BPrivateKeyRSA `gotpm:"selector=0x0001"` // TPM_ALG_RSA
-	// the integer private key
-	ECC *TPM2BECCParameter `gotpm:"selector=0x0023"` // TPM_ALG_ECC
-	// the private data
-	Bits *TPM2BSensitiveData `gotpm:"selector=0x0008"` // TPM_ALG_KEYEDHASH
-	// the symmetric key
-	Sym *TPM2BSymKey `gotpm:"selector=0x0025"` // TPM_ALG_SYMCIPHER
+type tpmuSensitiveComposite struct {
+	selector TPMAlgID
+	contents Marshallable
 }
+
+type sensitiveCompositeContents interface {
+	Marshallable
+	*TPM2BPrivateKeyRSA | *TPM2BECCParameter | *TPM2BSensitiveData | *TPM2BSymKey
+}
+
+// create implements the UnmarshallableWithHint interface.
+func (u *tpmuSensitiveComposite) create(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	case TPMAlgRSA:
+		var contents TPM2BPrivateKeyRSA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECC:
+		var contents TPM2BECCParameter
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgKeyedHash:
+		var contents TPM2BSensitiveData
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgSymCipher:
+		var contents TPM2BSymKey
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// get implements the UnmarshallableWithHint interface.
+func (u *tpmuSensitiveComposite) get(hint int64) (reflect.Value, error) {
+	if u.selector != 0 && hint != int64(u.selector) {
+		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
+	}
+	switch TPMAlgID(hint) {
+	case TPMAlgRSA:
+		var contents TPM2BPrivateKeyRSA
+		if u.contents != nil {
+			contents = *u.contents.(*TPM2BPrivateKeyRSA)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECC:
+		var contents TPM2BECCParameter
+		if u.contents != nil {
+			contents = *u.contents.(*TPM2BECCParameter)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgKeyedHash:
+		var contents TPM2BSensitiveData
+		if u.contents != nil {
+			contents = *u.contents.(*TPM2BSensitiveData)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgSymCipher:
+		var contents TPM2BSymKey
+		if u.contents != nil {
+			contents = *u.contents.(*TPM2BSymKey)
+		}
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// TPMUSensitiveComposite represents a TPMU_KDF_SCHEME.
+// See definition in Part 2: Structures, section 11.2.3.2.
+func TPMUSensitiveComposite[C sensitiveCompositeContents](selector TPMAlgID, contents C) tpmuSensitiveComposite {
+	return tpmuSensitiveComposite{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// RSA returns the 'rsa' member of the union.
+func (u *tpmuKDFScheme) RSA() maybe[TPM2BPrivateKeyRSA] {
+	if u.selector == TPMAlgRSA {
+		return asMaybe(u.contents.(*TPM2BPrivateKeyRSA))
+	}
+	return maybeNot[TPM2BPrivateKeyRSA](fmt.Errorf("did not contain rsa (selector value was %v)", u.selector))
+}
+
+// ECC returns the 'ecc' member of the union.
+func (u *tpmuKDFScheme) ECC() maybe[TPM2BECCParameter] {
+	if u.selector == TPMAlgECC {
+		return asMaybe(u.contents.(*TPM2BECCParameter))
+	}
+	return maybeNot[TPM2BECCParameter](fmt.Errorf("did not contain ecc (selector value was %v)", u.selector))
+}
+
+// Bits returns the 'bits' member of the union.
+func (u *tpmuKDFScheme) Bits() maybe[TPM2BSensitiveData] {
+	if u.selector == TPMAlgKeyedHash {
+		return asMaybe(u.contents.(*TPM2BSensitiveData))
+	}
+	return maybeNot[TPM2BSensitiveData](fmt.Errorf("did not contain bits (selector value was %v)", u.selector))
+}
+
+// Sym returns the 'sym' member of the union.
+func (u *tpmuKDFScheme) Sym() maybe[TPM2BSymKey] {
+	if u.selector == TPMAlgSymCipher {
+		return asMaybe(u.contents.(*TPM2BSymKey))
+	}
+	return maybeNot[TPM2BSymKey](fmt.Errorf("did not contain sym (selector value was %v)", u.selector))
+}
+
+// // tpmuSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
+// // See definition in Part 2: Structures, section 12.3.2.3.
+// type tpmuSensitiveComposite struct {
+// 	marshalByReflection
+// 	// a prime factor of the public key
+// 	RSA *TPM2BPrivateKeyRSA `gotpm:"selector=0x0001"` // TPM_ALG_RSA
+// 	// the integer private key
+// 	ECC *TPM2BECCParameter `gotpm:"selector=0x0023"` // TPM_ALG_ECC
+// 	// the private data
+// 	Bits *TPM2BSensitiveData `gotpm:"selector=0x0008"` // TPM_ALG_KEYEDHASH
+// 	// the symmetric key
+// 	Sym *TPM2BSymKey `gotpm:"selector=0x0025"` // TPM_ALG_SYMCIPHER
+// }
 
 // TPMTSensitive represents a TPMT_SENSITIVE.
 // See definition in Part 2: Structures, section 12.3.2.4.
@@ -2807,7 +3018,7 @@ type TPMTSensitive struct {
 	// the obfuscation value
 	SeedValue TPM2BDigest
 	// the type-specific private data
-	Sensitive TPMUSensitiveComposite `gotpm:"tag=SensitiveType"`
+	Sensitive tpmuSensitiveComposite `gotpm:"tag=SensitiveType"`
 }
 
 type tpm2bSensitive = tpm2b[TPMTSensitive]

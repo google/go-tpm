@@ -62,11 +62,12 @@ func TestMarshalT(t *testing.T) {
 		ObjectAttributes: TPMAObject{
 			SignEncrypt: true,
 		},
-		Parameters: TPMUPublicParms{
-			ECCDetail: &TPMSECCParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgECC,
+			&TPMSECCParms{
 				CurveID: TPMECCNistP256,
 			},
-		},
+		),
 		Unique: TPMUPublicID(
 			// This happens to be a P256 EKpub from the simulator
 			TPMAlgECC,
@@ -78,7 +79,7 @@ func TestMarshalT(t *testing.T) {
 	}
 
 	// Marshal each component of the parameters
-	symBytes := Marshal(&pub.Parameters.ECCDetail.Symmetric)
+	symBytes := Marshal(&pub.Parameters.ECCDetail().Unwrap().Symmetric)
 	t.Logf("Symmetric: %x\n", symBytes)
 	sym, err := Unmarshal[TPMTSymDefObject](symBytes).CheckUnwrap()
 	if err != nil {
@@ -88,7 +89,7 @@ func TestMarshalT(t *testing.T) {
 	if !bytes.Equal(symBytes, symBytes2) {
 		t.Errorf("want %x\ngot %x", symBytes, symBytes2)
 	}
-	schemeBytes := Marshal(&pub.Parameters.ECCDetail.Scheme)
+	schemeBytes := Marshal(&pub.Parameters.ECCDetail().Unwrap().Scheme)
 	t.Logf("Scheme: %x\n", symBytes)
 	scheme, err := Unmarshal[TPMTECCScheme](schemeBytes).CheckUnwrap()
 	if err != nil {
@@ -98,7 +99,7 @@ func TestMarshalT(t *testing.T) {
 	if !bytes.Equal(schemeBytes, schemeBytes2) {
 		t.Errorf("want %x\ngot %x", schemeBytes, schemeBytes2)
 	}
-	kdfBytes := Marshal(&pub.Parameters.ECCDetail.KDF)
+	kdfBytes := Marshal(&pub.Parameters.ECCDetail().Unwrap().KDF)
 	t.Logf("KDF: %x\n", kdfBytes)
 	kdf, err := Unmarshal[TPMTKDFScheme](kdfBytes).CheckUnwrap()
 	if err != nil {
@@ -110,7 +111,7 @@ func TestMarshalT(t *testing.T) {
 	}
 
 	// Marshal the parameters
-	parmsBytes := Marshal(pub.Parameters.ECCDetail)
+	parmsBytes := Marshal(pub.Parameters.ECCDetail().Unwrap())
 	t.Logf("Parms: %x\n", parmsBytes)
 	parms, err := Unmarshal[TPMSECCParms](parmsBytes).CheckUnwrap()
 	if err != nil {

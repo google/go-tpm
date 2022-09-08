@@ -307,11 +307,6 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 				if err := marshal(buf, v); err != nil {
 					return err
 				}
-			} else {
-				// TODO: Delete this in favor of UnmarshallableWithHint for all unions
-				if err := marshalUnion(&res, v.Field(i), tagValue); err != nil {
-					return err
-				}
 			}
 		} else if v.Field(i).IsZero() && v.Field(i).Kind() == reflect.Uint32 && hasTag(v.Type().Field(i), "nullable") {
 			// Special case: Anything with the same underlying type
@@ -390,30 +385,6 @@ func marshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 	}
 	buf.Write(result)
 	return nil
-}
-
-// Marshals the member of the given union struct corresponding to the given
-// selector. Marshals nothing if the selector is equal to TPM_ALG_NULL (0x0010).
-func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
-	// Special case: TPM_ALG_NULL as a selector means marshal nothing
-	if selector == int64(TPMAlgNull) {
-		return nil
-	}
-	for i := 0; i < v.NumField(); i++ {
-		sel, ok := numericTag(v.Type().Field(i), "selector")
-		if !ok {
-			continue
-		}
-		if sel == selector {
-			if v.Field(i).IsNil() {
-				// Special case: if the selected value is found
-				// but nil, marshal the zero-value instead
-				return marshal(buf, reflect.New(v.Field(i).Type().Elem()).Elem())
-			}
-			return marshal(buf, v.Field(i).Elem())
-		}
-	}
-	return fmt.Errorf("selector value '%v' not handled for type '%v'", selector, v.Type().Name())
 }
 
 // unmarshal will deserialize the given value from the given buffer.
@@ -635,11 +606,6 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 				if err != nil {
 					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
 				}
-			} else {
-				// TODO: Delete this in favor of UnmarshallableWithHint for all unions
-				if err := unmarshalUnion(bufToReadFrom, v.Field(i), tagValue); err != nil {
-					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
-				}
 			}
 		} else {
 			if err := unmarshal(bufToReadFrom, v.Field(i)); err != nil {
@@ -700,30 +666,6 @@ func unmarshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 		bs.SetReservedBit(i, bitArray[i])
 	}
 	return nil
-}
-
-// Unmarshals the member of the given union struct corresponding to the given
-// selector. Unmarshals nothing if the selector is TPM_ALG_NULL (0x0010).
-func unmarshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
-	// Special case: TPM_ALG_NULL as a selector means unmarshal nothing
-	if selector == int64(TPMAlgNull) {
-		return nil
-	}
-	for i := 0; i < v.NumField(); i++ {
-		sel, ok := numericTag(v.Type().Field(i), "selector")
-		if !ok {
-			continue
-		}
-		if sel == selector {
-			val := reflect.New(v.Type().Field(i).Type.Elem())
-			if err := unmarshal(buf, val.Elem()); err != nil {
-				return fmt.Errorf("unmarshalling '%v' union member '%v': %w", v.Type().Name(), v.Type().Field(i).Name, err)
-			}
-			v.Field(i).Set(val)
-			return nil
-		}
-	}
-	return fmt.Errorf("selector value '%v' not handled for type '%v'", selector, v.Type().Name())
 }
 
 // Looks up the given gotpm tag on a field.

@@ -19,8 +19,9 @@ var (
 			Decrypt:              true,
 			SignEncrypt:          false,
 		},
-		Parameters: TPMUPublicParms{
-			RSADetail: &TPMSRSAParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: TPMUSymKeyBits(
@@ -34,7 +35,7 @@ var (
 				},
 				KeyBits: 2048,
 			},
-		},
+		),
 		Unique: TPMUPublicID(
 			TPMAlgRSA,
 			&TPM2BPublicKeyRSA{
@@ -68,8 +69,9 @@ var (
 				0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 			},
 		},
-		Parameters: TPMUPublicParms{
-			RSADetail: &TPMSRSAParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: TPMUSymKeyBits(
@@ -83,7 +85,7 @@ var (
 				},
 				KeyBits: 2048,
 			},
-		},
+		),
 		Unique: TPMUPublicID(
 			TPMAlgRSA,
 			&TPM2BPublicKeyRSA{
@@ -110,8 +112,9 @@ var (
 			Decrypt:              true,
 			SignEncrypt:          false,
 		},
-		Parameters: TPMUPublicParms{
-			ECCDetail: &TPMSECCParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgECC,
+			&TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: TPMUSymKeyBits(
@@ -125,7 +128,7 @@ var (
 				},
 				CurveID: TPMECCNistP256,
 			},
-		},
+		),
 		Unique: TPMUPublicID(
 			TPMAlgECC,
 			&TPMSECCPoint{
@@ -165,8 +168,9 @@ var (
 				0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 			},
 		},
-		Parameters: TPMUPublicParms{
-			ECCDetail: &TPMSECCParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgECC,
+			&TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
 					KeyBits: TPMUSymKeyBits(
@@ -180,7 +184,7 @@ var (
 				},
 				CurveID: TPMECCNistP256,
 			},
-		},
+		),
 		Unique: TPMUPublicID(
 			TPMAlgECC,
 			&TPMSECCPoint{

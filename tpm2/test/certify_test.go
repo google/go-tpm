@@ -36,8 +36,9 @@ func TestCertify(t *testing.T) {
 			SensitiveDataOrigin: true,
 			UserWithAuth:        true,
 		},
-		Parameters: TPMUPublicParms{
-			RSADetail: &TPMSRSAParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
 					Details: TPMUAsymScheme(
@@ -49,7 +50,7 @@ func TestCertify(t *testing.T) {
 				},
 				KeyBits: 2048,
 			},
-		},
+		),
 	},
 	)
 
@@ -136,7 +137,7 @@ func TestCertify(t *testing.T) {
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
@@ -169,8 +170,9 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 			UserWithAuth:        true,
 			NoDA:                true,
 		},
-		Parameters: TPMUPublicParms{
-			RSADetail: &TPMSRSAParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
 					Details: TPMUAsymScheme(
@@ -182,7 +184,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 				},
 				KeyBits: 2048,
 			},
-		},
+		),
 	})
 
 	PCR7, err := CreatePCRSelection([]int{7})
@@ -254,7 +256,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	attestHash := sha256.Sum256(info)
 
 	pub := rspCP.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
@@ -284,8 +286,9 @@ func TestNVCertify(t *testing.T) {
 			SensitiveDataOrigin: true,
 			UserWithAuth:        true,
 		},
-		Parameters: TPMUPublicParms{
-			RSADetail: &TPMSRSAParms{
+		Parameters: TPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
 				Scheme: TPMTRSAScheme{
 					Scheme: TPMAlgRSASSA,
 					Details: TPMUAsymScheme(
@@ -297,7 +300,7 @@ func TestNVCertify(t *testing.T) {
 				},
 				KeyBits: 2048,
 			},
-		},
+		),
 	})
 
 	createPrimarySigner := CreatePrimary{
@@ -398,7 +401,7 @@ func TestNVCertify(t *testing.T) {
 
 	attestHash := sha256.Sum256(info)
 	pub := rspSigner.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}

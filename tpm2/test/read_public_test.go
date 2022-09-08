@@ -36,8 +36,9 @@ func TestReadPublicKey(t *testing.T) {
 				UserWithAuth:        true,
 				SignEncrypt:         true,
 			},
-			Parameters: TPMUPublicParms{
-				ECCDetail: &TPMSECCParms{
+			Parameters: TPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
 						Details: TPMUAsymScheme(
@@ -49,7 +50,7 @@ func TestReadPublicKey(t *testing.T) {
 					},
 					CurveID: TPMECCNistP256,
 				},
-			},
+			),
 		}),
 	}
 

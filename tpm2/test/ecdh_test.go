@@ -39,8 +39,9 @@ func TestECDH(t *testing.T) {
 				SignEncrypt:          false,
 				X509Sign:             false,
 			},
-			Parameters: TPMUPublicParms{
-				ECCDetail: &TPMSECCParms{
+			Parameters: TPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
 					CurveID: TPMECCNistP256,
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDH,
@@ -52,7 +53,7 @@ func TestECDH(t *testing.T) {
 						),
 					},
 				},
-			},
+			),
 		}),
 	}
 

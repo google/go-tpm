@@ -23,8 +23,9 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 					Decrypt:             true,
 					Restricted:          true,
 				},
-				Parameters: TPMUPublicParms{
-					KeyedHashDetail: &TPMSKeyedHashParms{
+				Parameters: TPMUPublicParms(
+					TPMAlgKeyedHash,
+					&TPMSKeyedHashParms{
 						Scheme: TPMTKeyedHashScheme{
 							Scheme: TPMAlgXOR,
 							Details: TPMUSchemeKeyedHash(
@@ -36,7 +37,7 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 							),
 						},
 					},
-				},
+				),
 			})),
 	}
 	rsp, err := cl.Execute(thetpm)
@@ -90,11 +91,12 @@ func TestCreateLoaded(t *testing.T) {
 						UserWithAuth:        true,
 						SignEncrypt:         true,
 					},
-					Parameters: TPMUPublicParms{
-						ECCDetail: &TPMSECCParms{
+					Parameters: TPMUPublicParms(
+						TPMAlgECC,
+						&TPMSECCParms{
 							CurveID: TPMECCNistP256,
 						},
-					},
+					),
 				})),
 		},
 		"DataBlob": {
@@ -135,11 +137,12 @@ func TestCreateLoaded(t *testing.T) {
 						UserWithAuth: true,
 						SignEncrypt:  true,
 					},
-					Parameters: TPMUPublicParms{
-						ECCDetail: &TPMSECCParms{
+					Parameters: TPMUPublicParms(
+						TPMAlgECC,
+						&TPMSECCParms{
 							CurveID: TPMECCNistP256,
 						},
-					},
+					),
 				})),
 		},
 	}

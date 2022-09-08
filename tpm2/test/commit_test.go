@@ -37,8 +37,9 @@ func TestCommit(t *testing.T) {
 						SensitiveDataOrigin: true,
 						SignEncrypt:         true,
 					},
-					Parameters: TPMUPublicParms{
-						ECCDetail: &TPMSECCParms{
+					Parameters: TPMUPublicParms(
+						TPMAlgECC,
+						&TPMSECCParms{
 							Symmetric: TPMTSymDefObject{
 								Algorithm: TPMAlgNull,
 							},
@@ -56,7 +57,7 @@ func TestCommit(t *testing.T) {
 								Scheme: TPMAlgNull,
 							},
 						},
-					},
+					),
 				})),
 	}
 

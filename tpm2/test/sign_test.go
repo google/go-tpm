@@ -79,8 +79,9 @@ func TestSign(t *testing.T) {
 				SensitiveDataOrigin: true,
 				UserWithAuth:        true,
 			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
+			Parameters: TPMUPublicParms(
+				TPMAlgRSA,
+				&TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
 						Details: TPMUAsymScheme(
@@ -92,7 +93,7 @@ func TestSign(t *testing.T) {
 					},
 					KeyBits: 2048,
 				},
-			},
+			),
 		}),
 		CreationPCR: TPMLPCRSelection{
 			PCRSelections: []TPMSPCRSelection{
@@ -142,7 +143,7 @@ func TestSign(t *testing.T) {
 	}
 
 	pub := rspCP.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
+	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}

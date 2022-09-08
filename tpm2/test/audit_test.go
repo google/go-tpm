@@ -41,8 +41,9 @@ func TestAuditSession(t *testing.T) {
 				Decrypt:              false,
 				SignEncrypt:          true,
 			},
-			Parameters: TPMUPublicParms{
-				ECCDetail: &TPMSECCParms{
+			Parameters: TPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
 						Details: TPMUAsymScheme(
@@ -54,7 +55,7 @@ func TestAuditSession(t *testing.T) {
 					},
 					CurveID: TPMECCNistP256,
 				},
-			},
+			),
 		},
 		),
 	}

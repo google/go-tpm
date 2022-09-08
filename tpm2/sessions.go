@@ -451,9 +451,9 @@ func getEncryptedSaltECC(nameAlg TPMIAlgHash, parms *TPMSECCParms, pub *TPMSECCP
 func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
 	switch pub.Type {
 	case TPMAlgRSA:
-		return getEncryptedSaltRSA(pub.NameAlg, pub.Parameters.RSADetail, pub.Unique.RSA().Unwrap())
+		return getEncryptedSaltRSA(pub.NameAlg, pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
 	case TPMAlgECC:
-		return getEncryptedSaltECC(pub.NameAlg, pub.Parameters.ECCDetail, pub.Unique.ECC().Unwrap())
+		return getEncryptedSaltECC(pub.NameAlg, pub.Parameters.ECCDetail().Unwrap(), pub.Unique.ECC().Unwrap())
 	default:
 		return nil, nil, fmt.Errorf("salt encryption alg '%v' not supported", pub.Type)
 	}
