@@ -131,11 +131,12 @@ func TestPolicySignedUpdate(t *testing.T) {
 		PolicyRef:     TPM2BNonce{Buffer: []byte{5, 6, 7, 8}},
 		Auth: TPMTSignature{
 			SigAlg: TPMAlgECDSA,
-			Signature: TPMUSignature{
-				ECDSA: &TPMSSignatureECC{
+			Signature: *NewTPMUSignature(
+				TPMAlgECDSA,
+				&TPMSSignatureECC{
 					Hash: TPMAlgSHA256,
 				},
-			},
+			),
 		},
 	}
 

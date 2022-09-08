@@ -147,7 +147,7 @@ func TestSign(t *testing.T) {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, digest[:], rspSign.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, digest[:], rspSign.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 

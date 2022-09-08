@@ -2140,16 +2140,97 @@ type TPMSSignatureECC struct {
 	SignatureS TPM2BECCParameter
 }
 
-// TPMUSignature represents a TPMU_SIGNATURE.
+// tpmuSignature represents a TPMU_SIGNATURE.
 // See definition in Part 2: Structures, section 11.3.3.
-type TPMUSignature struct {
-	marshalByReflection
-	HMAC   *TPMTHA           `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
-	RSASSA *TPMSSignatureRSA `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
-	RSAPSS *TPMSSignatureRSA `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
-	ECDSA  *TPMSSignatureECC `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
-	ECDAA  *TPMSSignatureECC `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
+type tpmuSignature struct {
+	selector TPMAlgID
+	contents Marshallable
 }
+
+type signatureContents interface {
+	Marshallable
+	*TPMTHA | *TPMSSignatureRSA | *TPMSSignatureECC
+}
+
+// marshal implements the Marshallable interface.
+func (u *tpmuSignature) marshal(buf *bytes.Buffer) {
+	buf.Write(Marshal(u.contents))
+}
+
+func (u *tpmuSignature) allocateAndGet(hint int64) (reflect.Value, error) {
+	switch TPMAlgID(hint) {
+	case TPMAlgHMAC:
+		var contents TPMTHA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgRSASSA, TPMAlgRSAPSS:
+		var contents TPMSSignatureRSA
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECDSA, TPMAlgECDAA:
+		var contents TPMSEncSchemeRSAES
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	}
+	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+}
+
+// NewTPMUSignature instantiates a tpmuSignature with the given contents.
+func NewTPMUSignature[C signatureContents](selector TPMAlgID, contents C) *tpmuSignature {
+	return &tpmuSignature{
+		selector: selector,
+		contents: contents,
+	}
+}
+
+// HMAC returns the 'hmac' member of the union.
+func (u *tpmuSignature) HMAC() maybe[TPMTHA] {
+	if u.selector == TPMAlgHMAC {
+		return asMaybe(u.contents.(*TPMTHA))
+	}
+	return maybeNot[TPMTHA](fmt.Errorf("did not contain hmac (selector value was %v)", u.selector))
+}
+
+// RSASSA returns the 'rsassa' member of the union.
+func (u *tpmuSignature) RSASSA() maybe[TPMSSignatureRSA] {
+	if u.selector == TPMAlgRSASSA {
+		return asMaybe(u.contents.(*TPMSSignatureRSA))
+	}
+	return maybeNot[TPMSSignatureRSA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+}
+
+// RSAPSS returns the 'rsapss' member of the union.
+func (u *tpmuSignature) RSAPSS() maybe[TPMSSignatureRSA] {
+	if u.selector == TPMAlgRSAPSS {
+		return asMaybe(u.contents.(*TPMSSignatureRSA))
+	}
+	return maybeNot[TPMSSignatureRSA](fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector))
+}
+
+// ECDSA returns the 'ecdsa' member of the union.
+func (u *tpmuSignature) ECDSA() maybe[TPMSSignatureECC] {
+	if u.selector == TPMAlgECDSA {
+		return asMaybe(u.contents.(*TPMSSignatureECC))
+	}
+	return maybeNot[TPMSSignatureECC](fmt.Errorf("did not contain ecdsa (selector value was %v)", u.selector))
+}
+
+// ECDAA returns the 'ecdaa' member of the union.
+func (u *tpmuSignature) ECDAA() maybe[TPMSSignatureECC] {
+	if u.selector == TPMAlgRSASSA {
+		return asMaybe(u.contents.(*TPMSSignatureECC))
+	}
+	return maybeNot[TPMSSignatureECC](fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector))
+}
+
+// HMAC   *TPMTHA           `gotpm:"selector=0x0005"` // TPM_ALG_HMAC
+// RSASSA *TPMSSignatureRSA `gotpm:"selector=0x0014"` // TPM_ALG_RSASSA
+// RSAPSS *TPMSSignatureRSA `gotpm:"selector=0x0016"` // TPM_ALG_RSAPSS
+// ECDSA  *TPMSSignatureECC `gotpm:"selector=0x0018"` // TPM_ALG_ECDSA
+// ECDAA  *TPMSSignatureECC `gotpm:"selector=0x001a"` // TPM_ALG_ECDAA
 
 // TPMTSignature represents a TPMT_SIGNATURE.
 // See definition in Part 2: Structures, section 11.3.4.
@@ -2158,7 +2239,7 @@ type TPMTSignature struct {
 	// selector of the algorithm used to construct the signature
 	SigAlg TPMIAlgSigScheme `gotpm:"nullable"`
 	// This shall be the actual signature information.
-	Signature TPMUSignature `gotpm:"tag=SigAlg"`
+	Signature tpmuSignature `gotpm:"tag=SigAlg"`
 }
 
 // TPM2BEncryptedSecret represents a TPM2B_ENCRYPTED_SECRET.

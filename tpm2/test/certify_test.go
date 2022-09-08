@@ -140,7 +140,7 @@ func TestCertify(t *testing.T) {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
@@ -258,7 +258,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCC.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCC.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 }
@@ -402,7 +402,7 @@ func TestNVCertify(t *testing.T) {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
