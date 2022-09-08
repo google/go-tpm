@@ -26,8 +26,8 @@ func TestMarshal2B(t *testing.T) {
 	// one instantiated by the contents
 	var boxed1 TPM2BPublic
 	var boxed2 TPM2BPublic
-	boxed1 = *NewTPM2BPublic(&pub)
-	boxed2 = *NewTPM2BPublic(pubBytes)
+	boxed1 = NewTPM2BPublic(&pub)
+	boxed2 = NewTPM2BPublic(pubBytes)
 
 	boxed1Bytes := Marshal(&boxed1)
 	boxed2Bytes := Marshal(&boxed2)
@@ -36,10 +36,14 @@ func TestMarshal2B(t *testing.T) {
 		t.Errorf("got %x want %x", boxed2Bytes, boxed1Bytes)
 	}
 
-	boxed3, err := Unmarshal[TPM2BPublic](boxed1Bytes).CheckUnwrap()
+	z := Unmarshal[TPM2BPublic](boxed1Bytes)
+	t.Logf("%v", z.value)
+
+	boxed3, err := z.CheckUnwrap()
 	if err != nil {
 		t.Fatalf("could not unmarshal TPM2BPublic: %v", err)
 	}
+	t.Logf("%v", boxed3)
 
 	boxed3Bytes := Marshal(boxed3)
 	if !bytes.Equal(boxed1Bytes, boxed3Bytes) {
@@ -47,7 +51,7 @@ func TestMarshal2B(t *testing.T) {
 	}
 
 	// Make a nonsense 2B_Public, demonstrating that the library doesn't have to understand the serialization
-	boxed1 = *NewTPM2BPublic([]byte{0xff})
+	boxed1 = NewTPM2BPublic([]byte{0xff})
 }
 
 func TestMarshalT(t *testing.T) {
@@ -63,7 +67,7 @@ func TestMarshalT(t *testing.T) {
 				CurveID: TPMECCNistP256,
 			},
 		},
-		Unique: *NewTPMUPublicID(
+		Unique: NewTPMUPublicID(
 			// This happens to be a P256 EKpub from the simulator
 			TPMAlgECC,
 			&TPMSECCPoint{

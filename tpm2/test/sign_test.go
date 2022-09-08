@@ -69,7 +69,7 @@ func TestSign(t *testing.T) {
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
-		InPublic: *NewTPM2BPublic(&TPMTPublic{
+		InPublic: NewTPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgRSA,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
@@ -83,7 +83,7 @@ func TestSign(t *testing.T) {
 				RSADetail: &TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
-						Details: *NewTPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgRSASSA,
 							&TPMSSigSchemeRSASSA{
 								HashAlg: TPMAlgSHA256,
@@ -124,7 +124,7 @@ func TestSign(t *testing.T) {
 		},
 		InScheme: TPMTSigScheme{
 			Scheme: TPMAlgRSASSA,
-			Details: *NewTPMUSigScheme(
+			Details: NewTPMUSigScheme(
 				TPMAlgRSASSA,
 				&TPMSSchemeHash{
 					HashAlg: TPMAlgSHA256,

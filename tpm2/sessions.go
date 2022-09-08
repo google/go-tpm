@@ -272,11 +272,11 @@ func AESEncryption(keySize TPMKeyBits, dir parameterEncryptiontpm2ion) AuthOptio
 		o.attrs.Encrypt = (dir == EncryptOut || dir == EncryptInOut)
 		o.symmetric = TPMTSymDef{
 			Algorithm: TPMAlgAES,
-			KeyBits: *NewTPMUSymKeyBits(
+			KeyBits: NewTPMUSymKeyBits(
 				TPMAlgAES,
 				TPMKeyBits(keySize),
 			),
-			Mode: *NewTPMUSymMode(
+			Mode: NewTPMUSymMode(
 				TPMAlgAES,
 				TPMAlgCFB,
 			),

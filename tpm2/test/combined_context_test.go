@@ -38,7 +38,7 @@ func TestCombinedContext(t *testing.T) {
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
-		InPublic: *NewTPM2BPublic(&TPMTPublic{
+		InPublic: NewTPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgRSA,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
@@ -52,7 +52,7 @@ func TestCombinedContext(t *testing.T) {
 				RSADetail: &TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
-						Details: *NewTPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgRSASSA, &TPMSSigSchemeRSASSA{
 								HashAlg: TPMAlgSHA256,
 							},

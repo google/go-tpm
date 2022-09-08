@@ -23,11 +23,11 @@ var (
 			RSADetail: &TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: *NewTPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: *NewTPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -35,7 +35,7 @@ var (
 				KeyBits: 2048,
 			},
 		},
-		Unique: *NewTPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgRSA,
 			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
@@ -72,11 +72,11 @@ var (
 			RSADetail: &TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: *NewTPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: *NewTPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -84,7 +84,7 @@ var (
 				KeyBits: 2048,
 			},
 		},
-		Unique: *NewTPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgRSA,
 			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
@@ -114,11 +114,11 @@ var (
 			ECCDetail: &TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: *NewTPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: *NewTPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -126,7 +126,7 @@ var (
 				CurveID: TPMECCNistP256,
 			},
 		},
-		Unique: *NewTPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgECC,
 			&TPMSECCPoint{
 				X: TPM2BECCParameter{
@@ -169,11 +169,11 @@ var (
 			ECCDetail: &TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: *NewTPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: *NewTPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -181,7 +181,7 @@ var (
 				CurveID: TPMECCNistP256,
 			},
 		},
-		Unique: *NewTPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgECC,
 			&TPMSECCPoint{
 				X: TPM2BECCParameter{

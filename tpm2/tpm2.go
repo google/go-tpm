@@ -265,7 +265,7 @@ func (*LoadResponse) Response() TPMCC { return TPMCCLoad }
 // See definition in Part 3, Commands, section 12.3
 type LoadExternal struct {
 	// the sensitive portion of the object (optional)
-	InPrivate *TPM2BSensitive `gotpm:"optional"`
+	InPrivate TPM2BSensitive `gotpm:"optional"`
 	// the public portion of the object
 	InPublic TPM2BPublic
 	// hierarchy with which the object area is associated

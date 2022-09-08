@@ -151,11 +151,11 @@ type bytesOr[T any] interface{ *T | []byte }
 
 // tpm2bHelper is a helper function that can convert either a structure or a byte buffer into
 // the proper TPM2B_ sub-type.
-func tpm2bHelper[T any, C bytesOr[T]](contents C) *tpm2b[T] {
+func tpm2bHelper[T any, C bytesOr[T]](contents C) tpm2b[T] {
 	if typed, ok := any(contents).(*T); ok {
-		return &tpm2b[T]{contents: typed}
+		return tpm2b[T]{contents: typed}
 	}
-	return &tpm2b[T]{buffer: any(contents).([]byte)}
+	return tpm2b[T]{buffer: any(contents).([]byte)}
 }
 
 // marshal implements the Marshallable interface.
@@ -216,7 +216,7 @@ func box[T any](contents *T) boxed[T] {
 }
 
 // unbox will take a value out of a box.
-func (b boxed[T]) unbox() *T {
+func (b *boxed[T]) unbox() *T {
 	return b.Contents
 }
 

@@ -14,7 +14,7 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: *NewTPM2BPublic(&TPMTPublic{
+		InPublic: NewTPM2BPublic(&TPMTPublic{
 			Type:    TPMAlgECC,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
@@ -28,7 +28,7 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 				ECCDetail: &TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
-						Details: *NewTPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgECDSA,
 							&TPMSSigSchemeECDSA{
 								HashAlg: TPMAlgSHA256,
@@ -63,7 +63,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	defSpace := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: *NewTPM2BNVPublic(
+		PublicInfo: NewTPM2BNVPublic(
 			&TPMSNVPublic{
 				NVIndex: 0x01800001,
 				NameAlg: TPMAlgSHA256,
@@ -131,7 +131,7 @@ func TestPolicySignedUpdate(t *testing.T) {
 		PolicyRef:     TPM2BNonce{Buffer: []byte{5, 6, 7, 8}},
 		Auth: TPMTSignature{
 			SigAlg: TPMAlgECDSA,
-			Signature: *NewTPMUSignature(
+			Signature: NewTPMUSignature(
 				TPMAlgECDSA,
 				&TPMSSignatureECC{
 					Hash: TPMAlgSHA256,

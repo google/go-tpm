@@ -19,13 +19,13 @@ func TestCommit(t *testing.T) {
 
 	create := CreateLoaded{
 		ParentHandle: TPMRHOwner,
-		InSensitive: *NewTPM2BSensitiveCreate(
+		InSensitive: NewTPM2BSensitiveCreate(
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: password,
 				},
 			}),
-		InPublic: *NewTPM2BTemplate(
+		InPublic: NewTPM2BTemplate(
 			NewTPMUTemplate(
 				&TPMTPublic{
 					Type:    TPMAlgECC,
@@ -44,7 +44,7 @@ func TestCommit(t *testing.T) {
 							},
 							Scheme: TPMTECCScheme{
 								Scheme: TPMAlgECDAA,
-								Details: *NewTPMUAsymScheme(
+								Details: NewTPMUAsymScheme(
 									TPMAlgECDAA,
 									&TPMSSchemeECDAA{
 										HashAlg: TPMAlgSHA256,
@@ -74,7 +74,7 @@ func TestCommit(t *testing.T) {
 			Name:   rspCP.Name,
 			Auth:   PasswordAuth(password),
 		},
-		P1: *NewTPM2BECCPoint(
+		P1: NewTPM2BECCPoint(
 			&TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: []byte{1},

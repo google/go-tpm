@@ -920,8 +920,8 @@ func (u *tpmuCapabilities) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUCapabilities instantiates a TPMUCapabilities with the given contents.
-func NewTPMUCapabilities[C capabilitiesContents](selector TPMCap, contents C) *tpmuCapabilities {
-	return &tpmuCapabilities{
+func NewTPMUCapabilities[C capabilitiesContents](selector TPMCap, contents C) tpmuCapabilities {
+	return tpmuCapabilities{
 		selector: selector,
 		contents: contents,
 	}
@@ -1260,8 +1260,8 @@ func (u *tpmuAttest) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUAttest instantiates a TPMUAttest with the given contents.
-func NewTPMUAttest[C attestContents](selector TPMST, contents C) *tpmuAttest {
-	return &tpmuAttest{
+func NewTPMUAttest[C attestContents](selector TPMST, contents C) tpmuAttest {
+	return tpmuAttest{
 		selector: selector,
 		contents: contents,
 	}
@@ -1359,7 +1359,7 @@ type TPM2BAttest = tpm2b[TPMSAttest]
 
 // NewTPM2BAttest instantiates a TPM2BPublic with the given contents
 // (which may be either a TPMSAttest or a flat byte array)
-func NewTPM2BAttest[C bytesOr[TPMSAttest]](contents C) *TPM2BAttest {
+func NewTPM2BAttest[C bytesOr[TPMSAttest]](contents C) TPM2BAttest {
 	return tpm2bHelper[TPMSAttest](contents)
 }
 
@@ -1433,9 +1433,9 @@ func (u *tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUSymKeyBits instantiates a tpmuSymKeyBits with the given contents.
-func NewTPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) *tpmuSymKeyBits {
+func NewTPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) tpmuSymKeyBits {
 	boxed := box(&contents)
-	return &tpmuSymKeyBits{
+	return tpmuSymKeyBits{
 		selector: selector,
 		contents: &boxed,
 	}
@@ -1510,9 +1510,9 @@ func (u *tpmuSymMode) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUSymMode instantiates a tpmuSymMode with the given contents.
-func NewTPMUSymMode[C symModeContents](selector TPMAlgID, contents C) *tpmuSymMode {
+func NewTPMUSymMode[C symModeContents](selector TPMAlgID, contents C) tpmuSymMode {
 	boxed := box(&contents)
-	return &tpmuSymMode{
+	return tpmuSymMode{
 		selector: selector,
 		contents: &boxed,
 	}
@@ -1572,9 +1572,9 @@ func (u *tpmuSymDetails) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUSymDetails instantiates a tpmuSymDetails with the given contents.
-func NewTPMUSymDetails[C symDetailsContents](selector TPMAlgID, contents C) *tpmuSymMode {
+func NewTPMUSymDetails[C symDetailsContents](selector TPMAlgID, contents C) tpmuSymMode {
 	boxed := box(&contents)
-	return &tpmuSymMode{
+	return tpmuSymMode{
 		selector: selector,
 		contents: &boxed,
 	}
@@ -1642,7 +1642,7 @@ type TPM2BDerive = tpm2b[TPMSDerive]
 
 // NewTPM2BDerive instantiates a TPM2BDerive with the given contents
 // (which may be either a TPMSDerive or a flat byte array)
-func NewTPM2BDerive[C bytesOr[TPMSDerive]](contents C) *TPM2BDerive {
+func NewTPM2BDerive[C bytesOr[TPMSDerive]](contents C) TPM2BDerive {
 	return tpm2bHelper[TPMSDerive](contents)
 }
 
@@ -1672,8 +1672,8 @@ func (u *tpmuSensitiveCreate) marshal(buf *bytes.Buffer) {
 
 // NewTPMUSensitiveCreate instantiates a TPMUSensitiveCreate with the given contents
 // (which may be either a TPM2BDerive or a TPM2BSensitiveData)
-func NewTPMUSensitiveCreate[C sensitiveCreateContents](contents C) *tpmuSensitiveCreate {
-	return &tpmuSensitiveCreate{contents: contents}
+func NewTPMUSensitiveCreate[C sensitiveCreateContents](contents C) tpmuSensitiveCreate {
+	return tpmuSensitiveCreate{contents: contents}
 }
 
 // TPM2BSensitiveData represents a TPM2B_SENSITIVE_DATA.
@@ -1700,9 +1700,10 @@ type TPM2BSensitiveCreate struct {
 
 // NewTPM2BSensitiveCreate instantiates a TPM2BSensitiveCreate with the given contents
 // (which may be either a TPMSSensitiveCreate or a flat byte array)
-func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) *TPM2BSensitiveCreate {
-	return &TPM2BSensitiveCreate{
-		contents: tpm2bHelper[TPMSSensitiveCreate](contents),
+func NewTPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) TPM2BSensitiveCreate {
+	data := tpm2bHelper[TPMSSensitiveCreate](contents)
+	return TPM2BSensitiveCreate{
+		contents: &data,
 	}
 }
 
@@ -1717,7 +1718,7 @@ func (c *TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) {
 		// If no value was provided (i.e., this is a zero-valued structure),
 		// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
 		defaultValue := NewTPM2BSensitiveCreate(&TPMSSensitiveCreate{
-			Data: *NewTPMUSensitiveCreate(&TPM2BSensitiveData{}),
+			Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{}),
 		})
 		defaultValue.marshal(buf)
 	}
@@ -1812,8 +1813,8 @@ func (u *tpmuSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUSchemeKeyedHash instantiates a tpmuSchemeKeyedHash with the given contents.
-func NewTPMUSchemeKeyedHash[C schemeKeyedHashContents](selector TPMAlgID, contents C) *tpmuSchemeKeyedHash {
-	return &tpmuSchemeKeyedHash{
+func NewTPMUSchemeKeyedHash[C schemeKeyedHashContents](selector TPMAlgID, contents C) tpmuSchemeKeyedHash {
+	return tpmuSchemeKeyedHash{
 		selector: selector,
 		contents: contents,
 	}
@@ -1920,8 +1921,8 @@ func (u *tpmuSigScheme) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUSigScheme instantiates a tpmuSigScheme with the given contents.
-func NewTPMUSigScheme[C sigSchemeContents](selector TPMAlgID, contents C) *tpmuSigScheme {
-	return &tpmuSigScheme{
+func NewTPMUSigScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuSigScheme {
+	return tpmuSigScheme{
 		selector: selector,
 		contents: contents,
 	}
@@ -2095,8 +2096,8 @@ func (u *tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUKDFScheme instantiates a tpmuKDFScheme with the given contents.
-func NewTPMUKDFScheme[C sigSchemeContents](selector TPMAlgID, contents C) *tpmuKDFScheme {
-	return &tpmuKDFScheme{
+func NewTPMUKDFScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuKDFScheme {
+	return tpmuKDFScheme{
 		selector: selector,
 		contents: contents,
 	}
@@ -2260,8 +2261,8 @@ func (u *tpmuAsymScheme) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUAsymScheme instantiates a tpmuAsymScheme with the given contents.
-func NewTPMUAsymScheme[C asymSchemeContents](selector TPMAlgID, contents C) *tpmuAsymScheme {
-	return &tpmuAsymScheme{
+func NewTPMUAsymScheme[C asymSchemeContents](selector TPMAlgID, contents C) tpmuAsymScheme {
+	return tpmuAsymScheme{
 		selector: selector,
 		contents: contents,
 	}
@@ -2369,7 +2370,7 @@ type TPM2BECCPoint = tpm2b[TPMSECCPoint]
 
 // NewTPM2BECCPoint instantiates a TPM2BECCPoint with the given contents
 // (which may be either a TPMSECCPoint or a flat byte array)
-func NewTPM2BECCPoint[C bytesOr[TPMSECCPoint]](contents C) *TPM2BECCPoint {
+func NewTPM2BECCPoint[C bytesOr[TPMSECCPoint]](contents C) TPM2BECCPoint {
 	return tpm2bHelper[TPMSECCPoint](contents)
 }
 
@@ -2474,8 +2475,8 @@ func (u *tpmuSignature) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUSignature instantiates a tpmuSignature with the given contents.
-func NewTPMUSignature[C signatureContents](selector TPMAlgID, contents C) *tpmuSignature {
-	return &tpmuSignature{
+func NewTPMUSignature[C signatureContents](selector TPMAlgID, contents C) tpmuSignature {
+	return tpmuSignature{
 		selector: selector,
 		contents: contents,
 	}
@@ -2613,8 +2614,8 @@ func (u *tpmuPublicID) get(hint int64) (reflect.Value, error) {
 }
 
 // NewTPMUPublicID instantiates a tpmuPublicID with the given contents.
-func NewTPMUPublicID[C publicIDContents](selector TPMAlgID, contents C) *tpmuPublicID {
-	return &tpmuPublicID{
+func NewTPMUPublicID[C publicIDContents](selector TPMAlgID, contents C) tpmuPublicID {
+	return tpmuPublicID{
 		selector: selector,
 		contents: contents,
 	}
@@ -2770,7 +2771,7 @@ type TPM2BPublic = tpm2b[TPMTPublic]
 
 // NewTPM2BPublic instantiates a TPM2BPublic with the given contents
 // (which may be either a TPMTPublic or a flat byte array)
-func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) *TPM2BPublic {
+func NewTPM2BPublic[C bytesOr[TPMTPublic]](contents C) TPM2BPublic {
 	return tpm2bHelper[TPMTPublic](contents)
 }
 
@@ -2805,7 +2806,7 @@ type TPM2BTemplate = tpm2b[tpmuTemplate]
 
 // NewTPM2BTemplate instantiates a TPM2BTemplate with the given contents
 // (which may be either a TPMUTemplate or a flat byte array)
-func NewTPM2BTemplate[C bytesOr[tpmuTemplate]](contents C) *TPM2BTemplate {
+func NewTPM2BTemplate[C bytesOr[tpmuTemplate]](contents C) TPM2BTemplate {
 	return tpm2bHelper[tpmuTemplate](contents)
 }
 
@@ -2844,7 +2845,7 @@ type TPM2BSensitive = tpm2b[TPMTSensitive]
 
 // NewTPM2BSensitive instantiates a TPM2BSensitive with the given contents
 // (which may be either a TPMTSensitive or a flat byte array)
-func NewTPM2BSensitive[C bytesOr[TPMTSensitive]](contents C) *TPM2BSensitive {
+func NewTPM2BSensitive[C bytesOr[TPMTSensitive]](contents C) TPM2BSensitive {
 	return tpm2bHelper[TPMTSensitive](contents)
 }
 
@@ -3015,7 +3016,7 @@ type TPM2BNVPublic = tpm2b[TPMSNVPublic]
 
 // NewTPM2BNVPublic instantiates a TPM2BNVPublic with the given contents
 // (which may be either a TPMSNVPublic or a flat byte array)
-func NewTPM2BNVPublic[C bytesOr[TPMSNVPublic]](contents C) *TPM2BNVPublic {
+func NewTPM2BNVPublic[C bytesOr[TPMSNVPublic]](contents C) TPM2BNVPublic {
 	return tpm2bHelper[TPMSNVPublic](contents)
 }
 
@@ -3059,6 +3060,6 @@ type TPM2BCreationData = tpm2b[TPMSCreationData]
 
 // NewTPM2BCreationData instantiates a TPM2BCreationData with the given contents
 // (which may be either a TPMSCreationData or a flat byte array)
-func NewTPM2BCreationData[C bytesOr[TPMSCreationData]](contents C) *TPM2BCreationData {
+func NewTPM2BCreationData[C bytesOr[TPMSCreationData]](contents C) TPM2BCreationData {
 	return tpm2bHelper[TPMSCreationData](contents)
 }
