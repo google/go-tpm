@@ -975,11 +975,11 @@ func (u *tpmuCapabilities) AssignedPCR() maybe[TPMLPCRSelection] {
 }
 
 // TPMProperties returns the 'tpmProperties' member of the union.
-func (u *tpmuCapabilities) TPMProperties() maybe[TPMLTaggedPCRProperty] {
+func (u *tpmuCapabilities) TPMProperties() maybe[TPMLTaggedTPMProperty] {
 	if u.selector == TPMCapTPMProperties {
-		return asMaybe(u.contents.(*TPMLTaggedPCRProperty))
+		return asMaybe(u.contents.(*TPMLTaggedTPMProperty))
 	}
-	return maybeNot[TPMLTaggedPCRProperty](fmt.Errorf("did not contain tpmProperties (selector value was %v)", u.selector))
+	return maybeNot[TPMLTaggedTPMProperty](fmt.Errorf("did not contain tpmProperties (selector value was %v)", u.selector))
 }
 
 // PCRProperties returns the 'pcrProperties' member of the union.
