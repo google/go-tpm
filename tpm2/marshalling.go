@@ -67,10 +67,10 @@ type Unmarshallable interface {
 	unmarshal(buf *bytes.Buffer) error
 }
 
-// UnmarshallableWithHint represents any TPM type that can be marshalled or unmarshalled,
+// unmarshallableWithHint represents any TPM type that can be marshalled or unmarshalled,
 // but that requires a selector ("hint") value when unmarshalling. Most TPMU_ are
 // an example of this.
-type UnmarshallableWithHint interface {
+type unmarshallableWithHint interface {
 	// create will instantiate and return the corresponding union member.
 	create(hint int64) (reflect.Value, error)
 	// get will return the corresponding union member by copy. If the union is

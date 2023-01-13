@@ -299,7 +299,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 					"a numeric field of int64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			if u, ok := v.Field(i).Addr().Interface().(UnmarshallableWithHint); ok {
+			if u, ok := v.Field(i).Addr().Interface().(unmarshallableWithHint); ok {
 				v, err := u.get(tagValue)
 				if err != nil {
 					return err
@@ -585,9 +585,9 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 					"a numeric field of in64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			var uwh UnmarshallableWithHint
+			var uwh unmarshallableWithHint
 			if v.Field(i).CanAddr() && v.Field(i).Addr().Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
-				u := v.Field(i).Addr().Interface().(UnmarshallableWithHint)
+				u := v.Field(i).Addr().Interface().(unmarshallableWithHint)
 				contents, err := u.create(tagValue)
 				if err != nil {
 					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
@@ -597,7 +597,7 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
 				}
 			} else if v.Field(i).Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
-				u := v.Field(i).Interface().(UnmarshallableWithHint)
+				u := v.Field(i).Interface().(unmarshallableWithHint)
 				contents, err := u.create(tagValue)
 				if err != nil {
 					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
