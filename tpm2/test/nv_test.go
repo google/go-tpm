@@ -127,7 +127,7 @@ func TestNVAuthIncrement(t *testing.T) {
 	if err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
 	}
-	
+
 	pub, err := def.PublicInfo.Contents()
 	if err != nil {
 		t.Fatalf("%v", err)

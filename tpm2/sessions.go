@@ -467,7 +467,7 @@ func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		rsaPub, err :=  pub.Unique.RSA()
+		rsaPub, err := pub.Unique.RSA()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -477,7 +477,7 @@ func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		eccPub, err :=  pub.Unique.ECC()
+		eccPub, err := pub.Unique.ECC()
 		if err != nil {
 			return nil, nil, err
 		}

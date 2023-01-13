@@ -51,7 +51,7 @@ func TestMarshal2B(t *testing.T) {
 	boxed1 = TPM2BPublic([]byte{0xff})
 }
 
-func unwrap[T any](f func()(*T, error)) *T {
+func unwrap[T any](f func() (*T, error)) *T {
 	t, err := f()
 	if err != nil {
 		panic(err.Error())

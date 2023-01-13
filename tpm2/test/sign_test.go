@@ -149,11 +149,11 @@ func TestSign(t *testing.T) {
 	rsaDetail, err := pub.Parameters.RSADetail()
 	if err != nil {
 		t.Fatalf("%v", err)
-	}	
+	}
 	rsaUnique, err := pub.Unique.RSA()
 	if err != nil {
 		t.Fatalf("%v", err)
-	}	
+	}
 
 	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
 	if err != nil {
