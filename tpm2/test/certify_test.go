@@ -98,7 +98,11 @@ func TestCertify(t *testing.T) {
 			Buffer: []byte("subject key"),
 		},
 	)
-	createPrimarySubject.InPublic.Contents().Unwrap().Unique = unique
+	inPub, err := createPrimarySubject.InPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	inPub.Unique = unique
 
 	rspSubject, err := createPrimarySubject.Execute(thetpm)
 	if err != nil {
@@ -133,20 +137,38 @@ func TestCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info := Marshal(rspCert.CertifyInfo.Contents().Unwrap())
+	certifyInfo, err := rspCert.CertifyInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	info := Marshal(certifyInfo)
 
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
+	pub, err := rspSigner.OutPublic.Contents()
 	if err != nil {
-		t.Fatalf("Failed to retrieve Public Key: %v", err)
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}	
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}		
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
+	rsassa, err := rspCert.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
-
-	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.Contents().Unwrap().ExtraData.Buffer) {
+	if !cmp.Equal(originalBuffer, certifyInfo.ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }
@@ -242,26 +264,50 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("Failed to certify creation: %v", err)
 	}
 
-	attName := rspCC.CertifyInfo.Contents().Unwrap().Attested.Creation().Unwrap().ObjectName.Buffer
+	certifyInfo, err := rspCC.CertifyInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	creationInfo, err := certifyInfo.Attested.Creation()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	attName := creationInfo.ObjectName.Buffer
 	pubName := rspCP.Name.Buffer
 	if !bytes.Equal(attName, pubName) {
 		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)
 	}
 
-	info := Marshal(rspCC.CertifyInfo.Contents().Unwrap())
+	info := Marshal(certifyInfo)
 	if err != nil {
 		t.Fatalf("Failed to marshal: %v", err)
 	}
 
 	attestHash := sha256.Sum256(info)
 
-	pub := rspCP.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
+	pub, err := rspCP.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}	
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}		
+
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCC.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
+	rsassa, err := rspCC.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 }
@@ -348,15 +394,19 @@ func TestNVCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Calling TPM2_NV_ReadPublic: %v", err)
 	}
+	nvPublic, err := def.PublicInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
 	prewrite := NVWrite{
 		AuthHandle: AuthHandle{
-			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+			Handle: nvPublic.NVIndex,
 			Name:   nvPub.NVName,
 			Auth:   PasswordAuth(nil),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+			Handle: nvPublic.NVIndex,
 			Name:   nvPub.NVName,
 		},
 		Data: TPM2BMaxNVBuffer{
@@ -396,21 +446,41 @@ func TestNVCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to certify: %v", err)
 	}
+	certInfo, err := rspCert.CertifyInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	info := Marshal(rspCert.CertifyInfo.Contents().Unwrap())
+	info := Marshal(certInfo)
 
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
+	pub, err := rspSigner.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}	
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}	
+
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
+	rsassa, err := rspCert.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
-	if !cmp.Equal([]byte("nonce"), rspCert.CertifyInfo.Contents().Unwrap().ExtraData.Buffer) {
+	if !cmp.Equal([]byte("nonce"), certInfo.ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }

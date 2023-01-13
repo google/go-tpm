@@ -142,13 +142,29 @@ func TestSign(t *testing.T) {
 		t.Fatalf("Failed to Sign Digest: %v", err)
 	}
 
-	pub := rspCP.OutPublic.Contents().Unwrap()
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
+	pub, err := rspCP.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}	
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}	
+
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, digest[:], rspSign.Signature.Signature.RSASSA().Unwrap().Sig.Buffer); err != nil {
+	rsassa, err := rspSign.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, digest[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 

@@ -36,7 +36,11 @@ func TestObjectName(t *testing.T) {
 	public := rsp.OutPublic
 
 	want := rsp.Name
-	name, err := ObjectName(public.Contents().Unwrap())
+	pub, err := public.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	name, err := ObjectName(pub)
 	if err != nil {
 		t.Fatalf("error from ObjectName: %v", err)
 	}
@@ -72,8 +76,12 @@ func TestNVName(t *testing.T) {
 		t.Fatalf("could not call TPM2_DefineSpace: %v", err)
 	}
 
+	pub, err := public.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	readPublic := NVReadPublic{
-		NVIndex: public.Contents().Unwrap().NVIndex,
+		NVIndex: pub.NVIndex,
 	}
 	rsp, err := readPublic.Execute(thetpm)
 	if err != nil {
@@ -81,7 +89,7 @@ func TestNVName(t *testing.T) {
 	}
 
 	want := rsp.NVName
-	name, err := NVName(public.Contents().Unwrap())
+	name, err := NVName(pub)
 	if err != nil {
 		t.Fatalf("error from NVIndexName: %v", err)
 	}

@@ -380,13 +380,25 @@ func getEncryptedSaltRSA(nameAlg TPMIAlgHash, parms *TPMSRSAParms, pub *TPM2BPub
 	var hAlg TPMIAlgHash
 	switch parms.Scheme.Scheme {
 	case TPMAlgRSASSA:
-		hAlg = parms.Scheme.Details.RSASSA().Unwrap().HashAlg
+		rsassa, err := parms.Scheme.Details.RSASSA()
+		if err != nil {
+			return nil, nil, err
+		}
+		hAlg = rsassa.HashAlg
 	case TPMAlgRSAES:
 		hAlg = nameAlg
 	case TPMAlgRSAPSS:
-		hAlg = parms.Scheme.Details.RSAPSS().Unwrap().HashAlg
+		rsapss, err := parms.Scheme.Details.RSAPSS()
+		if err != nil {
+			return nil, nil, err
+		}
+		hAlg = rsapss.HashAlg
 	case TPMAlgOAEP:
-		hAlg = parms.Scheme.Details.OAEP().Unwrap().HashAlg
+		oaep, err := parms.Scheme.Details.OAEP()
+		if err != nil {
+			return nil, nil, err
+		}
+		hAlg = oaep.HashAlg
 	case TPMAlgNull:
 		hAlg = nameAlg
 	default:
@@ -451,9 +463,25 @@ func getEncryptedSaltECC(nameAlg TPMIAlgHash, parms *TPMSECCParms, pub *TPMSECCP
 func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
 	switch pub.Type {
 	case TPMAlgRSA:
-		return getEncryptedSaltRSA(pub.NameAlg, pub.Parameters.RSADetail().Unwrap(), pub.Unique.RSA().Unwrap())
+		rsaParms, err := pub.Parameters.RSADetail()
+		if err != nil {
+			return nil, nil, err
+		}
+		rsaPub, err :=  pub.Unique.RSA()
+		if err != nil {
+			return nil, nil, err
+		}
+		return getEncryptedSaltRSA(pub.NameAlg, rsaParms, rsaPub)
 	case TPMAlgECC:
-		return getEncryptedSaltECC(pub.NameAlg, pub.Parameters.ECCDetail().Unwrap(), pub.Unique.ECC().Unwrap())
+		eccParms, err := pub.Parameters.ECCDetail()
+		if err != nil {
+			return nil, nil, err
+		}
+		eccPub, err :=  pub.Unique.ECC()
+		if err != nil {
+			return nil, nil, err
+		}
+		return getEncryptedSaltECC(pub.NameAlg, eccParms, eccPub)
 	default:
 		return nil, nil, fmt.Errorf("salt encryption alg '%v' not supported", pub.Type)
 	}
@@ -688,7 +716,11 @@ func (s *hmacSession) Encrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
@@ -714,7 +746,11 @@ func (s *hmacSession) Decrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	// Part 1, 21.1
 	var sessionValue []byte
@@ -1000,7 +1036,11 @@ func (s *policySession) Encrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
@@ -1026,7 +1066,11 @@ func (s *policySession) Decrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES().Unwrap() / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	// Part 1, 21.1
 	var sessionValue []byte

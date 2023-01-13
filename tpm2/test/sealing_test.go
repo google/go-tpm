@@ -168,12 +168,16 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 
 	// Create the blob with decrypt and encrypt session bound to SRK
 	t.Run("CreateDecryptEncryptSalted", func(t *testing.T) {
+		outPub, err := createSRKRsp.OutPublic.Contents()
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
 		createBlobCmd.ParentHandle = AuthHandle{
 			Handle: createSRKRsp.ObjectHandle,
 			Name:   createSRKRsp.Name,
 			Auth: HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptInOut),
-				Salted(createSRKRsp.ObjectHandle, *createSRKRsp.OutPublic.Contents().Unwrap())),
+				Salted(createSRKRsp.ObjectHandle, *outPub)),
 		}
 		createBlobRsp, err = createBlobCmd.Execute(thetpm)
 		if err != nil {

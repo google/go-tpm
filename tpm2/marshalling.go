@@ -8,49 +8,6 @@ import (
 	"reflect"
 )
 
-// maybe represents some type that came out of an unmarshalling process.
-// We may have the value, or we may have an error.
-type maybe[T any] struct {
-	err   error
-	value *T
-}
-
-// OK returns true if the maybe contains contents instead of an error.
-func (m maybe[_]) OK() bool {
-	return m.err == nil
-}
-
-// Unwrap unwraps the result of an unmarshalling operation.
-// Panics if the data was not unmarshalled.
-func (m maybe[T]) Unwrap() *T {
-	if m.err != nil {
-		panic(fmt.Sprintf("could not unwrap: %v", m.err))
-	}
-	return m.value
-}
-
-// CheckUnwrap unwraps the result of an unmarshalling operation.
-func (m maybe[T]) CheckUnwrap() (*T, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.value, nil
-}
-
-// asMaybe returns a maybe enclosing the given contents.
-func asMaybe[T any](t *T) maybe[T] {
-	return maybe[T]{
-		value: t,
-	}
-}
-
-// maybeNot returns a maybe with the given error.
-func maybeNot[T any](err error) maybe[T] {
-	return maybe[T]{
-		err: err,
-	}
-}
-
 // Marshallable represents any TPM type that can be marshalled.
 type Marshallable interface {
 	// marshal will serialize the given value, appending onto the given buffer.
@@ -94,18 +51,14 @@ func Unmarshal[T any, P interface {
 	// *T must satisfy Marshallable
 	*T
 	Unmarshallable
-}](data []byte) maybe[T] {
+}](data []byte) (*T, error) {
 	buf := bytes.NewBuffer(data)
 	var t T
 	value := reflect.New(reflect.TypeOf(t))
 	if err := unmarshal(buf, value.Elem()); err != nil {
-		return maybe[T]{
-			err: err,
-		}
+		return nil, err
 	}
-	return maybe[T]{
-		value: value.Interface().(*T),
-	}
+	return value.Interface().(*T), nil
 }
 
 // marshallableByReflection is a placeholder interface, to hint to the unmarshalling
@@ -189,18 +142,18 @@ func (value *tpm2b[T]) unmarshal(buf *bytes.Buffer) error {
 }
 
 // Contents returns the structured contents of the tpm2b.
-func (value *tpm2b[T]) Contents() maybe[T] {
+func (value *tpm2b[T]) Contents() (*T, error) {
 	if value.contents != nil {
-		return asMaybe(value.contents)
+		return value.contents, nil
 	}
 	if value.buffer == nil {
-		return maybeNot[T](fmt.Errorf("TPMB had no contents or buffer"))
+		return nil, fmt.Errorf("TPMB had no contents or buffer")
 	}
 	var result T
 	if err := unmarshal(bytes.NewBuffer(value.buffer), reflect.ValueOf(&result).Elem()); err != nil {
-		return maybeNot[T](err)
+		return nil, err
 	}
-	return asMaybe(&result)
+	return &result, nil
 }
 
 // boxed is a helper type for corner cases such as unions, where all members must be structs.

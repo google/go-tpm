@@ -61,7 +61,14 @@ func TestECDH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not create the TPM key: %v", err)
 	}
-	tpmPub := tpmCreateRsp.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap()
+	outPub, err := tpmCreateRsp.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	tpmPub, err := outPub.Unique.ECC()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	tpmX := big.NewInt(0).SetBytes(tpmPub.X.Buffer)
 	tpmY := big.NewInt(0).SetBytes(tpmPub.Y.Buffer)
 
@@ -96,7 +103,11 @@ func TestECDH(t *testing.T) {
 		t.Fatalf("ECDH_ZGen failed: %v", err)
 	}
 
-	if !cmp.Equal(z.X, ecdhRsp.OutPoint.Contents().Unwrap().X, cmpopts.IgnoreUnexported(z.X)) {
-		t.Errorf("want %x got %x", z, ecdhRsp.OutPoint.Contents().Unwrap())
+	outPoint, err := ecdhRsp.OutPoint.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if !cmp.Equal(z.X, outPoint.X, cmpopts.IgnoreUnexported(z.X)) {
+		t.Errorf("want %x got %x", z, outPoint)
 	}
 }

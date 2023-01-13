@@ -40,19 +40,23 @@ func TestNVAuthWrite(t *testing.T) {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
 	}
 
-	nvName, err := NVName(def.PublicInfo.Contents().Unwrap())
+	pub, err := def.PublicInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	nvName, err := NVName(pub)
 	if err != nil {
 		t.Fatalf("Calculating name of NV index: %v", err)
 	}
 
 	prewrite := NVWrite{
 		AuthHandle: AuthHandle{
-			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+			Handle: pub.NVIndex,
 			Name:   *nvName,
 			Auth:   PasswordAuth([]byte("p@ssw0rd")),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+			Handle: pub.NVIndex,
 			Name:   *nvName,
 		},
 		Data: TPM2BMaxNVBuffer{
@@ -65,7 +69,7 @@ func TestNVAuthWrite(t *testing.T) {
 	}
 
 	read := NVReadPublic{
-		NVIndex: def.PublicInfo.Contents().Unwrap().NVIndex,
+		NVIndex: pub.NVIndex,
 	}
 	readRsp, err := read.Execute(thetpm)
 	if err != nil {
@@ -79,7 +83,7 @@ func TestNVAuthWrite(t *testing.T) {
 			Auth:   HMAC(TPMAlgSHA256, 16, Auth([]byte{})),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+			Handle: pub.NVIndex,
 			Name:   readRsp.NVName,
 		},
 		Data: TPM2BMaxNVBuffer{
@@ -123,10 +127,14 @@ func TestNVAuthIncrement(t *testing.T) {
 	if err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
 	}
-
+	
+	pub, err := def.PublicInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	// Calculate the Name of the index as of its creation
 	// (i.e., without NV_WRITTEN set).
-	nvName, err := NVName(def.PublicInfo.Contents().Unwrap())
+	nvName, err := NVName(pub)
 	if err != nil {
 		t.Fatalf("Calculating name of NV index: %v", err)
 	}
@@ -137,7 +145,7 @@ func TestNVAuthIncrement(t *testing.T) {
 			Auth:   HMAC(TPMAlgSHA256, 16, Auth([]byte{})),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+			Handle: pub.NVIndex,
 			Name:   *nvName,
 		},
 	}
@@ -147,14 +155,14 @@ func TestNVAuthIncrement(t *testing.T) {
 
 	// The NV index's Name has changed. Ask the TPM for it.
 	readPub := NVReadPublic{
-		NVIndex: def.PublicInfo.Contents().Unwrap().NVIndex,
+		NVIndex: pub.NVIndex,
 	}
 	readPubRsp, err := readPub.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("Calling TPM2_NV_ReadPublic: %v", err)
 	}
 	incr.NVIndex = NamedHandle{
-		Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+		Handle: pub.NVIndex,
 		Name:   readPubRsp.NVName,
 	}
 
@@ -164,7 +172,7 @@ func TestNVAuthIncrement(t *testing.T) {
 			Auth:   HMAC(TPMAlgSHA256, 16, Auth([]byte{})),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.Contents().Unwrap().NVIndex,
+			Handle: pub.NVIndex,
 			Name:   readPubRsp.NVName,
 		},
 		Size: 8,

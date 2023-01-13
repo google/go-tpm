@@ -108,11 +108,23 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 			if err != nil {
 				t.Fatalf("%v", err)
 			}
-			switch createEKRsp.OutPublic.Contents().Unwrap().Type {
+			outPub, err := createEKRsp.OutPublic.Contents()
+			if err != nil {
+				t.Fatalf("%v", err)
+			}
+			switch outPub.Type {
 			case TPMAlgRSA:
-				t.Logf("EK pub:\n%x\n", createEKRsp.OutPublic.Contents().Unwrap().Unique.RSA().Unwrap().Buffer)
+				rsa, err := outPub.Unique.RSA()
+				if err != nil {
+					t.Fatalf("%v", err)
+				}
+				t.Logf("EK pub:\n%x\n", rsa.Buffer)
 			case TPMAlgECC:
-				t.Logf("EK pub:\n%x\n%x\n", createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap().X, createEKRsp.OutPublic.Contents().Unwrap().Unique.ECC().Unwrap().Y)
+				ecc, err := outPub.Unique.ECC()
+				if err != nil {
+					t.Fatalf("%v", err)
+				}
+				t.Logf("EK pub:\n%x\n%x\n", ecc.X, ecc.Y)
 			}
 			t.Logf("EK name: %x", createEKRsp.Name)
 			defer func() {
@@ -161,7 +173,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 				options = append(options, Bound(createEKRsp.ObjectHandle, createEKRsp.Name, nil))
 			}
 			if c.salted {
-				options = append(options, Salted(createEKRsp.ObjectHandle, *createEKRsp.OutPublic.Contents().Unwrap()))
+				options = append(options, Salted(createEKRsp.ObjectHandle, *outPub))
 			}
 
 			var s Session

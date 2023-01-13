@@ -113,9 +113,13 @@ func TestAuditSession(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 		// TODO check the signature with the AK pub
-		aud := getAuditRsp.AuditInfo.Contents().Unwrap().Attested.SessionAudit().Unwrap()
-		if aud == nil {
-			t.Fatalf("got nil session audit attestation")
+		attest, err := getAuditRsp.AuditInfo.Contents()
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+		aud, err := attest.Attested.SessionAudit()
+		if err != nil {
+			t.Fatalf("%v", err)
 		}
 		want := audit.Digest()
 		got := aud.SessionDigest.Buffer

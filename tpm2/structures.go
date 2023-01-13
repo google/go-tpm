@@ -927,91 +927,91 @@ func TPMUCapabilities[C capabilitiesContents](selector TPMCap, contents C) tpmuC
 }
 
 // Algorithms returns the 'algorithms' member of the union.
-func (u *tpmuCapabilities) Algorithms() maybe[TPMLAlgProperty] {
+func (u *tpmuCapabilities) Algorithms() (*TPMLAlgProperty, error) {
 	if u.selector == TPMCapAlgs {
-		return asMaybe(u.contents.(*TPMLAlgProperty))
+		return u.contents.(*TPMLAlgProperty), nil
 	}
-	return maybeNot[TPMLAlgProperty](fmt.Errorf("did not contain algorithms (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain algorithms (selector value was %v)", u.selector)
 }
 
 // Handles returns the 'handles' member of the union.
-func (u *tpmuCapabilities) Handles() maybe[TPMLHandle] {
+func (u *tpmuCapabilities) Handles() (*TPMLHandle, error) {
 	if u.selector == TPMCapHandles {
-		return asMaybe(u.contents.(*TPMLHandle))
+		return u.contents.(*TPMLHandle), nil
 	}
-	return maybeNot[TPMLHandle](fmt.Errorf("did not contain handles (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain handles (selector value was %v)", u.selector)
 }
 
 // Command returns the 'command' member of the union.
-func (u *tpmuCapabilities) Command() maybe[TPMLCCA] {
+func (u *tpmuCapabilities) Command() (*TPMLCCA, error) {
 	if u.selector == TPMCapAlgs {
-		return asMaybe(u.contents.(*TPMLCCA))
+		return u.contents.(*TPMLCCA), nil
 	}
-	return maybeNot[TPMLCCA](fmt.Errorf("did not contain command (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain command (selector value was %v)", u.selector)
 }
 
 // PPCommands returns the 'ppCommands' member of the union.
-func (u *tpmuCapabilities) PPCommands() maybe[TPMLCC] {
+func (u *tpmuCapabilities) PPCommands() (*TPMLCC, error) {
 	if u.selector == TPMCapPPCommands {
-		return asMaybe(u.contents.(*TPMLCC))
+		return u.contents.(*TPMLCC), nil
 	}
-	return maybeNot[TPMLCC](fmt.Errorf("did not contain ppCommands (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ppCommands (selector value was %v)", u.selector)
 }
 
 // AuditCommands returns the 'auditCommands' member of the union.
-func (u *tpmuCapabilities) AuditCommands() maybe[TPMLCC] {
+func (u *tpmuCapabilities) AuditCommands() (*TPMLCC, error) {
 	if u.selector == TPMCapAuditCommands {
-		return asMaybe(u.contents.(*TPMLCC))
+		return u.contents.(*TPMLCC), nil
 	}
-	return maybeNot[TPMLCC](fmt.Errorf("did not contain auditCommands (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain auditCommands (selector value was %v)", u.selector)
 }
 
 // AssignedPCR returns the 'assignedPCR' member of the union.
-func (u *tpmuCapabilities) AssignedPCR() maybe[TPMLPCRSelection] {
+func (u *tpmuCapabilities) AssignedPCR() (*TPMLPCRSelection, error) {
 	if u.selector == TPMCapPCRs {
-		return asMaybe(u.contents.(*TPMLPCRSelection))
+		return u.contents.(*TPMLPCRSelection), nil
 	}
-	return maybeNot[TPMLPCRSelection](fmt.Errorf("did not contain assignedPCR (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain assignedPCR (selector value was %v)", u.selector)
 }
 
 // TPMProperties returns the 'tpmProperties' member of the union.
-func (u *tpmuCapabilities) TPMProperties() maybe[TPMLTaggedTPMProperty] {
+func (u *tpmuCapabilities) TPMProperties() (*TPMLTaggedTPMProperty, error) {
 	if u.selector == TPMCapTPMProperties {
-		return asMaybe(u.contents.(*TPMLTaggedTPMProperty))
+		return u.contents.(*TPMLTaggedTPMProperty), nil
 	}
-	return maybeNot[TPMLTaggedTPMProperty](fmt.Errorf("did not contain tpmProperties (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain tpmProperties (selector value was %v)", u.selector)
 }
 
 // PCRProperties returns the 'pcrProperties' member of the union.
-func (u *tpmuCapabilities) PCRProperties() maybe[TPMLTaggedPCRProperty] {
+func (u *tpmuCapabilities) PCRProperties() (*TPMLTaggedPCRProperty, error) {
 	if u.selector == TPMCapPCRProperties {
-		return asMaybe(u.contents.(*TPMLTaggedPCRProperty))
+		return u.contents.(*TPMLTaggedPCRProperty), nil
 	}
-	return maybeNot[TPMLTaggedPCRProperty](fmt.Errorf("did not contain pcrProperties (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain pcrProperties (selector value was %v)", u.selector)
 }
 
 // ECCCurves returns the 'eccCurves' member of the union.
-func (u *tpmuCapabilities) ECCCurves() maybe[TPMLECCCurve] {
+func (u *tpmuCapabilities) ECCCurves() (*TPMLECCCurve, error) {
 	if u.selector == TPMCapECCCurves {
-		return asMaybe(u.contents.(*TPMLECCCurve))
+		return u.contents.(*TPMLECCCurve), nil
 	}
-	return maybeNot[TPMLECCCurve](fmt.Errorf("did not contain eccCurves (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain eccCurves (selector value was %v)", u.selector)
 }
 
 // AuthPolicies returns the 'authPolicies' member of the union.
-func (u *tpmuCapabilities) AuthPolicies() maybe[TPMLTaggedPolicy] {
+func (u *tpmuCapabilities) AuthPolicies() (*TPMLTaggedPolicy, error) {
 	if u.selector == TPMCapAuthPolicies {
-		return asMaybe(u.contents.(*TPMLTaggedPolicy))
+		return u.contents.(*TPMLTaggedPolicy), nil
 	}
-	return maybeNot[TPMLTaggedPolicy](fmt.Errorf("did not contain authPolicies (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain authPolicies (selector value was %v)", u.selector)
 }
 
 // ACTData returns the 'actData' member of the union.
-func (u *tpmuCapabilities) ACTData() maybe[TPMLACTData] {
+func (u *tpmuCapabilities) ACTData() (*TPMLACTData, error) {
 	if u.selector == TPMCapAuthPolicies {
-		return asMaybe(u.contents.(*TPMLACTData))
+		return u.contents.(*TPMLACTData), nil
 	}
-	return maybeNot[TPMLACTData](fmt.Errorf("did not contain actData (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain actData (selector value was %v)", u.selector)
 }
 
 // TPMSCapabilityData represents a TPMS_CAPABILITY_DATA.
@@ -1266,67 +1266,67 @@ func TPMUAttest[C attestContents](selector TPMST, contents C) tpmuAttest {
 }
 
 // Certify returns the 'certify' member of the union.
-func (u *tpmuAttest) Certify() maybe[TPMSCertifyInfo] {
+func (u *tpmuAttest) Certify() (*TPMSCertifyInfo, error) {
 	if u.selector == TPMSTAttestCertify {
-		return asMaybe(u.contents.(*TPMSCertifyInfo))
+		return u.contents.(*TPMSCertifyInfo), nil
 	}
-	return maybeNot[TPMSCertifyInfo](fmt.Errorf("did not contain certify (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain certify (selector value was %v)", u.selector)
 }
 
 // Creation returns the 'creation' member of the union.
-func (u *tpmuAttest) Creation() maybe[TPMSCreationInfo] {
+func (u *tpmuAttest) Creation() (*TPMSCreationInfo, error) {
 	if u.selector == TPMSTAttestCreation {
-		return asMaybe(u.contents.(*TPMSCreationInfo))
+		return u.contents.(*TPMSCreationInfo), nil
 	}
-	return maybeNot[TPMSCreationInfo](fmt.Errorf("did not contain creation (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain creation (selector value was %v)", u.selector)
 }
 
 // Quote returns the 'quote' member of the union.
-func (u *tpmuAttest) Quote() maybe[TPMSQuoteInfo] {
+func (u *tpmuAttest) Quote() (*TPMSQuoteInfo, error) {
 	if u.selector == TPMSTAttestQuote {
-		return asMaybe(u.contents.(*TPMSQuoteInfo))
+		return u.contents.(*TPMSQuoteInfo), nil
 	}
-	return maybeNot[TPMSQuoteInfo](fmt.Errorf("did not contain quote (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain quote (selector value was %v)", u.selector)
 }
 
 // CommandAudit returns the 'commandAudit' member of the union.
-func (u *tpmuAttest) CommandAudit() maybe[TPMSCommandAuditInfo] {
+func (u *tpmuAttest) CommandAudit() (*TPMSCommandAuditInfo, error) {
 	if u.selector == TPMSTAttestCommandAudit {
-		return asMaybe(u.contents.(*TPMSCommandAuditInfo))
+		return u.contents.(*TPMSCommandAuditInfo), nil
 	}
-	return maybeNot[TPMSCommandAuditInfo](fmt.Errorf("did not contain commandAudit (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain commandAudit (selector value was %v)", u.selector)
 }
 
 // SessionAudit returns the 'sessionAudit' member of the union.
-func (u *tpmuAttest) SessionAudit() maybe[TPMSSessionAuditInfo] {
+func (u *tpmuAttest) SessionAudit() (*TPMSSessionAuditInfo, error) {
 	if u.selector == TPMSTAttestSessionAudit {
-		return asMaybe(u.contents.(*TPMSSessionAuditInfo))
+		return u.contents.(*TPMSSessionAuditInfo), nil
 	}
-	return maybeNot[TPMSSessionAuditInfo](fmt.Errorf("did not contain sessionAudit (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain sessionAudit (selector value was %v)", u.selector)
 }
 
 // Time returns the 'time' member of the union.
-func (u *tpmuAttest) Time() maybe[TPMSTimeAttestInfo] {
+func (u *tpmuAttest) Time() (*TPMSTimeAttestInfo, error) {
 	if u.selector == TPMSTAttestTime {
-		return asMaybe(u.contents.(*TPMSTimeAttestInfo))
+		return u.contents.(*TPMSTimeAttestInfo), nil
 	}
-	return maybeNot[TPMSTimeAttestInfo](fmt.Errorf("did not contain time (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain time (selector value was %v)", u.selector)
 }
 
 // NV returns the 'nv' member of the union.
-func (u *tpmuAttest) NV() maybe[TPMSNVCertifyInfo] {
+func (u *tpmuAttest) NV() (*TPMSNVCertifyInfo, error) {
 	if u.selector == TPMSTAttestNV {
-		return asMaybe(u.contents.(*TPMSNVCertifyInfo))
+		return u.contents.(*TPMSNVCertifyInfo), nil
 	}
-	return maybeNot[TPMSNVCertifyInfo](fmt.Errorf("did not contain nv (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain nv (selector value was %v)", u.selector)
 }
 
 // NVDigest returns the 'nvDigest' member of the union.
-func (u *tpmuAttest) NVDigest() maybe[TPMSNVDigestCertifyInfo] {
+func (u *tpmuAttest) NVDigest() (*TPMSNVDigestCertifyInfo, error) {
 	if u.selector == TPMSTAttestNVDigest {
-		return asMaybe(u.contents.(*TPMSNVDigestCertifyInfo))
+		return u.contents.(*TPMSNVDigestCertifyInfo), nil
 	}
-	return maybeNot[TPMSNVDigestCertifyInfo](fmt.Errorf("did not contain nvDigest (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain nvDigest (selector value was %v)", u.selector)
 }
 
 // TPMSAttest represents a TPMS_ATTEST.
@@ -1437,21 +1437,21 @@ func TPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) tpmuSym
 }
 
 // AES returns the 'aes' member of the union.
-func (u *tpmuSymKeyBits) AES() maybe[TPMKeyBits] {
+func (u *tpmuSymKeyBits) AES() (*TPMKeyBits, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMKeyBits]).unbox()
-		return asMaybe(value)
+		return value, nil
 	}
-	return maybeNot[TPMKeyBits](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain aes (selector value was %v)", u.selector)
 }
 
 // XOR returns the 'xor' member of the union.
-func (u *tpmuSymKeyBits) XOR() maybe[TPMAlgID] {
+func (u *tpmuSymKeyBits) XOR() (*TPMAlgID, error) {
 	if u.selector == TPMAlgXOR {
 		value := u.contents.(*boxed[TPMAlgID]).unbox()
-		return asMaybe(value)
+		return value, nil
 	}
-	return maybeNot[TPMAlgID](fmt.Errorf("did not contain xor (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain xor (selector value was %v)", u.selector)
 }
 
 type tpmuSymMode struct {
@@ -1513,12 +1513,12 @@ func TPMUSymMode[C symModeContents](selector TPMAlgID, contents C) tpmuSymMode {
 }
 
 // AES returns the 'aes' member of the union.
-func (u *tpmuSymMode) AES() maybe[TPMIAlgSymMode] {
+func (u *tpmuSymMode) AES() (*TPMIAlgSymMode, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
-		return asMaybe(value)
+		return value, nil
 	}
-	return maybeNot[TPMIAlgSymMode](fmt.Errorf("did not contain aes (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain aes (selector value was %v)", u.selector)
 }
 
 type tpmuSymDetails struct {
@@ -1805,21 +1805,21 @@ func TPMUSchemeKeyedHash[C schemeKeyedHashContents](selector TPMAlgID, contents 
 }
 
 // HMAC returns the 'hmac' member of the union.
-func (u *tpmuSchemeKeyedHash) HMAC() maybe[TPMSSchemeHMAC] {
+func (u *tpmuSchemeKeyedHash) HMAC() (*TPMSSchemeHMAC, error) {
 	if u.selector == TPMAlgHMAC {
 		value := u.contents.(*TPMSSchemeHMAC)
-		return asMaybe(value)
+		return value, nil
 	}
-	return maybeNot[TPMSSchemeHMAC](fmt.Errorf("did not contain hmac (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain hmac (selector value was %v)", u.selector)
 }
 
 // XOR returns the 'xor' member of the union.
-func (u *tpmuSchemeKeyedHash) XOR() maybe[TPMSSchemeXOR] {
+func (u *tpmuSchemeKeyedHash) XOR() (*TPMSSchemeXOR, error) {
 	if u.selector == TPMAlgXOR {
 		value := u.contents.(*TPMSSchemeXOR)
-		return asMaybe(value)
+		return value, nil
 	}
-	return maybeNot[TPMSSchemeXOR](fmt.Errorf("did not contain xor (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain xor (selector value was %v)", u.selector)
 }
 
 // TPMTKeyedHashScheme represents a TPMT_KEYEDHASH_SCHEME.
@@ -1912,43 +1912,43 @@ func TPMUSigScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuSigSc
 }
 
 // HMAC returns the 'hmac' member of the union.
-func (u *tpmuSigScheme) HMAC() maybe[TPMSSchemeHMAC] {
+func (u *tpmuSigScheme) HMAC() (*TPMSSchemeHMAC, error) {
 	if u.selector == TPMAlgHMAC {
-		return asMaybe(u.contents.(*TPMSSchemeHMAC))
+		return u.contents.(*TPMSSchemeHMAC), nil
 	}
-	return maybeNot[TPMSSchemeHMAC](fmt.Errorf("did not contain hmac (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain hmac (selector value was %v)", u.selector)
 }
 
 // RSASSA returns the 'rsassa' member of the union.
-func (u *tpmuSigScheme) RSASSA() maybe[TPMSSchemeHash] {
+func (u *tpmuSigScheme) RSASSA() (*TPMSSchemeHash, error) {
 	if u.selector == TPMAlgRSASSA {
-		return asMaybe(u.contents.(*TPMSSchemeHash))
+		return u.contents.(*TPMSSchemeHash), nil
 	}
-	return maybeNot[TPMSSchemeHash](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector)
 }
 
 // RSAPSS returns the 'rsapss' member of the union.
-func (u *tpmuSigScheme) RSAPSS() maybe[TPMSSchemeHash] {
+func (u *tpmuSigScheme) RSAPSS() (*TPMSSchemeHash, error) {
 	if u.selector == TPMAlgRSAPSS {
-		return asMaybe(u.contents.(*TPMSSchemeHash))
+		return u.contents.(*TPMSSchemeHash), nil
 	}
-	return maybeNot[TPMSSchemeHash](fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector)
 }
 
 // ECDSA returns the 'ecdsa' member of the union.
-func (u *tpmuSigScheme) ECDSA() maybe[TPMSSchemeHash] {
+func (u *tpmuSigScheme) ECDSA() (*TPMSSchemeHash, error) {
 	if u.selector == TPMAlgECDSA {
-		return asMaybe(u.contents.(*TPMSSchemeHash))
+		return u.contents.(*TPMSSchemeHash), nil
 	}
-	return maybeNot[TPMSSchemeHash](fmt.Errorf("did not contain ecdsa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecdsa (selector value was %v)", u.selector)
 }
 
 // ECDAA returns the 'ecdaa' member of the union.
-func (u *tpmuSigScheme) ECDAA() maybe[TPMSSchemeECDAA] {
+func (u *tpmuSigScheme) ECDAA() (*TPMSSchemeECDAA, error) {
 	if u.selector == TPMAlgECDAA {
-		return asMaybe(u.contents.(*TPMSSchemeECDAA))
+		return u.contents.(*TPMSSchemeECDAA), nil
 	}
-	return maybeNot[TPMSSchemeECDAA](fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector)
 }
 
 // TPMTSigScheme represents a TPMT_SIG_SCHEME.
@@ -2085,43 +2085,43 @@ func TPMUKDFScheme[C kdfSchemeContents](selector TPMAlgID, contents C) tpmuKDFSc
 }
 
 // MGF1 returns the 'mgf1' member of the union.
-func (u *tpmuKDFScheme) MGF1() maybe[TPMSKDFSchemeMGF1] {
+func (u *tpmuKDFScheme) MGF1() (*TPMSKDFSchemeMGF1, error) {
 	if u.selector == TPMAlgMGF1 {
-		return asMaybe(u.contents.(*TPMSKDFSchemeMGF1))
+		return u.contents.(*TPMSKDFSchemeMGF1), nil
 	}
-	return maybeNot[TPMSKDFSchemeMGF1](fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector)
 }
 
 // MGF1 returns the 'ecdh' member of the union.
-func (u *tpmuKDFScheme) ECDH() maybe[TPMSKDFSchemeECDH] {
+func (u *tpmuKDFScheme) ECDH() (*TPMSKDFSchemeECDH, error) {
 	if u.selector == TPMAlgECDH {
-		return asMaybe(u.contents.(*TPMSKDFSchemeECDH))
+		return u.contents.(*TPMSKDFSchemeECDH), nil
 	}
-	return maybeNot[TPMSKDFSchemeECDH](fmt.Errorf("did not contain ecdh (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecdh (selector value was %v)", u.selector)
 }
 
 // KDF1SP80056A returns the 'kdf1sp80056a' member of the union.
-func (u *tpmuKDFScheme) KDF1SP80056A() maybe[TPMSKDFSchemeKDF1SP80056A] {
+func (u *tpmuKDFScheme) KDF1SP80056A() (*TPMSKDFSchemeKDF1SP80056A, error) {
 	if u.selector == TPMAlgMGF1 {
-		return asMaybe(u.contents.(*TPMSKDFSchemeKDF1SP80056A))
+		return u.contents.(*TPMSKDFSchemeKDF1SP80056A), nil
 	}
-	return maybeNot[TPMSKDFSchemeKDF1SP80056A](fmt.Errorf("did not contain kdf1sp80056a (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain kdf1sp80056a (selector value was %v)", u.selector)
 }
 
 // KDF2 returns the 'kdf2' member of the union.
-func (u *tpmuKDFScheme) KDF2() maybe[TPMSKDFSchemeKDF2] {
+func (u *tpmuKDFScheme) KDF2() (*TPMSKDFSchemeKDF2, error) {
 	if u.selector == TPMAlgMGF1 {
-		return asMaybe(u.contents.(*TPMSKDFSchemeKDF2))
+		return u.contents.(*TPMSKDFSchemeKDF2), nil
 	}
-	return maybeNot[TPMSKDFSchemeKDF2](fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector)
 }
 
 // KDF1SP800108 returns the 'kdf1sp800108' member of the union.
-func (u *tpmuKDFScheme) KDF1SP800108() maybe[TPMSKDFSchemeKDF1SP800108] {
+func (u *tpmuKDFScheme) KDF1SP800108() (*TPMSKDFSchemeKDF1SP800108, error) {
 	if u.selector == TPMAlgMGF1 {
-		return asMaybe(u.contents.(*TPMSKDFSchemeKDF1SP800108))
+		return u.contents.(*TPMSKDFSchemeKDF1SP800108), nil
 	}
-	return maybeNot[TPMSKDFSchemeKDF1SP800108](fmt.Errorf("did not contain kdf1sp800108 (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain kdf1sp800108 (selector value was %v)", u.selector)
 }
 
 // TPMTKDFScheme represents a TPMT_KDF_SCHEME.
@@ -2249,59 +2249,59 @@ func TPMUAsymScheme[C asymSchemeContents](selector TPMAlgID, contents C) tpmuAsy
 }
 
 // RSASSA returns the 'rsassa' member of the union.
-func (u *tpmuAsymScheme) RSASSA() maybe[TPMSSigSchemeRSASSA] {
+func (u *tpmuAsymScheme) RSASSA() (*TPMSSigSchemeRSASSA, error) {
 	if u.selector == TPMAlgRSASSA {
-		return asMaybe(u.contents.(*TPMSSigSchemeRSASSA))
+		return u.contents.(*TPMSSigSchemeRSASSA), nil
 	}
-	return maybeNot[TPMSSigSchemeRSASSA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector)
 }
 
 // RSAES returns the 'rsaes' member of the union.
-func (u *tpmuAsymScheme) RSAES() maybe[TPMSEncSchemeRSAES] {
+func (u *tpmuAsymScheme) RSAES() (*TPMSEncSchemeRSAES, error) {
 	if u.selector == TPMAlgRSAES {
-		return asMaybe(u.contents.(*TPMSEncSchemeRSAES))
+		return u.contents.(*TPMSEncSchemeRSAES), nil
 	}
-	return maybeNot[TPMSEncSchemeRSAES](fmt.Errorf("did not contain rsaes (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsaes (selector value was %v)", u.selector)
 }
 
 // RSAPSS returns the 'rsapss' member of the union.
-func (u *tpmuAsymScheme) RSAPSS() maybe[TPMSSigSchemeRSAPSS] {
+func (u *tpmuAsymScheme) RSAPSS() (*TPMSSigSchemeRSAPSS, error) {
 	if u.selector == TPMAlgRSAPSS {
-		return asMaybe(u.contents.(*TPMSSigSchemeRSAPSS))
+		return u.contents.(*TPMSSigSchemeRSAPSS), nil
 	}
-	return maybeNot[TPMSSigSchemeRSAPSS](fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector)
 }
 
 // OAEP returns the 'oaep' member of the union.
-func (u *tpmuAsymScheme) OAEP() maybe[TPMSEncSchemeOAEP] {
+func (u *tpmuAsymScheme) OAEP() (*TPMSEncSchemeOAEP, error) {
 	if u.selector == TPMAlgOAEP {
-		return asMaybe(u.contents.(*TPMSEncSchemeOAEP))
+		return u.contents.(*TPMSEncSchemeOAEP), nil
 	}
-	return maybeNot[TPMSEncSchemeOAEP](fmt.Errorf("did not contain oaep (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain oaep (selector value was %v)", u.selector)
 }
 
 // ECDSA returns the 'ecdsa' member of the union.
-func (u *tpmuAsymScheme) ECDSA() maybe[TPMSSigSchemeECDSA] {
+func (u *tpmuAsymScheme) ECDSA() (*TPMSSigSchemeECDSA, error) {
 	if u.selector == TPMAlgECDSA {
-		return asMaybe(u.contents.(*TPMSSigSchemeECDSA))
+		return u.contents.(*TPMSSigSchemeECDSA), nil
 	}
-	return maybeNot[TPMSSigSchemeECDSA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector)
 }
 
 // ECDH returns the 'ecdh' member of the union.
-func (u *tpmuAsymScheme) ECDH() maybe[TPMSKeySchemeECDH] {
+func (u *tpmuAsymScheme) ECDH() (*TPMSKeySchemeECDH, error) {
 	if u.selector == TPMAlgRSASSA {
-		return asMaybe(u.contents.(*TPMSKeySchemeECDH))
+		return u.contents.(*TPMSKeySchemeECDH), nil
 	}
-	return maybeNot[TPMSKeySchemeECDH](fmt.Errorf("did not contain ecdh (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecdh (selector value was %v)", u.selector)
 }
 
 // ECDAA returns the 'ecdaa' member of the union.
-func (u *tpmuAsymScheme) ECDAA() maybe[TPMSSchemeECDAA] {
+func (u *tpmuAsymScheme) ECDAA() (*TPMSSchemeECDAA, error) {
 	if u.selector == TPMAlgECDAA {
-		return asMaybe(u.contents.(*TPMSSchemeECDAA))
+		return u.contents.(*TPMSSchemeECDAA), nil
 	}
-	return maybeNot[TPMSSchemeECDAA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector)
 }
 
 // TPMIAlgRSAScheme represents a TPMI_ALG_RSA_SCHEME.
@@ -2460,43 +2460,43 @@ func TPMUSignature[C signatureContents](selector TPMAlgID, contents C) tpmuSigna
 }
 
 // HMAC returns the 'hmac' member of the union.
-func (u *tpmuSignature) HMAC() maybe[TPMTHA] {
+func (u *tpmuSignature) HMAC() (*TPMTHA, error) {
 	if u.selector == TPMAlgHMAC {
-		return asMaybe(u.contents.(*TPMTHA))
+		return u.contents.(*TPMTHA), nil
 	}
-	return maybeNot[TPMTHA](fmt.Errorf("did not contain hmac (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain hmac (selector value was %v)", u.selector)
 }
 
 // RSASSA returns the 'rsassa' member of the union.
-func (u *tpmuSignature) RSASSA() maybe[TPMSSignatureRSA] {
+func (u *tpmuSignature) RSASSA() (*TPMSSignatureRSA, error) {
 	if u.selector == TPMAlgRSASSA {
-		return asMaybe(u.contents.(*TPMSSignatureRSA))
+		return u.contents.(*TPMSSignatureRSA), nil
 	}
-	return maybeNot[TPMSSignatureRSA](fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector)
 }
 
 // RSAPSS returns the 'rsapss' member of the union.
-func (u *tpmuSignature) RSAPSS() maybe[TPMSSignatureRSA] {
+func (u *tpmuSignature) RSAPSS() (*TPMSSignatureRSA, error) {
 	if u.selector == TPMAlgRSAPSS {
-		return asMaybe(u.contents.(*TPMSSignatureRSA))
+		return u.contents.(*TPMSSignatureRSA), nil
 	}
-	return maybeNot[TPMSSignatureRSA](fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsapss (selector value was %v)", u.selector)
 }
 
 // ECDSA returns the 'ecdsa' member of the union.
-func (u *tpmuSignature) ECDSA() maybe[TPMSSignatureECC] {
+func (u *tpmuSignature) ECDSA() (*TPMSSignatureECC, error) {
 	if u.selector == TPMAlgECDSA {
-		return asMaybe(u.contents.(*TPMSSignatureECC))
+		return u.contents.(*TPMSSignatureECC), nil
 	}
-	return maybeNot[TPMSSignatureECC](fmt.Errorf("did not contain ecdsa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecdsa (selector value was %v)", u.selector)
 }
 
 // ECDAA returns the 'ecdaa' member of the union.
-func (u *tpmuSignature) ECDAA() maybe[TPMSSignatureECC] {
+func (u *tpmuSignature) ECDAA() (*TPMSSignatureECC, error) {
 	if u.selector == TPMAlgRSASSA {
-		return asMaybe(u.contents.(*TPMSSignatureECC))
+		return u.contents.(*TPMSSignatureECC), nil
 	}
-	return maybeNot[TPMSSignatureECC](fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector)
 }
 
 // TPMTSignature represents a TPMT_SIGNATURE.
@@ -2598,35 +2598,35 @@ func TPMUPublicID[C publicIDContents](selector TPMAlgID, contents C) tpmuPublicI
 }
 
 // KeyedHash returns the 'keyedHash' member of the union.
-func (u *tpmuPublicID) KeyedHash() maybe[TPM2BDigest] {
+func (u *tpmuPublicID) KeyedHash() (*TPM2BDigest, error) {
 	if u.selector == TPMAlgKeyedHash {
-		return asMaybe(u.contents.(*TPM2BDigest))
+		return u.contents.(*TPM2BDigest), nil
 	}
-	return maybeNot[TPM2BDigest](fmt.Errorf("did not contain keyedHash (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain keyedHash (selector value was %v)", u.selector)
 }
 
 // SymCipher returns the 'symCipher' member of the union.
-func (u *tpmuPublicID) SymCipher() maybe[TPM2BDigest] {
+func (u *tpmuPublicID) SymCipher() (*TPM2BDigest, error) {
 	if u.selector == TPMAlgSymCipher {
-		return asMaybe(u.contents.(*TPM2BDigest))
+		return u.contents.(*TPM2BDigest), nil
 	}
-	return maybeNot[TPM2BDigest](fmt.Errorf("did not contain symCipher (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain symCipher (selector value was %v)", u.selector)
 }
 
 // RSA returns the 'rsa' member of the union.
-func (u *tpmuPublicID) RSA() maybe[TPM2BPublicKeyRSA] {
+func (u *tpmuPublicID) RSA() (*TPM2BPublicKeyRSA, error) {
 	if u.selector == TPMAlgRSA {
-		return asMaybe(u.contents.(*TPM2BPublicKeyRSA))
+		return u.contents.(*TPM2BPublicKeyRSA), nil
 	}
-	return maybeNot[TPM2BPublicKeyRSA](fmt.Errorf("did not contain rsa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsa (selector value was %v)", u.selector)
 }
 
 // ECC returns the 'ecc' member of the union.
-func (u *tpmuPublicID) ECC() maybe[TPMSECCPoint] {
+func (u *tpmuPublicID) ECC() (*TPMSECCPoint, error) {
 	if u.selector == TPMAlgECC {
-		return asMaybe(u.contents.(*TPMSECCPoint))
+		return u.contents.(*TPMSECCPoint), nil
 	}
-	return maybeNot[TPMSECCPoint](fmt.Errorf("did not contain ecc (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecc (selector value was %v)", u.selector)
 }
 
 // TPMSKeyedHashParms represents a TPMS_KEYEDHASH_PARMS.
@@ -2768,35 +2768,35 @@ func TPMUPublicParms[C publicParmsContents](selector TPMAlgID, contents C) tpmuP
 }
 
 // KeyedHashDetail returns the 'keyedHashDetail' member of the union.
-func (u *tpmuPublicParms) KeyedHashDetail() maybe[TPMSKeyedHashParms] {
+func (u *tpmuPublicParms) KeyedHashDetail() (*TPMSKeyedHashParms, error) {
 	if u.selector == TPMAlgKeyedHash {
-		return asMaybe(u.contents.(*TPMSKeyedHashParms))
+		return u.contents.(*TPMSKeyedHashParms), nil
 	}
-	return maybeNot[TPMSKeyedHashParms](fmt.Errorf("did not contain keyedHashDetail (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain keyedHashDetail (selector value was %v)", u.selector)
 }
 
 // SymDetail returns the 'symDetail' member of the union.
-func (u *tpmuPublicParms) SymDetail() maybe[TPMSSymCipherParms] {
+func (u *tpmuPublicParms) SymDetail() (*TPMSSymCipherParms, error) {
 	if u.selector == TPMAlgSymCipher {
-		return asMaybe(u.contents.(*TPMSSymCipherParms))
+		return u.contents.(*TPMSSymCipherParms), nil
 	}
-	return maybeNot[TPMSSymCipherParms](fmt.Errorf("did not contain symDetail (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain symDetail (selector value was %v)", u.selector)
 }
 
 // RSADetail returns the 'rsaDetail' member of the union.
-func (u *tpmuPublicParms) RSADetail() maybe[TPMSRSAParms] {
+func (u *tpmuPublicParms) RSADetail() (*TPMSRSAParms, error) {
 	if u.selector == TPMAlgRSA {
-		return asMaybe(u.contents.(*TPMSRSAParms))
+		return u.contents.(*TPMSRSAParms), nil
 	}
-	return maybeNot[TPMSRSAParms](fmt.Errorf("did not contain rsaDetail (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsaDetail (selector value was %v)", u.selector)
 }
 
 // ECCDetail returns the 'eccDetail' member of the union.
-func (u *tpmuPublicParms) ECCDetail() maybe[TPMSECCParms] {
+func (u *tpmuPublicParms) ECCDetail() (*TPMSECCParms, error) {
 	if u.selector == TPMAlgECC {
-		return asMaybe(u.contents.(*TPMSECCParms))
+		return u.contents.(*TPMSECCParms), nil
 	}
-	return maybeNot[TPMSECCParms](fmt.Errorf("did not contain eccDetail (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain eccDetail (selector value was %v)", u.selector)
 }
 
 // TPMTPublic represents a TPMT_PUBLIC.
@@ -2959,35 +2959,35 @@ func TPMUSensitiveComposite[C sensitiveCompositeContents](selector TPMAlgID, con
 }
 
 // RSA returns the 'rsa' member of the union.
-func (u *tpmuKDFScheme) RSA() maybe[TPM2BPrivateKeyRSA] {
+func (u *tpmuKDFScheme) RSA() (*TPM2BPrivateKeyRSA, error) {
 	if u.selector == TPMAlgRSA {
-		return asMaybe(u.contents.(*TPM2BPrivateKeyRSA))
+		return u.contents.(*TPM2BPrivateKeyRSA), nil
 	}
-	return maybeNot[TPM2BPrivateKeyRSA](fmt.Errorf("did not contain rsa (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain rsa (selector value was %v)", u.selector)
 }
 
 // ECC returns the 'ecc' member of the union.
-func (u *tpmuKDFScheme) ECC() maybe[TPM2BECCParameter] {
+func (u *tpmuKDFScheme) ECC() (*TPM2BECCParameter, error) {
 	if u.selector == TPMAlgECC {
-		return asMaybe(u.contents.(*TPM2BECCParameter))
+		return u.contents.(*TPM2BECCParameter), nil
 	}
-	return maybeNot[TPM2BECCParameter](fmt.Errorf("did not contain ecc (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain ecc (selector value was %v)", u.selector)
 }
 
 // Bits returns the 'bits' member of the union.
-func (u *tpmuKDFScheme) Bits() maybe[TPM2BSensitiveData] {
+func (u *tpmuKDFScheme) Bits() (*TPM2BSensitiveData, error) {
 	if u.selector == TPMAlgKeyedHash {
-		return asMaybe(u.contents.(*TPM2BSensitiveData))
+		return u.contents.(*TPM2BSensitiveData), nil
 	}
-	return maybeNot[TPM2BSensitiveData](fmt.Errorf("did not contain bits (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain bits (selector value was %v)", u.selector)
 }
 
 // Sym returns the 'sym' member of the union.
-func (u *tpmuKDFScheme) Sym() maybe[TPM2BSymKey] {
+func (u *tpmuKDFScheme) Sym() (*TPM2BSymKey, error) {
 	if u.selector == TPMAlgSymCipher {
-		return asMaybe(u.contents.(*TPM2BSymKey))
+		return u.contents.(*TPM2BSymKey), nil
 	}
-	return maybeNot[TPM2BSymKey](fmt.Errorf("did not contain sym (selector value was %v)", u.selector))
+	return nil, fmt.Errorf("did not contain sym (selector value was %v)", u.selector)
 }
 
 // // tpmuSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
