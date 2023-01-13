@@ -36,7 +36,7 @@ type unmarshallableWithHint interface {
 }
 
 // Marshal will serialize the given values, returning them as a byte slice.
-func Marshal[T Marshallable](v T) []byte {
+func Marshal(v Marshallable) []byte {
 	var buf bytes.Buffer
 	if err := marshal(&buf, reflect.ValueOf(v)); err != nil {
 		panic(fmt.Sprintf("unexpected error marshalling %v: %v", reflect.TypeOf(v).Name(), err))
@@ -90,9 +90,10 @@ func (*marshalByReflection) unmarshal(_ *bytes.Buffer) error {
 	panic("not implemented")
 }
 
-// tpm2b is a helper type for a field that can be provided either by structure or by byte-array.
-// When deserialized (e.g., from a TPM response), both contents and Buffer are populated.
+// tpm2b is a helper type for a field that contains either a structure or by byte-array.
 // When serialized, if contents is non-nil, the value of contents is used.
+// Because it can be instantiated by value or by byte-array, Marshal must be used in order to get
+// the flattened data.
 //
 //	Else, the value of Buffer is used.
 type tpm2b[T any] struct {
@@ -134,7 +135,7 @@ func (value *tpm2b[T]) unmarshal(buf *bytes.Buffer) error {
 		return err
 	}
 	if n != int(size) {
-		return fmt.Errorf("ran out of data attempting to read %v bytes from the bufferm which only had %v", size, n)
+		return fmt.Errorf("ran out of data attempting to read %v bytes from the buffer, which only had %v", size, n)
 	}
 	rdr := bytes.NewBuffer(value.buffer)
 	value.contents = new(T)
