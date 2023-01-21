@@ -22,11 +22,8 @@ const (
 )
 
 // execute sends the provided command and returns the TPM's response.
-func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) error {
+func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Session) error {
 	cc := cmd.Command()
-	if rsp.Response() != cc {
-		return fmt.Errorf("cmd and rsp must be for same command: %v != %v", cc, rsp.Response())
-	}
 	sess, err := cmdAuths(cmd)
 	if err != nil {
 		return err
@@ -748,8 +745,8 @@ func taggedMembers(v reflect.Value, tag string, invert bool) []reflect.Value {
 }
 
 // cmdAuths returns the authorization sessions of the command.
-func cmdAuths(cmd Command) ([]Session, error) {
-	authHandles := taggedMembers(reflect.ValueOf(cmd).Elem(), "auth", false)
+func cmdAuths[R any](cmd Command[R, *R]) ([]Session, error) {
+	authHandles := taggedMembers(reflect.ValueOf(cmd), "auth", false)
 	var result []Session
 	for i, authHandle := range authHandles {
 		// TODO: A cleaner way to do this would be to have an interface method that
@@ -769,8 +766,8 @@ func cmdAuths(cmd Command) ([]Session, error) {
 }
 
 // cmdHandles returns the handles area of the command.
-func cmdHandles(cmd Command) ([]byte, error) {
-	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
+func cmdHandles[R any](cmd Command[R, *R]) ([]byte, error) {
+	handles := taggedMembers(reflect.ValueOf(cmd), "handle", false)
 
 	// Initial capacity is enough to hold 3 handles
 	result := bytes.NewBuffer(make([]byte, 0, 12))
@@ -795,8 +792,8 @@ func cmdHandles(cmd Command) ([]byte, error) {
 }
 
 // cmdNames returns the names of the entities referenced by the handles of the command.
-func cmdNames(cmd Command) ([]TPM2BName, error) {
-	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
+func cmdNames[R any](cmd Command[R, *R]) ([]TPM2BName, error) {
+	handles := taggedMembers(reflect.ValueOf(cmd), "handle", false)
 	var result []TPM2BName
 	for i, maybeHandle := range handles {
 		h, ok := maybeHandle.Interface().(handle)
@@ -824,13 +821,13 @@ func cmdNames(cmd Command) ([]TPM2BName, error) {
 
 // TODO: Extract the logic of "marshal the Nth field of some struct after the handles"
 // For now, we duplicate some logic from marshalStruct here.
-func marshalParameter(buf *bytes.Buffer, cmd Command, i int) error {
-	numHandles := len(taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false))
-	if numHandles+i >= reflect.TypeOf(cmd).Elem().NumField() {
+func marshalParameter[R any](buf *bytes.Buffer, cmd Command[R, *R], i int) error {
+	numHandles := len(taggedMembers(reflect.ValueOf(cmd), "handle", false))
+	if numHandles+i >= reflect.TypeOf(cmd).NumField() {
 		return fmt.Errorf("invalid parameter index %v", i)
 	}
-	parm := reflect.ValueOf(cmd).Elem().Field(numHandles + i)
-	field := reflect.TypeOf(cmd).Elem().Field(numHandles + i)
+	parm := reflect.ValueOf(cmd).Field(numHandles + i)
+	field := reflect.TypeOf(cmd).Field(numHandles + i)
 	if hasTag(field, "optional") {
 		return marshalOptional(buf, parm)
 	} else if parm.IsZero() && parm.Kind() == reflect.Uint32 && hasTag(field, "nullable") {
@@ -844,8 +841,8 @@ func marshalParameter(buf *bytes.Buffer, cmd Command, i int) error {
 
 // cmdParameters returns the parameters area of the command.
 // The first parameter may be encrypted by one of the sessions.
-func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
-	parms := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", true)
+func cmdParameters[R any](cmd Command[R, *R], sess []Session) ([]byte, error) {
+	parms := taggedMembers(reflect.ValueOf(cmd), "handle", true)
 	if len(parms) == 0 {
 		return nil, nil
 	}
@@ -979,7 +976,7 @@ func rspHeader(rsp *bytes.Buffer) error {
 // If there is a mismatch between the expected and actual amount of handles,
 // returns an error here.
 // rsp is updated to point to the rest of the response after the handles.
-func rspHandles(rsp *bytes.Buffer, rspStruct Response) error {
+func rspHandles(rsp *bytes.Buffer, rspStruct any) error {
 	handles := taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", false)
 	for i, handle := range handles {
 		if err := unmarshal(rsp, handle); err != nil {
@@ -1044,7 +1041,7 @@ func rspSessions(rsp *bytes.Buffer, rc TPMRC, cc TPMCC, names []TPM2BName, parms
 // rspParameters decrypts (if needed) the parameters area of the response
 // into the response structure. If there is a mismatch between the expected
 // and actual response structure, returns an error here.
-func rspParameters(parms []byte, sess []Session, rspStruct Response) error {
+func rspParameters(parms []byte, sess []Session, rspStruct any) error {
 	numHandles := len(taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", false))
 
 	// Use the heuristic of "does interpreting the first 2 bytes of response

@@ -50,7 +50,7 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		flush := FlushContext{
 			FlushHandle: rsp.ObjectHandle,
 		}
-		if err := flush.Execute(thetpm); err != nil {
+		if _, err := flush.Execute(thetpm); err != nil {
 			t.Errorf("could not flush signing key: %v", err)
 		}
 	}
@@ -75,7 +75,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 				},
 			}),
 	}
-	if err := defSpace.Execute(thetpm); err != nil {
+	if _, err := defSpace.Execute(thetpm); err != nil {
 		t.Fatalf("could not create NV index: %v", err)
 	}
 	pub, err := defSpace.PublicInfo.Contents()
@@ -98,7 +98,7 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 				Name:   readRsp.NVName,
 			},
 		}
-		if err := undefine.Execute(thetpm); err != nil {
+		if _, err := undefine.Execute(thetpm); err != nil {
 			t.Errorf("could not undefine NV index: %v", err)
 		}
 	}
@@ -255,7 +255,7 @@ func TestPolicyOrUpdate(t *testing.T) {
 		},
 	}
 
-	if err := policyOr.Execute(thetpm); err != nil {
+	if _, err := policyOr.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyOr: %v", err)
 	}
 
@@ -361,7 +361,7 @@ func TestPolicyPCR(t *testing.T) {
 				Pcrs: selection,
 			}
 
-			err = policyPCR.Execute(thetpm)
+			_, err = policyPCR.Execute(thetpm)
 			if tt.callShouldSucceed {
 				if err != nil {
 					t.Fatalf("executing PolicyPCR: %v", err)
@@ -436,7 +436,7 @@ func TestPolicyCpHashUpdate(t *testing.T) {
 			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}},
 	}
 
-	if err := policyCpHash.Execute(thetpm); err != nil {
+	if _, err := policyCpHash.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyCpHash: %v", err)
 	}
 
@@ -493,7 +493,7 @@ func TestPolicyAuthorizeUpdate(t *testing.T) {
 		},
 	}
 
-	if err := policyAuthorize.Execute(thetpm); err != nil {
+	if _, err := policyAuthorize.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorize: %v", err)
 	}
 
@@ -598,7 +598,7 @@ func TestPolicyNVUpdate(t *testing.T) {
 		Operation:     TPMEOSignedLE,
 	}
 
-	if err := policyNV.Execute(thetpm); err != nil {
+	if _, err := policyNV.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorizeNV: %v", err)
 	}
 
@@ -651,7 +651,7 @@ func TestPolicyAuthorizeNVUpdate(t *testing.T) {
 		NVIndex:       nv,
 	}
 
-	if err := policyAuthorizeNV.Execute(thetpm); err != nil {
+	if _, err := policyAuthorizeNV.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorizeNV: %v", err)
 	}
 
@@ -699,7 +699,7 @@ func TestPolicyCommandCodeUpdate(t *testing.T) {
 		PolicySession: sess.Handle(),
 		Code:          TPMCCCreate,
 	}
-	if err := pcc.Execute(thetpm); err != nil {
+	if _, err := pcc.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyCommandCode: %v", err)
 	}
 

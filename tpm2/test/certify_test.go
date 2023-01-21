@@ -383,7 +383,7 @@ func TestNVCertify(t *testing.T) {
 				DataSize: 4,
 			}),
 	}
-	if err := def.Execute(thetpm); err != nil {
+	if _, err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
 	}
 
@@ -414,7 +414,7 @@ func TestNVCertify(t *testing.T) {
 		},
 		Offset: 0,
 	}
-	if err := prewrite.Execute(thetpm); err != nil {
+	if _, err := prewrite.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Write: %v", err)
 	}
 

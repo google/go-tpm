@@ -72,7 +72,7 @@ func TestNVName(t *testing.T) {
 		AuthHandle: TPMRHOwner,
 		PublicInfo: public,
 	}
-	if err := defineSpace.Execute(thetpm); err != nil {
+	if _, err := defineSpace.Execute(thetpm); err != nil {
 		t.Fatalf("could not call TPM2_DefineSpace: %v", err)
 	}
 

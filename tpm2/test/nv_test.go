@@ -36,7 +36,7 @@ func TestNVAuthWrite(t *testing.T) {
 				DataSize: 4,
 			}),
 	}
-	if err := def.Execute(thetpm); err != nil {
+	if _, err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
 	}
 
@@ -64,7 +64,7 @@ func TestNVAuthWrite(t *testing.T) {
 		},
 		Offset: 0,
 	}
-	if err := prewrite.Execute(thetpm); err != nil {
+	if _, err := prewrite.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Write: %v", err)
 	}
 
@@ -91,7 +91,7 @@ func TestNVAuthWrite(t *testing.T) {
 		},
 		Offset: 0,
 	}
-	if err := write.Execute(thetpm); err != nil {
+	if _, err := write.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Write: %v", err)
 	}
 }
@@ -124,7 +124,7 @@ func TestNVAuthIncrement(t *testing.T) {
 				DataSize: 8,
 			}),
 	}
-	if err := def.Execute(thetpm); err != nil {
+	if _, err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
 	}
 
@@ -149,7 +149,7 @@ func TestNVAuthIncrement(t *testing.T) {
 			Name:   *nvName,
 		},
 	}
-	if err := incr.Execute(thetpm); err != nil {
+	if _, err := incr.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Increment: %v", err)
 	}
 
@@ -182,7 +182,7 @@ func TestNVAuthIncrement(t *testing.T) {
 		t.Fatalf("Calling TPM2_NV_Read: %v", err)
 	}
 
-	if err := incr.Execute(thetpm); err != nil {
+	if _, err := incr.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Increment: %v", err)
 	}
 

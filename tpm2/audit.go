@@ -26,13 +26,17 @@ func NewAudit(hash TPMIAlgHash) (*CommandAudit, error) {
 	}, nil
 }
 
-// Extend extends the audit digest with the given command and response.
-func (a *CommandAudit) Extend(cmd Command, rsp Response) error {
-	cpHash, err := auditCPHash(a.hash, cmd)
+// AuditCommand extends the audit digest with the given command and response.
+// Go Generics do not allow type parameters on methods, otherwise this would be
+// a method on CommandAudit.
+// See https://github.com/golang/go/issues/49085 for more information.
+func AuditCommand[C Command[R, *R], R any](a *CommandAudit, cmd C, rsp *R) error {
+	cc := cmd.Command()
+	cpHash, err := auditCPHash[R](cc, a.hash, cmd)
 	if err != nil {
 		return err
 	}
-	rpHash, err := auditRPHash(a.hash, rsp)
+	rpHash, err := auditRPHash(cc, a.hash, rsp)
 	if err != nil {
 		return err
 	}
@@ -56,8 +60,7 @@ func (a *CommandAudit) Digest() []byte {
 // auditCPHash calculates the command parameter hash for a given command with
 // the given hash algorithm. The command is assumed to not have any decrypt
 // sessions.
-func auditCPHash(h TPMIAlgHash, c Command) ([]byte, error) {
-	cc := c.Command()
+func auditCPHash[R any](cc TPMCC, h TPMIAlgHash, c Command[R, *R]) ([]byte, error) {
 	names, err := cmdNames(c)
 	if err != nil {
 		return nil, err
@@ -72,8 +75,7 @@ func auditCPHash(h TPMIAlgHash, c Command) ([]byte, error) {
 // auditRPHash calculates the response parameter hash for a given response with
 // the given hash algorithm. The command is assumed to be successful and to not
 // have any encrypt sessions.
-func auditRPHash(h TPMIAlgHash, r Response) ([]byte, error) {
-	cc := r.Response()
+func auditRPHash(cc TPMCC, h TPMIAlgHash, r any) ([]byte, error) {
 	var parms bytes.Buffer
 	parameters := taggedMembers(reflect.ValueOf(r).Elem(), "handle", true)
 	for i, parameter := range parameters {

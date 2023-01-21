@@ -28,7 +28,7 @@ func TestActivateCredential(t *testing.T) {
 		flush := FlushContext{
 			FlushHandle: ekCreateRsp.ObjectHandle,
 		}
-		err := flush.Execute(thetpm)
+		_, err := flush.Execute(thetpm)
 		if err != nil {
 			t.Fatalf("could not flush EK: %v", err)
 		}
@@ -47,7 +47,7 @@ func TestActivateCredential(t *testing.T) {
 		flush := FlushContext{
 			FlushHandle: srkCreateRsp.ObjectHandle,
 		}
-		err := flush.Execute(thetpm)
+		_, err := flush.Execute(thetpm)
 		if err != nil {
 			t.Fatalf("could not flush SRK: %v", err)
 		}

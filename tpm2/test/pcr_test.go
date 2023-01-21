@@ -91,7 +91,7 @@ func TestPCRReset(t *testing.T) {
 						},
 					},
 				}
-				if err := pcrExtend.Execute(thetpm); err != nil {
+				if _, err := pcrExtend.Execute(thetpm); err != nil {
 					t.Fatalf("failed to extend pcr for test %v", err)
 				}
 			}

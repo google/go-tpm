@@ -66,7 +66,7 @@ func TestAuditSession(t *testing.T) {
 	defer func() {
 		// Flush the AK
 		flush := FlushContext{FlushHandle: createAKRsp.ObjectHandle}
-		if err := flush.Execute(thetpm); err != nil {
+		if _, err := flush.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
@@ -95,7 +95,7 @@ func TestAuditSession(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		if err := audit.Extend(&getCmd, getRsp); err != nil {
+		if err := AuditCommand(audit, getCmd, getRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 		// Get the audit digest signed by the AK

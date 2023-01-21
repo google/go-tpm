@@ -55,7 +55,7 @@ type Session interface {
 
 // CPHash calculates the TPM command parameter hash for a given Command.
 // N.B. Authorization sessions on handles are ignored, but names aren't.
-func CPHash(alg TPMIAlgHash, cmd Command) (*TPM2BDigest, error) {
+func CPHash[R any](alg TPMIAlgHash, cmd Command[R, *R]) (*TPM2BDigest, error) {
 	cc := cmd.Command()
 	names, err := cmdNames(cmd)
 	if err != nil {
@@ -363,7 +363,8 @@ func HMACSession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthO
 	}
 
 	closer := func() error {
-		return (&FlushContext{FlushHandle: sess.handle}).Execute(t)
+		_, err := (&FlushContext{FlushHandle: sess.handle}).Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
@@ -549,7 +550,7 @@ func (s *hmacSession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if err := fc.Execute(t); err != nil {
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = TPMRHNull
@@ -841,7 +842,8 @@ func PolicySession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...Aut
 	}
 
 	closer := func() error {
-		return (&FlushContext{sess.handle}).Execute(t)
+		_, err := (&FlushContext{sess.handle}).Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
@@ -922,7 +924,7 @@ func (s *policySession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if err := fc.Execute(t); err != nil {
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = TPMRHNull
