@@ -15,6 +15,15 @@ type Marshallable interface {
 	marshal(buf *bytes.Buffer)
 }
 
+// marshallableWithHint represents any TPM type that can be marshalled,
+// but that requires a selector ("hint") value when marshalling. Most TPMU_ are
+// an example of this.
+type marshallableWithHint interface {
+	// get will return the corresponding union member by copy. If the union is
+	// uninitialized, it will initialize a new zero-valued one.
+	get(hint int64) (reflect.Value, error)
+}
+
 // Unmarshallable represents any TPM type that can be marshalled or unmarshalled.
 type Unmarshallable interface {
 	Marshallable
@@ -28,11 +37,9 @@ type Unmarshallable interface {
 // but that requires a selector ("hint") value when unmarshalling. Most TPMU_ are
 // an example of this.
 type unmarshallableWithHint interface {
+	marshallableWithHint
 	// create will instantiate and return the corresponding union member.
 	create(hint int64) (reflect.Value, error)
-	// get will return the corresponding union member by copy. If the union is
-	// uninitialized, it will initialize a new zero-valued one.
-	get(hint int64) (reflect.Value, error)
 }
 
 // Marshal will serialize the given values, returning them as a byte slice.
@@ -113,7 +120,7 @@ func tpm2bHelper[T any, C bytesOr[T]](contents C) tpm2b[T] {
 }
 
 // marshal implements the Marshallable interface.
-func (value *tpm2b[T]) marshal(buf *bytes.Buffer) {
+func (value tpm2b[T]) marshal(buf *bytes.Buffer) {
 	if value.contents != nil {
 		var temp bytes.Buffer
 		marshal(&temp, reflect.ValueOf(value.contents))

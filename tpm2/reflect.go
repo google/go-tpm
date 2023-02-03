@@ -296,7 +296,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 					"a numeric field of int64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			if u, ok := v.Field(i).Addr().Interface().(unmarshallableWithHint); ok {
+			if u, ok := v.Field(i).Interface().(marshallableWithHint); ok {
 				v, err := u.get(tagValue)
 				if err != nil {
 					return err

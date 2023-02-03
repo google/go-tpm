@@ -847,8 +847,8 @@ func (u *tpmuCapabilities) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuCapabilities) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuCapabilities) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1198,8 +1198,8 @@ func (u *tpmuAttest) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuAttest) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuAttest) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1404,8 +1404,8 @@ func (u *tpmuSymKeyBits) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1480,8 +1480,8 @@ func (u *tpmuSymMode) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuSymMode) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuSymMode) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1547,8 +1547,8 @@ func (u *tpmuSymDetails) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuSymDetails) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuSymDetails) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1696,7 +1696,7 @@ func TPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) tpm2bSensi
 // something better than the default [0x00, 0x00] (an empty 2B).
 // This is because this actually needs to contain a small
 // structure containing some empty values.
-func (c *tpm2bSensitiveCreate) marshal(buf *bytes.Buffer) {
+func (c tpm2bSensitiveCreate) marshal(buf *bytes.Buffer) {
 	if c.contents != nil {
 		buf.Write(Marshal(c.contents))
 	} else {
@@ -1773,8 +1773,8 @@ func (u *tpmuSchemeKeyedHash) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1874,8 +1874,8 @@ func (u *tpmuSigScheme) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuSigScheme) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuSigScheme) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2034,8 +2034,8 @@ func (u *tpmuKDFScheme) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2187,8 +2187,8 @@ func (u *tpmuAsymScheme) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuAsymScheme) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuAsymScheme) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2422,8 +2422,8 @@ func (u *tpmuSignature) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuSignature) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuSignature) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2554,8 +2554,8 @@ func (u *tpmuPublicID) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuPublicID) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuPublicID) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2724,8 +2724,8 @@ func (u *tpmuPublicParms) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuPublicParms) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuPublicParms) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2915,8 +2915,8 @@ func (u *tpmuSensitiveComposite) create(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// get implements the unmarshallableWithHint interface.
-func (u *tpmuSensitiveComposite) get(hint int64) (reflect.Value, error) {
+// get implements the marshallableWithHint interface.
+func (u tpmuSensitiveComposite) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}

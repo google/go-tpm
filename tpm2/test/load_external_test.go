@@ -82,7 +82,7 @@ func TestLoadExternal(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error from LoadExternal: %v", err)
 			}
-			if _, err = (&FlushContext{FlushHandle: rsp.ObjectHandle}).Execute(thetpm); err != nil {
+			if _, err = (FlushContext{FlushHandle: rsp.ObjectHandle}).Execute(thetpm); err != nil {
 				t.Errorf("error from FlushContext: %v", err)
 			}
 		})
