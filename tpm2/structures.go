@@ -779,19 +779,22 @@ type TPMLACTData struct {
 	ACTData []TPMSACTData `gotpm:"list"`
 }
 
-type tpmuCapabilities struct {
+// TPMUCapabilities represents a TPMU_CAPABILITIES.
+// See definition in Part 2: Structures, section 10.10.1.
+type TPMUCapabilities struct {
 	selector TPMCap
 	contents Marshallable
 }
 
-type capabilitiesContents interface {
+// CapabilitiesContents is a type constraint representing the possible contents of TPMUCapabilities.
+type CapabilitiesContents interface {
 	Marshallable
 	*TPMLAlgProperty | *TPMLHandle | *TPMLCCA | *TPMLCC | *TPMLPCRSelection | *TPMLTaggedTPMProperty |
 		*TPMLTaggedPCRProperty | *TPMLECCCurve | *TPMLTaggedPolicy | *TPMLACTData
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuCapabilities) create(hint int64) (reflect.Value, error) {
+func (u *TPMUCapabilities) create(hint int64) (reflect.Value, error) {
 	switch TPMCap(hint) {
 	case TPMCapAlgs:
 		contents := TPMLAlgProperty{}
@@ -848,7 +851,7 @@ func (u *tpmuCapabilities) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuCapabilities) get(hint int64) (reflect.Value, error) {
+func (u TPMUCapabilities) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -917,17 +920,15 @@ func (u tpmuCapabilities) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUCapabilities represents a TPMU_CAPABILITIES.
-// See definition in Part 2: Structures, section 10.10.1.
-func TPMUCapabilities[C capabilitiesContents](selector TPMCap, contents C) tpmuCapabilities {
-	return tpmuCapabilities{
+func NewTPMUCapabilities[C CapabilitiesContents](selector TPMCap, contents C) TPMUCapabilities {
+	return TPMUCapabilities{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // Algorithms returns the 'algorithms' member of the union.
-func (u *tpmuCapabilities) Algorithms() (*TPMLAlgProperty, error) {
+func (u *TPMUCapabilities) Algorithms() (*TPMLAlgProperty, error) {
 	if u.selector == TPMCapAlgs {
 		return u.contents.(*TPMLAlgProperty), nil
 	}
@@ -935,7 +936,7 @@ func (u *tpmuCapabilities) Algorithms() (*TPMLAlgProperty, error) {
 }
 
 // Handles returns the 'handles' member of the union.
-func (u *tpmuCapabilities) Handles() (*TPMLHandle, error) {
+func (u *TPMUCapabilities) Handles() (*TPMLHandle, error) {
 	if u.selector == TPMCapHandles {
 		return u.contents.(*TPMLHandle), nil
 	}
@@ -943,7 +944,7 @@ func (u *tpmuCapabilities) Handles() (*TPMLHandle, error) {
 }
 
 // Command returns the 'command' member of the union.
-func (u *tpmuCapabilities) Command() (*TPMLCCA, error) {
+func (u *TPMUCapabilities) Command() (*TPMLCCA, error) {
 	if u.selector == TPMCapAlgs {
 		return u.contents.(*TPMLCCA), nil
 	}
@@ -951,7 +952,7 @@ func (u *tpmuCapabilities) Command() (*TPMLCCA, error) {
 }
 
 // PPCommands returns the 'ppCommands' member of the union.
-func (u *tpmuCapabilities) PPCommands() (*TPMLCC, error) {
+func (u *TPMUCapabilities) PPCommands() (*TPMLCC, error) {
 	if u.selector == TPMCapPPCommands {
 		return u.contents.(*TPMLCC), nil
 	}
@@ -959,7 +960,7 @@ func (u *tpmuCapabilities) PPCommands() (*TPMLCC, error) {
 }
 
 // AuditCommands returns the 'auditCommands' member of the union.
-func (u *tpmuCapabilities) AuditCommands() (*TPMLCC, error) {
+func (u *TPMUCapabilities) AuditCommands() (*TPMLCC, error) {
 	if u.selector == TPMCapAuditCommands {
 		return u.contents.(*TPMLCC), nil
 	}
@@ -967,7 +968,7 @@ func (u *tpmuCapabilities) AuditCommands() (*TPMLCC, error) {
 }
 
 // AssignedPCR returns the 'assignedPCR' member of the union.
-func (u *tpmuCapabilities) AssignedPCR() (*TPMLPCRSelection, error) {
+func (u *TPMUCapabilities) AssignedPCR() (*TPMLPCRSelection, error) {
 	if u.selector == TPMCapPCRs {
 		return u.contents.(*TPMLPCRSelection), nil
 	}
@@ -975,7 +976,7 @@ func (u *tpmuCapabilities) AssignedPCR() (*TPMLPCRSelection, error) {
 }
 
 // TPMProperties returns the 'tpmProperties' member of the union.
-func (u *tpmuCapabilities) TPMProperties() (*TPMLTaggedTPMProperty, error) {
+func (u *TPMUCapabilities) TPMProperties() (*TPMLTaggedTPMProperty, error) {
 	if u.selector == TPMCapTPMProperties {
 		return u.contents.(*TPMLTaggedTPMProperty), nil
 	}
@@ -983,7 +984,7 @@ func (u *tpmuCapabilities) TPMProperties() (*TPMLTaggedTPMProperty, error) {
 }
 
 // PCRProperties returns the 'pcrProperties' member of the union.
-func (u *tpmuCapabilities) PCRProperties() (*TPMLTaggedPCRProperty, error) {
+func (u *TPMUCapabilities) PCRProperties() (*TPMLTaggedPCRProperty, error) {
 	if u.selector == TPMCapPCRProperties {
 		return u.contents.(*TPMLTaggedPCRProperty), nil
 	}
@@ -991,7 +992,7 @@ func (u *tpmuCapabilities) PCRProperties() (*TPMLTaggedPCRProperty, error) {
 }
 
 // ECCCurves returns the 'eccCurves' member of the union.
-func (u *tpmuCapabilities) ECCCurves() (*TPMLECCCurve, error) {
+func (u *TPMUCapabilities) ECCCurves() (*TPMLECCCurve, error) {
 	if u.selector == TPMCapECCCurves {
 		return u.contents.(*TPMLECCCurve), nil
 	}
@@ -999,7 +1000,7 @@ func (u *tpmuCapabilities) ECCCurves() (*TPMLECCCurve, error) {
 }
 
 // AuthPolicies returns the 'authPolicies' member of the union.
-func (u *tpmuCapabilities) AuthPolicies() (*TPMLTaggedPolicy, error) {
+func (u *TPMUCapabilities) AuthPolicies() (*TPMLTaggedPolicy, error) {
 	if u.selector == TPMCapAuthPolicies {
 		return u.contents.(*TPMLTaggedPolicy), nil
 	}
@@ -1007,7 +1008,7 @@ func (u *tpmuCapabilities) AuthPolicies() (*TPMLTaggedPolicy, error) {
 }
 
 // ACTData returns the 'actData' member of the union.
-func (u *tpmuCapabilities) ACTData() (*TPMLACTData, error) {
+func (u *TPMUCapabilities) ACTData() (*TPMLACTData, error) {
 	if u.selector == TPMCapAuthPolicies {
 		return u.contents.(*TPMLACTData), nil
 	}
@@ -1021,7 +1022,7 @@ type TPMSCapabilityData struct {
 	// the capability
 	Capability TPMCap
 	// the capability data
-	Data tpmuCapabilities `gotpm:"tag=Capability"`
+	Data TPMUCapabilities `gotpm:"tag=Capability"`
 }
 
 // TPMSClockInfo represents a TPMS_CLOCK_INFO.
@@ -1140,19 +1141,22 @@ type TPMSNVDigestCertifyInfo struct {
 // See definition in Part 2: Structures, section 10.12.10.
 type TPMISTAttest = TPMST
 
-type tpmuAttest struct {
+// TPMUAttest represents a TPMU_ATTEST.
+// See definition in Part 2: Structures, section 10.12.11.
+type TPMUAttest struct {
 	selector TPMST
 	contents Marshallable
 }
 
-type attestContents interface {
+// AttestContents is a type constraint representing the possible contents of TPMUAttest.
+type AttestContents interface {
 	Marshallable
 	*TPMSNVCertifyInfo | *TPMSCommandAuditInfo | *TPMSSessionAuditInfo | *TPMSCertifyInfo |
 		*TPMSQuoteInfo | *TPMSTimeAttestInfo | *TPMSCreationInfo | *TPMSNVDigestCertifyInfo
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuAttest) create(hint int64) (reflect.Value, error) {
+func (u *TPMUAttest) create(hint int64) (reflect.Value, error) {
 	switch TPMST(hint) {
 	case TPMSTAttestNV:
 		contents := TPMSNVCertifyInfo{}
@@ -1199,7 +1203,7 @@ func (u *tpmuAttest) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuAttest) get(hint int64) (reflect.Value, error) {
+func (u TPMUAttest) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1256,17 +1260,15 @@ func (u tpmuAttest) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUAttest represents a TPMU_ATTEST.
-// See definition in Part 2: Structures, section 10.12.11.
-func TPMUAttest[C attestContents](selector TPMST, contents C) tpmuAttest {
-	return tpmuAttest{
+func NewTPMUAttest[C AttestContents](selector TPMST, contents C) TPMUAttest {
+	return TPMUAttest{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // Certify returns the 'certify' member of the union.
-func (u *tpmuAttest) Certify() (*TPMSCertifyInfo, error) {
+func (u *TPMUAttest) Certify() (*TPMSCertifyInfo, error) {
 	if u.selector == TPMSTAttestCertify {
 		return u.contents.(*TPMSCertifyInfo), nil
 	}
@@ -1274,7 +1276,7 @@ func (u *tpmuAttest) Certify() (*TPMSCertifyInfo, error) {
 }
 
 // Creation returns the 'creation' member of the union.
-func (u *tpmuAttest) Creation() (*TPMSCreationInfo, error) {
+func (u *TPMUAttest) Creation() (*TPMSCreationInfo, error) {
 	if u.selector == TPMSTAttestCreation {
 		return u.contents.(*TPMSCreationInfo), nil
 	}
@@ -1282,7 +1284,7 @@ func (u *tpmuAttest) Creation() (*TPMSCreationInfo, error) {
 }
 
 // Quote returns the 'quote' member of the union.
-func (u *tpmuAttest) Quote() (*TPMSQuoteInfo, error) {
+func (u *TPMUAttest) Quote() (*TPMSQuoteInfo, error) {
 	if u.selector == TPMSTAttestQuote {
 		return u.contents.(*TPMSQuoteInfo), nil
 	}
@@ -1290,7 +1292,7 @@ func (u *tpmuAttest) Quote() (*TPMSQuoteInfo, error) {
 }
 
 // CommandAudit returns the 'commandAudit' member of the union.
-func (u *tpmuAttest) CommandAudit() (*TPMSCommandAuditInfo, error) {
+func (u *TPMUAttest) CommandAudit() (*TPMSCommandAuditInfo, error) {
 	if u.selector == TPMSTAttestCommandAudit {
 		return u.contents.(*TPMSCommandAuditInfo), nil
 	}
@@ -1298,7 +1300,7 @@ func (u *tpmuAttest) CommandAudit() (*TPMSCommandAuditInfo, error) {
 }
 
 // SessionAudit returns the 'sessionAudit' member of the union.
-func (u *tpmuAttest) SessionAudit() (*TPMSSessionAuditInfo, error) {
+func (u *TPMUAttest) SessionAudit() (*TPMSSessionAuditInfo, error) {
 	if u.selector == TPMSTAttestSessionAudit {
 		return u.contents.(*TPMSSessionAuditInfo), nil
 	}
@@ -1306,7 +1308,7 @@ func (u *tpmuAttest) SessionAudit() (*TPMSSessionAuditInfo, error) {
 }
 
 // Time returns the 'time' member of the union.
-func (u *tpmuAttest) Time() (*TPMSTimeAttestInfo, error) {
+func (u *TPMUAttest) Time() (*TPMSTimeAttestInfo, error) {
 	if u.selector == TPMSTAttestTime {
 		return u.contents.(*TPMSTimeAttestInfo), nil
 	}
@@ -1314,7 +1316,7 @@ func (u *tpmuAttest) Time() (*TPMSTimeAttestInfo, error) {
 }
 
 // NV returns the 'nv' member of the union.
-func (u *tpmuAttest) NV() (*TPMSNVCertifyInfo, error) {
+func (u *TPMUAttest) NV() (*TPMSNVCertifyInfo, error) {
 	if u.selector == TPMSTAttestNV {
 		return u.contents.(*TPMSNVCertifyInfo), nil
 	}
@@ -1322,7 +1324,7 @@ func (u *tpmuAttest) NV() (*TPMSNVCertifyInfo, error) {
 }
 
 // NVDigest returns the 'nvDigest' member of the union.
-func (u *tpmuAttest) NVDigest() (*TPMSNVDigestCertifyInfo, error) {
+func (u *TPMUAttest) NVDigest() (*TPMSNVDigestCertifyInfo, error) {
 	if u.selector == TPMSTAttestNVDigest {
 		return u.contents.(*TPMSNVDigestCertifyInfo), nil
 	}
@@ -1346,7 +1348,7 @@ type TPMSAttest struct {
 	// TPM-vendor-specific value identifying the version number of the firmware
 	FirmwareVersion uint64
 	// the type-specific attestation information
-	Attested tpmuAttest `gotpm:"tag=Type"`
+	Attested TPMUAttest `gotpm:"tag=Type"`
 }
 
 // TPM2BAttest represents a TPM2B_ATTEST.
@@ -1372,17 +1374,20 @@ type TPMSAuthResponse struct {
 	Authorization TPM2BData
 }
 
-type tpmuSymKeyBits struct {
+// TPMUSymKeyBits represents a TPMU_SYM_KEY_BITS.
+// See definition in Part 2: Structures, section 11.1.3.
+type TPMUSymKeyBits struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type symKeyBitsContents interface {
+// SymKeyBitsContents is a type constraint representing the possible contents of TPMUSymKeyBits.
+type SymKeyBitsContents interface {
 	TPMKeyBits | TPMAlgID
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuSymKeyBits) create(hint int64) (reflect.Value, error) {
+func (u *TPMUSymKeyBits) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
 		var contents boxed[TPMKeyBits]
@@ -1399,7 +1404,7 @@ func (u *tpmuSymKeyBits) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
+func (u TPMUSymKeyBits) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1420,18 +1425,16 @@ func (u tpmuSymKeyBits) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUSymKeyBits represents a TPMU_SYM_KEY_BITS.
-// See definition in Part 2: Structures, section 11.1.3.
-func TPMUSymKeyBits[C symKeyBitsContents](selector TPMAlgID, contents C) tpmuSymKeyBits {
+func NewTPMUSymKeyBits[C SymKeyBitsContents](selector TPMAlgID, contents C) TPMUSymKeyBits {
 	boxed := box(&contents)
-	return tpmuSymKeyBits{
+	return TPMUSymKeyBits{
 		selector: selector,
 		contents: &boxed,
 	}
 }
 
 // AES returns the 'aes' member of the union.
-func (u *tpmuSymKeyBits) AES() (*TPMKeyBits, error) {
+func (u *TPMUSymKeyBits) AES() (*TPMKeyBits, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMKeyBits]).unbox()
 		return value, nil
@@ -1440,7 +1443,7 @@ func (u *tpmuSymKeyBits) AES() (*TPMKeyBits, error) {
 }
 
 // XOR returns the 'xor' member of the union.
-func (u *tpmuSymKeyBits) XOR() (*TPMAlgID, error) {
+func (u *TPMUSymKeyBits) XOR() (*TPMAlgID, error) {
 	if u.selector == TPMAlgXOR {
 		value := u.contents.(*boxed[TPMAlgID]).unbox()
 		return value, nil
@@ -1448,17 +1451,20 @@ func (u *tpmuSymKeyBits) XOR() (*TPMAlgID, error) {
 	return nil, fmt.Errorf("did not contain xor (selector value was %v)", u.selector)
 }
 
-type tpmuSymMode struct {
+// TPMUSymMode represents a TPMU_SYM_MODE.
+// See definition in Part 2: Structures, section 11.1.4.
+type TPMUSymMode struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type symModeContents interface {
+// SymModeContents is a type constraint representing the possible contents of TPMUSymMode.
+type SymModeContents interface {
 	TPMIAlgSymMode | TPMSEmpty
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuSymMode) create(hint int64) (reflect.Value, error) {
+func (u *TPMUSymMode) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
 		var contents boxed[TPMAlgID]
@@ -1475,7 +1481,7 @@ func (u *tpmuSymMode) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuSymMode) get(hint int64) (reflect.Value, error) {
+func (u TPMUSymMode) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1496,18 +1502,16 @@ func (u tpmuSymMode) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUSymMode represents a TPMU_SYM_MODE.
-// See definition in Part 2: Structures, section 11.1.4.
-func TPMUSymMode[C symModeContents](selector TPMAlgID, contents C) tpmuSymMode {
+func NewTPMUSymMode[C SymModeContents](selector TPMAlgID, contents C) TPMUSymMode {
 	boxed := box(&contents)
-	return tpmuSymMode{
+	return TPMUSymMode{
 		selector: selector,
 		contents: &boxed,
 	}
 }
 
 // AES returns the 'aes' member of the union.
-func (u *tpmuSymMode) AES() (*TPMIAlgSymMode, error) {
+func (u *TPMUSymMode) AES() (*TPMIAlgSymMode, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
 		return value, nil
@@ -1515,17 +1519,20 @@ func (u *tpmuSymMode) AES() (*TPMIAlgSymMode, error) {
 	return nil, fmt.Errorf("did not contain aes (selector value was %v)", u.selector)
 }
 
-type tpmuSymDetails struct {
+// TPMUSymDetails represents a TPMU_SYM_DETAILS.
+// See definition in Part 2: Structures, section 11.1.5.
+type TPMUSymDetails struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type symDetailsContents interface {
+// SymDetailsContents is a type constraint representing the possible contents of TPMUSymDetails.
+type SymDetailsContents interface {
 	TPMSEmpty
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuSymDetails) create(hint int64) (reflect.Value, error) {
+func (u *TPMUSymDetails) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgAES:
 		var contents boxed[TPMSEmpty]
@@ -1542,7 +1549,7 @@ func (u *tpmuSymDetails) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuSymDetails) get(hint int64) (reflect.Value, error) {
+func (u TPMUSymDetails) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1557,11 +1564,9 @@ func (u tpmuSymDetails) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUSymDetails represents a TPMU_SYM_DETAILS.
-// See definition in Part 2: Structures, section 11.1.5.
-func TPMUSymDetails[C symDetailsContents](selector TPMAlgID, contents C) tpmuSymMode {
+func NewTPMUSymDetails[C SymDetailsContents](selector TPMAlgID, contents C) TPMUSymMode {
 	boxed := box(&contents)
-	return tpmuSymMode{
+	return TPMUSymMode{
 		selector: selector,
 		contents: &boxed,
 	}
@@ -1574,11 +1579,11 @@ type TPMTSymDef struct {
 	// indicates a symmetric algorithm
 	Algorithm TPMIAlgSym `gotpm:"nullable"`
 	// the key size
-	KeyBits tpmuSymKeyBits `gotpm:"tag=Algorithm"`
+	KeyBits TPMUSymKeyBits `gotpm:"tag=Algorithm"`
 	// the mode for the key
-	Mode tpmuSymMode `gotpm:"tag=Algorithm"`
+	Mode TPMUSymMode `gotpm:"tag=Algorithm"`
 	// contains the additional algorithm details
-	Details tpmuSymDetails `gotpm:"tag=Algorithm"`
+	Details TPMUSymDetails `gotpm:"tag=Algorithm"`
 }
 
 // TPMTSymDefObject represents a TPMT_SYM_DEF_OBJECT.
@@ -1590,13 +1595,13 @@ type TPMTSymDefObject struct {
 	// be a supported block cipher and not TPM_ALG_NULL
 	Algorithm TPMIAlgSymObject `gotpm:"nullable"`
 	// the key size
-	KeyBits tpmuSymKeyBits `gotpm:"tag=Algorithm"`
+	KeyBits TPMUSymKeyBits `gotpm:"tag=Algorithm"`
 	// default mode
 	// When used in the parameter area of a parent object, this shall
 	// be TPM_ALG_CFB.
-	Mode tpmuSymMode `gotpm:"tag=Algorithm"`
+	Mode TPMUSymMode `gotpm:"tag=Algorithm"`
 	// contains the additional algorithm details, if any
-	Details tpmuSymDetails `gotpm:"tag=Algorithm"`
+	Details TPMUSymDetails `gotpm:"tag=Algorithm"`
 }
 
 // TPM2BSymKey represents a TPM2B_SYM_KEY.
@@ -1627,17 +1632,20 @@ type TPMSDerive struct {
 // See definition in Part 2: Structures, section 11.1.12.
 type TPM2BDerive = TPM2B[TPMSDerive, *TPMSDerive]
 
-type tpmuSensitiveCreate struct {
+// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.13.
+type TPMUSensitiveCreate struct {
 	contents Marshallable
 }
 
-type sensitiveCreateContents interface {
+// SensitiveCreateContents is a type constraint representing the possible contents of TPMUSensitiveCreate.
+type SensitiveCreateContents interface {
 	Marshallable
 	*TPM2BDerive | *TPM2BSensitiveData
 }
 
 // marshal implements the Marshallable interface.
-func (u *tpmuSensitiveCreate) marshal(buf *bytes.Buffer) {
+func (u *TPMUSensitiveCreate) marshal(buf *bytes.Buffer) {
 	if u.contents != nil {
 		buf.Write(Marshal(u.contents))
 	} else {
@@ -1647,10 +1655,8 @@ func (u *tpmuSensitiveCreate) marshal(buf *bytes.Buffer) {
 	}
 }
 
-// TPMUSensitiveCreate represents a TPMU_SENSITIVE_CREATE.
-// See definition in Part 2: Structures, section 11.1.13.
-func TPMUSensitiveCreate[C sensitiveCreateContents](contents C) tpmuSensitiveCreate {
-	return tpmuSensitiveCreate{contents: contents}
+func NewTPMUSensitiveCreate[C SensitiveCreateContents](contents C) TPMUSensitiveCreate {
+	return TPMUSensitiveCreate{contents: contents}
 }
 
 // TPM2BSensitiveData represents a TPM2B_SENSITIVE_DATA.
@@ -1664,7 +1670,7 @@ type TPMSSensitiveCreate struct {
 	// the USER auth secret value.
 	UserAuth TPM2BAuth
 	// data to be sealed, a key, or derivation values.
-	Data tpmuSensitiveCreate
+	Data TPMUSensitiveCreate
 }
 
 // TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
@@ -1686,7 +1692,7 @@ func (c TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) {
 		// If no value was provided (i.e., this is a zero-valued structure),
 		// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
 		marshalled = New2B(TPMSSensitiveCreate{
-			Data: TPMUSensitiveCreate(&TPM2BSensitiveData{}),
+			Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{}),
 		})
 	}
 	marshalled.marshal(buf)
@@ -1729,18 +1735,21 @@ type TPMSSchemeXOR struct {
 	KDF TPMIAlgKDF
 }
 
-type tpmuSchemeKeyedHash struct {
+// TPMUSchemeKeyedHash represents a TPMU_SCHEME_KEYEDHASH.
+// See definition in Part 2: Structures, section 11.1.22.
+type TPMUSchemeKeyedHash struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type schemeKeyedHashContents interface {
+// SchemeKeyedHashContents is a type constraint representing the possible contents of TPMUSchemeKeyedHash.
+type SchemeKeyedHashContents interface {
 	Marshallable
 	*TPMSSchemeHMAC | *TPMSSchemeXOR
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuSchemeKeyedHash) create(hint int64) (reflect.Value, error) {
+func (u *TPMUSchemeKeyedHash) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
 		var contents TPMSSchemeHMAC
@@ -1757,7 +1766,7 @@ func (u *tpmuSchemeKeyedHash) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
+func (u TPMUSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1778,17 +1787,15 @@ func (u tpmuSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUSchemeKeyedHash represents a TPMU_SCHEME_KEYEDHASH.
-// See definition in Part 2: Structures, section 11.1.22.
-func TPMUSchemeKeyedHash[C schemeKeyedHashContents](selector TPMAlgID, contents C) tpmuSchemeKeyedHash {
-	return tpmuSchemeKeyedHash{
+func NewTPMUSchemeKeyedHash[C SchemeKeyedHashContents](selector TPMAlgID, contents C) TPMUSchemeKeyedHash {
+	return TPMUSchemeKeyedHash{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // HMAC returns the 'hmac' member of the union.
-func (u *tpmuSchemeKeyedHash) HMAC() (*TPMSSchemeHMAC, error) {
+func (u *TPMUSchemeKeyedHash) HMAC() (*TPMSSchemeHMAC, error) {
 	if u.selector == TPMAlgHMAC {
 		value := u.contents.(*TPMSSchemeHMAC)
 		return value, nil
@@ -1797,7 +1804,7 @@ func (u *tpmuSchemeKeyedHash) HMAC() (*TPMSSchemeHMAC, error) {
 }
 
 // XOR returns the 'xor' member of the union.
-func (u *tpmuSchemeKeyedHash) XOR() (*TPMSSchemeXOR, error) {
+func (u *TPMUSchemeKeyedHash) XOR() (*TPMSSchemeXOR, error) {
 	if u.selector == TPMAlgXOR {
 		value := u.contents.(*TPMSSchemeXOR)
 		return value, nil
@@ -1810,7 +1817,7 @@ func (u *tpmuSchemeKeyedHash) XOR() (*TPMSSchemeXOR, error) {
 type TPMTKeyedHashScheme struct {
 	marshalByReflection
 	Scheme  TPMIAlgKeyedHashScheme `gotpm:"nullable"`
-	Details tpmuSchemeKeyedHash    `gotpm:"tag=Scheme"`
+	Details TPMUSchemeKeyedHash    `gotpm:"tag=Scheme"`
 }
 
 // TPMSSigSchemeRSASSA represents a TPMS_SIG_SCHEME_RSASSA.
@@ -1825,18 +1832,21 @@ type TPMSSigSchemeRSAPSS TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.1.3.
 type TPMSSigSchemeECDSA TPMSSchemeHash
 
-type tpmuSigScheme struct {
+// TPMUSigScheme represents a TPMU_SIG_SCHEME.
+// See definition in Part 2: Structures, section 11.2.1.4.
+type TPMUSigScheme struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type sigSchemeContents interface {
+// SigSchemeContents is a type constraint representing the possible contents of TPMUSigScheme.
+type SigSchemeContents interface {
 	Marshallable
 	*TPMSSchemeHMAC | *TPMSSchemeHash | *TPMSSchemeECDAA
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuSigScheme) create(hint int64) (reflect.Value, error) {
+func (u *TPMUSigScheme) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
 		var contents TPMSSchemeHMAC
@@ -1858,7 +1868,7 @@ func (u *tpmuSigScheme) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuSigScheme) get(hint int64) (reflect.Value, error) {
+func (u TPMUSigScheme) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -1885,17 +1895,15 @@ func (u tpmuSigScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUSigScheme represents a TPMU_SIG_SCHEME.
-// See definition in Part 2: Structures, section 11.2.1.4.
-func TPMUSigScheme[C sigSchemeContents](selector TPMAlgID, contents C) tpmuSigScheme {
-	return tpmuSigScheme{
+func NewTPMUSigScheme[C SigSchemeContents](selector TPMAlgID, contents C) TPMUSigScheme {
+	return TPMUSigScheme{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // HMAC returns the 'hmac' member of the union.
-func (u *tpmuSigScheme) HMAC() (*TPMSSchemeHMAC, error) {
+func (u *TPMUSigScheme) HMAC() (*TPMSSchemeHMAC, error) {
 	if u.selector == TPMAlgHMAC {
 		return u.contents.(*TPMSSchemeHMAC), nil
 	}
@@ -1903,7 +1911,7 @@ func (u *tpmuSigScheme) HMAC() (*TPMSSchemeHMAC, error) {
 }
 
 // RSASSA returns the 'rsassa' member of the union.
-func (u *tpmuSigScheme) RSASSA() (*TPMSSchemeHash, error) {
+func (u *TPMUSigScheme) RSASSA() (*TPMSSchemeHash, error) {
 	if u.selector == TPMAlgRSASSA {
 		return u.contents.(*TPMSSchemeHash), nil
 	}
@@ -1911,7 +1919,7 @@ func (u *tpmuSigScheme) RSASSA() (*TPMSSchemeHash, error) {
 }
 
 // RSAPSS returns the 'rsapss' member of the union.
-func (u *tpmuSigScheme) RSAPSS() (*TPMSSchemeHash, error) {
+func (u *TPMUSigScheme) RSAPSS() (*TPMSSchemeHash, error) {
 	if u.selector == TPMAlgRSAPSS {
 		return u.contents.(*TPMSSchemeHash), nil
 	}
@@ -1919,7 +1927,7 @@ func (u *tpmuSigScheme) RSAPSS() (*TPMSSchemeHash, error) {
 }
 
 // ECDSA returns the 'ecdsa' member of the union.
-func (u *tpmuSigScheme) ECDSA() (*TPMSSchemeHash, error) {
+func (u *TPMUSigScheme) ECDSA() (*TPMSSchemeHash, error) {
 	if u.selector == TPMAlgECDSA {
 		return u.contents.(*TPMSSchemeHash), nil
 	}
@@ -1927,7 +1935,7 @@ func (u *tpmuSigScheme) ECDSA() (*TPMSSchemeHash, error) {
 }
 
 // ECDAA returns the 'ecdaa' member of the union.
-func (u *tpmuSigScheme) ECDAA() (*TPMSSchemeECDAA, error) {
+func (u *TPMUSigScheme) ECDAA() (*TPMSSchemeECDAA, error) {
 	if u.selector == TPMAlgECDAA {
 		return u.contents.(*TPMSSchemeECDAA), nil
 	}
@@ -1939,7 +1947,7 @@ func (u *tpmuSigScheme) ECDAA() (*TPMSSchemeECDAA, error) {
 type TPMTSigScheme struct {
 	marshalByReflection
 	Scheme  TPMIAlgSigScheme `gotpm:"nullable"`
-	Details tpmuSigScheme    `gotpm:"tag=Scheme"`
+	Details TPMUSigScheme    `gotpm:"tag=Scheme"`
 }
 
 // TPMSEncSchemeRSAES represents a TPMS_ENC_SCHEME_RSAES.
@@ -1974,19 +1982,22 @@ type TPMSKDFSchemeKDF2 TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.3.1.
 type TPMSKDFSchemeKDF1SP800108 TPMSSchemeHash
 
-type tpmuKDFScheme struct {
+// TPMUKDFScheme represents a TPMU_KDF_SCHEME.
+// See definition in Part 2: Structures, section 11.2.3.2.
+type TPMUKDFScheme struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type kdfSchemeContents interface {
+// KDFSchemeContents is a type constraint representing the possible contents of TPMUKDFScheme.
+type KDFSchemeContents interface {
 	Marshallable
 	*TPMSKDFSchemeMGF1 | *TPMSKDFSchemeECDH | *TPMSKDFSchemeKDF1SP80056A |
 		*TPMSKDFSchemeKDF2 | *TPMSKDFSchemeKDF1SP800108
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuKDFScheme) create(hint int64) (reflect.Value, error) {
+func (u *TPMUKDFScheme) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgMGF1:
 		var contents TPMSKDFSchemeMGF1
@@ -2018,7 +2029,7 @@ func (u *tpmuKDFScheme) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
+func (u TPMUKDFScheme) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2058,17 +2069,15 @@ func (u tpmuKDFScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUKDFScheme represents a TPMU_KDF_SCHEME.
-// See definition in Part 2: Structures, section 11.2.3.2.
-func TPMUKDFScheme[C kdfSchemeContents](selector TPMAlgID, contents C) tpmuKDFScheme {
-	return tpmuKDFScheme{
+func NewTPMUKDFScheme[C KDFSchemeContents](selector TPMAlgID, contents C) TPMUKDFScheme {
+	return TPMUKDFScheme{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // MGF1 returns the 'mgf1' member of the union.
-func (u *tpmuKDFScheme) MGF1() (*TPMSKDFSchemeMGF1, error) {
+func (u *TPMUKDFScheme) MGF1() (*TPMSKDFSchemeMGF1, error) {
 	if u.selector == TPMAlgMGF1 {
 		return u.contents.(*TPMSKDFSchemeMGF1), nil
 	}
@@ -2076,7 +2085,7 @@ func (u *tpmuKDFScheme) MGF1() (*TPMSKDFSchemeMGF1, error) {
 }
 
 // MGF1 returns the 'ecdh' member of the union.
-func (u *tpmuKDFScheme) ECDH() (*TPMSKDFSchemeECDH, error) {
+func (u *TPMUKDFScheme) ECDH() (*TPMSKDFSchemeECDH, error) {
 	if u.selector == TPMAlgECDH {
 		return u.contents.(*TPMSKDFSchemeECDH), nil
 	}
@@ -2084,7 +2093,7 @@ func (u *tpmuKDFScheme) ECDH() (*TPMSKDFSchemeECDH, error) {
 }
 
 // KDF1SP80056A returns the 'kdf1sp80056a' member of the union.
-func (u *tpmuKDFScheme) KDF1SP80056A() (*TPMSKDFSchemeKDF1SP80056A, error) {
+func (u *TPMUKDFScheme) KDF1SP80056A() (*TPMSKDFSchemeKDF1SP80056A, error) {
 	if u.selector == TPMAlgMGF1 {
 		return u.contents.(*TPMSKDFSchemeKDF1SP80056A), nil
 	}
@@ -2092,7 +2101,7 @@ func (u *tpmuKDFScheme) KDF1SP80056A() (*TPMSKDFSchemeKDF1SP80056A, error) {
 }
 
 // KDF2 returns the 'kdf2' member of the union.
-func (u *tpmuKDFScheme) KDF2() (*TPMSKDFSchemeKDF2, error) {
+func (u *TPMUKDFScheme) KDF2() (*TPMSKDFSchemeKDF2, error) {
 	if u.selector == TPMAlgMGF1 {
 		return u.contents.(*TPMSKDFSchemeKDF2), nil
 	}
@@ -2100,7 +2109,7 @@ func (u *tpmuKDFScheme) KDF2() (*TPMSKDFSchemeKDF2, error) {
 }
 
 // KDF1SP800108 returns the 'kdf1sp800108' member of the union.
-func (u *tpmuKDFScheme) KDF1SP800108() (*TPMSKDFSchemeKDF1SP800108, error) {
+func (u *TPMUKDFScheme) KDF1SP800108() (*TPMSKDFSchemeKDF1SP800108, error) {
 	if u.selector == TPMAlgMGF1 {
 		return u.contents.(*TPMSKDFSchemeKDF1SP800108), nil
 	}
@@ -2114,22 +2123,25 @@ type TPMTKDFScheme struct {
 	// scheme selector
 	Scheme TPMIAlgKDF `gotpm:"nullable"`
 	// scheme parameters
-	Details tpmuKDFScheme `gotpm:"tag=Scheme"`
+	Details TPMUKDFScheme `gotpm:"tag=Scheme"`
 }
 
-type tpmuAsymScheme struct {
+// TPMUAsymScheme represents a TPMU_ASYM_SCHEME.
+// See definition in Part 2: Structures, section 11.2.3.5.
+type TPMUAsymScheme struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type asymSchemeContents interface {
+// AsymSchemeContents is a type constraint representing the possible contents of TPMUAsymScheme.
+type AsymSchemeContents interface {
 	Marshallable
 	*TPMSSigSchemeRSASSA | *TPMSEncSchemeRSAES | *TPMSSigSchemeRSAPSS | *TPMSEncSchemeOAEP |
 		*TPMSSigSchemeECDSA | *TPMSKeySchemeECDH | *TPMSSchemeECDAA
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuAsymScheme) create(hint int64) (reflect.Value, error) {
+func (u *TPMUAsymScheme) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgRSASSA:
 		var contents TPMSSigSchemeRSASSA
@@ -2171,7 +2183,7 @@ func (u *tpmuAsymScheme) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuAsymScheme) get(hint int64) (reflect.Value, error) {
+func (u TPMUAsymScheme) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2222,17 +2234,15 @@ func (u tpmuAsymScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUAsymScheme represents a TPMU_ASYM_SCHEME.
-// See definition in Part 2: Structures, section 11.2.3.5.
-func TPMUAsymScheme[C asymSchemeContents](selector TPMAlgID, contents C) tpmuAsymScheme {
-	return tpmuAsymScheme{
+func NewTPMUAsymScheme[C AsymSchemeContents](selector TPMAlgID, contents C) TPMUAsymScheme {
+	return TPMUAsymScheme{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // RSASSA returns the 'rsassa' member of the union.
-func (u *tpmuAsymScheme) RSASSA() (*TPMSSigSchemeRSASSA, error) {
+func (u *TPMUAsymScheme) RSASSA() (*TPMSSigSchemeRSASSA, error) {
 	if u.selector == TPMAlgRSASSA {
 		return u.contents.(*TPMSSigSchemeRSASSA), nil
 	}
@@ -2240,7 +2250,7 @@ func (u *tpmuAsymScheme) RSASSA() (*TPMSSigSchemeRSASSA, error) {
 }
 
 // RSAES returns the 'rsaes' member of the union.
-func (u *tpmuAsymScheme) RSAES() (*TPMSEncSchemeRSAES, error) {
+func (u *TPMUAsymScheme) RSAES() (*TPMSEncSchemeRSAES, error) {
 	if u.selector == TPMAlgRSAES {
 		return u.contents.(*TPMSEncSchemeRSAES), nil
 	}
@@ -2248,7 +2258,7 @@ func (u *tpmuAsymScheme) RSAES() (*TPMSEncSchemeRSAES, error) {
 }
 
 // RSAPSS returns the 'rsapss' member of the union.
-func (u *tpmuAsymScheme) RSAPSS() (*TPMSSigSchemeRSAPSS, error) {
+func (u *TPMUAsymScheme) RSAPSS() (*TPMSSigSchemeRSAPSS, error) {
 	if u.selector == TPMAlgRSAPSS {
 		return u.contents.(*TPMSSigSchemeRSAPSS), nil
 	}
@@ -2256,7 +2266,7 @@ func (u *tpmuAsymScheme) RSAPSS() (*TPMSSigSchemeRSAPSS, error) {
 }
 
 // OAEP returns the 'oaep' member of the union.
-func (u *tpmuAsymScheme) OAEP() (*TPMSEncSchemeOAEP, error) {
+func (u *TPMUAsymScheme) OAEP() (*TPMSEncSchemeOAEP, error) {
 	if u.selector == TPMAlgOAEP {
 		return u.contents.(*TPMSEncSchemeOAEP), nil
 	}
@@ -2264,7 +2274,7 @@ func (u *tpmuAsymScheme) OAEP() (*TPMSEncSchemeOAEP, error) {
 }
 
 // ECDSA returns the 'ecdsa' member of the union.
-func (u *tpmuAsymScheme) ECDSA() (*TPMSSigSchemeECDSA, error) {
+func (u *TPMUAsymScheme) ECDSA() (*TPMSSigSchemeECDSA, error) {
 	if u.selector == TPMAlgECDSA {
 		return u.contents.(*TPMSSigSchemeECDSA), nil
 	}
@@ -2272,7 +2282,7 @@ func (u *tpmuAsymScheme) ECDSA() (*TPMSSigSchemeECDSA, error) {
 }
 
 // ECDH returns the 'ecdh' member of the union.
-func (u *tpmuAsymScheme) ECDH() (*TPMSKeySchemeECDH, error) {
+func (u *TPMUAsymScheme) ECDH() (*TPMSKeySchemeECDH, error) {
 	if u.selector == TPMAlgRSASSA {
 		return u.contents.(*TPMSKeySchemeECDH), nil
 	}
@@ -2280,7 +2290,7 @@ func (u *tpmuAsymScheme) ECDH() (*TPMSKeySchemeECDH, error) {
 }
 
 // ECDAA returns the 'ecdaa' member of the union.
-func (u *tpmuAsymScheme) ECDAA() (*TPMSSchemeECDAA, error) {
+func (u *TPMUAsymScheme) ECDAA() (*TPMSSchemeECDAA, error) {
 	if u.selector == TPMAlgECDAA {
 		return u.contents.(*TPMSSchemeECDAA), nil
 	}
@@ -2298,7 +2308,7 @@ type TPMTRSAScheme struct {
 	// scheme selector
 	Scheme TPMIAlgRSAScheme `gotpm:"nullable"`
 	// scheme parameters
-	Details tpmuAsymScheme `gotpm:"tag=Scheme"`
+	Details TPMUAsymScheme `gotpm:"tag=Scheme"`
 }
 
 // TPM2BPublicKeyRSA represents a TPM2B_PUBLIC_KEY_RSA.
@@ -2346,7 +2356,7 @@ type TPMTECCScheme struct {
 	// scheme selector
 	Scheme TPMIAlgECCScheme `gotpm:"nullable"`
 	// scheme parameters
-	Details tpmuAsymScheme `gotpm:"tag=Scheme"`
+	Details TPMUAsymScheme `gotpm:"tag=Scheme"`
 }
 
 // TPMSSignatureRSA represents a TPMS_SIGNATURE_RSA.
@@ -2369,18 +2379,21 @@ type TPMSSignatureECC struct {
 	SignatureS TPM2BECCParameter
 }
 
-type tpmuSignature struct {
+// TPMUSignature represents a TPMU_SIGNATURE.
+// See definition in Part 2: Structures, section 11.3.3.
+type TPMUSignature struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type signatureContents interface {
+// SignatureContents is a type constraint representing the possible contents of TPMUSignature.
+type SignatureContents interface {
 	Marshallable
 	*TPMTHA | *TPMSSignatureRSA | *TPMSSignatureECC
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuSignature) create(hint int64) (reflect.Value, error) {
+func (u *TPMUSignature) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgHMAC:
 		var contents TPMTHA
@@ -2402,7 +2415,7 @@ func (u *tpmuSignature) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuSignature) get(hint int64) (reflect.Value, error) {
+func (u TPMUSignature) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2429,17 +2442,15 @@ func (u tpmuSignature) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUSignature represents a TPMU_SIGNATURE.
-// See definition in Part 2: Structures, section 11.3.3.
-func TPMUSignature[C signatureContents](selector TPMAlgID, contents C) tpmuSignature {
-	return tpmuSignature{
+func NewTPMUSignature[C SignatureContents](selector TPMAlgID, contents C) TPMUSignature {
+	return TPMUSignature{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // HMAC returns the 'hmac' member of the union.
-func (u *tpmuSignature) HMAC() (*TPMTHA, error) {
+func (u *TPMUSignature) HMAC() (*TPMTHA, error) {
 	if u.selector == TPMAlgHMAC {
 		return u.contents.(*TPMTHA), nil
 	}
@@ -2447,7 +2458,7 @@ func (u *tpmuSignature) HMAC() (*TPMTHA, error) {
 }
 
 // RSASSA returns the 'rsassa' member of the union.
-func (u *tpmuSignature) RSASSA() (*TPMSSignatureRSA, error) {
+func (u *TPMUSignature) RSASSA() (*TPMSSignatureRSA, error) {
 	if u.selector == TPMAlgRSASSA {
 		return u.contents.(*TPMSSignatureRSA), nil
 	}
@@ -2455,7 +2466,7 @@ func (u *tpmuSignature) RSASSA() (*TPMSSignatureRSA, error) {
 }
 
 // RSAPSS returns the 'rsapss' member of the union.
-func (u *tpmuSignature) RSAPSS() (*TPMSSignatureRSA, error) {
+func (u *TPMUSignature) RSAPSS() (*TPMSSignatureRSA, error) {
 	if u.selector == TPMAlgRSAPSS {
 		return u.contents.(*TPMSSignatureRSA), nil
 	}
@@ -2463,7 +2474,7 @@ func (u *tpmuSignature) RSAPSS() (*TPMSSignatureRSA, error) {
 }
 
 // ECDSA returns the 'ecdsa' member of the union.
-func (u *tpmuSignature) ECDSA() (*TPMSSignatureECC, error) {
+func (u *TPMUSignature) ECDSA() (*TPMSSignatureECC, error) {
 	if u.selector == TPMAlgECDSA {
 		return u.contents.(*TPMSSignatureECC), nil
 	}
@@ -2471,7 +2482,7 @@ func (u *tpmuSignature) ECDSA() (*TPMSSignatureECC, error) {
 }
 
 // ECDAA returns the 'ecdaa' member of the union.
-func (u *tpmuSignature) ECDAA() (*TPMSSignatureECC, error) {
+func (u *TPMUSignature) ECDAA() (*TPMSSignatureECC, error) {
 	if u.selector == TPMAlgRSASSA {
 		return u.contents.(*TPMSSignatureECC), nil
 	}
@@ -2485,7 +2496,7 @@ type TPMTSignature struct {
 	// selector of the algorithm used to construct the signature
 	SigAlg TPMIAlgSigScheme `gotpm:"nullable"`
 	// This shall be the actual signature information.
-	Signature tpmuSignature `gotpm:"tag=SigAlg"`
+	Signature TPMUSignature `gotpm:"tag=SigAlg"`
 }
 
 // TPM2BEncryptedSecret represents a TPM2B_ENCRYPTED_SECRET.
@@ -2496,18 +2507,21 @@ type TPM2BEncryptedSecret TPM2BData
 // See definition in Part 2: Structures, section 12.2.2.
 type TPMIAlgPublic = TPMAlgID
 
-type tpmuPublicID struct {
+// TPMUPublicID represents a TPMU_PUBLIC_ID.
+// See definition in Part 2: Structures, section 12.2.3.2.
+type TPMUPublicID struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type publicIDContents interface {
+// PublicIDContents is a type constraint representing the possible contents of TPMUPublicID.
+type PublicIDContents interface {
 	Marshallable
 	*TPM2BDigest | *TPM2BPublicKeyRSA | *TPMSECCPoint
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuPublicID) create(hint int64) (reflect.Value, error) {
+func (u *TPMUPublicID) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgKeyedHash:
 		var contents TPM2BDigest
@@ -2534,7 +2548,7 @@ func (u *tpmuPublicID) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuPublicID) get(hint int64) (reflect.Value, error) {
+func (u TPMUPublicID) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2567,17 +2581,15 @@ func (u tpmuPublicID) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUPublicID represents a TPMU_PUBLIC_ID.
-// See definition in Part 2: Structures, section 12.2.3.2.
-func TPMUPublicID[C publicIDContents](selector TPMAlgID, contents C) tpmuPublicID {
-	return tpmuPublicID{
+func NewTPMUPublicID[C PublicIDContents](selector TPMAlgID, contents C) TPMUPublicID {
+	return TPMUPublicID{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // KeyedHash returns the 'keyedHash' member of the union.
-func (u *tpmuPublicID) KeyedHash() (*TPM2BDigest, error) {
+func (u *TPMUPublicID) KeyedHash() (*TPM2BDigest, error) {
 	if u.selector == TPMAlgKeyedHash {
 		return u.contents.(*TPM2BDigest), nil
 	}
@@ -2585,7 +2597,7 @@ func (u *tpmuPublicID) KeyedHash() (*TPM2BDigest, error) {
 }
 
 // SymCipher returns the 'symCipher' member of the union.
-func (u *tpmuPublicID) SymCipher() (*TPM2BDigest, error) {
+func (u *TPMUPublicID) SymCipher() (*TPM2BDigest, error) {
 	if u.selector == TPMAlgSymCipher {
 		return u.contents.(*TPM2BDigest), nil
 	}
@@ -2593,7 +2605,7 @@ func (u *tpmuPublicID) SymCipher() (*TPM2BDigest, error) {
 }
 
 // RSA returns the 'rsa' member of the union.
-func (u *tpmuPublicID) RSA() (*TPM2BPublicKeyRSA, error) {
+func (u *TPMUPublicID) RSA() (*TPM2BPublicKeyRSA, error) {
 	if u.selector == TPMAlgRSA {
 		return u.contents.(*TPM2BPublicKeyRSA), nil
 	}
@@ -2601,7 +2613,7 @@ func (u *tpmuPublicID) RSA() (*TPM2BPublicKeyRSA, error) {
 }
 
 // ECC returns the 'ecc' member of the union.
-func (u *tpmuPublicID) ECC() (*TPMSECCPoint, error) {
+func (u *TPMUPublicID) ECC() (*TPMSECCPoint, error) {
 	if u.selector == TPMAlgECC {
 		return u.contents.(*TPMSECCPoint), nil
 	}
@@ -2665,19 +2677,22 @@ type TPMSECCParms struct {
 	KDF TPMTKDFScheme
 }
 
-type tpmuPublicParms struct {
+// TPMUPublicParms represents a TPMU_PUBLIC_PARMS.
+// See definition in Part 2: Structures, section 12.2.3.7.
+type TPMUPublicParms struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type publicParmsContents interface {
+// PublicParmsContents is a type constraint representing the possible contents of TPMUPublicParms.
+type PublicParmsContents interface {
 	Marshallable
 	*TPMSKeyedHashParms | *TPMSSymCipherParms | *TPMSRSAParms |
 		*TPMSECCParms
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuPublicParms) create(hint int64) (reflect.Value, error) {
+func (u *TPMUPublicParms) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgKeyedHash:
 		var contents TPMSKeyedHashParms
@@ -2704,7 +2719,7 @@ func (u *tpmuPublicParms) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuPublicParms) get(hint int64) (reflect.Value, error) {
+func (u TPMUPublicParms) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2737,17 +2752,15 @@ func (u tpmuPublicParms) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUPublicParms represents a TPMU_PUBLIC_PARMS.
-// See definition in Part 2: Structures, section 12.2.3.7.
-func TPMUPublicParms[C publicParmsContents](selector TPMAlgID, contents C) tpmuPublicParms {
-	return tpmuPublicParms{
+func NewTPMUPublicParms[C PublicParmsContents](selector TPMAlgID, contents C) TPMUPublicParms {
+	return TPMUPublicParms{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // KeyedHashDetail returns the 'keyedHashDetail' member of the union.
-func (u *tpmuPublicParms) KeyedHashDetail() (*TPMSKeyedHashParms, error) {
+func (u *TPMUPublicParms) KeyedHashDetail() (*TPMSKeyedHashParms, error) {
 	if u.selector == TPMAlgKeyedHash {
 		return u.contents.(*TPMSKeyedHashParms), nil
 	}
@@ -2755,7 +2768,7 @@ func (u *tpmuPublicParms) KeyedHashDetail() (*TPMSKeyedHashParms, error) {
 }
 
 // SymDetail returns the 'symDetail' member of the union.
-func (u *tpmuPublicParms) SymDetail() (*TPMSSymCipherParms, error) {
+func (u *TPMUPublicParms) SymDetail() (*TPMSSymCipherParms, error) {
 	if u.selector == TPMAlgSymCipher {
 		return u.contents.(*TPMSSymCipherParms), nil
 	}
@@ -2763,7 +2776,7 @@ func (u *tpmuPublicParms) SymDetail() (*TPMSSymCipherParms, error) {
 }
 
 // RSADetail returns the 'rsaDetail' member of the union.
-func (u *tpmuPublicParms) RSADetail() (*TPMSRSAParms, error) {
+func (u *TPMUPublicParms) RSADetail() (*TPMSRSAParms, error) {
 	if u.selector == TPMAlgRSA {
 		return u.contents.(*TPMSRSAParms), nil
 	}
@@ -2771,7 +2784,7 @@ func (u *tpmuPublicParms) RSADetail() (*TPMSRSAParms, error) {
 }
 
 // ECCDetail returns the 'eccDetail' member of the union.
-func (u *tpmuPublicParms) ECCDetail() (*TPMSECCParms, error) {
+func (u *TPMUPublicParms) ECCDetail() (*TPMSECCParms, error) {
 	if u.selector == TPMAlgECC {
 		return u.contents.(*TPMSECCParms), nil
 	}
@@ -2793,10 +2806,10 @@ type TPMTPublic struct {
 	// The policy is computed using the nameAlg of the object.
 	AuthPolicy TPM2BDigest
 	// the algorithm or structure details
-	Parameters tpmuPublicParms `gotpm:"tag=Type"`
+	Parameters TPMUPublicParms `gotpm:"tag=Type"`
 	// the unique identifier of the structure
 	// For an asymmetric key, this would be the public key.
-	Unique tpmuPublicID `gotpm:"tag=Type"`
+	Unique TPMUPublicID `gotpm:"tag=Type"`
 }
 
 // TPM2BPublic represents a TPM2B_PUBLIC.
@@ -2807,7 +2820,8 @@ type TPM2BPublic = TPM2B[TPMTPublic, *TPMTPublic]
 // See definition in Part 2: Structures, section 12.2.6.
 type TPM2BTemplate TPM2BData
 
-type templateContents interface {
+// TemplateContents is a type constraint representing the possible contents of TPMUTemplate.
+type TemplateContents interface {
 	Marshallable
 	*TPMTPublic | *TPMTTemplate
 }
@@ -2828,30 +2842,33 @@ type TPMTTemplate struct {
 	// The policy is computed using the nameAlg of the object.
 	AuthPolicy TPM2BDigest
 	// the algorithm or structure details
-	Parameters tpmuPublicParms `gotpm:"tag=Type"`
+	Parameters TPMUPublicParms `gotpm:"tag=Type"`
 	// the derivation parameters
 	Unique TPMSDerive
 }
 
 // New2BTemplate creates a TPM2BTemplate with the given data.
-func New2BTemplate[C templateContents](data C) TPM2BTemplate {
+func New2BTemplate[C TemplateContents](data C) TPM2BTemplate {
 	return TPM2BTemplate{
 		Buffer: Marshal(data),
 	}
 }
 
-type tpmuSensitiveComposite struct {
+// TPMUSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
+// See definition in Part 2: Structures, section 12.3.2.3.
+type TPMUSensitiveComposite struct {
 	selector TPMAlgID
 	contents Marshallable
 }
 
-type sensitiveCompositeContents interface {
+// SensitiveCompositeContents is a type constraint representing the possible contents of TPMUSensitiveComposite.
+type SensitiveCompositeContents interface {
 	Marshallable
 	*TPM2BPrivateKeyRSA | *TPM2BECCParameter | *TPM2BSensitiveData | *TPM2BSymKey
 }
 
 // create implements the unmarshallableWithHint interface.
-func (u *tpmuSensitiveComposite) create(hint int64) (reflect.Value, error) {
+func (u *TPMUSensitiveComposite) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
 	case TPMAlgRSA:
 		var contents TPM2BPrivateKeyRSA
@@ -2878,7 +2895,7 @@ func (u *tpmuSensitiveComposite) create(hint int64) (reflect.Value, error) {
 }
 
 // get implements the marshallableWithHint interface.
-func (u tpmuSensitiveComposite) get(hint int64) (reflect.Value, error) {
+func (u TPMUSensitiveComposite) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
@@ -2911,17 +2928,15 @@ func (u tpmuSensitiveComposite) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
-// TPMUSensitiveComposite represents a TPMU_KDF_SCHEME.
-// See definition in Part 2: Structures, section 11.2.3.2.
-func TPMUSensitiveComposite[C sensitiveCompositeContents](selector TPMAlgID, contents C) tpmuSensitiveComposite {
-	return tpmuSensitiveComposite{
+func NewTPMUSensitiveComposite[C SensitiveCompositeContents](selector TPMAlgID, contents C) TPMUSensitiveComposite {
+	return TPMUSensitiveComposite{
 		selector: selector,
 		contents: contents,
 	}
 }
 
 // RSA returns the 'rsa' member of the union.
-func (u *tpmuKDFScheme) RSA() (*TPM2BPrivateKeyRSA, error) {
+func (u *TPMUKDFScheme) RSA() (*TPM2BPrivateKeyRSA, error) {
 	if u.selector == TPMAlgRSA {
 		return u.contents.(*TPM2BPrivateKeyRSA), nil
 	}
@@ -2929,7 +2944,7 @@ func (u *tpmuKDFScheme) RSA() (*TPM2BPrivateKeyRSA, error) {
 }
 
 // ECC returns the 'ecc' member of the union.
-func (u *tpmuKDFScheme) ECC() (*TPM2BECCParameter, error) {
+func (u *TPMUKDFScheme) ECC() (*TPM2BECCParameter, error) {
 	if u.selector == TPMAlgECC {
 		return u.contents.(*TPM2BECCParameter), nil
 	}
@@ -2937,7 +2952,7 @@ func (u *tpmuKDFScheme) ECC() (*TPM2BECCParameter, error) {
 }
 
 // Bits returns the 'bits' member of the union.
-func (u *tpmuKDFScheme) Bits() (*TPM2BSensitiveData, error) {
+func (u *TPMUKDFScheme) Bits() (*TPM2BSensitiveData, error) {
 	if u.selector == TPMAlgKeyedHash {
 		return u.contents.(*TPM2BSensitiveData), nil
 	}
@@ -2945,26 +2960,12 @@ func (u *tpmuKDFScheme) Bits() (*TPM2BSensitiveData, error) {
 }
 
 // Sym returns the 'sym' member of the union.
-func (u *tpmuKDFScheme) Sym() (*TPM2BSymKey, error) {
+func (u *TPMUKDFScheme) Sym() (*TPM2BSymKey, error) {
 	if u.selector == TPMAlgSymCipher {
 		return u.contents.(*TPM2BSymKey), nil
 	}
 	return nil, fmt.Errorf("did not contain sym (selector value was %v)", u.selector)
 }
-
-// // tpmuSensitiveComposite represents a TPMU_SENSITIVE_COMPOSITE.
-// // See definition in Part 2: Structures, section 12.3.2.3.
-// type tpmuSensitiveComposite struct {
-// 	marshalByReflection
-// 	// a prime factor of the public key
-// 	RSA *TPM2BPrivateKeyRSA `gotpm:"selector=0x0001"` // TPM_ALG_RSA
-// 	// the integer private key
-// 	ECC *TPM2BECCParameter `gotpm:"selector=0x0023"` // TPM_ALG_ECC
-// 	// the private data
-// 	Bits *TPM2BSensitiveData `gotpm:"selector=0x0008"` // TPM_ALG_KEYEDHASH
-// 	// the symmetric key
-// 	Sym *TPM2BSymKey `gotpm:"selector=0x0025"` // TPM_ALG_SYMCIPHER
-// }
 
 // TPMTSensitive represents a TPMT_SENSITIVE.
 // See definition in Part 2: Structures, section 12.3.2.4.
@@ -2978,7 +2979,7 @@ type TPMTSensitive struct {
 	// the obfuscation value
 	SeedValue TPM2BDigest
 	// the type-specific private data
-	Sensitive tpmuSensitiveComposite `gotpm:"tag=SensitiveType"`
+	Sensitive TPMUSensitiveComposite `gotpm:"tag=SensitiveType"`
 }
 
 // TPM2BSensitive represents a TPM2B_SENSITIVE.

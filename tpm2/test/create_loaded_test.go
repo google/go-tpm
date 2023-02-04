@@ -23,12 +23,12 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 					Decrypt:             true,
 					Restricted:          true,
 				},
-				Parameters: TPMUPublicParms(
+				Parameters: NewTPMUPublicParms(
 					TPMAlgKeyedHash,
 					&TPMSKeyedHashParms{
 						Scheme: TPMTKeyedHashScheme{
 							Scheme: TPMAlgXOR,
-							Details: TPMUSchemeKeyedHash(
+							Details: NewTPMUSchemeKeyedHash(
 								TPMAlgXOR,
 								&TPMSSchemeXOR{
 									HashAlg: TPMAlgSHA256,
@@ -92,7 +92,7 @@ func TestCreateLoaded(t *testing.T) {
 						UserWithAuth:        true,
 						SignEncrypt:         true,
 					},
-					Parameters: TPMUPublicParms(
+					Parameters: NewTPMUPublicParms(
 						TPMAlgECC,
 						&TPMSECCParms{
 							CurveID: TPMECCNistP256,
@@ -107,7 +107,7 @@ func TestCreateLoaded(t *testing.T) {
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: TPMUSensitiveCreate(&TPM2BSensitiveData{
+					Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
 						Buffer: []byte("secrets"),
 					}),
 				},
@@ -128,7 +128,7 @@ func TestCreateLoaded(t *testing.T) {
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: TPMUSensitiveCreate(&derive),
+					Data: NewTPMUSensitiveCreate(&derive),
 				},
 			},
 			InPublic: New2BTemplate(
@@ -140,7 +140,7 @@ func TestCreateLoaded(t *testing.T) {
 						UserWithAuth: true,
 						SignEncrypt:  true,
 					},
-					Parameters: TPMUPublicParms(
+					Parameters: NewTPMUPublicParms(
 						TPMAlgECC,
 						&TPMSECCParms{
 							CurveID: TPMECCNistP256,

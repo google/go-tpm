@@ -67,13 +67,13 @@ func TestMarshalT(t *testing.T) {
 		ObjectAttributes: TPMAObject{
 			SignEncrypt: true,
 		},
-		Parameters: TPMUPublicParms(
+		Parameters: NewTPMUPublicParms(
 			TPMAlgECC,
 			&TPMSECCParms{
 				CurveID: TPMECCNistP256,
 			},
 		),
-		Unique: TPMUPublicID(
+		Unique: NewTPMUPublicID(
 			// This happens to be a P256 EKpub from the simulator
 			TPMAlgECC,
 			&TPMSECCPoint{

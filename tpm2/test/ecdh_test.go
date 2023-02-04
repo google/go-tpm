@@ -39,13 +39,13 @@ func TestECDH(t *testing.T) {
 				SignEncrypt:          false,
 				X509Sign:             false,
 			},
-			Parameters: TPMUPublicParms(
+			Parameters: NewTPMUPublicParms(
 				TPMAlgECC,
 				&TPMSECCParms{
 					CurveID: TPMECCNistP256,
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDH,
-						Details: TPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgECDH,
 							&TPMSKeySchemeECDH{
 								HashAlg: TPMAlgSHA256,

@@ -37,7 +37,7 @@ func TestCommit(t *testing.T) {
 					SensitiveDataOrigin: true,
 					SignEncrypt:         true,
 				},
-				Parameters: TPMUPublicParms(
+				Parameters: NewTPMUPublicParms(
 					TPMAlgECC,
 					&TPMSECCParms{
 						Symmetric: TPMTSymDefObject{
@@ -45,7 +45,7 @@ func TestCommit(t *testing.T) {
 						},
 						Scheme: TPMTECCScheme{
 							Scheme: TPMAlgECDAA,
-							Details: TPMUAsymScheme(
+							Details: NewTPMUAsymScheme(
 								TPMAlgECDAA,
 								&TPMSSchemeECDAA{
 									HashAlg: TPMAlgSHA256,

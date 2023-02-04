@@ -79,12 +79,12 @@ func TestSign(t *testing.T) {
 				SensitiveDataOrigin: true,
 				UserWithAuth:        true,
 			},
-			Parameters: TPMUPublicParms(
+			Parameters: NewTPMUPublicParms(
 				TPMAlgRSA,
 				&TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgRSASSA,
 							&TPMSSigSchemeRSASSA{
 								HashAlg: TPMAlgSHA256,
@@ -125,7 +125,7 @@ func TestSign(t *testing.T) {
 		},
 		InScheme: TPMTSigScheme{
 			Scheme: TPMAlgRSASSA,
-			Details: TPMUSigScheme(
+			Details: NewTPMUSigScheme(
 				TPMAlgRSASSA,
 				&TPMSSchemeHash{
 					HashAlg: TPMAlgSHA256,

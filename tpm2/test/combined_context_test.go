@@ -48,12 +48,12 @@ func TestCombinedContext(t *testing.T) {
 				SensitiveDataOrigin: true,
 				UserWithAuth:        true,
 			},
-			Parameters: TPMUPublicParms(
+			Parameters: NewTPMUPublicParms(
 				TPMAlgRSA,
 				&TPMSRSAParms{
 					Scheme: TPMTRSAScheme{
 						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgRSASSA, &TPMSSigSchemeRSASSA{
 								HashAlg: TPMAlgSHA256,
 							},

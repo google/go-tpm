@@ -24,12 +24,12 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 				UserWithAuth:        true,
 				SignEncrypt:         true,
 			},
-			Parameters: TPMUPublicParms(
+			Parameters: NewTPMUPublicParms(
 				TPMAlgECC,
 				&TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
-						Details: TPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgECDSA,
 							&TPMSSigSchemeECDSA{
 								HashAlg: TPMAlgSHA256,
@@ -136,7 +136,7 @@ func TestPolicySignedUpdate(t *testing.T) {
 		PolicyRef:     TPM2BNonce{Buffer: []byte{5, 6, 7, 8}},
 		Auth: TPMTSignature{
 			SigAlg: TPMAlgECDSA,
-			Signature: TPMUSignature(
+			Signature: NewTPMUSignature(
 				TPMAlgECDSA,
 				&TPMSSignatureECC{
 					Hash: TPMAlgSHA256,

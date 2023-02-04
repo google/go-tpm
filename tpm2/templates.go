@@ -19,16 +19,16 @@ var (
 			Decrypt:              true,
 			SignEncrypt:          false,
 		},
-		Parameters: TPMUPublicParms(
+		Parameters: NewTPMUPublicParms(
 			TPMAlgRSA,
 			&TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -36,7 +36,7 @@ var (
 				KeyBits: 2048,
 			},
 		),
-		Unique: TPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgRSA,
 			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
@@ -69,16 +69,16 @@ var (
 				0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 			},
 		},
-		Parameters: TPMUPublicParms(
+		Parameters: NewTPMUPublicParms(
 			TPMAlgRSA,
 			&TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -86,7 +86,7 @@ var (
 				KeyBits: 2048,
 			},
 		),
-		Unique: TPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgRSA,
 			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
@@ -112,16 +112,16 @@ var (
 			Decrypt:              true,
 			SignEncrypt:          false,
 		},
-		Parameters: TPMUPublicParms(
+		Parameters: NewTPMUPublicParms(
 			TPMAlgECC,
 			&TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -129,7 +129,7 @@ var (
 				CurveID: TPMECCNistP256,
 			},
 		),
-		Unique: TPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgECC,
 			&TPMSECCPoint{
 				X: TPM2BECCParameter{
@@ -168,16 +168,16 @@ var (
 				0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 			},
 		},
-		Parameters: TPMUPublicParms(
+		Parameters: NewTPMUPublicParms(
 			TPMAlgECC,
 			&TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits(
+					KeyBits: NewTPMUSymKeyBits(
 						TPMAlgAES,
 						TPMKeyBits(128),
 					),
-					Mode: TPMUSymMode(
+					Mode: NewTPMUSymMode(
 						TPMAlgAES,
 						TPMAlgCFB,
 					),
@@ -185,7 +185,7 @@ var (
 				CurveID: TPMECCNistP256,
 			},
 		),
-		Unique: TPMUPublicID(
+		Unique: NewTPMUPublicID(
 			TPMAlgECC,
 			&TPMSECCPoint{
 				X: TPM2BECCParameter{

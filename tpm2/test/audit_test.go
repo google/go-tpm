@@ -41,12 +41,12 @@ func TestAuditSession(t *testing.T) {
 				Decrypt:              false,
 				SignEncrypt:          true,
 			},
-			Parameters: TPMUPublicParms(
+			Parameters: NewTPMUPublicParms(
 				TPMAlgECC,
 				&TPMSECCParms{
 					Scheme: TPMTECCScheme{
 						Scheme: TPMAlgECDSA,
-						Details: TPMUAsymScheme(
+						Details: NewTPMUAsymScheme(
 							TPMAlgECDSA,
 							&TPMSSigSchemeECDSA{
 								HashAlg: TPMAlgSHA256,

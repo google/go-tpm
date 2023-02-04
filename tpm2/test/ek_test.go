@@ -145,7 +145,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 				},
 				InSensitive: TPM2BSensitiveCreate{
 					&TPMSSensitiveCreate{
-						Data: TPMUSensitiveCreate(&TPM2BSensitiveData{
+						Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
 							Buffer: data,
 						}),
 					},

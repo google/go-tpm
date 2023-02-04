@@ -26,13 +26,13 @@ func TestLoadExternal(t *testing.T) {
 				ObjectAttributes: TPMAObject{
 					SignEncrypt: true,
 				},
-				Parameters: TPMUPublicParms(
+				Parameters: NewTPMUPublicParms(
 					TPMAlgECC,
 					&TPMSECCParms{
 						CurveID: TPMECCNistP256,
 					},
 				),
-				Unique: TPMUPublicID(
+				Unique: NewTPMUPublicID(
 					// This happens to be a P256 EKpub from the simulator
 					TPMAlgECC,
 					&TPMSECCPoint{
@@ -49,7 +49,7 @@ func TestLoadExternal(t *testing.T) {
 					SeedValue: TPM2BDigest{
 						Buffer: []byte("obfuscation is my middle name!!!"),
 					},
-					Sensitive: TPMUSensitiveComposite(
+					Sensitive: NewTPMUSensitiveComposite(
 						TPMAlgKeyedHash,
 						&TPM2BSensitiveData{
 							Buffer: []byte("secrets"),
@@ -60,7 +60,7 @@ func TestLoadExternal(t *testing.T) {
 				TPMTPublic{
 					Type:    TPMAlgKeyedHash,
 					NameAlg: TPMAlgSHA256,
-					Unique: TPMUPublicID(
+					Unique: NewTPMUPublicID(
 						TPMAlgKeyedHash,
 						&TPM2BDigest{
 							// SHA256("obfuscation is my middle name!!!secrets")
