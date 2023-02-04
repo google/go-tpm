@@ -20,7 +20,7 @@ func decodeHex(t *testing.T, h string) []byte {
 func TestLoadExternal(t *testing.T) {
 	loads := map[string]*LoadExternal{
 		"ECCNoSensitive": {
-			InPublic: TPM2BPublic(&TPMTPublic{
+			InPublic: New2B(TPMTPublic{
 				Type:    TPMAlgECC,
 				NameAlg: TPMAlgSHA256,
 				ObjectAttributes: TPMAObject{
@@ -43,8 +43,8 @@ func TestLoadExternal(t *testing.T) {
 			}),
 		},
 		"KeyedHashSensitive": {
-			InPrivate: TPM2BSensitive(
-				&TPMTSensitive{
+			InPrivate: New2B(
+				TPMTSensitive{
 					SensitiveType: TPMAlgKeyedHash,
 					SeedValue: TPM2BDigest{
 						Buffer: []byte("obfuscation is my middle name!!!"),
@@ -56,17 +56,18 @@ func TestLoadExternal(t *testing.T) {
 						},
 					),
 				}),
-			InPublic: TPM2BPublic(&TPMTPublic{
-				Type:    TPMAlgKeyedHash,
-				NameAlg: TPMAlgSHA256,
-				Unique: TPMUPublicID(
-					TPMAlgKeyedHash,
-					&TPM2BDigest{
-						// SHA256("obfuscation is my middle name!!!secrets")
-						Buffer: decodeHex(t, "ed4fe8e2bff97665e7bfbe27c2365d07a9be91dd92d997cd91cc706b6074eb08"),
-					},
-				),
-			}),
+			InPublic: New2B(
+				TPMTPublic{
+					Type:    TPMAlgKeyedHash,
+					NameAlg: TPMAlgSHA256,
+					Unique: TPMUPublicID(
+						TPMAlgKeyedHash,
+						&TPM2BDigest{
+							// SHA256("obfuscation is my middle name!!!secrets")
+							Buffer: decodeHex(t, "ed4fe8e2bff97665e7bfbe27c2365d07a9be91dd92d997cd91cc706b6074eb08"),
+						},
+					),
+				}),
 		},
 	}
 

@@ -36,13 +36,14 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 	srkAuth := []byte("mySRK")
 	createSRKCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate(
+		InSensitive: TPM2BSensitiveCreate{
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: srkAuth,
 				},
-			}),
-		InPublic: TPM2BPublic(&srkTemplate),
+			},
+		},
+		InPublic: New2B(srkTemplate),
 	}
 	createSRKRsp, err := createSRKCmd.Execute(thetpm)
 	if err != nil {
@@ -68,7 +69,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 			Name:   createSRKRsp.Name,
 			Auth:   PasswordAuth(srkAuth),
 		},
-		InSensitive: TPM2BSensitiveCreate(
+		InSensitive: TPM2BSensitiveCreate{
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: auth,
@@ -76,8 +77,9 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 				Data: TPMUSensitiveCreate(&TPM2BSensitiveData{
 					Buffer: data,
 				}),
-			}),
-		InPublic: TPM2BPublic(&TPMTPublic{
+			},
+		},
+		InPublic: New2B(TPMTPublic{
 			Type:    TPMAlgKeyedHash,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
@@ -88,6 +90,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 			},
 		}),
 	}
+
 	var createBlobRsp *CreateResponse
 
 	// Create the blob with password auth, without any session encryption

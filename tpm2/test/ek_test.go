@@ -102,7 +102,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 			// Create the EK
 			createEKCmd := CreatePrimary{
 				PrimaryHandle: TPMRHEndorsement,
-				InPublic:      TPM2BPublic(&ekTemplate),
+				InPublic:      New2B(ekTemplate),
 			}
 			createEKRsp, err := createEKCmd.Execute(thetpm)
 			if err != nil {
@@ -143,12 +143,14 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 					Handle: createEKRsp.ObjectHandle,
 					Name:   createEKRsp.Name,
 				},
-				InSensitive: TPM2BSensitiveCreate(
+				InSensitive: TPM2BSensitiveCreate{
 					&TPMSSensitiveCreate{
 						Data: TPMUSensitiveCreate(&TPM2BSensitiveData{
 							Buffer: data,
-						})}),
-				InPublic: TPM2BPublic(&TPMTPublic{
+						}),
+					},
+				},
+				InPublic: New2B(TPMTPublic{
 					Type:    TPMAlgKeyedHash,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{

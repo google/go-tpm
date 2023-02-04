@@ -175,9 +175,9 @@ type Create struct {
 	// handle of parent for new object
 	ParentHandle handle `gotpm:"handle,auth"`
 	// the sensitive data
-	InSensitive tpm2bSensitiveCreate
+	InSensitive TPM2BSensitiveCreate
 	// the public template
-	InPublic tpm2bPublic
+	InPublic TPM2BPublic
 	// data that will be included in the creation data for this
 	// object to provide permanent, verifiable linkage between this
 	// object and some object owner data
@@ -203,7 +203,7 @@ type CreateResponse struct {
 	// the private portion of the object
 	OutPrivate TPM2BPrivate
 	// the public portion of the created object
-	OutPublic tpm2bPublic
+	OutPublic TPM2BPublic
 	// contains a TPMS_CREATION_DATA
 	CreationData tpm2bCreationData
 	// digest of creationData using nameAlg of outPublic
@@ -221,7 +221,7 @@ type Load struct {
 	// the private portion of the object
 	InPrivate TPM2BPrivate
 	// the public portion of the object
-	InPublic tpm2bPublic
+	InPublic TPM2BPublic
 }
 
 // Command implements the Command interface.
@@ -250,7 +250,7 @@ type LoadExternal struct {
 	// the sensitive portion of the object (optional)
 	InPrivate tpm2bSensitive `gotpm:"optional"`
 	// the public portion of the object
-	InPublic tpm2bPublic
+	InPublic TPM2BPublic
 	// hierarchy with which the object area is associated
 	Hierarchy TPMIRHHierarchy `gotpm:"nullable"`
 }
@@ -297,7 +297,7 @@ func (cmd ReadPublic) Execute(t transport.TPM, s ...Session) (*ReadPublicRespons
 // ReadPublicResponse is the response from TPM2_ReadPublic.
 type ReadPublicResponse struct {
 	// structure containing the public area of an object
-	OutPublic tpm2bPublic
+	OutPublic TPM2BPublic
 	// name of object
 	Name TPM2BName
 	// the Qualified Name of the object
@@ -396,9 +396,9 @@ type CreateLoaded struct {
 	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER, TPM_RH_PLATFORM+{PP}, or TPM_RH_NULL
 	ParentHandle handle `gotpm:"handle,auth,nullable"`
 	// the sensitive data, see TPM 2.0 Part 1 Sensitive Values
-	InSensitive tpm2bSensitiveCreate
+	InSensitive TPM2BSensitiveCreate
 	// the public template
-	InPublic tpm2bTemplate
+	InPublic TPM2BTemplate
 }
 
 // Command implements the Command interface.
@@ -420,7 +420,7 @@ type CreateLoadedResponse struct {
 	// the sensitive area of the object (optional)
 	OutPrivate TPM2BPrivate `gotpm:"optional"`
 	// the public portion of the created object
-	OutPublic tpm2bPublic
+	OutPublic TPM2BPublic
 	// the name of the created object
 	Name TPM2BName
 }
@@ -1336,9 +1336,9 @@ type CreatePrimary struct {
 	// or TPM_RH_NULL
 	PrimaryHandle handle `gotpm:"handle,auth"`
 	// the sensitive data
-	InSensitive tpm2bSensitiveCreate
+	InSensitive TPM2BSensitiveCreate
 	// the public template
-	InPublic tpm2bPublic
+	InPublic TPM2BPublic
 	// data that will be included in the creation data for this
 	// object to provide permanent, verifiable linkage between this
 	// object and some object owner data
@@ -1364,7 +1364,7 @@ type CreatePrimaryResponse struct {
 	// handle of type TPM_HT_TRANSIENT for created Primary Object
 	ObjectHandle TPMHandle `gotpm:"handle"`
 	// the public portion of the created object
-	OutPublic tpm2bPublic
+	OutPublic TPM2BPublic
 	// contains a TPMS_CREATION_DATA
 	CreationData tpm2bCreationData
 	// digest of creationData using nameAlg of outPublic

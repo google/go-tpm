@@ -22,7 +22,7 @@ func TestECDH(t *testing.T) {
 	// Create a TPM ECDH key
 	tpmCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic(&TPMTPublic{
+		InPublic: New2B(TPMTPublic{
 			Type:    TPMAlgECC,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
@@ -96,7 +96,7 @@ func TestECDH(t *testing.T) {
 			Name:   tpmCreateRsp.Name,
 			Auth:   PasswordAuth(nil),
 		},
-		InPoint: TPM2BECCPoint(&swPub),
+		InPoint: New2B(swPub),
 	}
 	ecdhRsp, err := ecdh.Execute(thetpm)
 	if err != nil {

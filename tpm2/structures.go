@@ -1349,15 +1349,7 @@ type TPMSAttest struct {
 	Attested tpmuAttest `gotpm:"tag=Type"`
 }
 
-type tpm2bAttest = tpm2b[TPMSAttest]
-
-// TPM2BAttest represents a TPM2B_ATTEST.
-// See definition in Part 2: Structures, section 10.12.13.
-// Note that in the spec, this is just a 2B_DATA with enough room for an S_ATTEST.
-// For ergonomics, we pretend that TPM2B_Attest wraps a TPMS_Attest just like other 2Bs.
-func TPM2BAttest[C bytesOr[TPMSAttest]](contents C) tpm2bAttest {
-	return tpm2bHelper[TPMSAttest](contents)
-}
+type tpm2bAttest = TPM2B[TPMSAttest, *TPMSAttest]
 
 // TPMSAuthCommand represents a TPMS_AUTH_COMMAND.
 // See definition in Part 2: Structures, section 10.13.2.
@@ -1629,13 +1621,7 @@ type TPMSDerive struct {
 	Context TPM2BLabel
 }
 
-type tpm2bDerive = tpm2b[TPMSDerive]
-
-// TPM2BDerive represents a TPM2B_DERIVE.
-// See definition in Part 2: Structures, section 11.1.12.
-func TPM2BDerive[C bytesOr[TPMSDerive]](contents C) tpm2bDerive {
-	return tpm2bHelper[TPMSDerive](contents)
-}
+type tpm2bDerive = TPM2B[TPMSDerive, *TPMSDerive]
 
 type tpmuSensitiveCreate struct {
 	contents Marshallable
@@ -1679,34 +1665,25 @@ type TPMSSensitiveCreate struct {
 
 // This is a structure instead of an alias to tpm2b[TPMSSensitiveCreate],
 // see the implementation of marshal below.
-type tpm2bSensitiveCreate struct {
-	contents *tpm2b[TPMSSensitiveCreate]
+type TPM2BSensitiveCreate struct {
+	Sensitive *TPMSSensitiveCreate
 }
 
-// TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
-// See definition in Part 2: Structures, section 11.1.16.
-func TPM2BSensitiveCreate[C bytesOr[TPMSSensitiveCreate]](contents C) tpm2bSensitiveCreate {
-	data := tpm2bHelper[TPMSSensitiveCreate](contents)
-	return tpm2bSensitiveCreate{
-		contents: &data,
-	}
-}
-
-// Quirk: When this structure is omitted, we need to marshal
-// something better than the default [0x00, 0x00] (an empty 2B).
-// This is because this actually needs to contain a small
-// structure containing some empty values.
-func (c tpm2bSensitiveCreate) marshal(buf *bytes.Buffer) {
-	if c.contents != nil {
-		buf.Write(Marshal(c.contents))
+// Quirk: When this structure is zero-valued, we need to marshal
+// a 2B-wrapped zero-valued TPMS_SENSITIVE_CREATE instead of
+// [0x00, 0x00] (a zero-valued 2B).
+func (c TPM2BSensitiveCreate) marshal(buf *bytes.Buffer) {
+	var marshalled TPM2B[TPMSSensitiveCreate, *TPMSSensitiveCreate]
+	if c.Sensitive != nil {
+		marshalled = New2B(*c.Sensitive)
 	} else {
 		// If no value was provided (i.e., this is a zero-valued structure),
 		// provide an 2B containing a zero-valued TPMS_SensitiveCreate.
-		defaultValue := TPM2BSensitiveCreate(&TPMSSensitiveCreate{
+		marshalled = New2B(TPMSSensitiveCreate{
 			Data: TPMUSensitiveCreate(&TPM2BSensitiveData{}),
 		})
-		defaultValue.marshal(buf)
 	}
+	marshalled.marshal(buf)
 }
 
 // TPMSSchemeHash represents a TPMS_SCHEME_HASH.
@@ -2344,13 +2321,7 @@ type TPMSECCPoint struct {
 	Y TPM2BECCParameter
 }
 
-type tpm2bECCPoint = tpm2b[TPMSECCPoint]
-
-// TPM2BECCPoint represents a TPM2B_ECC_POINT.
-// See definition in Part 2: Structures, section 11.2.5.3.
-func TPM2BECCPoint[C bytesOr[TPMSECCPoint]](contents C) tpm2bECCPoint {
-	return tpm2bHelper[TPMSECCPoint](contents)
-}
+type tpm2bECCPoint = TPM2B[TPMSECCPoint, *TPMSECCPoint]
 
 // TPMIAlgECCScheme represents a TPMI_ALG_ECC_SCHEME.
 // See definition in Part 2: Structures, section 11.2.5.4.
@@ -2820,6 +2791,20 @@ type TPMTPublic struct {
 	Unique tpmuPublicID `gotpm:"tag=Type"`
 }
 
+type TPM2BPublic = TPM2B[TPMTPublic, *TPMTPublic]
+
+// TPM2BTemplate represents a TPM2B_TEMPLATE.
+// See definition in Part 2: Structures, section 12.2.6.
+type TPM2BTemplate = struct {
+	marshalByReflection
+	contents TPM2BData
+}
+
+type templateContents interface {
+	Marshallable
+	*TPMTPublic | *TPMTTemplate
+}
+
 // TPMTTemplate represents a TPMT_TEMPLATE. It is not defined in the spec.
 // It represents the alternate form of TPMT_PUBLIC for TPM2B_TEMPLATE as
 // described in Part 2: Structures, 12.2.6.
@@ -2841,41 +2826,13 @@ type TPMTTemplate struct {
 	Unique TPMSDerive
 }
 
-type tpm2bPublic = tpm2b[TPMTPublic]
-
-// TPM2BPublic represents a TPM2B_PUBLIC.
-// See definition in Part 2: Structures, section 12.2.5.
-func TPM2BPublic[C bytesOr[TPMTPublic]](contents C) tpm2bPublic {
-	return tpm2bHelper[TPMTPublic](contents)
-}
-
-type tpmuTemplate struct {
-	contents Marshallable
-}
-
-// marshal implements the Marshallable interface.
-func (u *tpmuTemplate) marshal(buf *bytes.Buffer) {
-	buf.Write(Marshal(u.contents))
-}
-
-type templateContents interface {
-	Marshallable
-	*TPMTPublic | *TPMTTemplate
-}
-
-// TPMUTemplate represents the possible contents of a TPM2B_Template. It is not
-// defined or named in the spec, which instead describes how its contents may
-// differ in the case of CreateLoaded with a derivation parent.
-func TPMUTemplate[C templateContents](contents C) *tpmuTemplate {
-	return &tpmuTemplate{contents: contents}
-}
-
-type tpm2bTemplate = tpm2b[tpmuTemplate]
-
-// TPM2BTemplate represents a TPM2B_TEMPLATE.
-// See definition in Part 2: Structures, section 12.2.6.
-func TPM2BTemplate[C bytesOr[tpmuTemplate]](contents C) tpm2bTemplate {
-	return tpm2bHelper[tpmuTemplate](contents)
+// New2BTemplate creates a TPM2BTemplate with the given data.
+func New2BTemplate[C templateContents](data C) TPM2BTemplate {
+	return TPM2BTemplate{
+		contents: TPM2BData{
+			Buffer: Marshal(data),
+		},
+	}
 }
 
 type tpmuSensitiveComposite struct {
@@ -3019,13 +2976,7 @@ type TPMTSensitive struct {
 	Sensitive tpmuSensitiveComposite `gotpm:"tag=SensitiveType"`
 }
 
-type tpm2bSensitive = tpm2b[TPMTSensitive]
-
-// TPM2BSensitive represents a TPM2B_SENSITIVE.
-// See definition in Part 2: Structures, section 12.3.3.
-func TPM2BSensitive[C bytesOr[TPMTSensitive]](contents C) tpm2bSensitive {
-	return tpm2bHelper[TPMTSensitive](contents)
-}
+type tpm2bSensitive = TPM2B[TPMTSensitive, *TPMTSensitive]
 
 // TPM2BPrivate represents a TPM2B_PRIVATE.
 // See definition in Part 2: Structures, section 12.3.7.
@@ -3188,13 +3139,7 @@ type TPMSNVPublic struct {
 	DataSize uint16
 }
 
-type tpm2bNVPublic = tpm2b[TPMSNVPublic]
-
-// TPM2BNVPublic represents a TPM2B_NV_PUBLIC.
-// See definition in Part 2: Structures, section 13.6.
-func TPM2BNVPublic[C bytesOr[TPMSNVPublic]](contents C) tpm2bNVPublic {
-	return tpm2bHelper[TPMSNVPublic](contents)
-}
+type tpm2bNVPublic = TPM2B[TPMSNVPublic, *TPMSNVPublic]
 
 // TPM2BContextSensitive represents a TPM2B_CONTEXT_SENSITIVE
 // See definition in Part 2: Structures, section 14.2.
@@ -3230,10 +3175,4 @@ type TPMSContext struct {
 	ContextBlob TPM2BContextData
 }
 
-type tpm2bCreationData = tpm2b[TPMSCreationData]
-
-// TPM2BCreationData represents a TPM2B_CREATION_DATA.
-// See definition in Part 2: Structures, section 15.2.
-func TPM2BCreationData[C bytesOr[TPMSCreationData]](contents C) tpm2bCreationData {
-	return tpm2bHelper[TPMSCreationData](contents)
-}
+type tpm2bCreationData = TPM2B[TPMSCreationData, *TPMSCreationData]

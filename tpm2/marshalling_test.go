@@ -19,24 +19,24 @@ func TestMarshal2B(t *testing.T) {
 	}
 
 	// Get the wire-format version
-	pubBytes := Marshal(&pub)
+	pubBytes := Marshal(pub)
 
 	// Create two versions of the same 2B:
 	// one instantiated by the actual TPMTPublic
 	// one instantiated by the contents
-	var boxed1 tpm2bPublic
-	var boxed2 tpm2bPublic
-	boxed1 = TPM2BPublic(&pub)
-	boxed2 = TPM2BPublic(pubBytes)
+	var boxed1 TPM2BPublic
+	var boxed2 TPM2BPublic
+	boxed1 = New2B(pub)
+	boxed2 = BytesAs2B[TPMTPublic](pubBytes)
 
-	boxed1Bytes := Marshal(&boxed1)
-	boxed2Bytes := Marshal(&boxed2)
+	boxed1Bytes := Marshal(boxed1)
+	boxed2Bytes := Marshal(boxed2)
 
 	if !bytes.Equal(boxed1Bytes, boxed2Bytes) {
 		t.Errorf("got %x want %x", boxed2Bytes, boxed1Bytes)
 	}
 
-	z, err := Unmarshal[tpm2bPublic](boxed1Bytes)
+	z, err := Unmarshal[TPM2BPublic](boxed1Bytes)
 	if err != nil {
 		t.Fatalf("could not unmarshal TPM2BPublic: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestMarshal2B(t *testing.T) {
 	}
 
 	// Make a nonsense 2B_Public, demonstrating that the library doesn't have to understand the serialization
-	boxed1 = TPM2BPublic([]byte{0xff})
+	BytesAs2B[TPMTPublic]([]byte{0xff})
 }
 
 func unwrap[T any](f func() (*T, error)) *T {

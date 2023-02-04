@@ -25,7 +25,7 @@ func TestCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
-	public := TPM2BPublic(&TPMTPublic{
+	public := New2B(TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -65,12 +65,13 @@ func TestCertify(t *testing.T) {
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate(
+		InSensitive: TPM2BSensitiveCreate{
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
-			}),
+			},
+		},
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
@@ -83,12 +84,13 @@ func TestCertify(t *testing.T) {
 
 	createPrimarySubject := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate(
+		InSensitive: TPM2BSensitiveCreate{
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
-			}),
+			},
+		},
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
@@ -180,7 +182,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := TPM2BPublic(&TPMTPublic{
+	public := New2B(TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -321,7 +323,7 @@ func TestNVCertify(t *testing.T) {
 
 	Auth := []byte("password")
 
-	public := TPM2BPublic(&TPMTPublic{
+	public := New2B(TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
 		ObjectAttributes: TPMAObject{
@@ -351,12 +353,13 @@ func TestNVCertify(t *testing.T) {
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InSensitive: TPM2BSensitiveCreate(
+		InSensitive: TPM2BSensitiveCreate{
 			&TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
-			}),
+			},
+		},
 		InPublic: public,
 	}
 	rspSigner, err := createPrimarySigner.Execute(thetpm)
@@ -368,8 +371,8 @@ func TestNVCertify(t *testing.T) {
 
 	def := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: TPM2BNVPublic(
-			&TPMSNVPublic{
+		PublicInfo: New2B(
+			TPMSNVPublic{
 				NVIndex: TPMHandle(0x0180000F),
 				NameAlg: TPMAlgSHA256,
 				Attributes: TPMANV{

@@ -26,7 +26,7 @@ func TestReadPublicKey(t *testing.T) {
 	// See tpm2/templates/go for more TPMTPublic examples.
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic(&TPMTPublic{
+		InPublic: New2B(TPMTPublic{
 			Type:    TPMAlgECC,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{

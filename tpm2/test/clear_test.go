@@ -17,7 +17,7 @@ func TestClear(t *testing.T) {
 
 	srkCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      TPM2BPublic(&ECCSRKTemplate),
+		InPublic:      New2B(ECCSRKTemplate),
 	}
 
 	srkCreateRsp, err := srkCreate.Execute(thetpm)

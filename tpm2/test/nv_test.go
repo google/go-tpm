@@ -21,8 +21,8 @@ func TestNVAuthWrite(t *testing.T) {
 		Auth: TPM2BAuth{
 			Buffer: []byte("p@ssw0rd"),
 		},
-		PublicInfo: TPM2BNVPublic(
-			&TPMSNVPublic{
+		PublicInfo: New2B(
+			TPMSNVPublic{
 				NVIndex: TPMHandle(0x0180000F),
 				NameAlg: TPMAlgSHA256,
 				Attributes: TPMANV{
@@ -109,8 +109,8 @@ func TestNVAuthIncrement(t *testing.T) {
 		Auth: TPM2BAuth{
 			Buffer: []byte("p@ssw0rd"),
 		},
-		PublicInfo: TPM2BNVPublic(
-			&TPMSNVPublic{
+		PublicInfo: New2B(
+			TPMSNVPublic{
 				NVIndex: TPMHandle(0x0180000F),
 				NameAlg: TPMAlgSHA256,
 				Attributes: TPMANV{

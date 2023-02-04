@@ -17,7 +17,7 @@ func TestActivateCredential(t *testing.T) {
 
 	ekCreate := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic:      TPM2BPublic(&ECCEKTemplate),
+		InPublic:      New2B(ECCEKTemplate),
 	}
 
 	ekCreateRsp, err := ekCreate.Execute(thetpm)
@@ -36,7 +36,7 @@ func TestActivateCredential(t *testing.T) {
 
 	srkCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      TPM2BPublic(&ECCSRKTemplate),
+		InPublic:      New2B(ECCSRKTemplate),
 	}
 
 	srkCreateRsp, err := srkCreate.Execute(thetpm)

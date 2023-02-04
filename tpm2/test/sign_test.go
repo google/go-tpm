@@ -69,7 +69,7 @@ func TestSign(t *testing.T) {
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
-		InPublic: TPM2BPublic(&TPMTPublic{
+		InPublic: New2B(TPMTPublic{
 			Type:    TPMAlgRSA,
 			NameAlg: TPMAlgSHA256,
 			ObjectAttributes: TPMAObject{
