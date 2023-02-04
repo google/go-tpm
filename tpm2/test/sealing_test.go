@@ -37,7 +37,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 	createSRKCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			&TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: srkAuth,
 				},
@@ -70,7 +70,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 			Auth:   PasswordAuth(srkAuth),
 		},
 		InSensitive: TPM2BSensitiveCreate{
-			&TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: auth,
 				},

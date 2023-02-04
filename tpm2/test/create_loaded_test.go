@@ -77,7 +77,7 @@ func TestCreateLoaded(t *testing.T) {
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,
 			InSensitive: TPM2BSensitiveCreate{
-				&TPMSSensitiveCreate{
+				Sensitive: &TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
@@ -103,7 +103,7 @@ func TestCreateLoaded(t *testing.T) {
 		"DataBlob": {
 			ParentHandle: TPMRHOwner,
 			InSensitive: TPM2BSensitiveCreate{
-				&TPMSSensitiveCreate{
+				Sensitive: &TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
@@ -124,7 +124,7 @@ func TestCreateLoaded(t *testing.T) {
 		"Derived": {
 			ParentHandle: deriver,
 			InSensitive: TPM2BSensitiveCreate{
-				&TPMSSensitiveCreate{
+				Sensitive: &TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},

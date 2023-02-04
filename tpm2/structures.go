@@ -1650,7 +1650,7 @@ type SensitiveCreateContents interface {
 }
 
 // marshal implements the Marshallable interface.
-func (u *TPMUSensitiveCreate) marshal(buf *bytes.Buffer) {
+func (u TPMUSensitiveCreate) marshal(buf *bytes.Buffer) {
 	if u.contents != nil {
 		buf.Write(Marshal(u.contents))
 	} else {
@@ -2093,7 +2093,7 @@ func (u *TPMUKDFScheme) MGF1() (*TPMSKDFSchemeMGF1, error) {
 	return nil, fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector)
 }
 
-// MGF1 returns the 'ecdh' member of the union.
+// ECDH returns the 'ecdh' member of the union.
 func (u *TPMUKDFScheme) ECDH() (*TPMSKDFSchemeECDH, error) {
 	if u.selector == TPMAlgECDH {
 		return u.contents.(*TPMSKDFSchemeECDH), nil

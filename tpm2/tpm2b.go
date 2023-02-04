@@ -56,7 +56,7 @@ func (value *TPM2B[T, P]) Bytes() []byte {
 		return value.buffer
 	}
 	if value.contents == nil {
-		panic("TPMB had no contents or buffer")
+		return []byte{}
 	}
 
 	// Cache the result

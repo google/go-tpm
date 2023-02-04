@@ -66,7 +66,7 @@ func TestCertify(t *testing.T) {
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			&TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
@@ -85,7 +85,7 @@ func TestCertify(t *testing.T) {
 	createPrimarySubject := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			&TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
@@ -354,7 +354,7 @@ func TestNVCertify(t *testing.T) {
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			&TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},

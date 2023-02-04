@@ -20,7 +20,7 @@ func TestCommit(t *testing.T) {
 	create := CreateLoaded{
 		ParentHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			&TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: password,
 				},
