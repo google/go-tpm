@@ -920,6 +920,7 @@ func (u TPMUCapabilities) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUCapabilities instantiates a TPMUCapabilities with the given contents.
 func NewTPMUCapabilities[C CapabilitiesContents](selector TPMCap, contents C) TPMUCapabilities {
 	return TPMUCapabilities{
 		selector: selector,
@@ -1260,6 +1261,7 @@ func (u TPMUAttest) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUAttest instantiates a TPMUAttest with the given contents.
 func NewTPMUAttest[C AttestContents](selector TPMST, contents C) TPMUAttest {
 	return TPMUAttest{
 		selector: selector,
@@ -1425,6 +1427,7 @@ func (u TPMUSymKeyBits) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUSymKeyBits instantiates a TPMUSymKeyBits with the given contents.
 func NewTPMUSymKeyBits[C SymKeyBitsContents](selector TPMAlgID, contents C) TPMUSymKeyBits {
 	boxed := box(&contents)
 	return TPMUSymKeyBits{
@@ -1502,6 +1505,7 @@ func (u TPMUSymMode) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUSymMode instantiates a TPMUSymMode with the given contents.
 func NewTPMUSymMode[C SymModeContents](selector TPMAlgID, contents C) TPMUSymMode {
 	boxed := box(&contents)
 	return TPMUSymMode{
@@ -1564,6 +1568,7 @@ func (u TPMUSymDetails) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUSymDetails instantiates a TPMUSymDetails with the given contents.
 func NewTPMUSymDetails[C SymDetailsContents](selector TPMAlgID, contents C) TPMUSymMode {
 	boxed := box(&contents)
 	return TPMUSymMode{
@@ -1655,6 +1660,7 @@ func (u *TPMUSensitiveCreate) marshal(buf *bytes.Buffer) {
 	}
 }
 
+// NewTPMUSensitiveCreate instantiates a TPMUSensitiveCreate with the given contents.
 func NewTPMUSensitiveCreate[C SensitiveCreateContents](contents C) TPMUSensitiveCreate {
 	return TPMUSensitiveCreate{contents: contents}
 }
@@ -1787,6 +1793,7 @@ func (u TPMUSchemeKeyedHash) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUSchemeKeyedHash instantiates a TPMUSchemeKeyedHash with the given contents.
 func NewTPMUSchemeKeyedHash[C SchemeKeyedHashContents](selector TPMAlgID, contents C) TPMUSchemeKeyedHash {
 	return TPMUSchemeKeyedHash{
 		selector: selector,
@@ -1895,6 +1902,7 @@ func (u TPMUSigScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUSigScheme instantiates a TPMUSigScheme with the given contents.
 func NewTPMUSigScheme[C SigSchemeContents](selector TPMAlgID, contents C) TPMUSigScheme {
 	return TPMUSigScheme{
 		selector: selector,
@@ -2069,6 +2077,7 @@ func (u TPMUKDFScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUKDFScheme instantiates a TPMUKDFScheme with the given contents.
 func NewTPMUKDFScheme[C KDFSchemeContents](selector TPMAlgID, contents C) TPMUKDFScheme {
 	return TPMUKDFScheme{
 		selector: selector,
@@ -2234,6 +2243,7 @@ func (u TPMUAsymScheme) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUAsymScheme instantiates a TPMUAsymScheme with the given contents.
 func NewTPMUAsymScheme[C AsymSchemeContents](selector TPMAlgID, contents C) TPMUAsymScheme {
 	return TPMUAsymScheme{
 		selector: selector,
@@ -2442,6 +2452,7 @@ func (u TPMUSignature) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUSignature instantiates a TPMUSignature with the given contents.
 func NewTPMUSignature[C SignatureContents](selector TPMAlgID, contents C) TPMUSignature {
 	return TPMUSignature{
 		selector: selector,
@@ -2581,6 +2592,7 @@ func (u TPMUPublicID) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUPublicID instantiates a TPMUPublicID with the given contents.
 func NewTPMUPublicID[C PublicIDContents](selector TPMAlgID, contents C) TPMUPublicID {
 	return TPMUPublicID{
 		selector: selector,
@@ -2752,6 +2764,7 @@ func (u TPMUPublicParms) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUPublicParms instantiates a TPMUPublicParms with the given contents.
 func NewTPMUPublicParms[C PublicParmsContents](selector TPMAlgID, contents C) TPMUPublicParms {
 	return TPMUPublicParms{
 		selector: selector,
@@ -2928,6 +2941,7 @@ func (u TPMUSensitiveComposite) get(hint int64) (reflect.Value, error) {
 	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
 }
 
+// NewTPMUSensitiveComposite instantiates a TPMUSensitiveComposite with the given contents.
 func NewTPMUSensitiveComposite[C SensitiveCompositeContents](selector TPMAlgID, contents C) TPMUSensitiveComposite {
 	return TPMUSensitiveComposite{
 		selector: selector,
