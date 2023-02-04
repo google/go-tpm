@@ -248,7 +248,7 @@ type LoadResponse struct {
 // See definition in Part 3, Commands, section 12.3
 type LoadExternal struct {
 	// the sensitive portion of the object (optional)
-	InPrivate tpm2bSensitive `gotpm:"optional"`
+	InPrivate TPM2BSensitive `gotpm:"optional"`
 	// the public portion of the object
 	InPublic TPM2BPublic
 	// hierarchy with which the object area is associated
@@ -431,7 +431,7 @@ type ECDHZGen struct {
 	// handle of a loaded ECC key
 	KeyHandle handle `gotpm:"handle,auth"`
 	// a public key
-	InPoint tpm2bECCPoint
+	InPoint TPM2BECCPoint
 }
 
 // Command implements the Command interface.
@@ -449,7 +449,7 @@ func (cmd ECDHZGen) Execute(t transport.TPM, s ...Session) (*ECDHZGenResponse, e
 // ECDHZGenResponse is the response from TPM2_ECDHZGen.
 type ECDHZGenResponse struct {
 	// X and Y coordinates of the product of the multiplication
-	OutPoint tpm2bECCPoint
+	OutPoint TPM2BECCPoint
 }
 
 // Hash is the input to TPM2_Hash.
@@ -621,7 +621,7 @@ func (cmd Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, err
 // CertifyResponse is the response from TPM2_Certify.
 type CertifyResponse struct {
 	// the structure that was signed
-	CertifyInfo tpm2bAttest
+	CertifyInfo TPM2BAttest
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature TPMTSignature
 }
@@ -658,7 +658,7 @@ func (cmd CertifyCreation) Execute(t transport.TPM, s ...Session) (*CertifyCreat
 // CertifyCreationResponse is the response from TPM2_CertifyCreation.
 type CertifyCreationResponse struct {
 	// the structure that was signed
-	CertifyInfo tpm2bAttest
+	CertifyInfo TPM2BAttest
 	// the signature over certifyInfo
 	Signature TPMTSignature
 }
@@ -691,7 +691,7 @@ func (cmd Quote) Execute(t transport.TPM, s ...Session) (*QuoteResponse, error) 
 // QuoteResponse is the response from TPM2_Quote.
 type QuoteResponse struct {
 	// the quoted information
-	Quoted tpm2bAttest
+	Quoted TPM2BAttest
 	// the signature over quoted
 	Signature TPMTSignature
 }
@@ -727,7 +727,7 @@ func (cmd GetSessionAuditDigest) Execute(t transport.TPM, s ...Session) (*GetSes
 // TPM2_GetSessionAuditDigest.
 type GetSessionAuditDigestResponse struct {
 	// the audit information that was signed
-	AuditInfo tpm2bAttest
+	AuditInfo TPM2BAttest
 	// the signature over auditInfo
 	Signature TPMTSignature
 }
@@ -738,7 +738,7 @@ type Commit struct {
 	// handle of the key that will be used in the signing operation
 	SignHandle handle `gotpm:"handle,auth"`
 	// a point (M) on the curve used by signHandle
-	P1 tpm2bECCPoint
+	P1 TPM2BECCPoint
 	// octet array used to derive x-coordinate of a base point
 	S2 TPM2BSensitiveData
 	// y coordinate of the point associated with s2
@@ -761,11 +761,11 @@ func (cmd Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, error
 // CommitResponse is the response from TPM2_Commit.
 type CommitResponse struct {
 	// ECC point K ≔ [ds](x2, y2)
-	K tpm2bECCPoint
+	K TPM2BECCPoint
 	// ECC point L ≔ [r](x2, y2)
-	L tpm2bECCPoint
+	L TPM2BECCPoint
 	// ECC point E ≔ [r]P1
-	E tpm2bECCPoint
+	E TPM2BECCPoint
 	// least-significant 16 bits of commitCount
 	Counter uint16
 }
@@ -1510,7 +1510,7 @@ type NVDefineSpace struct {
 	// the authorization value
 	Auth TPM2BAuth
 	// the public parameters of the NV area
-	PublicInfo tpm2bNVPublic
+	PublicInfo TPM2BNVPublic
 }
 
 // Command implements the Command interface.
@@ -1600,7 +1600,7 @@ func (cmd NVReadPublic) Execute(t transport.TPM, s ...Session) (*NVReadPublicRes
 
 // NVReadPublicResponse is the response from TPM2_NV_ReadPublic.
 type NVReadPublicResponse struct {
-	NVPublic tpm2bNVPublic
+	NVPublic TPM2BNVPublic
 	NVName   TPM2BName
 }
 
@@ -1748,7 +1748,7 @@ func (cmd NVCertify) Execute(t transport.TPM, s ...Session) (*NVCertifyResponse,
 // NVCertifyResponse is the response from TPM2_NV_Read.
 type NVCertifyResponse struct {
 	// the structure that was signed
-	CertifyInfo tpm2bAttest
+	CertifyInfo TPM2BAttest
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature TPMTSignature
 }

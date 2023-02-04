@@ -700,7 +700,7 @@ type TPMLCCA struct {
 	CommandAttributes []TPMACC `gotpm:"list"`
 }
 
-// TPMLAlg represents a TPMLALG.
+// TPMLAlg represents a TPML_ALG.
 // See definition in Part 2: Structures, section 10.9.3.
 type TPMLAlg struct {
 	marshalByReflection
@@ -1349,7 +1349,9 @@ type TPMSAttest struct {
 	Attested tpmuAttest `gotpm:"tag=Type"`
 }
 
-type tpm2bAttest = TPM2B[TPMSAttest, *TPMSAttest]
+// TPM2BAttest represents a TPM2B_ATTEST.
+// See definition in Part 2: Structures, section 10.12.13.
+type TPM2BAttest = TPM2B[TPMSAttest, *TPMSAttest]
 
 // TPMSAuthCommand represents a TPMS_AUTH_COMMAND.
 // See definition in Part 2: Structures, section 10.13.2.
@@ -1621,7 +1623,9 @@ type TPMSDerive struct {
 	Context TPM2BLabel
 }
 
-type tpm2bDerive = TPM2B[TPMSDerive, *TPMSDerive]
+// TPM2BDerive represents a TPM2B_DERIVE.
+// See definition in Part 2: Structures, section 11.1.12.
+type TPM2BDerive = TPM2B[TPMSDerive, *TPMSDerive]
 
 type tpmuSensitiveCreate struct {
 	contents Marshallable
@@ -1629,7 +1633,7 @@ type tpmuSensitiveCreate struct {
 
 type sensitiveCreateContents interface {
 	Marshallable
-	*tpm2bDerive | *TPM2BSensitiveData
+	*TPM2BDerive | *TPM2BSensitiveData
 }
 
 // marshal implements the Marshallable interface.
@@ -1663,8 +1667,10 @@ type TPMSSensitiveCreate struct {
 	Data tpmuSensitiveCreate
 }
 
-// This is a structure instead of an alias to tpm2b[TPMSSensitiveCreate],
-// see the implementation of marshal below.
+// TPM2BSensitiveCreate represents a TPM2B_SENSITIVE_CREATE.
+// See definition in Part 2: Structures, section 11.1.16.
+// This is a structure instead of an alias to TPM2B[TPMSSensitiveCreate],
+// because it has custom marshalling logic for zero-valued parameters.
 type TPM2BSensitiveCreate struct {
 	Sensitive *TPMSSensitiveCreate
 }
@@ -2321,7 +2327,9 @@ type TPMSECCPoint struct {
 	Y TPM2BECCParameter
 }
 
-type tpm2bECCPoint = TPM2B[TPMSECCPoint, *TPMSECCPoint]
+// TPM2BECCPoint represents a TPM2B_ECC_POINT.
+// See definition in Part 2: Structures, section 11.2.5.3.
+type TPM2BECCPoint = TPM2B[TPMSECCPoint, *TPMSECCPoint]
 
 // TPMIAlgECCScheme represents a TPMI_ALG_ECC_SCHEME.
 // See definition in Part 2: Structures, section 11.2.5.4.
@@ -2791,14 +2799,13 @@ type TPMTPublic struct {
 	Unique tpmuPublicID `gotpm:"tag=Type"`
 }
 
+// TPM2BPublic represents a TPM2B_PUBLIC.
+// See definition in Part 2: Structures, section 12.2.5.
 type TPM2BPublic = TPM2B[TPMTPublic, *TPMTPublic]
 
 // TPM2BTemplate represents a TPM2B_TEMPLATE.
 // See definition in Part 2: Structures, section 12.2.6.
-type TPM2BTemplate = struct {
-	marshalByReflection
-	contents TPM2BData
-}
+type TPM2BTemplate TPM2BData
 
 type templateContents interface {
 	Marshallable
@@ -2829,9 +2836,7 @@ type TPMTTemplate struct {
 // New2BTemplate creates a TPM2BTemplate with the given data.
 func New2BTemplate[C templateContents](data C) TPM2BTemplate {
 	return TPM2BTemplate{
-		contents: TPM2BData{
-			Buffer: Marshal(data),
-		},
+		Buffer: Marshal(data),
 	}
 }
 
@@ -2976,7 +2981,9 @@ type TPMTSensitive struct {
 	Sensitive tpmuSensitiveComposite `gotpm:"tag=SensitiveType"`
 }
 
-type tpm2bSensitive = TPM2B[TPMTSensitive, *TPMTSensitive]
+// TPM2BSensitive represents a TPM2B_SENSITIVE.
+// See definition in Part 2: Structures, section 12.3.3.
+type TPM2BSensitive = TPM2B[TPMTSensitive, *TPMTSensitive]
 
 // TPM2BPrivate represents a TPM2B_PRIVATE.
 // See definition in Part 2: Structures, section 12.3.7.
@@ -3139,7 +3146,9 @@ type TPMSNVPublic struct {
 	DataSize uint16
 }
 
-type tpm2bNVPublic = TPM2B[TPMSNVPublic, *TPMSNVPublic]
+// TPM2BNVPublic represents a TPM2B_NV_PUBLIC.
+// See definition in Part 2: Structures, section 13.6.
+type TPM2BNVPublic = TPM2B[TPMSNVPublic, *TPMSNVPublic]
 
 // TPM2BContextSensitive represents a TPM2B_CONTEXT_SENSITIVE
 // See definition in Part 2: Structures, section 14.2.
