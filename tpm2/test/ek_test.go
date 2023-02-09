@@ -102,22 +102,35 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 			// Create the EK
 			createEKCmd := CreatePrimary{
 				PrimaryHandle: TPMRHEndorsement,
-				InPublic: TPM2BPublic{
-					PublicArea: ekTemplate,
-				},
+				InPublic:      New2B(ekTemplate),
 			}
 			createEKRsp, err := createEKCmd.Execute(thetpm)
 			if err != nil {
 				t.Fatalf("%v", err)
 			}
-			if createEKRsp.OutPublic.PublicArea.Unique.ECC != nil {
-				t.Logf("EK pub:\n%x\n%x\n", createEKRsp.OutPublic.PublicArea.Unique.ECC.X, createEKRsp.OutPublic.PublicArea.Unique.ECC.Y)
-				t.Logf("EK name: %x", createEKRsp.Name)
+			outPub, err := createEKRsp.OutPublic.Contents()
+			if err != nil {
+				t.Fatalf("%v", err)
 			}
+			switch outPub.Type {
+			case TPMAlgRSA:
+				rsa, err := outPub.Unique.RSA()
+				if err != nil {
+					t.Fatalf("%v", err)
+				}
+				t.Logf("EK pub:\n%x\n", rsa.Buffer)
+			case TPMAlgECC:
+				ecc, err := outPub.Unique.ECC()
+				if err != nil {
+					t.Fatalf("%v", err)
+				}
+				t.Logf("EK pub:\n%x\n%x\n", ecc.X, ecc.Y)
+			}
+			t.Logf("EK name: %x", createEKRsp.Name)
 			defer func() {
 				// Flush the EK
 				flush := FlushContext{FlushHandle: createEKRsp.ObjectHandle}
-				if err := flush.Execute(thetpm); err != nil {
+				if _, err := flush.Execute(thetpm); err != nil {
 					t.Errorf("%v", err)
 				}
 			}()
@@ -131,24 +144,22 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 					Name:   createEKRsp.Name,
 				},
 				InSensitive: TPM2BSensitiveCreate{
-					Sensitive: TPMSSensitiveCreate{
-						Data: TPM2BSensitiveData{
+					Sensitive: &TPMSSensitiveCreate{
+						Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
 							Buffer: data,
-						},
+						}),
 					},
 				},
-				InPublic: TPM2BPublic{
-					PublicArea: TPMTPublic{
-						Type:    TPMAlgKeyedHash,
-						NameAlg: TPMAlgSHA256,
-						ObjectAttributes: TPMAObject{
-							FixedTPM:     true,
-							FixedParent:  true,
-							UserWithAuth: true,
-							NoDA:         true,
-						},
+				InPublic: New2B(TPMTPublic{
+					Type:    TPMAlgKeyedHash,
+					NameAlg: TPMAlgSHA256,
+					ObjectAttributes: TPMAObject{
+						FixedTPM:     true,
+						FixedParent:  true,
+						UserWithAuth: true,
+						NoDA:         true,
 					},
-				},
+				}),
 			}
 
 			var sessions []Session
@@ -164,7 +175,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 				options = append(options, Bound(createEKRsp.ObjectHandle, createEKRsp.Name, nil))
 			}
 			if c.salted {
-				options = append(options, Salted(createEKRsp.ObjectHandle, createEKRsp.OutPublic.PublicArea))
+				options = append(options, Salted(createEKRsp.ObjectHandle, *outPub))
 			}
 
 			var s Session

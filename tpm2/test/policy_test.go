@@ -14,32 +14,32 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:            true,
-					FixedParent:         true,
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-					SignEncrypt:         true,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDSA,
-							Details: TPMUAsymScheme{
-								ECDSA: &TPMSSigSchemeECDSA{
-									HashAlg: TPMAlgSHA256,
-								},
-							},
-						},
-						CurveID: TPMECCNistP256,
-					},
-				},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+				SignEncrypt:         true,
 			},
-		},
+			Parameters: NewTPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDSA,
+						Details: NewTPMUAsymScheme(
+							TPMAlgECDSA,
+							&TPMSSigSchemeECDSA{
+								HashAlg: TPMAlgSHA256,
+							},
+						),
+					},
+					CurveID: TPMECCNistP256,
+				},
+			),
+		}),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {
@@ -50,7 +50,7 @@ func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		flush := FlushContext{
 			FlushHandle: rsp.ObjectHandle,
 		}
-		if err := flush.Execute(thetpm); err != nil {
+		if _, err := flush.Execute(thetpm); err != nil {
 			t.Errorf("could not flush signing key: %v", err)
 		}
 	}
@@ -64,8 +64,8 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	defSpace := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: TPM2BNVPublic{
-			NVPublic: TPMSNVPublic{
+		PublicInfo: New2B(
+			TPMSNVPublic{
 				NVIndex: 0x01800001,
 				NameAlg: TPMAlgSHA256,
 				Attributes: TPMANV{
@@ -73,14 +73,17 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 					AuthRead:   true,
 					NT:         TPMNTOrdinary,
 				},
-			},
-		},
+			}),
 	}
-	if err := defSpace.Execute(thetpm); err != nil {
+	if _, err := defSpace.Execute(thetpm); err != nil {
 		t.Fatalf("could not create NV index: %v", err)
 	}
+	pub, err := defSpace.PublicInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	readPub := NVReadPublic{
-		NVIndex: defSpace.PublicInfo.NVPublic.NVIndex,
+		NVIndex: pub.NVIndex,
 	}
 	readRsp, err := readPub.Execute(thetpm)
 	if err != nil {
@@ -91,16 +94,16 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 		undefine := NVUndefineSpace{
 			AuthHandle: TPMRHOwner,
 			NVIndex: NamedHandle{
-				Handle: defSpace.PublicInfo.NVPublic.NVIndex,
+				Handle: pub.NVIndex,
 				Name:   readRsp.NVName,
 			},
 		}
-		if err := undefine.Execute(thetpm); err != nil {
+		if _, err := undefine.Execute(thetpm); err != nil {
 			t.Errorf("could not undefine NV index: %v", err)
 		}
 	}
 	return NamedHandle{
-		Handle: defSpace.PublicInfo.NVPublic.NVIndex,
+		Handle: pub.NVIndex,
 		Name:   readRsp.NVName,
 	}, cleanup
 }
@@ -133,11 +136,12 @@ func TestPolicySignedUpdate(t *testing.T) {
 		PolicyRef:     TPM2BNonce{Buffer: []byte{5, 6, 7, 8}},
 		Auth: TPMTSignature{
 			SigAlg: TPMAlgECDSA,
-			Signature: TPMUSignature{
-				ECDSA: &TPMSSignatureECC{
+			Signature: NewTPMUSignature(
+				TPMAlgECDSA,
+				&TPMSSignatureECC{
 					Hash: TPMAlgSHA256,
 				},
-			},
+			),
 		},
 	}
 
@@ -251,7 +255,7 @@ func TestPolicyOrUpdate(t *testing.T) {
 		},
 	}
 
-	if err := policyOr.Execute(thetpm); err != nil {
+	if _, err := policyOr.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyOr: %v", err)
 	}
 
@@ -357,7 +361,7 @@ func TestPolicyPCR(t *testing.T) {
 				Pcrs: selection,
 			}
 
-			err = policyPCR.Execute(thetpm)
+			_, err = policyPCR.Execute(thetpm)
 			if tt.callShouldSucceed {
 				if err != nil {
 					t.Fatalf("executing PolicyPCR: %v", err)
@@ -432,7 +436,7 @@ func TestPolicyCpHashUpdate(t *testing.T) {
 			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}},
 	}
 
-	if err := policyCpHash.Execute(thetpm); err != nil {
+	if _, err := policyCpHash.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyCpHash: %v", err)
 	}
 
@@ -489,7 +493,7 @@ func TestPolicyAuthorizeUpdate(t *testing.T) {
 		},
 	}
 
-	if err := policyAuthorize.Execute(thetpm); err != nil {
+	if _, err := policyAuthorize.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorize: %v", err)
 	}
 
@@ -594,7 +598,7 @@ func TestPolicyNVUpdate(t *testing.T) {
 		Operation:     TPMEOSignedLE,
 	}
 
-	if err := policyNV.Execute(thetpm); err != nil {
+	if _, err := policyNV.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorizeNV: %v", err)
 	}
 
@@ -647,7 +651,7 @@ func TestPolicyAuthorizeNVUpdate(t *testing.T) {
 		NVIndex:       nv,
 	}
 
-	if err := policyAuthorizeNV.Execute(thetpm); err != nil {
+	if _, err := policyAuthorizeNV.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyAuthorizeNV: %v", err)
 	}
 
@@ -695,7 +699,7 @@ func TestPolicyCommandCodeUpdate(t *testing.T) {
 		PolicySession: sess.Handle(),
 		Code:          TPMCCCreate,
 	}
-	if err := pcc.Execute(thetpm); err != nil {
+	if _, err := pcc.Execute(thetpm); err != nil {
 		t.Fatalf("executing PolicyCommandCode: %v", err)
 	}
 

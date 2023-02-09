@@ -55,7 +55,7 @@ type Session interface {
 
 // CPHash calculates the TPM command parameter hash for a given Command.
 // N.B. Authorization sessions on handles are ignored, but names aren't.
-func CPHash(alg TPMIAlgHash, cmd Command) (*TPM2BDigest, error) {
+func CPHash[R any](alg TPMIAlgHash, cmd Command[R, *R]) (*TPM2BDigest, error) {
 	cc := cmd.Command()
 	names, err := cmdNames(cmd)
 	if err != nil {
@@ -272,12 +272,14 @@ func AESEncryption(keySize TPMKeyBits, dir parameterEncryptiontpm2ion) AuthOptio
 		o.attrs.Encrypt = (dir == EncryptOut || dir == EncryptInOut)
 		o.symmetric = TPMTSymDef{
 			Algorithm: TPMAlgAES,
-			KeyBits: TPMUSymKeyBits{
-				AES: NewKeyBits(keySize),
-			},
-			Mode: TPMUSymMode{
-				AES: NewAlgID(TPMAlgCFB),
-			},
+			KeyBits: NewTPMUSymKeyBits(
+				TPMAlgAES,
+				TPMKeyBits(keySize),
+			),
+			Mode: NewTPMUSymMode(
+				TPMAlgAES,
+				TPMAlgCFB,
+			),
 		}
 	}
 }
@@ -361,7 +363,8 @@ func HMACSession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthO
 	}
 
 	closer := func() error {
-		return (&FlushContext{FlushHandle: sess.handle}).Execute(t)
+		_, err := (&FlushContext{FlushHandle: sess.handle}).Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
@@ -378,13 +381,25 @@ func getEncryptedSaltRSA(nameAlg TPMIAlgHash, parms *TPMSRSAParms, pub *TPM2BPub
 	var hAlg TPMIAlgHash
 	switch parms.Scheme.Scheme {
 	case TPMAlgRSASSA:
-		hAlg = parms.Scheme.Details.RSASSA.HashAlg
+		rsassa, err := parms.Scheme.Details.RSASSA()
+		if err != nil {
+			return nil, nil, err
+		}
+		hAlg = rsassa.HashAlg
 	case TPMAlgRSAES:
 		hAlg = nameAlg
 	case TPMAlgRSAPSS:
-		hAlg = parms.Scheme.Details.RSAPSS.HashAlg
+		rsapss, err := parms.Scheme.Details.RSAPSS()
+		if err != nil {
+			return nil, nil, err
+		}
+		hAlg = rsapss.HashAlg
 	case TPMAlgOAEP:
-		hAlg = parms.Scheme.Details.OAEP.HashAlg
+		oaep, err := parms.Scheme.Details.OAEP()
+		if err != nil {
+			return nil, nil, err
+		}
+		hAlg = oaep.HashAlg
 	case TPMAlgNull:
 		hAlg = nameAlg
 	default:
@@ -449,9 +464,25 @@ func getEncryptedSaltECC(nameAlg TPMIAlgHash, parms *TPMSECCParms, pub *TPMSECCP
 func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
 	switch pub.Type {
 	case TPMAlgRSA:
-		return getEncryptedSaltRSA(pub.NameAlg, pub.Parameters.RSADetail, pub.Unique.RSA)
+		rsaParms, err := pub.Parameters.RSADetail()
+		if err != nil {
+			return nil, nil, err
+		}
+		rsaPub, err := pub.Unique.RSA()
+		if err != nil {
+			return nil, nil, err
+		}
+		return getEncryptedSaltRSA(pub.NameAlg, rsaParms, rsaPub)
 	case TPMAlgECC:
-		return getEncryptedSaltECC(pub.NameAlg, pub.Parameters.ECCDetail, pub.Unique.ECC)
+		eccParms, err := pub.Parameters.ECCDetail()
+		if err != nil {
+			return nil, nil, err
+		}
+		eccPub, err := pub.Unique.ECC()
+		if err != nil {
+			return nil, nil, err
+		}
+		return getEncryptedSaltECC(pub.NameAlg, eccParms, eccPub)
 	default:
 		return nil, nil, fmt.Errorf("salt encryption alg '%v' not supported", pub.Type)
 	}
@@ -519,7 +550,7 @@ func (s *hmacSession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if err := fc.Execute(t); err != nil {
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = TPMRHNull
@@ -686,7 +717,11 @@ func (s *hmacSession) Encrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
@@ -712,7 +747,11 @@ func (s *hmacSession) Decrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	// Part 1, 21.1
 	var sessionValue []byte
@@ -803,7 +842,8 @@ func PolicySession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...Aut
 	}
 
 	closer := func() error {
-		return (&FlushContext{sess.handle}).Execute(t)
+		_, err := (&FlushContext{sess.handle}).Execute(t)
+		return err
 	}
 
 	return &sess, closer, nil
@@ -884,7 +924,7 @@ func (s *policySession) CleanupFailure(t transport.TPM) error {
 		return nil
 	}
 	fc := FlushContext{FlushHandle: s.handle}
-	if err := fc.Execute(t); err != nil {
+	if _, err := fc.Execute(t); err != nil {
 		return err
 	}
 	s.handle = TPMRHNull
@@ -998,7 +1038,11 @@ func (s *policySession) Encrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	var sessionValue []byte
 	sessionValue = append(sessionValue, s.sessionKey...)
@@ -1024,7 +1068,11 @@ func (s *policySession) Decrypt(parameter []byte) error {
 		return nil
 	}
 	// Only AES-CFB is supported.
-	keyBytes := *s.symmetric.KeyBits.AES / 8
+	bits, err := s.symmetric.KeyBits.AES()
+	if err != nil {
+		return err
+	}
+	keyBytes := *bits / 8
 	keyIVBytes := int(keyBytes) + 16
 	// Part 1, 21.1
 	var sessionValue []byte

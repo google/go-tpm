@@ -19,25 +19,29 @@ var (
 			Decrypt:              true,
 			SignEncrypt:          false,
 		},
-		Parameters: TPMUPublicParms{
-			RSADetail: &TPMSRSAParms{
+		Parameters: NewTPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					KeyBits: NewTPMUSymKeyBits(
+						TPMAlgAES,
+						TPMKeyBits(128),
+					),
+					Mode: NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				KeyBits: 2048,
 			},
-		},
-		Unique: TPMUPublicID{
-			RSA: &TPM2BPublicKeyRSA{
+		),
+		Unique: NewTPMUPublicID(
+			TPMAlgRSA,
+			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
 			},
-		},
+		),
 	}
 	// RSAEKTemplate contains the TCG reference RSA-2048 EK template.
 	RSAEKTemplate = TPMTPublic{
@@ -65,25 +69,29 @@ var (
 				0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 			},
 		},
-		Parameters: TPMUPublicParms{
-			RSADetail: &TPMSRSAParms{
+		Parameters: NewTPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					KeyBits: NewTPMUSymKeyBits(
+						TPMAlgAES,
+						TPMKeyBits(128),
+					),
+					Mode: NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				KeyBits: 2048,
 			},
-		},
-		Unique: TPMUPublicID{
-			RSA: &TPM2BPublicKeyRSA{
+		),
+		Unique: NewTPMUPublicID(
+			TPMAlgRSA,
+			&TPM2BPublicKeyRSA{
 				Buffer: make([]byte, 256),
 			},
-		},
+		),
 	}
 
 	// ECCSRKTemplate contains the TCG reference ECC-P256 SRK template.
@@ -104,22 +112,26 @@ var (
 			Decrypt:              true,
 			SignEncrypt:          false,
 		},
-		Parameters: TPMUPublicParms{
-			ECCDetail: &TPMSECCParms{
+		Parameters: NewTPMUPublicParms(
+			TPMAlgECC,
+			&TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					KeyBits: NewTPMUSymKeyBits(
+						TPMAlgAES,
+						TPMKeyBits(128),
+					),
+					Mode: NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				CurveID: TPMECCNistP256,
 			},
-		},
-		Unique: TPMUPublicID{
-			ECC: &TPMSECCPoint{
+		),
+		Unique: NewTPMUPublicID(
+			TPMAlgECC,
+			&TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: make([]byte, 32),
 				},
@@ -127,7 +139,7 @@ var (
 					Buffer: make([]byte, 32),
 				},
 			},
-		},
+		),
 	}
 
 	// ECCEKTemplate contains the TCG reference ECC-P256 EK template.
@@ -156,22 +168,26 @@ var (
 				0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA,
 			},
 		},
-		Parameters: TPMUPublicParms{
-			ECCDetail: &TPMSECCParms{
+		Parameters: NewTPMUPublicParms(
+			TPMAlgECC,
+			&TPMSECCParms{
 				Symmetric: TPMTSymDefObject{
 					Algorithm: TPMAlgAES,
-					KeyBits: TPMUSymKeyBits{
-						AES: NewKeyBits(128),
-					},
-					Mode: TPMUSymMode{
-						AES: NewAlgID(TPMAlgCFB),
-					},
+					KeyBits: NewTPMUSymKeyBits(
+						TPMAlgAES,
+						TPMKeyBits(128),
+					),
+					Mode: NewTPMUSymMode(
+						TPMAlgAES,
+						TPMAlgCFB,
+					),
 				},
 				CurveID: TPMECCNistP256,
 			},
-		},
-		Unique: TPMUPublicID{
-			ECC: &TPMSECCPoint{
+		),
+		Unique: NewTPMUPublicID(
+			TPMAlgECC,
+			&TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: make([]byte, 32),
 				},
@@ -179,6 +195,6 @@ var (
 					Buffer: make([]byte, 32),
 				},
 			},
-		},
+		),
 	}
 )

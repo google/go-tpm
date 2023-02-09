@@ -27,6 +27,7 @@ lint_task:
       --exclude-use-default=false
       --exclude stutters
       --exclude underscores
+      --exclude unexported-return
       --max-same-issues=0
       --max-issues-per-linter=0
       ./tpmutil/...

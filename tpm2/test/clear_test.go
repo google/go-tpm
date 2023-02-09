@@ -17,9 +17,7 @@ func TestClear(t *testing.T) {
 
 	srkCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: ECCSRKTemplate,
-		},
+		InPublic:      New2B(ECCSRKTemplate),
 	}
 
 	srkCreateRsp, err := srkCreate.Execute(thetpm)
@@ -35,7 +33,7 @@ func TestClear(t *testing.T) {
 			Auth:   PasswordAuth(nil),
 		},
 	}
-	err = clear.Execute(thetpm)
+	_, err = clear.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not clear TPM: %v", err)
 	}
@@ -48,7 +46,7 @@ func TestClear(t *testing.T) {
 		flush := FlushContext{
 			FlushHandle: srkCreateRsp.ObjectHandle,
 		}
-		err := flush.Execute(thetpm)
+		_, err := flush.Execute(thetpm)
 		if err != nil {
 			t.Fatalf("could not flush SRK: %v", err)
 		}

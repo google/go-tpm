@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
@@ -25,32 +26,32 @@ func TestReadPublicKey(t *testing.T) {
 	// See tpm2/templates/go for more TPMTPublic examples.
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:            true,
-					FixedParent:         true,
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-					SignEncrypt:         true,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDSA,
-							Details: TPMUAsymScheme{
-								ECDSA: &TPMSSigSchemeECDSA{
-									HashAlg: TPMAlgSHA256,
-								},
-							},
-						},
-						CurveID: TPMECCNistP256,
-					},
-				},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+				SignEncrypt:         true,
 			},
-		},
+			Parameters: NewTPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDSA,
+						Details: NewTPMUAsymScheme(
+							TPMAlgECDSA,
+							&TPMSSigSchemeECDSA{
+								HashAlg: TPMAlgSHA256,
+							},
+						),
+					},
+					CurveID: TPMECCNistP256,
+				},
+			),
+		}),
 	}
 
 	// Executing the command uses reflection to pack the bytes into a
@@ -89,9 +90,23 @@ func TestReadPublicKey(t *testing.T) {
 	// PublicArea.Unique represents the unique identifier of the TPMTPublic.
 	// Notice how this test uses verification of another TPM command that is
 	// able to produce similar results to validate the response.
-	rspCPUnique := rspCP.OutPublic.PublicArea.Unique
-	rspRPUnique := rspRP.OutPublic.PublicArea.Unique
-	if !cmp.Equal(rspCPUnique, rspRPUnique) {
+	pubCreate, err := rspCP.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	pubRead, err := rspRP.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	eccCreate, err := pubCreate.Unique.ECC()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	eccRead, err := pubRead.Unique.ECC()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if !cmp.Equal(eccCreate.X, eccRead.X, cmpopts.IgnoreUnexported(eccCreate.X)) {
 		t.Error("Mismatch between public returned from CreatePrimary & ReadPublic")
 	}
 }

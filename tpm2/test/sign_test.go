@@ -69,32 +69,32 @@ func TestSign(t *testing.T) {
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgRSA,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					SignEncrypt:         true,
-					FixedTPM:            true,
-					FixedParent:         true,
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-				},
-				Parameters: TPMUPublicParms{
-					RSADetail: &TPMSRSAParms{
-						Scheme: TPMTRSAScheme{
-							Scheme: TPMAlgRSASSA,
-							Details: TPMUAsymScheme{
-								RSASSA: &TPMSSigSchemeRSASSA{
-									HashAlg: TPMAlgSHA256,
-								},
-							},
-						},
-						KeyBits: 2048,
-					},
-				},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgRSA,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				SignEncrypt:         true,
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
 			},
-		},
+			Parameters: NewTPMUPublicParms(
+				TPMAlgRSA,
+				&TPMSRSAParms{
+					Scheme: TPMTRSAScheme{
+						Scheme: TPMAlgRSASSA,
+						Details: NewTPMUAsymScheme(
+							TPMAlgRSASSA,
+							&TPMSSigSchemeRSASSA{
+								HashAlg: TPMAlgSHA256,
+							},
+						),
+					},
+					KeyBits: 2048,
+				},
+			),
+		}),
 		CreationPCR: TPMLPCRSelection{
 			PCRSelections: []TPMSPCRSelection{
 				{
@@ -125,11 +125,12 @@ func TestSign(t *testing.T) {
 		},
 		InScheme: TPMTSigScheme{
 			Scheme: TPMAlgRSASSA,
-			Details: TPMUSigScheme{
-				RSASSA: &TPMSSchemeHash{
+			Details: NewTPMUSigScheme(
+				TPMAlgRSASSA,
+				&TPMSSchemeHash{
 					HashAlg: TPMAlgSHA256,
 				},
-			},
+			),
 		},
 		Validation: TPMTTKHashCheck{
 			Tag: TPMSTHashCheck,
@@ -141,13 +142,29 @@ func TestSign(t *testing.T) {
 		t.Fatalf("Failed to Sign Digest: %v", err)
 	}
 
-	pub := rspCP.OutPublic.PublicArea
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	pub, err := rspCP.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, digest[:], rspSign.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	rsassa, err := rspSign.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, digest[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 

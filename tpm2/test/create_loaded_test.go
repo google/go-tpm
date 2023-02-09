@@ -13,8 +13,8 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 
 	cl := CreateLoaded{
 		ParentHandle: TPMRHOwner,
-		InPublic: TPM2BTemplate{
-			Template: TPMTPublic{
+		InPublic: New2BTemplate(
+			&TPMTPublic{
 				Type:    TPMAlgKeyedHash,
 				NameAlg: TPMAlgSHA256,
 				ObjectAttributes: TPMAObject{
@@ -23,21 +23,22 @@ func getDeriver(t *testing.T, thetpm transport.TPM) NamedHandle {
 					Decrypt:             true,
 					Restricted:          true,
 				},
-				Parameters: TPMUPublicParms{
-					KeyedHashDetail: &TPMSKeyedHashParms{
+				Parameters: NewTPMUPublicParms(
+					TPMAlgKeyedHash,
+					&TPMSKeyedHashParms{
 						Scheme: TPMTKeyedHashScheme{
 							Scheme: TPMAlgXOR,
-							Details: TPMUSchemeKeyedHash{
-								XOR: &TPMSSchemeXOR{
+							Details: NewTPMUSchemeKeyedHash(
+								TPMAlgXOR,
+								&TPMSSchemeXOR{
 									HashAlg: TPMAlgSHA256,
 									KDF:     TPMAlgKDF1SP800108,
 								},
-							},
+							),
 						},
 					},
-				},
-			},
-		},
+				),
+			}),
 	}
 	rsp, err := cl.Execute(thetpm)
 	if err != nil {
@@ -58,24 +59,32 @@ func TestCreateLoaded(t *testing.T) {
 
 	deriver := getDeriver(t, thetpm)
 
+	derive := New2B(
+		TPMSDerive{
+			Label: TPM2BLabel{
+				Buffer: []byte("label"),
+			},
+			Context: TPM2BLabel{
+				Buffer: []byte("context"),
+			},
+		})
+
 	createLoadeds := map[string]*CreateLoaded{
 		"PrimaryKey": {
 			ParentHandle: TPMRHEndorsement,
-			InPublic: TPM2BTemplate{
-				Template: ECCEKTemplate,
-			},
+			InPublic:     New2BTemplate(&ECCEKTemplate),
 		},
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,
 			InSensitive: TPM2BSensitiveCreate{
-				Sensitive: TPMSSensitiveCreate{
+				Sensitive: &TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
 				},
 			},
-			InPublic: TPM2BTemplate{
-				Template: TPMTPublic{
+			InPublic: New2BTemplate(
+				&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
@@ -83,57 +92,47 @@ func TestCreateLoaded(t *testing.T) {
 						UserWithAuth:        true,
 						SignEncrypt:         true,
 					},
-					Parameters: TPMUPublicParms{
-						ECCDetail: &TPMSECCParms{
+					Parameters: NewTPMUPublicParms(
+						TPMAlgECC,
+						&TPMSECCParms{
 							CurveID: TPMECCNistP256,
 						},
-					},
-				},
-			},
+					),
+				}),
 		},
 		"DataBlob": {
 			ParentHandle: TPMRHOwner,
 			InSensitive: TPM2BSensitiveCreate{
-				Sensitive: TPMSSensitiveCreate{
+				Sensitive: &TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: TPM2BSensitiveData{
+					Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
 						Buffer: []byte("secrets"),
-					},
+					}),
 				},
 			},
-			InPublic: TPM2BTemplate{
-				Template: TPMTPublic{
+			InPublic: New2BTemplate(
+				&TPMTPublic{
 					Type:    TPMAlgKeyedHash,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
 						UserWithAuth: true,
 					},
-				},
-			},
+				}),
 		},
 		"Derived": {
 			ParentHandle: deriver,
 			InSensitive: TPM2BSensitiveCreate{
-				Sensitive: TPMSSensitiveCreate{
+				Sensitive: &TPMSSensitiveCreate{
 					UserAuth: TPM2BAuth{
 						Buffer: []byte("p@ssw0rd"),
 					},
-					Data: TPM2BDerive{
-						Buffer: TPMSDerive{
-							Label: TPM2BLabel{
-								Buffer: []byte("label"),
-							},
-							Context: TPM2BLabel{
-								Buffer: []byte("context"),
-							},
-						},
-					},
+					Data: NewTPMUSensitiveCreate(&derive),
 				},
 			},
-			InPublic: TPM2BTemplate{
-				Template: TPMTPublic{
+			InPublic: New2BTemplate(
+				&TPMTPublic{
 					Type:    TPMAlgECC,
 					NameAlg: TPMAlgSHA256,
 					ObjectAttributes: TPMAObject{
@@ -141,13 +140,13 @@ func TestCreateLoaded(t *testing.T) {
 						UserWithAuth: true,
 						SignEncrypt:  true,
 					},
-					Parameters: TPMUPublicParms{
-						ECCDetail: &TPMSECCParms{
+					Parameters: NewTPMUPublicParms(
+						TPMAlgECC,
+						&TPMSECCParms{
 							CurveID: TPMECCNistP256,
 						},
-					},
-				},
-			},
+					),
+				}),
 		},
 	}
 
@@ -157,7 +156,7 @@ func TestCreateLoaded(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error from CreateLoaded: %v", err)
 			}
-			if err = (&FlushContext{FlushHandle: rsp.ObjectHandle}).Execute(thetpm); err != nil {
+			if _, err = (FlushContext{FlushHandle: rsp.ObjectHandle}).Execute(thetpm); err != nil {
 				t.Errorf("error from FlushContext: %v", err)
 			}
 		})

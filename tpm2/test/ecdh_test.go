@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
@@ -21,46 +22,53 @@ func TestECDH(t *testing.T) {
 	// Create a TPM ECDH key
 	tpmCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:             true,
-					STClear:              false,
-					FixedParent:          true,
-					SensitiveDataOrigin:  true,
-					UserWithAuth:         true,
-					AdminWithPolicy:      false,
-					NoDA:                 true,
-					EncryptedDuplication: false,
-					Restricted:           false,
-					Decrypt:              true,
-					SignEncrypt:          false,
-					X509Sign:             false,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						CurveID: TPMECCNistP256,
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDH,
-							Details: TPMUAsymScheme{
-								ECDH: &TPMSKeySchemeECDH{
-									HashAlg: TPMAlgSHA256,
-								},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:             true,
+				STClear:              false,
+				FixedParent:          true,
+				SensitiveDataOrigin:  true,
+				UserWithAuth:         true,
+				AdminWithPolicy:      false,
+				NoDA:                 true,
+				EncryptedDuplication: false,
+				Restricted:           false,
+				Decrypt:              true,
+				SignEncrypt:          false,
+				X509Sign:             false,
+			},
+			Parameters: NewTPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
+					CurveID: TPMECCNistP256,
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDH,
+						Details: NewTPMUAsymScheme(
+							TPMAlgECDH,
+							&TPMSKeySchemeECDH{
+								HashAlg: TPMAlgSHA256,
 							},
-						},
+						),
 					},
 				},
-			},
-		},
+			),
+		}),
 	}
 
 	tpmCreateRsp, err := tpmCreate.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not create the TPM key: %v", err)
 	}
-	tpmPub := tpmCreateRsp.OutPublic.PublicArea.Unique.ECC
+	outPub, err := tpmCreateRsp.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	tpmPub, err := outPub.Unique.ECC()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	tpmX := big.NewInt(0).SetBytes(tpmPub.X.Buffer)
 	tpmY := big.NewInt(0).SetBytes(tpmPub.Y.Buffer)
 
@@ -88,16 +96,18 @@ func TestECDH(t *testing.T) {
 			Name:   tpmCreateRsp.Name,
 			Auth:   PasswordAuth(nil),
 		},
-		InPoint: TPM2BECCPoint{
-			Point: swPub,
-		},
+		InPoint: New2B(swPub),
 	}
 	ecdhRsp, err := ecdh.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("ECDH_ZGen failed: %v", err)
 	}
 
-	if !cmp.Equal(z, ecdhRsp.OutPoint.Point) {
-		t.Errorf("want %x got %x", z, ecdhRsp.OutPoint.Point)
+	outPoint, err := ecdhRsp.OutPoint.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if !cmp.Equal(z.X, outPoint.X, cmpopts.IgnoreUnexported(z.X)) {
+		t.Errorf("want %x got %x", z, outPoint)
 	}
 }

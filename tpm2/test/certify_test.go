@@ -25,33 +25,34 @@ func TestCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create PCRSelection")
 	}
-	public := TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				SignEncrypt:         true,
-				Restricted:          true,
-				FixedTPM:            true,
-				FixedParent:         true,
-				SensitiveDataOrigin: true,
-				UserWithAuth:        true,
-			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Scheme: TPMTRSAScheme{
-						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme{
-							RSASSA: &TPMSSigSchemeRSASSA{
-								HashAlg: TPMAlgSHA256,
-							},
-						},
-					},
-					KeyBits: 2048,
-				},
-			},
+	public := New2B(TPMTPublic{
+		Type:    TPMAlgRSA,
+		NameAlg: TPMAlgSHA256,
+		ObjectAttributes: TPMAObject{
+			SignEncrypt:         true,
+			Restricted:          true,
+			FixedTPM:            true,
+			FixedParent:         true,
+			SensitiveDataOrigin: true,
+			UserWithAuth:        true,
 		},
-	}
+		Parameters: NewTPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
+				Scheme: TPMTRSAScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: NewTPMUAsymScheme(
+						TPMAlgRSASSA,
+						&TPMSSigSchemeRSASSA{
+							HashAlg: TPMAlgSHA256,
+						},
+					),
+				},
+				KeyBits: 2048,
+			},
+		),
+	},
+	)
 
 	pcrSelection := TPMLPCRSelection{
 		PCRSelections: []TPMSPCRSelection{
@@ -65,7 +66,7 @@ func TestCertify(t *testing.T) {
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
@@ -84,7 +85,7 @@ func TestCertify(t *testing.T) {
 	createPrimarySubject := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
@@ -93,12 +94,17 @@ func TestCertify(t *testing.T) {
 		InPublic:    public,
 		CreationPCR: pcrSelection,
 	}
-	unique := TPMUPublicID{
-		RSA: &TPM2BPublicKeyRSA{
+	unique := NewTPMUPublicID(
+		TPMAlgRSA,
+		&TPM2BPublicKeyRSA{
 			Buffer: []byte("subject key"),
 		},
+	)
+	inPub, err := createPrimarySubject.InPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
-	createPrimarySubject.InPublic.PublicArea.Unique = unique
+	inPub.Unique = unique
 
 	rspSubject, err := createPrimarySubject.Execute(thetpm)
 	if err != nil {
@@ -133,23 +139,38 @@ func TestCertify(t *testing.T) {
 		t.Fatalf("Failed to certify: %v", err)
 	}
 
-	info, err := Marshal(rspCert.CertifyInfo.AttestationData)
+	certifyInfo, err := rspCert.CertifyInfo.Contents()
 	if err != nil {
-		t.Fatalf("Failed to marshal: %v", err)
+		t.Fatalf("%v", err)
 	}
+	info := Marshal(certifyInfo)
 
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.PublicArea
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	pub, err := rspSigner.OutPublic.Contents()
 	if err != nil {
-		t.Fatalf("Failed to retrieve Public Key: %v", err)
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	rsassa, err := rspCert.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
-
-	if !cmp.Equal(originalBuffer, rspCert.CertifyInfo.AttestationData.ExtraData.Buffer) {
+	if !cmp.Equal(originalBuffer, certifyInfo.ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }
@@ -161,34 +182,34 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				SignEncrypt:         true,
-				Restricted:          true,
-				FixedTPM:            true,
-				FixedParent:         true,
-				SensitiveDataOrigin: true,
-				UserWithAuth:        true,
-				NoDA:                true,
-			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Scheme: TPMTRSAScheme{
-						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme{
-							RSASSA: &TPMSSigSchemeRSASSA{
-								HashAlg: TPMAlgSHA256,
-							},
-						},
-					},
-					KeyBits: 2048,
-				},
-			},
+	public := New2B(TPMTPublic{
+		Type:    TPMAlgRSA,
+		NameAlg: TPMAlgSHA256,
+		ObjectAttributes: TPMAObject{
+			SignEncrypt:         true,
+			Restricted:          true,
+			FixedTPM:            true,
+			FixedParent:         true,
+			SensitiveDataOrigin: true,
+			UserWithAuth:        true,
+			NoDA:                true,
 		},
-	}
+		Parameters: NewTPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
+				Scheme: TPMTRSAScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: NewTPMUAsymScheme(
+						TPMAlgRSASSA,
+						&TPMSSigSchemeRSASSA{
+							HashAlg: TPMAlgSHA256,
+						},
+					),
+				},
+				KeyBits: 2048,
+			},
+		),
+	})
 
 	PCR7, err := CreatePCRSelection([]int{7})
 	if err != nil {
@@ -217,11 +238,12 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 
 	inScheme := TPMTSigScheme{
 		Scheme: TPMAlgRSASSA,
-		Details: TPMUSigScheme{
-			RSASSA: &TPMSSchemeHash{
+		Details: NewTPMUSigScheme(
+			TPMAlgRSASSA,
+			&TPMSSchemeHash{
 				HashAlg: TPMAlgSHA256,
 			},
-		},
+		),
 	}
 
 	certifyCreation := CertifyCreation{
@@ -244,26 +266,50 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		t.Fatalf("Failed to certify creation: %v", err)
 	}
 
-	attName := rspCC.CertifyInfo.AttestationData.Attested.Creation.ObjectName.Buffer
+	certifyInfo, err := rspCC.CertifyInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	creationInfo, err := certifyInfo.Attested.Creation()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	attName := creationInfo.ObjectName.Buffer
 	pubName := rspCP.Name.Buffer
 	if !bytes.Equal(attName, pubName) {
 		t.Fatalf("Attested name: %v does not match returned public key: %v.", attName, pubName)
 	}
 
-	info, err := Marshal(rspCC.CertifyInfo.AttestationData)
+	info := Marshal(certifyInfo)
 	if err != nil {
 		t.Fatalf("Failed to marshal: %v", err)
 	}
 
 	attestHash := sha256.Sum256(info)
 
-	pub := rspCP.OutPublic.PublicArea
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	pub, err := rspCP.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCC.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	rsassa, err := rspCC.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 }
@@ -277,38 +323,38 @@ func TestNVCertify(t *testing.T) {
 
 	Auth := []byte("password")
 
-	public := TPM2BPublic{
-		PublicArea: TPMTPublic{
-			Type:    TPMAlgRSA,
-			NameAlg: TPMAlgSHA256,
-			ObjectAttributes: TPMAObject{
-				SignEncrypt:         true,
-				Restricted:          true,
-				FixedTPM:            true,
-				FixedParent:         true,
-				SensitiveDataOrigin: true,
-				UserWithAuth:        true,
-			},
-			Parameters: TPMUPublicParms{
-				RSADetail: &TPMSRSAParms{
-					Scheme: TPMTRSAScheme{
-						Scheme: TPMAlgRSASSA,
-						Details: TPMUAsymScheme{
-							RSASSA: &TPMSSigSchemeRSASSA{
-								HashAlg: TPMAlgSHA256,
-							},
-						},
-					},
-					KeyBits: 2048,
-				},
-			},
+	public := New2B(TPMTPublic{
+		Type:    TPMAlgRSA,
+		NameAlg: TPMAlgSHA256,
+		ObjectAttributes: TPMAObject{
+			SignEncrypt:         true,
+			Restricted:          true,
+			FixedTPM:            true,
+			FixedParent:         true,
+			SensitiveDataOrigin: true,
+			UserWithAuth:        true,
 		},
-	}
+		Parameters: NewTPMUPublicParms(
+			TPMAlgRSA,
+			&TPMSRSAParms{
+				Scheme: TPMTRSAScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: NewTPMUAsymScheme(
+						TPMAlgRSASSA,
+						&TPMSSigSchemeRSASSA{
+							HashAlg: TPMAlgSHA256,
+						},
+					),
+				},
+				KeyBits: 2048,
+			},
+		),
+	})
 
 	createPrimarySigner := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: Auth,
 				},
@@ -325,8 +371,8 @@ func TestNVCertify(t *testing.T) {
 
 	def := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
-		PublicInfo: TPM2BNVPublic{
-			NVPublic: TPMSNVPublic{
+		PublicInfo: New2B(
+			TPMSNVPublic{
 				NVIndex: TPMHandle(0x0180000F),
 				NameAlg: TPMAlgSHA256,
 				Attributes: TPMANV{
@@ -338,10 +384,9 @@ func TestNVCertify(t *testing.T) {
 					NoDA:       true,
 				},
 				DataSize: 4,
-			},
-		},
+			}),
 	}
-	if err := def.Execute(thetpm); err != nil {
+	if _, err := def.Execute(thetpm); err != nil {
 		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
 	}
 
@@ -352,15 +397,19 @@ func TestNVCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Calling TPM2_NV_ReadPublic: %v", err)
 	}
+	nvPublic, err := def.PublicInfo.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
 	prewrite := NVWrite{
 		AuthHandle: AuthHandle{
-			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Handle: nvPublic.NVIndex,
 			Name:   nvPub.NVName,
 			Auth:   PasswordAuth(nil),
 		},
 		NVIndex: NamedHandle{
-			Handle: def.PublicInfo.NVPublic.NVIndex,
+			Handle: nvPublic.NVIndex,
 			Name:   nvPub.NVName,
 		},
 		Data: TPM2BMaxNVBuffer{
@@ -368,7 +417,7 @@ func TestNVCertify(t *testing.T) {
 		},
 		Offset: 0,
 	}
-	if err := prewrite.Execute(thetpm); err != nil {
+	if _, err := prewrite.Execute(thetpm); err != nil {
 		t.Errorf("Calling TPM2_NV_Write: %v", err)
 	}
 
@@ -400,24 +449,41 @@ func TestNVCertify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to certify: %v", err)
 	}
-
-	info, err := Marshal(rspCert.CertifyInfo.AttestationData)
+	certInfo, err := rspCert.CertifyInfo.Contents()
 	if err != nil {
-		t.Fatalf("Failed to marshal: %v", err)
+		t.Fatalf("%v", err)
 	}
 
+	info := Marshal(certInfo)
+
 	attestHash := sha256.Sum256(info)
-	pub := rspSigner.OutPublic.PublicArea
-	rsaPub, err := RSAPub(pub.Parameters.RSADetail, pub.Unique.RSA)
+	pub, err := rspSigner.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaDetail, err := pub.Parameters.RSADetail()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	rsaUnique, err := pub.Unique.RSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	rsaPub, err := RSAPub(rsaDetail, rsaUnique)
 	if err != nil {
 		t.Fatalf("Failed to retrieve Public Key: %v", err)
 	}
 
-	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rspCert.Signature.Signature.RSASSA.Sig.Buffer); err != nil {
+	rsassa, err := rspCert.Signature.Signature.RSASSA()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if err := rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, attestHash[:], rsassa.Sig.Buffer); err != nil {
 		t.Errorf("Signature verification failed: %v", err)
 	}
 
-	if !cmp.Equal([]byte("nonce"), rspCert.CertifyInfo.AttestationData.ExtraData.Buffer) {
+	if !cmp.Equal([]byte("nonce"), certInfo.ExtraData.Buffer) {
 		t.Errorf("Attested buffer is different from original buffer")
 	}
 }

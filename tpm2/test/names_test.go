@@ -25,9 +25,7 @@ func TestObjectName(t *testing.T) {
 
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic: TPM2BPublic{
-			PublicArea: ECCEKTemplate,
-		},
+		InPublic:      New2B(ECCEKTemplate),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {
@@ -38,7 +36,11 @@ func TestObjectName(t *testing.T) {
 	public := rsp.OutPublic
 
 	want := rsp.Name
-	name, err := ObjectName(&public.PublicArea)
+	pub, err := public.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	name, err := ObjectName(pub)
 	if err != nil {
 		t.Fatalf("error from ObjectName: %v", err)
 	}
@@ -54,8 +56,8 @@ func TestNVName(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	public := TPM2BNVPublic{
-		NVPublic: TPMSNVPublic{
+	public := New2B(
+		TPMSNVPublic{
 			NVIndex: TPMHandle(0x0180000F),
 			NameAlg: TPMAlgSHA256,
 			Attributes: TPMANV{
@@ -64,19 +66,22 @@ func TestNVName(t *testing.T) {
 				NT:         TPMNTOrdinary,
 			},
 			DataSize: 4,
-		},
-	}
+		})
 
 	defineSpace := NVDefineSpace{
 		AuthHandle: TPMRHOwner,
 		PublicInfo: public,
 	}
-	if err := defineSpace.Execute(thetpm); err != nil {
+	if _, err := defineSpace.Execute(thetpm); err != nil {
 		t.Fatalf("could not call TPM2_DefineSpace: %v", err)
 	}
 
+	pub, err := public.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 	readPublic := NVReadPublic{
-		NVIndex: public.NVPublic.NVIndex,
+		NVIndex: pub.NVIndex,
 	}
 	rsp, err := readPublic.Execute(thetpm)
 	if err != nil {
@@ -84,7 +89,7 @@ func TestNVName(t *testing.T) {
 	}
 
 	want := rsp.NVName
-	name, err := NVName(&public.NVPublic)
+	name, err := NVName(pub)
 	if err != nil {
 		t.Fatalf("error from NVIndexName: %v", err)
 	}

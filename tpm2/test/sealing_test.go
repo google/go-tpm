@@ -37,15 +37,13 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 	createSRKCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: srkAuth,
 				},
 			},
 		},
-		InPublic: TPM2BPublic{
-			PublicArea: srkTemplate,
-		},
+		InPublic: New2B(srkTemplate),
 	}
 	createSRKRsp, err := createSRKCmd.Execute(thetpm)
 	if err != nil {
@@ -55,7 +53,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 	defer func() {
 		// Flush the SRK
 		flushSRKCmd := FlushContext{FlushHandle: createSRKRsp.ObjectHandle}
-		if err := flushSRKCmd.Execute(thetpm); err != nil {
+		if _, err := flushSRKCmd.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
@@ -72,28 +70,27 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 			Auth:   PasswordAuth(srkAuth),
 		},
 		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: auth,
 				},
-				Data: TPM2BSensitiveData{
+				Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
 					Buffer: data,
-				},
+				}),
 			},
 		},
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgKeyedHash,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:     true,
-					FixedParent:  true,
-					UserWithAuth: true,
-					NoDA:         true,
-				},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgKeyedHash,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:     true,
+				FixedParent:  true,
+				UserWithAuth: true,
+				NoDA:         true,
 			},
-		},
+		}),
 	}
+
 	var createBlobRsp *CreateResponse
 
 	// Create the blob with password auth, without any session encryption
@@ -174,12 +171,16 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 
 	// Create the blob with decrypt and encrypt session bound to SRK
 	t.Run("CreateDecryptEncryptSalted", func(t *testing.T) {
+		outPub, err := createSRKRsp.OutPublic.Contents()
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
 		createBlobCmd.ParentHandle = AuthHandle{
 			Handle: createSRKRsp.ObjectHandle,
 			Name:   createSRKRsp.Name,
 			Auth: HMAC(TPMAlgSHA256, 16, Auth(srkAuth),
 				AESEncryption(128, EncryptInOut),
-				Salted(createSRKRsp.ObjectHandle, createSRKRsp.OutPublic.PublicArea)),
+				Salted(createSRKRsp.ObjectHandle, *outPub)),
 		}
 		createBlobRsp, err = createBlobCmd.Execute(thetpm)
 		if err != nil {
@@ -263,7 +264,7 @@ func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
 	defer func() {
 		// Flush the blob
 		flushBlobCmd := FlushContext{FlushHandle: loadBlobRsp.ObjectHandle}
-		if err := flushBlobCmd.Execute(thetpm); err != nil {
+		if _, err := flushBlobCmd.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()

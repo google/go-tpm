@@ -25,38 +25,39 @@ func TestAuditSession(t *testing.T) {
 	// Create the AK for audit
 	createAKCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgECC,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					FixedTPM:             true,
-					STClear:              false,
-					FixedParent:          true,
-					SensitiveDataOrigin:  true,
-					UserWithAuth:         true,
-					AdminWithPolicy:      false,
-					NoDA:                 true,
-					EncryptedDuplication: false,
-					Restricted:           true,
-					Decrypt:              false,
-					SignEncrypt:          true,
-				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
-						Scheme: TPMTECCScheme{
-							Scheme: TPMAlgECDSA,
-							Details: TPMUAsymScheme{
-								ECDSA: &TPMSSigSchemeECDSA{
-									HashAlg: TPMAlgSHA256,
-								},
-							},
-						},
-						CurveID: TPMECCNistP256,
-					},
-				},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgECC,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:             true,
+				STClear:              false,
+				FixedParent:          true,
+				SensitiveDataOrigin:  true,
+				UserWithAuth:         true,
+				AdminWithPolicy:      false,
+				NoDA:                 true,
+				EncryptedDuplication: false,
+				Restricted:           true,
+				Decrypt:              false,
+				SignEncrypt:          true,
 			},
+			Parameters: NewTPMUPublicParms(
+				TPMAlgECC,
+				&TPMSECCParms{
+					Scheme: TPMTECCScheme{
+						Scheme: TPMAlgECDSA,
+						Details: NewTPMUAsymScheme(
+							TPMAlgECDSA,
+							&TPMSSigSchemeECDSA{
+								HashAlg: TPMAlgSHA256,
+							},
+						),
+					},
+					CurveID: TPMECCNistP256,
+				},
+			),
 		},
+		),
 	}
 	createAKRsp, err := createAKCmd.Execute(thetpm)
 	if err != nil {
@@ -65,7 +66,7 @@ func TestAuditSession(t *testing.T) {
 	defer func() {
 		// Flush the AK
 		flush := FlushContext{FlushHandle: createAKRsp.ObjectHandle}
-		if err := flush.Execute(thetpm); err != nil {
+		if _, err := flush.Execute(thetpm); err != nil {
 			t.Errorf("%v", err)
 		}
 	}()
@@ -94,7 +95,7 @@ func TestAuditSession(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		if err := audit.Extend(&getCmd, getRsp); err != nil {
+		if err := AuditCommand(audit, getCmd, getRsp); err != nil {
 			t.Fatalf("%v", err)
 		}
 		// Get the audit digest signed by the AK
@@ -112,9 +113,13 @@ func TestAuditSession(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 		// TODO check the signature with the AK pub
-		aud := getAuditRsp.AuditInfo.AttestationData.Attested.SessionAudit
-		if aud == nil {
-			t.Fatalf("got nil session audit attestation")
+		attest, err := getAuditRsp.AuditInfo.Contents()
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+		aud, err := attest.Attested.SessionAudit()
+		if err != nil {
+			t.Fatalf("%v", err)
 		}
 		want := audit.Digest()
 		got := aud.SessionDigest.Buffer

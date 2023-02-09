@@ -20,14 +20,14 @@ func TestCommit(t *testing.T) {
 	create := CreateLoaded{
 		ParentHandle: TPMRHOwner,
 		InSensitive: TPM2BSensitiveCreate{
-			Sensitive: TPMSSensitiveCreate{
+			Sensitive: &TPMSSensitiveCreate{
 				UserAuth: TPM2BAuth{
 					Buffer: password,
 				},
 			},
 		},
-		InPublic: TPM2BTemplate{
-			Template: TPMTPublic{
+		InPublic: New2BTemplate(
+			&TPMTPublic{
 				Type:    TPMAlgECC,
 				NameAlg: TPMAlgSHA256,
 				ObjectAttributes: TPMAObject{
@@ -37,27 +37,28 @@ func TestCommit(t *testing.T) {
 					SensitiveDataOrigin: true,
 					SignEncrypt:         true,
 				},
-				Parameters: TPMUPublicParms{
-					ECCDetail: &TPMSECCParms{
+				Parameters: NewTPMUPublicParms(
+					TPMAlgECC,
+					&TPMSECCParms{
 						Symmetric: TPMTSymDefObject{
 							Algorithm: TPMAlgNull,
 						},
 						Scheme: TPMTECCScheme{
 							Scheme: TPMAlgECDAA,
-							Details: TPMUAsymScheme{
-								ECDAA: &TPMSSigSchemeECDAA{
+							Details: NewTPMUAsymScheme(
+								TPMAlgECDAA,
+								&TPMSSchemeECDAA{
 									HashAlg: TPMAlgSHA256,
 								},
-							},
+							),
 						},
 						CurveID: TPMECCBNP256,
 						KDF: TPMTKDFScheme{
 							Scheme: TPMAlgNull,
 						},
 					},
-				},
-			},
-		},
+				),
+			}),
 	}
 
 	rspCP, err := create.Execute(thetpm)
@@ -74,16 +75,15 @@ func TestCommit(t *testing.T) {
 			Name:   rspCP.Name,
 			Auth:   PasswordAuth(password),
 		},
-		P1: TPM2BECCPoint{
-			Point: TPMSECCPoint{
+		P1: New2B(
+			TPMSECCPoint{
 				X: TPM2BECCParameter{
 					Buffer: []byte{1},
 				},
 				Y: TPM2BECCParameter{
 					Buffer: []byte{2},
 				},
-			},
-		},
+			}),
 		S2: TPM2BSensitiveData{
 			Buffer: []byte{},
 		},

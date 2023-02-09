@@ -1,7 +1,9 @@
 package tpm2
 
 import (
+	"bytes"
 	"crypto"
+	"reflect"
 )
 
 // PolicyCalculator represents a TPM 2.0 policy that needs to be calculated
@@ -36,11 +38,13 @@ func (p *PolicyCalculator) Reset() {
 func (p *PolicyCalculator) Update(data ...interface{}) error {
 	hash := p.hash.New()
 	hash.Write(p.state)
-	serialized, err := Marshal(data...)
-	if err != nil {
-		return err
+	var buf bytes.Buffer
+	for _, d := range data {
+		if err := marshal(&buf, reflect.ValueOf(d)); err != nil {
+			return err
+		}
 	}
-	hash.Write(serialized)
+	hash.Write(buf.Bytes())
 	p.state = hash.Sum(nil)
 	return nil
 }

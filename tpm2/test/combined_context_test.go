@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
@@ -37,32 +38,31 @@ func TestCombinedContext(t *testing.T) {
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
-		InPublic: TPM2BPublic{
-			PublicArea: TPMTPublic{
-				Type:    TPMAlgRSA,
-				NameAlg: TPMAlgSHA256,
-				ObjectAttributes: TPMAObject{
-					SignEncrypt:         true,
-					FixedTPM:            true,
-					FixedParent:         true,
-					SensitiveDataOrigin: true,
-					UserWithAuth:        true,
-				},
-				Parameters: TPMUPublicParms{
-					RSADetail: &TPMSRSAParms{
-						Scheme: TPMTRSAScheme{
-							Scheme: TPMAlgRSASSA,
-							Details: TPMUAsymScheme{
-								RSASSA: &TPMSSigSchemeRSASSA{
-									HashAlg: TPMAlgSHA256,
-								},
-							},
-						},
-						KeyBits: 2048,
-					},
-				},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgRSA,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				SignEncrypt:         true,
+				FixedTPM:            true,
+				FixedParent:         true,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
 			},
-		},
+			Parameters: NewTPMUPublicParms(
+				TPMAlgRSA,
+				&TPMSRSAParms{
+					Scheme: TPMTRSAScheme{
+						Scheme: TPMAlgRSASSA,
+						Details: NewTPMUAsymScheme(
+							TPMAlgRSASSA, &TPMSSigSchemeRSASSA{
+								HashAlg: TPMAlgSHA256,
+							},
+						),
+					},
+					KeyBits: 2048,
+				},
+			),
+		}),
 		CreationPCR: TPMLPCRSelection{
 			PCRSelections: []TPMSPCRSelection{
 				{
@@ -105,7 +105,7 @@ func TestCombinedContext(t *testing.T) {
 	rspCLName := ReadPublicName(t, rspCL.LoadedHandle, thetpm)
 	rspCPName := ReadPublicName(t, rspCP.ObjectHandle, thetpm)
 
-	if !cmp.Equal(rspCLName, rspCPName) {
+	if !cmp.Equal(rspCLName, rspCPName, cmpopts.IgnoreUnexported(rspCLName)) {
 		t.Error("Mismatch between public returned from ContextLoad & CreateLoaded")
 	}
 }

@@ -22,11 +22,8 @@ const (
 )
 
 // execute sends the provided command and returns the TPM's response.
-func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) error {
+func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Session) error {
 	cc := cmd.Command()
-	if rsp.Response() != cc {
-		return fmt.Errorf("cmd and rsp must be for same command: %v != %v", cc, rsp.Response())
-	}
 	sess, err := cmdAuths(cmd)
 	if err != nil {
 		return err
@@ -118,25 +115,45 @@ func execute(t transport.TPM, cmd Command, rsp Response, extraSess ...Session) e
 	return nil
 }
 
-// Marshal will serialize the given values, returning them as a byte slice.
-// Returns an error if any of the values are not marshallable.
-func Marshal(vs ...interface{}) ([]byte, error) {
-	var reflects []reflect.Value
-	for _, v := range vs {
-		reflects = append(reflects, reflect.ValueOf(v))
+func isMarshalledByReflection(v reflect.Value) bool {
+	var mbr marshallableByReflection
+	if v.Type().AssignableTo(reflect.TypeOf(&mbr).Elem()) {
+		return true
 	}
-	var buf bytes.Buffer
-	for _, reflect := range reflects {
-		if err := marshal(&buf, reflect); err != nil {
-			return nil, err
+	// basic types are also marshalled by reflection, as are empty structs
+	switch v.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Array, reflect.Slice, reflect.Ptr:
+		return true
+	case reflect.Struct:
+		if v.NumField() == 0 {
+			return true
 		}
 	}
-	return buf.Bytes(), nil
+	return false
 }
 
 // marshal will serialize the given value, appending onto the given buffer.
 // Returns an error if the value is not marshallable.
 func marshal(buf *bytes.Buffer, v reflect.Value) error {
+	// If the type is not marshalled by reflection, try to call the custom marshal method.
+	if !isMarshalledByReflection(v) {
+		u, ok := v.Interface().(Marshallable)
+		if ok {
+			u.marshal(buf)
+			return nil
+		}
+		if v.CanAddr() {
+			// Maybe we got an addressable value whose pointer implements Marshallable
+			pu, ok := v.Addr().Interface().(Marshallable)
+			if ok {
+				pu.marshal(buf)
+				return nil
+			}
+		}
+		return fmt.Errorf("can't marshal: type %v does not implement Marshallable or marshallableByReflection", v.Type().Name())
+	}
+
+	// Otherwise, use reflection.
 	switch v.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return marshalNumeric(buf, v)
@@ -145,7 +162,7 @@ func marshal(buf *bytes.Buffer, v reflect.Value) error {
 	case reflect.Struct:
 		return marshalStruct(buf, v)
 	case reflect.Ptr:
-		return marshalStruct(buf, v.Elem())
+		return marshal(buf, v.Elem())
 	case reflect.Interface:
 		// Special case: there are very few TPM types which, for TPM spec
 		// backwards-compatibility reasons, are implemented as Go interfaces
@@ -257,7 +274,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 		list := hasTag(v.Type().Field(i), "list")
 		sized := hasTag(v.Type().Field(i), "sized")
 		sized8 := hasTag(v.Type().Field(i), "sized8")
-		tag := tags(v.Type().Field(i))["tag"]
+		tag, _ := tag(v.Type().Field(i), "tag")
 		// Serialize to a temporary buffer, in case we need to size it
 		// (Better to simplify this complex reflection-based marshalling
 		// code than to save some unnecessary copying before talking to
@@ -270,13 +287,23 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			// Check that the tagged value was present (and numeric
 			// and smaller than MaxInt64)
 			tagValue, ok := possibleSelectors[tag]
+			// Don't marshal anything if the tag value was TPM_ALG_NULL
+			if tagValue == int64(TPMAlgNull) {
+				continue
+			}
 			if !ok {
 				return fmt.Errorf("union tag '%v' for member '%v' of struct '%v' did not reference "+
 					"a numeric field of int64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			if err := marshalUnion(&res, v.Field(i), tagValue); err != nil {
-				return err
+			if u, ok := v.Field(i).Interface().(marshallableWithHint); ok {
+				v, err := u.get(tagValue)
+				if err != nil {
+					return err
+				}
+				if err := marshal(buf, v); err != nil {
+					return err
+				}
 			}
 		} else if v.Field(i).IsZero() && v.Field(i).Kind() == reflect.Uint32 && hasTag(v.Type().Field(i), "nullable") {
 			// Special case: Anything with the same underlying type
@@ -357,57 +384,18 @@ func marshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 	return nil
 }
 
-// Marshals the member of the given union struct corresponding to the given
-// selector. Marshals nothing if the selector is equal to TPM_ALG_NULL (0x0010).
-func marshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
-	// Special case: TPM_ALG_NULL as a selector means marshal nothing
-	if selector == int64(TPMAlgNull) {
-		return nil
-	}
-	for i := 0; i < v.NumField(); i++ {
-		sel, ok := numericTag(v.Type().Field(i), "selector")
-		if !ok {
-			return fmt.Errorf("'%v' union member '%v' did not have a selector tag", v.Type().Name(), v.Type().Field(i).Name)
-		}
-		if sel == selector {
-			if v.Field(i).IsNil() {
-				// Special case: if the selected value is found
-				// but nil, marshal the zero-value instead
-				return marshal(buf, reflect.New(v.Field(i).Type().Elem()).Elem())
-			}
-			return marshal(buf, v.Field(i).Elem())
-		}
-	}
-	return fmt.Errorf("selector value '%v' not handled for type '%v'", selector, v.Type().Name())
-}
-
-// Unmarshal deserializes the given values from the byte slice.
-// Returns an error if the buffer does not contain enough data to satisfy the
-// types, or if the types are not unmarshallable.
-func Unmarshal(data []byte, vs ...interface{}) error {
-	var reflects []reflect.Value
-	for _, v := range vs {
-		if reflect.ValueOf(v).Kind() != reflect.Ptr {
-			return fmt.Errorf("all parameters to Unmarshal must be pointers")
-		}
-		reflects = append(reflects, reflect.ValueOf(v).Elem())
-	}
-	var buf bytes.Buffer
-	if _, err := buf.Write(data); err != nil {
-		return err
-	}
-	for _, reflect := range reflects {
-		if err := unmarshal(&buf, reflect); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // unmarshal will deserialize the given value from the given buffer.
 // Returns an error if the buffer does not contain enough data to satisfy the
 // type.
 func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
+	// If the type is not marshalled by reflection, try to call the custom unmarshal method.
+	if !isMarshalledByReflection(v) {
+		if u, ok := v.Addr().Interface().(Unmarshallable); ok {
+			return u.unmarshal(buf)
+		}
+		return fmt.Errorf("can't unmarshal: type %v does not implement Unmarshallable or marshallableByReflection", v.Type().Name())
+	}
+
 	switch v.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if err := unmarshalNumeric(buf, v); err != nil {
@@ -439,14 +427,13 @@ func unmarshal(buf *bytes.Buffer, v reflect.Value) error {
 			return err
 		}
 		v.Set(tmp)
+		return nil
 	case reflect.Array:
-		if err := unmarshalArray(buf, v); err != nil {
-			return err
-		}
+		return unmarshalArray(buf, v)
 	case reflect.Struct:
-		if err := unmarshalStruct(buf, v); err != nil {
-			return err
-		}
+		return unmarshalStruct(buf, v)
+	case reflect.Ptr:
+		return unmarshal(buf, v.Elem())
 	default:
 		return fmt.Errorf("not unmarshallable: %v", v.Type())
 	}
@@ -566,7 +553,7 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			}
 			bufToReadFrom = bytes.NewBuffer(sizedBufArray)
 		}
-		tag := tags(v.Type().Field(i))["tag"]
+		tag, _ := tag(v.Type().Field(i), "tag")
 		if tag != "" {
 			// Make a pass to create a map of tag values
 			// UInt64-valued fields with values greater than
@@ -586,13 +573,36 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 			// Check that the tagged value was present (and numeric
 			// and smaller than MaxInt64)
 			tagValue, ok := possibleSelectors[tag]
+			// Don't marshal anything if the tag value was TPM_ALG_NULL
+			if tagValue == int64(TPMAlgNull) {
+				continue
+			}
 			if !ok {
 				return fmt.Errorf("union tag '%v' for member '%v' of struct '%v' did not reference "+
 					"a numeric field of in64-compatible value",
 					tag, v.Type().Field(i).Name, v.Type().Name())
 			}
-			if err := unmarshalUnion(bufToReadFrom, v.Field(i), tagValue); err != nil {
-				return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+			var uwh unmarshallableWithHint
+			if v.Field(i).CanAddr() && v.Field(i).Addr().Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
+				u := v.Field(i).Addr().Interface().(unmarshallableWithHint)
+				contents, err := u.create(tagValue)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
+				err = unmarshal(buf, contents)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
+			} else if v.Field(i).Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
+				u := v.Field(i).Interface().(unmarshallableWithHint)
+				contents, err := u.create(tagValue)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
+				err = unmarshal(buf, contents)
+				if err != nil {
+					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+				}
 			}
 		} else {
 			if err := unmarshal(bufToReadFrom, v.Field(i)); err != nil {
@@ -655,39 +665,14 @@ func unmarshalBitwise(buf *bytes.Buffer, v reflect.Value) error {
 	return nil
 }
 
-// Unmarshals the member of the given union struct corresponding to the given
-// selector. Unmarshals nothing if the selector is TPM_ALG_NULL (0x0010).
-func unmarshalUnion(buf *bytes.Buffer, v reflect.Value, selector int64) error {
-	// Special case: TPM_ALG_NULL as a selector means unmarshal nothing
-	if selector == int64(TPMAlgNull) {
-		return nil
-	}
-	for i := 0; i < v.NumField(); i++ {
-		sel, ok := numericTag(v.Type().Field(i), "selector")
-		if !ok {
-			return fmt.Errorf("'%v' union member '%v' did not have a selector tag", v.Type().Name(), v.Type().Field(i).Name)
-		}
-		if sel == selector {
-			val := reflect.New(v.Type().Field(i).Type.Elem())
-			if err := unmarshal(buf, val.Elem()); err != nil {
-				return fmt.Errorf("unmarshalling '%v' union member '%v': %w", v.Type().Name(), v.Type().Field(i).Name, err)
-			}
-			v.Field(i).Set(val)
-			return nil
-		}
-	}
-	return fmt.Errorf("selector value '%v' not handled for type '%v'", selector, v.Type().Name())
-}
-
-// Returns all the gotpm tags on a field as a map.
+// Looks up the given gotpm tag on a field.
 // Some tags are settable (with "="). For these, the value is the RHS.
 // For all others, the value is the empty string.
-func tags(t reflect.StructField) map[string]string {
+func tag(t reflect.StructField, query string) (string, bool) {
 	allTags, ok := t.Tag.Lookup("gotpm")
 	if !ok {
-		return nil
+		return "", false
 	}
-	result := make(map[string]string)
 	tags := strings.Split(allTags, ",")
 	for _, tag := range tags {
 		// Split on the equals sign for settable tags.
@@ -695,45 +680,29 @@ func tags(t reflect.StructField) map[string]string {
 		//   un-settable tag or an empty tag (which we'll ignore).
 		// If the split returns a slice of length 2, this is a settable
 		//   tag.
-		assignment := strings.SplitN(tag, "=", 2)
-		val := ""
-		if len(assignment) > 1 {
-			val = assignment[1]
+		if tag == query {
+			return "", true
 		}
-		if len(assignment) > 0 && assignment[0] != "" {
-			key := assignment[0]
-			result[key] = val
+		if strings.HasPrefix(tag, query+"=") {
+			assignment := strings.SplitN(tag, "=", 2)
+			return assignment[1], true
 		}
 	}
-	return result
+	return "", false
 }
 
 // hasTag looks up to see if the type's gotpm-namespaced tag contains the
 // given value.
 // Returns false if there is no gotpm-namespaced tag on the type.
-func hasTag(t reflect.StructField, tag string) bool {
-	ts := tags(t)
-	_, ok := ts[tag]
+func hasTag(t reflect.StructField, query string) bool {
+	_, ok := tag(t, query)
 	return ok
-}
-
-// Returns the numeric tag value, or false if the tag is not present.
-func numericTag(t reflect.StructField, tag string) (int64, bool) {
-	val, ok := tags(t)[tag]
-	if !ok {
-		return 0, false
-	}
-	v, err := strconv.ParseInt(val, 0, 64)
-	if err != nil {
-		return 0, false
-	}
-	return v, true
 }
 
 // Returns the range on a tag like 4:3 or 4.
 // If there is no colon, the low and high part of the range are equal.
-func rangeTag(t reflect.StructField, tag string) (int, int, bool) {
-	val, ok := tags(t)[tag]
+func rangeTag(t reflect.StructField, query string) (int, int, bool) {
+	val, ok := tag(t, query)
 	if !ok {
 		return 0, 0, false
 	}
@@ -776,8 +745,8 @@ func taggedMembers(v reflect.Value, tag string, invert bool) []reflect.Value {
 }
 
 // cmdAuths returns the authorization sessions of the command.
-func cmdAuths(cmd Command) ([]Session, error) {
-	authHandles := taggedMembers(reflect.ValueOf(cmd).Elem(), "auth", false)
+func cmdAuths[R any](cmd Command[R, *R]) ([]Session, error) {
+	authHandles := taggedMembers(reflect.ValueOf(cmd), "auth", false)
 	var result []Session
 	for i, authHandle := range authHandles {
 		// TODO: A cleaner way to do this would be to have an interface method that
@@ -797,8 +766,8 @@ func cmdAuths(cmd Command) ([]Session, error) {
 }
 
 // cmdHandles returns the handles area of the command.
-func cmdHandles(cmd Command) ([]byte, error) {
-	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
+func cmdHandles[R any](cmd Command[R, *R]) ([]byte, error) {
+	handles := taggedMembers(reflect.ValueOf(cmd), "handle", false)
 
 	// Initial capacity is enough to hold 3 handles
 	result := bytes.NewBuffer(make([]byte, 0, 12))
@@ -823,8 +792,8 @@ func cmdHandles(cmd Command) ([]byte, error) {
 }
 
 // cmdNames returns the names of the entities referenced by the handles of the command.
-func cmdNames(cmd Command) ([]TPM2BName, error) {
-	handles := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false)
+func cmdNames[R any](cmd Command[R, *R]) ([]TPM2BName, error) {
+	handles := taggedMembers(reflect.ValueOf(cmd), "handle", false)
 	var result []TPM2BName
 	for i, maybeHandle := range handles {
 		h, ok := maybeHandle.Interface().(handle)
@@ -852,13 +821,13 @@ func cmdNames(cmd Command) ([]TPM2BName, error) {
 
 // TODO: Extract the logic of "marshal the Nth field of some struct after the handles"
 // For now, we duplicate some logic from marshalStruct here.
-func marshalParameter(buf *bytes.Buffer, cmd Command, i int) error {
-	numHandles := len(taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", false))
-	if numHandles+i >= reflect.TypeOf(cmd).Elem().NumField() {
+func marshalParameter[R any](buf *bytes.Buffer, cmd Command[R, *R], i int) error {
+	numHandles := len(taggedMembers(reflect.ValueOf(cmd), "handle", false))
+	if numHandles+i >= reflect.TypeOf(cmd).NumField() {
 		return fmt.Errorf("invalid parameter index %v", i)
 	}
-	parm := reflect.ValueOf(cmd).Elem().Field(numHandles + i)
-	field := reflect.TypeOf(cmd).Elem().Field(numHandles + i)
+	parm := reflect.ValueOf(cmd).Field(numHandles + i)
+	field := reflect.TypeOf(cmd).Field(numHandles + i)
 	if hasTag(field, "optional") {
 		return marshalOptional(buf, parm)
 	} else if parm.IsZero() && parm.Kind() == reflect.Uint32 && hasTag(field, "nullable") {
@@ -872,8 +841,8 @@ func marshalParameter(buf *bytes.Buffer, cmd Command, i int) error {
 
 // cmdParameters returns the parameters area of the command.
 // The first parameter may be encrypted by one of the sessions.
-func cmdParameters(cmd Command, sess []Session) ([]byte, error) {
-	parms := taggedMembers(reflect.ValueOf(cmd).Elem(), "handle", true)
+func cmdParameters[R any](cmd Command[R, *R], sess []Session) ([]byte, error) {
+	parms := taggedMembers(reflect.ValueOf(cmd), "handle", true)
 	if len(parms) == 0 {
 		return nil, nil
 	}
@@ -1007,7 +976,7 @@ func rspHeader(rsp *bytes.Buffer) error {
 // If there is a mismatch between the expected and actual amount of handles,
 // returns an error here.
 // rsp is updated to point to the rest of the response after the handles.
-func rspHandles(rsp *bytes.Buffer, rspStruct Response) error {
+func rspHandles(rsp *bytes.Buffer, rspStruct any) error {
 	handles := taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", false)
 	for i, handle := range handles {
 		if err := unmarshal(rsp, handle); err != nil {
@@ -1072,7 +1041,7 @@ func rspSessions(rsp *bytes.Buffer, rc TPMRC, cc TPMCC, names []TPM2BName, parms
 // rspParameters decrypts (if needed) the parameters area of the response
 // into the response structure. If there is a mismatch between the expected
 // and actual response structure, returns an error here.
-func rspParameters(parms []byte, sess []Session, rspStruct Response) error {
+func rspParameters(parms []byte, sess []Session, rspStruct any) error {
 	numHandles := len(taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", false))
 
 	// Use the heuristic of "does interpreting the first 2 bytes of response

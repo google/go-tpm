@@ -59,23 +59,13 @@ func (h AuthHandle) KnownName() *TPM2BName {
 	return h.Handle.KnownName()
 }
 
-// Command is a placeholder interface for TPM command structures so that they
-// can be easily distinguished from other types of structures.
-// TODO: once go-tpm requires Go 1.18, parameterize this type for compile-time
-// command/response matching.
-type Command interface {
+// Command is an interface for any TPM command, parameterized by its response
+// type.
+type Command[R any, PR *R] interface {
 	// The TPM command code associated with this command.
 	Command() TPMCC
-}
-
-// Response is a placeholder interface for TPM response structures so that they
-// can be easily distinguished from other types of structures.
-// All implementations of this interface are pointers to structures, for
-// settability.
-// See https://go.dev/blog/laws-of-reflection
-type Response interface {
-	// The TPM command code associated with this response.
-	Response() TPMCC
+	// Executes the command and returns the response.
+	Execute(t transport.TPM, s ...Session) (PR, error)
 }
 
 // PolicyCommand is a TPM command that can be part of a TPM policy.
@@ -94,19 +84,20 @@ type Shutdown_ struct {
 }
 
 // Command implements the Command interface.
-func (*Shutdown_) Command() TPMCC { return TPMCCShutdown }
+func (Shutdown_) Command() TPMCC { return TPMCCShutdown }
 
 // Execute executes the command and returns the response.
-func (cmd *Shutdown_) Execute(t transport.TPM, s ...Session) error {
+func (cmd Shutdown_) Execute(t transport.TPM, s ...Session) (*ShutdownResponse, error) {
 	var rsp ShutdownResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[ShutdownResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // ShutdownResponse is the response from TPM2_Shutdown.
 type ShutdownResponse struct{}
-
-// Response implements the Response interface.
-func (*ShutdownResponse) Response() TPMCC { return TPMCCShutdown }
 
 // Startup_ is the input to TPM2_Startup.
 // See definition in Part 3, Commands, section 9.3.
@@ -117,19 +108,20 @@ type Startup_ struct {
 }
 
 // Command implements the Command interface.
-func (*Startup_) Command() TPMCC { return TPMCCStartup }
+func (Startup_) Command() TPMCC { return TPMCCStartup }
 
 // Execute executes the command and returns the response.
-func (cmd *Startup_) Execute(t transport.TPM, s ...Session) error {
+func (cmd Startup_) Execute(t transport.TPM, s ...Session) (*StartupResponse, error) {
 	var rsp StartupResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[StartupResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // StartupResponse is the response from TPM2_Startup.
 type StartupResponse struct{}
-
-// Response implements the Response interface.
-func (*StartupResponse) Response() TPMCC { return TPMCCStartup }
 
 // StartAuthSession is the input to TPM2_StartAuthSession.
 // See definition in Part 3, Commands, section 11.1
@@ -158,12 +150,12 @@ type StartAuthSession struct {
 }
 
 // Command implements the Command interface.
-func (*StartAuthSession) Command() TPMCC { return TPMCCStartAuthSession }
+func (StartAuthSession) Command() TPMCC { return TPMCCStartAuthSession }
 
 // Execute executes the command and returns the response.
-func (cmd *StartAuthSession) Execute(t transport.TPM, s ...Session) (*StartAuthSessionResponse, error) {
+func (cmd StartAuthSession) Execute(t transport.TPM, s ...Session) (*StartAuthSessionResponse, error) {
 	var rsp StartAuthSessionResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[StartAuthSessionResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -176,9 +168,6 @@ type StartAuthSessionResponse struct {
 	// the initial nonce from the TPM, used in the computation of the sessionKey
 	NonceTPM TPM2BNonce
 }
-
-// Response implements the Response interface.
-func (*StartAuthSessionResponse) Response() TPMCC { return TPMCCStartAuthSession }
 
 // Create is the input to TPM2_Create.
 // See definition in Part 3, Commands, section 12.1
@@ -198,12 +187,12 @@ type Create struct {
 }
 
 // Command implements the Command interface.
-func (*Create) Command() TPMCC { return TPMCCCreate }
+func (Create) Command() TPMCC { return TPMCCCreate }
 
 // Execute executes the command and returns the response.
-func (cmd *Create) Execute(t transport.TPM, s ...Session) (*CreateResponse, error) {
+func (cmd Create) Execute(t transport.TPM, s ...Session) (*CreateResponse, error) {
 	var rsp CreateResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[CreateResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -216,16 +205,13 @@ type CreateResponse struct {
 	// the public portion of the created object
 	OutPublic TPM2BPublic
 	// contains a TPMS_CREATION_DATA
-	CreationData TPM2BCreationData
+	CreationData tpm2bCreationData
 	// digest of creationData using nameAlg of outPublic
 	CreationHash TPM2BDigest
 	// ticket used by TPM2_CertifyCreation() to validate that the
 	// creation data was produced by the TPM.
 	CreationTicket TPMTTKCreation
 }
-
-// Response implements the Response interface.
-func (*CreateResponse) Response() TPMCC { return TPMCCCreate }
 
 // Load is the input to TPM2_Load.
 // See definition in Part 3, Commands, section 12.2
@@ -239,12 +225,12 @@ type Load struct {
 }
 
 // Command implements the Command interface.
-func (*Load) Command() TPMCC { return TPMCCLoad }
+func (Load) Command() TPMCC { return TPMCCLoad }
 
 // Execute executes the command and returns the response.
-func (cmd *Load) Execute(t transport.TPM, s ...Session) (*LoadResponse, error) {
+func (cmd Load) Execute(t transport.TPM, s ...Session) (*LoadResponse, error) {
 	var rsp LoadResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[LoadResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -258,14 +244,11 @@ type LoadResponse struct {
 	Name TPM2BName
 }
 
-// Response implements the Response interface.
-func (*LoadResponse) Response() TPMCC { return TPMCCLoad }
-
 // LoadExternal is the input to TPM2_LoadExternal.
 // See definition in Part 3, Commands, section 12.3
 type LoadExternal struct {
 	// the sensitive portion of the object (optional)
-	InPrivate *TPM2BSensitive `gotpm:"optional"`
+	InPrivate TPM2BSensitive `gotpm:"optional"`
 	// the public portion of the object
 	InPublic TPM2BPublic
 	// hierarchy with which the object area is associated
@@ -273,12 +256,12 @@ type LoadExternal struct {
 }
 
 // Command implements the Command interface.
-func (*LoadExternal) Command() TPMCC { return TPMCCLoadExternal }
+func (LoadExternal) Command() TPMCC { return TPMCCLoadExternal }
 
 // Execute executes the command and returns the response.
-func (cmd *LoadExternal) Execute(t transport.TPM, s ...Session) (*LoadExternalResponse, error) {
+func (cmd LoadExternal) Execute(t transport.TPM, s ...Session) (*LoadExternalResponse, error) {
 	var rsp LoadExternalResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[LoadExternalResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -292,9 +275,6 @@ type LoadExternalResponse struct {
 	Name TPM2BName
 }
 
-// Response implements the Response interface.
-func (*LoadExternalResponse) Response() TPMCC { return TPMCCLoadExternal }
-
 // ReadPublic is the input to TPM2_ReadPublic.
 // See definition in Part 3, Commands, section 12.4
 type ReadPublic struct {
@@ -303,12 +283,12 @@ type ReadPublic struct {
 }
 
 // Command implements the Command interface.
-func (*ReadPublic) Command() TPMCC { return TPMCCReadPublic }
+func (ReadPublic) Command() TPMCC { return TPMCCReadPublic }
 
 // Execute executes the command and returns the response.
-func (cmd *ReadPublic) Execute(t transport.TPM, s ...Session) (*ReadPublicResponse, error) {
+func (cmd ReadPublic) Execute(t transport.TPM, s ...Session) (*ReadPublicResponse, error) {
 	var rsp ReadPublicResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[ReadPublicResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -324,9 +304,6 @@ type ReadPublicResponse struct {
 	QualifiedName TPM2BName
 }
 
-// Response implements the Response interface.
-func (*ReadPublicResponse) Response() TPMCC { return TPMCCReadPublic }
-
 // ActivateCredential is the input to TPM2_ActivateCredential.
 // See definition in Part 3, Commands, section 12.5.
 type ActivateCredential struct {
@@ -341,12 +318,12 @@ type ActivateCredential struct {
 }
 
 // Command implements the Command interface.
-func (*ActivateCredential) Command() TPMCC { return TPMCCActivateCredential }
+func (ActivateCredential) Command() TPMCC { return TPMCCActivateCredential }
 
 // Execute executes the command and returns the response.
-func (cmd *ActivateCredential) Execute(t transport.TPM, s ...Session) (*ActivateCredentialResponse, error) {
+func (cmd ActivateCredential) Execute(t transport.TPM, s ...Session) (*ActivateCredentialResponse, error) {
 	var rsp ActivateCredentialResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[ActivateCredentialResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -357,9 +334,6 @@ type ActivateCredentialResponse struct {
 	// the decrypted certificate information
 	CertInfo TPM2BDigest
 }
-
-// Response implements the Response interface.
-func (*ActivateCredentialResponse) Response() TPMCC { return TPMCCActivateCredential }
 
 // MakeCredential is the input to TPM2_MakeCredential.
 // See definition in Part 3, Commands, section 12.6.
@@ -373,12 +347,12 @@ type MakeCredential struct {
 }
 
 // Command implements the Command interface.
-func (*MakeCredential) Command() TPMCC { return TPMCCMakeCredential }
+func (MakeCredential) Command() TPMCC { return TPMCCMakeCredential }
 
 // Execute executes the command and returns the response.
-func (cmd *MakeCredential) Execute(t transport.TPM, s ...Session) (*MakeCredentialResponse, error) {
+func (cmd MakeCredential) Execute(t transport.TPM, s ...Session) (*MakeCredentialResponse, error) {
 	var rsp MakeCredentialResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[MakeCredentialResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -392,9 +366,6 @@ type MakeCredentialResponse struct {
 	Secret TPM2BEncryptedSecret
 }
 
-// Response implements the Response interface.
-func (*MakeCredentialResponse) Response() TPMCC { return TPMCCMakeCredential }
-
 // Unseal is the input to TPM2_Unseal.
 // See definition in Part 3, Commands, section 12.7
 type Unseal struct {
@@ -402,12 +373,12 @@ type Unseal struct {
 }
 
 // Command implements the Command interface.
-func (*Unseal) Command() TPMCC { return TPMCCUnseal }
+func (Unseal) Command() TPMCC { return TPMCCUnseal }
 
 // Execute executes the command and returns the response.
-func (cmd *Unseal) Execute(t transport.TPM, s ...Session) (*UnsealResponse, error) {
+func (cmd Unseal) Execute(t transport.TPM, s ...Session) (*UnsealResponse, error) {
 	var rsp UnsealResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[UnsealResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -417,9 +388,6 @@ func (cmd *Unseal) Execute(t transport.TPM, s ...Session) (*UnsealResponse, erro
 type UnsealResponse struct {
 	OutData TPM2BSensitiveData
 }
-
-// Response implements the Response interface.
-func (*UnsealResponse) Response() TPMCC { return TPMCCUnseal }
 
 // CreateLoaded is the input to TPM2_CreateLoaded.
 // See definition in Part 3, Commands, section 12.9
@@ -434,12 +402,12 @@ type CreateLoaded struct {
 }
 
 // Command implements the Command interface.
-func (*CreateLoaded) Command() TPMCC { return TPMCCCreateLoaded }
+func (CreateLoaded) Command() TPMCC { return TPMCCCreateLoaded }
 
 // Execute executes the command and returns the response.
-func (cmd *CreateLoaded) Execute(t transport.TPM, s ...Session) (*CreateLoadedResponse, error) {
+func (cmd CreateLoaded) Execute(t transport.TPM, s ...Session) (*CreateLoadedResponse, error) {
 	var rsp CreateLoadedResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[CreateLoadedResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -457,9 +425,6 @@ type CreateLoadedResponse struct {
 	Name TPM2BName
 }
 
-// Response implements the Response interface.
-func (*CreateLoadedResponse) Response() TPMCC { return TPMCCCreateLoaded }
-
 // ECDHZGen is the input to TPM2_ECDHZGen.
 // See definition in Part 3, Commands, section 14.5
 type ECDHZGen struct {
@@ -470,12 +435,12 @@ type ECDHZGen struct {
 }
 
 // Command implements the Command interface.
-func (*ECDHZGen) Command() TPMCC { return TPMCCECDHZGen }
+func (ECDHZGen) Command() TPMCC { return TPMCCECDHZGen }
 
 // Execute executes the command and returns the response.
-func (cmd *ECDHZGen) Execute(t transport.TPM, s ...Session) (*ECDHZGenResponse, error) {
+func (cmd ECDHZGen) Execute(t transport.TPM, s ...Session) (*ECDHZGenResponse, error) {
 	var rsp ECDHZGenResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[ECDHZGenResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -486,9 +451,6 @@ type ECDHZGenResponse struct {
 	// X and Y coordinates of the product of the multiplication
 	OutPoint TPM2BECCPoint
 }
-
-// Response implements the Response interface.
-func (*ECDHZGenResponse) Response() TPMCC { return TPMCCECDHZGen }
 
 // Hash is the input to TPM2_Hash.
 // See definition in Part 3, Commands, section 15.4
@@ -502,12 +464,12 @@ type Hash struct {
 }
 
 // Command implements the Command interface.
-func (*Hash) Command() TPMCC { return TPMCCHash }
+func (Hash) Command() TPMCC { return TPMCCHash }
 
 // Execute executes the command and returns the response.
-func (cmd *Hash) Execute(t transport.TPM, s ...Session) (*HashResponse, error) {
+func (cmd Hash) Execute(t transport.TPM, s ...Session) (*HashResponse, error) {
 	var rsp HashResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[HashResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -522,9 +484,6 @@ type HashResponse struct {
 	Validation TPMTTKHashCheck
 }
 
-// Response implements the Response interface.
-func (*HashResponse) Response() TPMCC { return TPMCCHash }
-
 // GetRandom is the input to TPM2_GetRandom.
 // See definition in Part 3, Commands, section 16.1
 type GetRandom struct {
@@ -533,12 +492,12 @@ type GetRandom struct {
 }
 
 // Command implements the Command interface.
-func (*GetRandom) Command() TPMCC { return TPMCCGetRandom }
+func (GetRandom) Command() TPMCC { return TPMCCGetRandom }
 
 // Execute executes the command and returns the response.
-func (cmd *GetRandom) Execute(t transport.TPM, s ...Session) (*GetRandomResponse, error) {
+func (cmd GetRandom) Execute(t transport.TPM, s ...Session) (*GetRandomResponse, error) {
 	var rsp GetRandomResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[GetRandomResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -549,9 +508,6 @@ type GetRandomResponse struct {
 	// the random octets
 	RandomBytes TPM2BDigest
 }
-
-// Response implements the Response interface.
-func (*GetRandomResponse) Response() TPMCC { return TPMCCGetRandom }
 
 // HashSequenceStart is the input to TPM2_HashSequenceStart.
 // See definition in Part 3, Commands, section 17.3
@@ -564,12 +520,12 @@ type HashSequenceStart struct {
 }
 
 // Command implements the Command interface.
-func (*HashSequenceStart) Command() TPMCC { return TPMCCHashSequenceStart }
+func (HashSequenceStart) Command() TPMCC { return TPMCCHashSequenceStart }
 
 // Execute executes the command and returns the response.
-func (cmd *HashSequenceStart) Execute(t transport.TPM, s ...Session) (*HashSequenceStartResponse, error) {
+func (cmd HashSequenceStart) Execute(t transport.TPM, s ...Session) (*HashSequenceStartResponse, error) {
 	var rsp HashSequenceStartResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[HashSequenceStartResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -581,9 +537,6 @@ type HashSequenceStartResponse struct {
 	SequenceHandle TPMIDHObject
 }
 
-// Response implements the Response interface.
-func (*HashSequenceStartResponse) Response() TPMCC { return TPMCCHashSequenceStart }
-
 // SequenceUpdate is the input to TPM2_SequenceUpdate.
 // See definition in Part 3, Commands, section 17.4
 type SequenceUpdate struct {
@@ -594,12 +547,12 @@ type SequenceUpdate struct {
 }
 
 // Command implements the Command interface.
-func (*SequenceUpdate) Command() TPMCC { return TPMCCSequenceUpdate }
+func (SequenceUpdate) Command() TPMCC { return TPMCCSequenceUpdate }
 
 // Execute executes the command and returns the response.
-func (cmd *SequenceUpdate) Execute(t transport.TPM, s ...Session) (*SequenceUpdateResponse, error) {
+func (cmd SequenceUpdate) Execute(t transport.TPM, s ...Session) (*SequenceUpdateResponse, error) {
 	var rsp SequenceUpdateResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[SequenceUpdateResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -607,9 +560,6 @@ func (cmd *SequenceUpdate) Execute(t transport.TPM, s ...Session) (*SequenceUpda
 
 // SequenceUpdateResponse is the response from TPM2_SequenceUpdate.
 type SequenceUpdateResponse struct{}
-
-// Response implements the Response interface.
-func (*SequenceUpdateResponse) Response() TPMCC { return TPMCCSequenceUpdate }
 
 // SequenceComplete is the input to TPM2_SequenceComplete.
 // See definition in Part 3, Commands, section 17.5
@@ -623,12 +573,12 @@ type SequenceComplete struct {
 }
 
 // Command implements the Command interface.
-func (*SequenceComplete) Command() TPMCC { return TPMCCSequenceComplete }
+func (SequenceComplete) Command() TPMCC { return TPMCCSequenceComplete }
 
 // Execute executes the command and returns the response.
-func (cmd *SequenceComplete) Execute(t transport.TPM, s ...Session) (*SequenceCompleteResponse, error) {
+func (cmd SequenceComplete) Execute(t transport.TPM, s ...Session) (*SequenceCompleteResponse, error) {
 	var rsp SequenceCompleteResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[SequenceCompleteResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -642,9 +592,6 @@ type SequenceCompleteResponse struct {
 	// compute outDigest did not start with TPM_GENERATED_VALUE
 	Validation TPMTTKHashCheck
 }
-
-// Response implements the Response interface.
-func (*SequenceCompleteResponse) Response() TPMCC { return TPMCCSequenceComplete }
 
 // Certify is the input to TPM2_Certify.
 // See definition in Part 3, Commands, section 18.2.
@@ -660,12 +607,12 @@ type Certify struct {
 }
 
 // Command implements the Command interface.
-func (*Certify) Command() TPMCC { return TPMCCCertify }
+func (Certify) Command() TPMCC { return TPMCCCertify }
 
 // Execute executes the command and returns the response.
-func (cmd *Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
+func (cmd Certify) Execute(t transport.TPM, s ...Session) (*CertifyResponse, error) {
 	var rsp CertifyResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[CertifyResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -678,9 +625,6 @@ type CertifyResponse struct {
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature TPMTSignature
 }
-
-// Response implements the Response interface.
-func (*CertifyResponse) Response() TPMCC { return TPMCCCertify }
 
 // CertifyCreation is the input to TPM2_CertifyCreation.
 // See definition in Part 3, Commands, section 18.3.
@@ -700,12 +644,12 @@ type CertifyCreation struct {
 }
 
 // Command implements the Command interface.
-func (*CertifyCreation) Command() TPMCC { return TPMCCCertifyCreation }
+func (CertifyCreation) Command() TPMCC { return TPMCCCertifyCreation }
 
 // Execute executes the command and returns the response.
-func (cmd *CertifyCreation) Execute(t transport.TPM, s ...Session) (*CertifyCreationResponse, error) {
+func (cmd CertifyCreation) Execute(t transport.TPM, s ...Session) (*CertifyCreationResponse, error) {
 	var rsp CertifyCreationResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[CertifyCreationResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -718,9 +662,6 @@ type CertifyCreationResponse struct {
 	// the signature over certifyInfo
 	Signature TPMTSignature
 }
-
-// Response implements the Response interface.
-func (*CertifyCreationResponse) Response() TPMCC { return TPMCCCertifyCreation }
 
 // Quote is the input to TPM2_Quote.
 // See definition in Part 3, Commands, section 18.4
@@ -736,12 +677,12 @@ type Quote struct {
 }
 
 // Command implements the Command interface.
-func (*Quote) Command() TPMCC { return TPMCCQuote }
+func (Quote) Command() TPMCC { return TPMCCQuote }
 
 // Execute executes the command and returns the response.
-func (cmd *Quote) Execute(t transport.TPM, s ...Session) (*QuoteResponse, error) {
+func (cmd Quote) Execute(t transport.TPM, s ...Session) (*QuoteResponse, error) {
 	var rsp QuoteResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[QuoteResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -754,9 +695,6 @@ type QuoteResponse struct {
 	// the signature over quoted
 	Signature TPMTSignature
 }
-
-// Response implements the Response interface.
-func (*QuoteResponse) Response() TPMCC { return TPMCCQuote }
 
 // GetSessionAuditDigest is the input to TPM2_GetSessionAuditDigest.
 // See definition in Part 3, Commands, section 18.5
@@ -774,12 +712,12 @@ type GetSessionAuditDigest struct {
 }
 
 // Command implements the Command interface.
-func (*GetSessionAuditDigest) Command() TPMCC { return TPMCCGetSessionAuditDigest }
+func (GetSessionAuditDigest) Command() TPMCC { return TPMCCGetSessionAuditDigest }
 
 // Execute executes the command and returns the response.
-func (cmd *GetSessionAuditDigest) Execute(t transport.TPM, s ...Session) (*GetSessionAuditDigestResponse, error) {
+func (cmd GetSessionAuditDigest) Execute(t transport.TPM, s ...Session) (*GetSessionAuditDigestResponse, error) {
 	var rsp GetSessionAuditDigestResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[GetSessionAuditDigestResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -793,9 +731,6 @@ type GetSessionAuditDigestResponse struct {
 	// the signature over auditInfo
 	Signature TPMTSignature
 }
-
-// Response implements the Response interface.
-func (*GetSessionAuditDigestResponse) Response() TPMCC { return TPMCCGetSessionAuditDigest }
 
 // Commit is the input to TPM2_Commit.
 // See definition in Part 3, Commands, section 19.2.
@@ -811,12 +746,12 @@ type Commit struct {
 }
 
 // Command implements the Command interface.
-func (*Commit) Command() TPMCC { return TPMCCCommit }
+func (Commit) Command() TPMCC { return TPMCCCommit }
 
 // Execute executes the command and returns the response.
-func (cmd *Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, error) {
+func (cmd Commit) Execute(t transport.TPM, s ...Session) (*CommitResponse, error) {
 	var rsp CommitResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[CommitResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 
@@ -835,9 +770,6 @@ type CommitResponse struct {
 	Counter uint16
 }
 
-// Response implements the Response interface.
-func (*CommitResponse) Response() TPMCC { return TPMCCCommit }
-
 // VerifySignature is the input to TPM2_VerifySignature.
 // See definition in Part 3, Commands, section 20.1
 type VerifySignature struct {
@@ -850,12 +782,12 @@ type VerifySignature struct {
 }
 
 // Command implements the Command interface.
-func (*VerifySignature) Command() TPMCC { return TPMCCVerifySignature }
+func (VerifySignature) Command() TPMCC { return TPMCCVerifySignature }
 
 // Execute executes the command and returns the response.
-func (cmd *VerifySignature) Execute(t transport.TPM, s ...Session) (*VerifySignatureResponse, error) {
+func (cmd VerifySignature) Execute(t transport.TPM, s ...Session) (*VerifySignatureResponse, error) {
 	var rsp VerifySignatureResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[VerifySignatureResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -865,9 +797,6 @@ func (cmd *VerifySignature) Execute(t transport.TPM, s ...Session) (*VerifySigna
 type VerifySignatureResponse struct {
 	Validation TPMTTKVerified
 }
-
-// Response implements the Response interface.
-func (*VerifySignatureResponse) Response() TPMCC { return TPMCCVerifySignature }
 
 // Sign is the input to TPM2_Sign.
 // See definition in Part 3, Commands, section 20.2.
@@ -885,12 +814,12 @@ type Sign struct {
 }
 
 // Command implements the Command interface.
-func (*Sign) Command() TPMCC { return TPMCCSign }
+func (Sign) Command() TPMCC { return TPMCCSign }
 
 // Execute executes the command and returns the response.
-func (cmd *Sign) Execute(t transport.TPM, s ...Session) (*SignResponse, error) {
+func (cmd Sign) Execute(t transport.TPM, s ...Session) (*SignResponse, error) {
 	var rsp SignResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[SignResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -902,9 +831,6 @@ type SignResponse struct {
 	Signature TPMTSignature
 }
 
-// Response implements the Response interface.
-func (*SignResponse) Response() TPMCC { return TPMCCSign }
-
 // PCRExtend is the input to TPM2_PCR_Extend.
 // See definition in Part 3, Commands, section 22.2
 type PCRExtend struct {
@@ -915,19 +841,20 @@ type PCRExtend struct {
 }
 
 // Command implements the Command interface.
-func (*PCRExtend) Command() TPMCC { return TPMCCPCRExtend }
+func (PCRExtend) Command() TPMCC { return TPMCCPCRExtend }
 
 // Execute executes the command and returns the response.
-func (cmd *PCRExtend) Execute(t transport.TPM, s ...Session) error {
+func (cmd PCRExtend) Execute(t transport.TPM, s ...Session) (*PCRExtendResponse, error) {
 	var rsp PCRExtendResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PCRExtendResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // PCRExtendResponse is the response from TPM2_PCR_Extend.
 type PCRExtendResponse struct{}
-
-// Response implements the Response interface.
-func (*PCRExtendResponse) Response() TPMCC { return TPMCCPCRExtend }
 
 // PCREvent is the input to TPM2_PCR_Event.
 // See definition in Part 3, Commands, section 22.3
@@ -939,19 +866,20 @@ type PCREvent struct {
 }
 
 // Command implements the Command interface.
-func (*PCREvent) Command() TPMCC { return TPMCCPCREvent }
+func (PCREvent) Command() TPMCC { return TPMCCPCREvent }
 
 // Execute executes the command and returns the response.
-func (cmd *PCREvent) Execute(t transport.TPM, s ...Session) error {
+func (cmd PCREvent) Execute(t transport.TPM, s ...Session) (*PCREventResponse, error) {
 	var rsp PCREventResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PCREventResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // PCREventResponse is the response from TPM2_PCR_Event.
 type PCREventResponse struct{}
-
-// Response implements the Response interface.
-func (*PCREventResponse) Response() TPMCC { return TPMCCPCREvent }
 
 // PCRRead is the input to TPM2_PCR_Read.
 // See definition in Part 3, Commands, section 22.4
@@ -961,12 +889,12 @@ type PCRRead struct {
 }
 
 // Command implements the Command interface.
-func (*PCRRead) Command() TPMCC { return TPMCCPCRRead }
+func (PCRRead) Command() TPMCC { return TPMCCPCRRead }
 
 // Execute executes the command and returns the response.
-func (cmd *PCRRead) Execute(t transport.TPM, s ...Session) (*PCRReadResponse, error) {
+func (cmd PCRRead) Execute(t transport.TPM, s ...Session) (*PCRReadResponse, error) {
 	var rsp PCRReadResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[PCRReadResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -982,9 +910,6 @@ type PCRReadResponse struct {
 	PCRValues TPMLDigest
 }
 
-// Response implements the Response interface.
-func (*PCRReadResponse) Response() TPMCC { return TPMCCPCRRead }
-
 // PCRReset is the input to TPM2_PCRReset.
 // See definition in Part 3, Commands, section 22.8.
 type PCRReset struct {
@@ -993,12 +918,12 @@ type PCRReset struct {
 }
 
 // Command implements the Command interface.
-func (*PCRReset) Command() TPMCC { return TPMCCPCRReset }
+func (PCRReset) Command() TPMCC { return TPMCCPCRReset }
 
 // Execute executes the command and returns the response.
-func (cmd *PCRReset) Execute(t transport.TPM, s ...Session) (*PCRResetResponse, error) {
+func (cmd PCRReset) Execute(t transport.TPM, s ...Session) (*PCRResetResponse, error) {
 	var rsp PCRResetResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[PCRResetResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1006,9 +931,6 @@ func (cmd *PCRReset) Execute(t transport.TPM, s ...Session) (*PCRResetResponse, 
 
 // PCRResetResponse is the response from TPM2_PCRReset.
 type PCRResetResponse struct{}
-
-// Response implements the Response interface.
-func (*PCRResetResponse) Response() TPMCC { return TPMCCPCRReset }
 
 // PolicySigned is the input to TPM2_PolicySigned.
 // See definition in Part 3, Commands, section 23.3.
@@ -1031,12 +953,12 @@ type PolicySigned struct {
 }
 
 // Command implements the Command interface.
-func (*PolicySigned) Command() TPMCC { return TPMCCPolicySigned }
+func (PolicySigned) Command() TPMCC { return TPMCCPolicySigned }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicySigned) Execute(t transport.TPM, s ...Session) (*PolicySignedResponse, error) {
+func (cmd PolicySigned) Execute(t transport.TPM, s ...Session) (*PolicySignedResponse, error) {
 	var rsp PolicySignedResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[PolicySignedResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1052,7 +974,7 @@ func policyUpdate(policy *PolicyCalculator, cc TPMCC, arg2, arg3 []byte) error {
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicySigned) Update(policy *PolicyCalculator) error {
+func (cmd PolicySigned) Update(policy *PolicyCalculator) error {
 	return policyUpdate(policy, TPMCCPolicySigned, cmd.AuthObject.KnownName().Buffer, cmd.PolicyRef.Buffer)
 }
 
@@ -1063,9 +985,6 @@ type PolicySignedResponse struct {
 	// produced if the command succeeds and expiration in the command was non-zero
 	PolicyTicket TPMTTKAuth
 }
-
-// Response implements the Response interface.
-func (*PolicySignedResponse) Response() TPMCC { return TPMCCPolicySigned }
 
 // PolicySecret is the input to TPM2_PolicySecret.
 // See definition in Part 3, Commands, section 23.4.
@@ -1086,19 +1005,19 @@ type PolicySecret struct {
 }
 
 // Command implements the Command interface.
-func (*PolicySecret) Command() TPMCC { return TPMCCPolicySecret }
+func (PolicySecret) Command() TPMCC { return TPMCCPolicySecret }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicySecret) Execute(t transport.TPM, s ...Session) (*PolicySecretResponse, error) {
+func (cmd PolicySecret) Execute(t transport.TPM, s ...Session) (*PolicySecretResponse, error) {
 	var rsp PolicySecretResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[PolicySecretResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicySecret) Update(policy *PolicyCalculator) {
+func (cmd PolicySecret) Update(policy *PolicyCalculator) {
 	policyUpdate(policy, TPMCCPolicySecret, cmd.AuthHandle.KnownName().Buffer, cmd.PolicyRef.Buffer)
 }
 
@@ -1110,9 +1029,6 @@ type PolicySecretResponse struct {
 	PolicyTicket TPMTTKAuth
 }
 
-// Response implements the Response interface.
-func (*PolicySecretResponse) Response() TPMCC { return TPMCCPolicySecret }
-
 // PolicyOr is the input to TPM2_PolicyOR.
 // See definition in Part 3, Commands, section 23.6.
 type PolicyOr struct {
@@ -1123,16 +1039,20 @@ type PolicyOr struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyOr) Command() TPMCC { return TPMCCPolicyOR }
+func (PolicyOr) Command() TPMCC { return TPMCCPolicyOR }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyOr) Execute(t transport.TPM, s ...Session) error {
+func (cmd PolicyOr) Execute(t transport.TPM, s ...Session) (*PolicyOrResponse, error) {
 	var rsp PolicyOrResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PolicyOrResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyOr) Update(policy *PolicyCalculator) error {
+func (cmd PolicyOr) Update(policy *PolicyCalculator) error {
 	policy.Reset()
 	var digests bytes.Buffer
 	for _, digest := range cmd.PHashList.Digests {
@@ -1143,9 +1063,6 @@ func (cmd *PolicyOr) Update(policy *PolicyCalculator) error {
 
 // PolicyOrResponse is the response from TPM2_PolicyOr.
 type PolicyOrResponse struct{}
-
-// Response implements the Response interface.
-func (*PolicyOrResponse) Response() TPMCC { return TPMCCPolicyOR }
 
 // PolicyPCR is the input to TPM2_PolicyPCR.
 // See definition in Part 3, Commands, section 23.7.
@@ -1160,24 +1077,25 @@ type PolicyPCR struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyPCR) Command() TPMCC { return TPMCCPolicyPCR }
+func (PolicyPCR) Command() TPMCC { return TPMCCPolicyPCR }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyPCR) Execute(t transport.TPM, s ...Session) error {
+func (cmd PolicyPCR) Execute(t transport.TPM, s ...Session) (*PolicyPCRResponse, error) {
 	var rsp PolicyPCRResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PolicyPCRResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyPCR) Update(policy *PolicyCalculator) error {
+func (cmd PolicyPCR) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyPCR, cmd.Pcrs, cmd.PcrDigest.Buffer)
 }
 
 // PolicyPCRResponse is the response from TPM2_PolicyPCR.
 type PolicyPCRResponse struct{}
-
-// Response implements the Response interface.
-func (*PolicyPCRResponse) Response() TPMCC { return TPMCCPolicyPCR }
 
 // PolicyNV is the input to TPM2_PolicyNV.
 // See definition in Part 3, Commands, section 23.9.
@@ -1197,16 +1115,20 @@ type PolicyNV struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyNV) Command() TPMCC { return TPMCCPolicyNV }
+func (PolicyNV) Command() TPMCC { return TPMCCPolicyNV }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyNV) Execute(t transport.TPM, s ...Session) error {
+func (cmd PolicyNV) Execute(t transport.TPM, s ...Session) (*PolicyNVResponse, error) {
 	var rsp PolicyNVResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PolicyNVResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyNV) Update(policy *PolicyCalculator) error {
+func (cmd PolicyNV) Update(policy *PolicyCalculator) error {
 	alg, err := policy.alg.Hash()
 	if err != nil {
 		return err
@@ -1222,9 +1144,6 @@ func (cmd *PolicyNV) Update(policy *PolicyCalculator) error {
 // PolicyNVResponse is the response from TPM2_PolicyPCR.
 type PolicyNVResponse struct{}
 
-// Response implements the Response interface.
-func (*PolicyNVResponse) Response() TPMCC { return TPMCCPolicyNV }
-
 // PolicyCommandCode is the input to TPM2_PolicyCommandCode.
 // See definition in Part 3, Commands, section 23.11.
 type PolicyCommandCode struct {
@@ -1235,24 +1154,25 @@ type PolicyCommandCode struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyCommandCode) Command() TPMCC { return TPMCCPolicyCommandCode }
+func (PolicyCommandCode) Command() TPMCC { return TPMCCPolicyCommandCode }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyCommandCode) Execute(t transport.TPM, s ...Session) error {
+func (cmd PolicyCommandCode) Execute(t transport.TPM, s ...Session) (*PolicyCommandCodeResponse, error) {
 	var rsp PolicyCommandCodeResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PolicyCommandCodeResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyCommandCode) Update(policy *PolicyCalculator) error {
+func (cmd PolicyCommandCode) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyCommandCode, cmd.Code)
 }
 
 // PolicyCommandCodeResponse is the response from TPM2_PolicyCommandCode.
 type PolicyCommandCodeResponse struct{}
-
-// Response implements the Response interface.
-func (*PolicyCommandCodeResponse) Response() TPMCC { return TPMCCPolicyCommandCode }
 
 // PolicyCPHash is the input to TPM2_PolicyCpHash.
 // See definition in Part 3, Commands, section 23.13.
@@ -1264,24 +1184,25 @@ type PolicyCPHash struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyCPHash) Command() TPMCC { return TPMCCPolicyCpHash }
+func (PolicyCPHash) Command() TPMCC { return TPMCCPolicyCpHash }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyCPHash) Execute(t transport.TPM, s ...Session) error {
+func (cmd PolicyCPHash) Execute(t transport.TPM, s ...Session) (*PolicyCPHashResponse, error) {
 	var rsp PolicyCPHashResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PolicyCPHashResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyCPHash) Update(policy *PolicyCalculator) error {
+func (cmd PolicyCPHash) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyCpHash, cmd.CPHashA.Buffer)
 }
 
 // PolicyCPHashResponse is the response from TPM2_PolicyCpHash.
 type PolicyCPHashResponse struct{}
-
-// Response implements the Response interface.
-func (*PolicyCPHashResponse) Response() TPMCC { return TPMCCPolicyCpHash }
 
 // PolicyAuthorize is the input to TPM2_PolicySigned.
 // See definition in Part 3, Commands, section 23.16.
@@ -1299,24 +1220,25 @@ type PolicyAuthorize struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyAuthorize) Command() TPMCC { return TPMCCPolicyAuthorize }
+func (PolicyAuthorize) Command() TPMCC { return TPMCCPolicyAuthorize }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyAuthorize) Execute(t transport.TPM, s ...Session) error {
+func (cmd PolicyAuthorize) Execute(t transport.TPM, s ...Session) (*PolicyAuthorizeResponse, error) {
 	var rsp PolicyAuthorizeResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PolicyAuthorizeResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyAuthorize) Update(policy *PolicyCalculator) error {
+func (cmd PolicyAuthorize) Update(policy *PolicyCalculator) error {
 	return policyUpdate(policy, TPMCCPolicyAuthorize, cmd.KeySign.Buffer, cmd.PolicyRef.Buffer)
 }
 
 // PolicyAuthorizeResponse is the response from TPM2_PolicyAuthorize.
 type PolicyAuthorizeResponse struct{}
-
-// Response implements the Response interface.
-func (*PolicyAuthorizeResponse) Response() TPMCC { return TPMCCPolicyAuthorize }
 
 // PolicyGetDigest is the input to TPM2_PolicyGetDigest.
 // See definition in Part 3, Commands, section 23.19.
@@ -1326,12 +1248,12 @@ type PolicyGetDigest struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyGetDigest) Command() TPMCC { return TPMCCPolicyGetDigest }
+func (PolicyGetDigest) Command() TPMCC { return TPMCCPolicyGetDigest }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyGetDigest) Execute(t transport.TPM, s ...Session) (*PolicyGetDigestResponse, error) {
+func (cmd PolicyGetDigest) Execute(t transport.TPM, s ...Session) (*PolicyGetDigestResponse, error) {
 	var rsp PolicyGetDigestResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[PolicyGetDigestResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1342,9 +1264,6 @@ type PolicyGetDigestResponse struct {
 	// the current value of the policySession→policyDigest
 	PolicyDigest TPM2BDigest
 }
-
-// Response implements the Response interface.
-func (*PolicyGetDigestResponse) Response() TPMCC { return TPMCCPolicyGetDigest }
 
 // PolicyNVWritten is the input to TPM2_PolicyNvWritten.
 // See definition in Part 3, Commands, section 23.20.
@@ -1357,28 +1276,25 @@ type PolicyNVWritten struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyNVWritten) Command() TPMCC { return TPMCCPolicyNvWritten }
+func (PolicyNVWritten) Command() TPMCC { return TPMCCPolicyNvWritten }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyNVWritten) Execute(t transport.TPM, s ...Session) (*PolicyNVWrittenResponse, error) {
+func (cmd PolicyNVWritten) Execute(t transport.TPM, s ...Session) (*PolicyNVWrittenResponse, error) {
 	var rsp PolicyNVWrittenResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[PolicyNVWrittenResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyNVWritten) Update(policy *PolicyCalculator) error {
+func (cmd PolicyNVWritten) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyNvWritten, cmd.WrittenSet)
 }
 
 // PolicyNVWrittenResponse is the response from TPM2_PolicyNvWritten.
 type PolicyNVWrittenResponse struct {
 }
-
-// Response implements the Response interface.
-func (*PolicyNVWrittenResponse) Response() TPMCC { return TPMCCPolicyNvWritten }
 
 // PolicyAuthorizeNV is the input to TPM2_PolicyAuthorizeNV.
 // See definition in Part 3, Commands, section 23.22.
@@ -1392,25 +1308,26 @@ type PolicyAuthorizeNV struct {
 }
 
 // Command implements the Command interface.
-func (*PolicyAuthorizeNV) Command() TPMCC { return TPMCCPolicyAuthorizeNV }
+func (PolicyAuthorizeNV) Command() TPMCC { return TPMCCPolicyAuthorizeNV }
 
 // Execute executes the command and returns the response.
-func (cmd *PolicyAuthorizeNV) Execute(t transport.TPM, s ...Session) error {
+func (cmd PolicyAuthorizeNV) Execute(t transport.TPM, s ...Session) (*PolicyAuthorizeNVResponse, error) {
 	var rsp PolicyAuthorizeNVResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[PolicyAuthorizeNVResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd *PolicyAuthorizeNV) Update(policy *PolicyCalculator) error {
+func (cmd PolicyAuthorizeNV) Update(policy *PolicyCalculator) error {
 	policy.Reset()
 	return policy.Update(TPMCCPolicyAuthorizeNV, cmd.NVIndex.KnownName().Buffer)
 }
 
 // PolicyAuthorizeNVResponse is the response from TPM2_PolicyAuthorizeNV.
 type PolicyAuthorizeNVResponse struct{}
-
-// Response implements the Response interface.
-func (*PolicyAuthorizeNVResponse) Response() TPMCC { return TPMCCPolicyAuthorizeNV }
 
 // CreatePrimary is the input to TPM2_CreatePrimary.
 // See definition in Part 3, Commands, section 24.1
@@ -1431,12 +1348,12 @@ type CreatePrimary struct {
 }
 
 // Command implements the Command interface.
-func (*CreatePrimary) Command() TPMCC { return TPMCCCreatePrimary }
+func (CreatePrimary) Command() TPMCC { return TPMCCCreatePrimary }
 
 // Execute executes the command and returns the response.
-func (cmd *CreatePrimary) Execute(t transport.TPM, s ...Session) (*CreatePrimaryResponse, error) {
+func (cmd CreatePrimary) Execute(t transport.TPM, s ...Session) (*CreatePrimaryResponse, error) {
 	var rsp CreatePrimaryResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[CreatePrimaryResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1449,7 +1366,7 @@ type CreatePrimaryResponse struct {
 	// the public portion of the created object
 	OutPublic TPM2BPublic
 	// contains a TPMS_CREATION_DATA
-	CreationData TPM2BCreationData
+	CreationData tpm2bCreationData
 	// digest of creationData using nameAlg of outPublic
 	CreationHash TPM2BDigest
 	// ticket used by TPM2_CertifyCreation() to validate that the
@@ -1459,9 +1376,6 @@ type CreatePrimaryResponse struct {
 	Name TPM2BName
 }
 
-// Response implements the Response interface.
-func (*CreatePrimaryResponse) Response() TPMCC { return TPMCCCreatePrimary }
-
 // Clear is the input to TPM2_Clear.
 // See definition in Part 3, Commands, section 24.6
 type Clear struct {
@@ -1470,19 +1384,20 @@ type Clear struct {
 }
 
 // Command implements the Command interface.
-func (*Clear) Command() TPMCC { return TPMCCClear }
+func (Clear) Command() TPMCC { return TPMCCClear }
 
 // Execute executes the command and returns the response.
-func (cmd *Clear) Execute(t transport.TPM, s ...Session) error {
+func (cmd Clear) Execute(t transport.TPM, s ...Session) (*ClearResponse, error) {
 	var rsp ClearResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[ClearResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // ClearResponse is the response from TPM2_Clear.
 type ClearResponse struct{}
-
-// Response implements the Response interface.
-func (*ClearResponse) Response() TPMCC { return TPMCCClear }
 
 // ContextSave is the input to TPM2_ContextSave.
 // See definition in Part 3, Commands, section 28.2
@@ -1492,12 +1407,12 @@ type ContextSave struct {
 }
 
 // Command implements the Command interface.
-func (*ContextSave) Command() TPMCC { return TPMCCContextSave }
+func (ContextSave) Command() TPMCC { return TPMCCContextSave }
 
 // Execute executes the command and returns the response.
-func (cmd *ContextSave) Execute(t transport.TPM, s ...Session) (*ContextSaveResponse, error) {
+func (cmd ContextSave) Execute(t transport.TPM, s ...Session) (*ContextSaveResponse, error) {
 	var rsp ContextSaveResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[ContextSaveResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1508,9 +1423,6 @@ type ContextSaveResponse struct {
 	Context TPMSContext
 }
 
-// Response implements the Response interface.
-func (*ContextSaveResponse) Response() TPMCC { return TPMCCContextSave }
-
 // ContextLoad is the input to TPM2_ContextLoad.
 // See definition in Part 3, Commands, section 28.3
 type ContextLoad struct {
@@ -1519,12 +1431,12 @@ type ContextLoad struct {
 }
 
 // Command implements the Command interface.
-func (*ContextLoad) Command() TPMCC { return TPMCCContextLoad }
+func (ContextLoad) Command() TPMCC { return TPMCCContextLoad }
 
 // Execute executes the command and returns the response.
-func (cmd *ContextLoad) Execute(t transport.TPM, s ...Session) (*ContextLoadResponse, error) {
+func (cmd ContextLoad) Execute(t transport.TPM, s ...Session) (*ContextLoadResponse, error) {
 	var rsp ContextLoadResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[ContextLoadResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1536,9 +1448,6 @@ type ContextLoadResponse struct {
 	LoadedHandle TPMIDHContext
 }
 
-// Response implements the Response interface.
-func (*ContextLoadResponse) Response() TPMCC { return TPMCCContextLoad }
-
 // FlushContext is the input to TPM2_FlushContext.
 // See definition in Part 3, Commands, section 28.4
 type FlushContext struct {
@@ -1547,19 +1456,20 @@ type FlushContext struct {
 }
 
 // Command implements the Command interface.
-func (*FlushContext) Command() TPMCC { return TPMCCFlushContext }
+func (FlushContext) Command() TPMCC { return TPMCCFlushContext }
 
 // Execute executes the command and returns the response.
-func (cmd *FlushContext) Execute(t transport.TPM, s ...Session) error {
+func (cmd FlushContext) Execute(t transport.TPM, s ...Session) (*FlushContextResponse, error) {
 	var rsp FlushContextResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[FlushContextResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // FlushContextResponse is the response from TPM2_FlushContext.
 type FlushContextResponse struct{}
-
-// Response implements the Response interface.
-func (*FlushContextResponse) Response() TPMCC { return TPMCCFlushContext }
 
 // GetCapability is the input to TPM2_GetCapability.
 // See definition in Part 3, Commands, section 30.2
@@ -1573,12 +1483,12 @@ type GetCapability struct {
 }
 
 // Command implements the Command interface.
-func (*GetCapability) Command() TPMCC { return TPMCCGetCapability }
+func (GetCapability) Command() TPMCC { return TPMCCGetCapability }
 
 // Execute executes the command and returns the response.
-func (cmd *GetCapability) Execute(t transport.TPM, s ...Session) (*GetCapabilityResponse, error) {
+func (cmd GetCapability) Execute(t transport.TPM, s ...Session) (*GetCapabilityResponse, error) {
 	var rsp GetCapabilityResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[GetCapabilityResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1592,9 +1502,6 @@ type GetCapabilityResponse struct {
 	CapabilityData TPMSCapabilityData
 }
 
-// Response implements the Response interface.
-func (*GetCapabilityResponse) Response() TPMCC { return TPMCCGetCapability }
-
 // NVDefineSpace is the input to TPM2_NV_DefineSpace.
 // See definition in Part 3, Commands, section 31.3.
 type NVDefineSpace struct {
@@ -1607,19 +1514,20 @@ type NVDefineSpace struct {
 }
 
 // Command implements the Command interface.
-func (*NVDefineSpace) Command() TPMCC { return TPMCCNVDefineSpace }
+func (NVDefineSpace) Command() TPMCC { return TPMCCNVDefineSpace }
 
 // Execute executes the command and returns the response.
-func (cmd *NVDefineSpace) Execute(t transport.TPM, s ...Session) error {
+func (cmd NVDefineSpace) Execute(t transport.TPM, s ...Session) (*NVDefineSpaceResponse, error) {
 	var rsp NVDefineSpaceResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[NVDefineSpaceResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // NVDefineSpaceResponse is the response from TPM2_NV_DefineSpace.
 type NVDefineSpaceResponse struct{}
-
-// Response implements the Response interface.
-func (*NVDefineSpaceResponse) Response() TPMCC { return TPMCCNVDefineSpace }
 
 // NVUndefineSpace is the input to TPM2_NV_UndefineSpace.
 // See definition in Part 3, Commands, section 31.4.
@@ -1631,19 +1539,20 @@ type NVUndefineSpace struct {
 }
 
 // Command implements the Command interface.
-func (*NVUndefineSpace) Command() TPMCC { return TPMCCNVUndefineSpace }
+func (NVUndefineSpace) Command() TPMCC { return TPMCCNVUndefineSpace }
 
 // Execute executes the command and returns the response.
-func (cmd *NVUndefineSpace) Execute(t transport.TPM, s ...Session) error {
+func (cmd NVUndefineSpace) Execute(t transport.TPM, s ...Session) (*NVUndefineSpaceResponse, error) {
 	var rsp NVUndefineSpaceResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[NVUndefineSpaceResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // NVUndefineSpaceResponse is the response from TPM2_NV_UndefineSpace.
 type NVUndefineSpaceResponse struct{}
-
-// Response implements the Response interface.
-func (*NVUndefineSpaceResponse) Response() TPMCC { return TPMCCNVUndefineSpace }
 
 // NVUndefineSpaceSpecial is the input to TPM2_NV_UndefineSpaceSpecial.
 // See definition in Part 3, Commands, section 31.5.
@@ -1655,19 +1564,20 @@ type NVUndefineSpaceSpecial struct {
 }
 
 // Command implements the Command interface.
-func (*NVUndefineSpaceSpecial) Command() TPMCC { return TPMCCNVUndefineSpaceSpecial }
+func (NVUndefineSpaceSpecial) Command() TPMCC { return TPMCCNVUndefineSpaceSpecial }
 
 // Execute executes the command and returns the response.
-func (cmd *NVUndefineSpaceSpecial) Execute(t transport.TPM, s ...Session) error {
+func (cmd NVUndefineSpaceSpecial) Execute(t transport.TPM, s ...Session) (*NVUndefineSpaceSpecialResponse, error) {
 	var rsp NVUndefineSpaceSpecialResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[NVUndefineSpaceSpecialResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // NVUndefineSpaceSpecialResponse is the response from TPM2_NV_UndefineSpaceSpecial.
 type NVUndefineSpaceSpecialResponse struct{}
-
-// Response implements the Response interface.
-func (*NVUndefineSpaceSpecialResponse) Response() TPMCC { return TPMCCNVUndefineSpaceSpecial }
 
 // NVReadPublic is the input to TPM2_NV_ReadPublic.
 // See definition in Part 3, Commands, section 31.6.
@@ -1677,12 +1587,12 @@ type NVReadPublic struct {
 }
 
 // Command implements the Command interface.
-func (*NVReadPublic) Command() TPMCC { return TPMCCNVReadPublic }
+func (NVReadPublic) Command() TPMCC { return TPMCCNVReadPublic }
 
 // Execute executes the command and returns the response.
-func (cmd *NVReadPublic) Execute(t transport.TPM, s ...Session) (*NVReadPublicResponse, error) {
+func (cmd NVReadPublic) Execute(t transport.TPM, s ...Session) (*NVReadPublicResponse, error) {
 	var rsp NVReadPublicResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[NVReadPublicResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1693,9 +1603,6 @@ type NVReadPublicResponse struct {
 	NVPublic TPM2BNVPublic
 	NVName   TPM2BName
 }
-
-// Response implements the Response interface.
-func (*NVReadPublicResponse) Response() TPMCC { return TPMCCNVReadPublic }
 
 // NVWrite is the input to TPM2_NV_Write.
 // See definition in Part 3, Commands, section 31.7.
@@ -1711,19 +1618,20 @@ type NVWrite struct {
 }
 
 // Command implements the Command interface.
-func (*NVWrite) Command() TPMCC { return TPMCCNVWrite }
+func (NVWrite) Command() TPMCC { return TPMCCNVWrite }
 
 // Execute executes the command and returns the response.
-func (cmd *NVWrite) Execute(t transport.TPM, s ...Session) error {
+func (cmd NVWrite) Execute(t transport.TPM, s ...Session) (*NVWriteResponse, error) {
 	var rsp NVWriteResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[NVWriteResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // NVWriteResponse is the response from TPM2_NV_Write.
 type NVWriteResponse struct{}
-
-// Response implements the Response interface.
-func (*NVWriteResponse) Response() TPMCC { return TPMCCNVWrite }
 
 // NVIncrement is the input to TPM2_NV_Increment.
 // See definition in Part 3, Commands, section 31.8.
@@ -1735,19 +1643,20 @@ type NVIncrement struct {
 }
 
 // Command implements the Command interface.
-func (*NVIncrement) Command() TPMCC { return TPMCCNVIncrement }
+func (NVIncrement) Command() TPMCC { return TPMCCNVIncrement }
 
 // Execute executes the command and returns the response.
-func (cmd *NVIncrement) Execute(t transport.TPM, s ...Session) error {
+func (cmd NVIncrement) Execute(t transport.TPM, s ...Session) (*NVIncrementResponse, error) {
 	var rsp NVIncrementResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[NVIncrementResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // NVIncrementResponse is the response from TPM2_NV_Increment.
 type NVIncrementResponse struct{}
-
-// Response implements the Response interface.
-func (*NVIncrementResponse) Response() TPMCC { return TPMCCNVIncrement }
 
 // NVWriteLock is the input to TPM2_NV_WriteLock.
 // See definition in Part 3, Commands, section 31.11.
@@ -1759,19 +1668,20 @@ type NVWriteLock struct {
 }
 
 // Command implements the Command interface.
-func (*NVWriteLock) Command() TPMCC { return TPMCCNVWriteLock }
+func (NVWriteLock) Command() TPMCC { return TPMCCNVWriteLock }
 
 // Execute executes the command and returns the response.
-func (cmd *NVWriteLock) Execute(t transport.TPM, s ...Session) error {
+func (cmd NVWriteLock) Execute(t transport.TPM, s ...Session) (*NVWriteLockResponse, error) {
 	var rsp NVWriteLockResponse
-	return execute(t, cmd, &rsp, s...)
+	err := execute[NVWriteLockResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
 }
 
 // NVWriteLockResponse is the response from TPM2_NV_WriteLock.
 type NVWriteLockResponse struct{}
-
-// Response implements the Response interface.
-func (*NVWriteLockResponse) Response() TPMCC { return TPMCCNVWriteLock }
 
 // NVRead is the input to TPM2_NV_Read.
 // See definition in Part 3, Commands, section 31.13.
@@ -1787,12 +1697,12 @@ type NVRead struct {
 }
 
 // Command implements the Command interface.
-func (*NVRead) Command() TPMCC { return TPMCCNVRead }
+func (NVRead) Command() TPMCC { return TPMCCNVRead }
 
 // Execute executes the command and returns the response.
-func (cmd *NVRead) Execute(t transport.TPM, s ...Session) (*NVReadResponse, error) {
+func (cmd NVRead) Execute(t transport.TPM, s ...Session) (*NVReadResponse, error) {
 	var rsp NVReadResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[NVReadResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1803,9 +1713,6 @@ type NVReadResponse struct {
 	// the data read
 	Data TPM2BMaxNVBuffer
 }
-
-// Response implements the Response interface.
-func (*NVReadResponse) Response() TPMCC { return TPMCCNVRead }
 
 // NVCertify is the input to TPM2_NV_Certify.
 // See definition in Part 3, Commands, section 31.16.
@@ -1827,12 +1734,12 @@ type NVCertify struct {
 }
 
 // Command implements the Command interface.
-func (*NVCertify) Command() TPMCC { return TPMCCNVCertify }
+func (NVCertify) Command() TPMCC { return TPMCCNVCertify }
 
 // Execute executes the command and returns the response.
-func (cmd *NVCertify) Execute(t transport.TPM, s ...Session) (*NVCertifyResponse, error) {
+func (cmd NVCertify) Execute(t transport.TPM, s ...Session) (*NVCertifyResponse, error) {
 	var rsp NVCertifyResponse
-	if err := execute(t, cmd, &rsp, s...); err != nil {
+	if err := execute[NVCertifyResponse](t, cmd, &rsp, s...); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
@@ -1845,6 +1752,3 @@ type NVCertifyResponse struct {
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature TPMTSignature
 }
-
-// Response implements the Response interface.
-func (*NVCertifyResponse) Response() TPMCC { return TPMCCNVCertify }
