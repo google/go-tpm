@@ -946,7 +946,7 @@ func (u *TPMUCapabilities) Handles() (*TPMLHandle, error) {
 
 // Command returns the 'command' member of the union.
 func (u *TPMUCapabilities) Command() (*TPMLCCA, error) {
-	if u.selector == TPMCapAlgs {
+	if u.selector == TPMCapCommands {
 		return u.contents.(*TPMLCCA), nil
 	}
 	return nil, fmt.Errorf("did not contain command (selector value was %v)", u.selector)
