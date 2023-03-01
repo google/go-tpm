@@ -44,6 +44,7 @@ const (
 	TPMAlgSHA3256      TPMAlgID = 0x0027
 	TPMAlgSHA3384      TPMAlgID = 0x0028
 	TPMAlgSHA3512      TPMAlgID = 0x0029
+	TPMAlgCMAC         TPMAlgID = 0x003F
 	TPMAlgCTR          TPMAlgID = 0x0040
 	TPMAlgOFB          TPMAlgID = 0x0041
 	TPMAlgCBC          TPMAlgID = 0x0042
