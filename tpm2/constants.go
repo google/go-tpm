@@ -1,5 +1,7 @@
 package tpm2
 
+//go:generate stringer -trimprefix=TPM -type=TPMAlgID,TPMECCCurve,TPMCC,TPMRC,TPMEO,TPMST,TPMCap,TPMPT,TPMPTPCR,TPMHT,TPMHandle,TPMNT -output=constants_string.go constants.go
+
 import (
 
 	// Register the relevant hash implementations.
@@ -8,12 +10,15 @@ import (
 	_ "crypto/sha512"
 )
 
+// TPMAlgID represents a TPM_ALG_ID.
+// See definition in Part 2: Structures, section 6.3.
+type TPMAlgID uint16
+
 // TPMAlgID values come from Part 2: Structures, section 6.3.
 const (
 	TPMAlgRSA          TPMAlgID = 0x0001
 	TPMAlgTDES         TPMAlgID = 0x0003
-	TPMAlgSHA          TPMAlgID = 0x0004
-	TPMAlgSHA1                  = TPMAlgSHA
+	TPMAlgSHA1         TPMAlgID = 0x0004
 	TPMAlgHMAC         TPMAlgID = 0x0005
 	TPMAlgAES          TPMAlgID = 0x0006
 	TPMAlgMGF1         TPMAlgID = 0x0007
@@ -52,6 +57,10 @@ const (
 	TPMAlgECB          TPMAlgID = 0x0044
 )
 
+// TPMECCCurve represents a TPM_ECC_Curve.
+// See definition in Part 2: Structures, section 6.4.
+type TPMECCCurve uint16
+
 // TPMECCCurve values come from Part 2: Structures, section 6.4.
 const (
 	TPMECCNone     TPMECCCurve = 0x0000
@@ -64,6 +73,10 @@ const (
 	TPMECCBNP638   TPMECCCurve = 0x0011
 	TPMECCSM2P256  TPMECCCurve = 0x0020
 )
+
+// TPMCC represents a TPM_CC.
+// See definition in Part 2: Structures, section 6.5.2.
+type TPMCC uint32
 
 // TPMCC values come from Part 2: Structures, section 6.5.2.
 const (
@@ -120,14 +133,12 @@ const (
 	TPMCCRewrap                     TPMCC = 0x00000152
 	TPMCCCreate                     TPMCC = 0x00000153
 	TPMCCECDHZGen                   TPMCC = 0x00000154
-	TPMCCHMAC                       TPMCC = 0x00000155
-	TPMCCMAC                        TPMCC = TPMCCHMAC
+	TPMCCMAC                        TPMCC = 0x00000155
 	TPMCCImport                     TPMCC = 0x00000156
 	TPMCCLoad                       TPMCC = 0x00000157
 	TPMCCQuote                      TPMCC = 0x00000158
 	TPMCCRSADecrypt                 TPMCC = 0x00000159
-	TPMCCHMACStart                  TPMCC = 0x0000015B
-	TPMCCMACStart                   TPMCC = TPMCCHMACStart
+	TPMCCMACStart                   TPMCC = 0x0000015B
 	TPMCCSequenceUpdate             TPMCC = 0x0000015C
 	TPMCCSign                       TPMCC = 0x0000015D
 	TPMCCUnseal                     TPMCC = 0x0000015E
@@ -188,10 +199,18 @@ const (
 	TPMCCACTSetTimeout              TPMCC = 0x00000198
 )
 
+// TPMRC represents a TPM_RC.
+// See definition in Part 2: Structures, section 6.6.
+type TPMRC uint32
+
 // TPMRC values come from Part 2: Structures, section 6.6.3.
 const (
+	rcVer1             = 0x00000100
+	rcFmt1             = 0x00000080
+	rcWarn             = 0x00000900
+	rcP                = 0x00000040
+	rcS                = 0x00000800
 	TPMRCSuccess TPMRC = 0x00000000
-	rcVer1       TPMRC = 0x00000100
 	// FMT0 error codes
 	TPMRCInitialize      TPMRC = rcVer1 + 0x000
 	TPMRCFailure         TPMRC = rcVer1 + 0x001
@@ -227,7 +246,6 @@ const (
 	TPMRCNeedsTest       TPMRC = rcVer1 + 0x053
 	TPMRCNoResult        TPMRC = rcVer1 + 0x054
 	TPMRCSensitive       TPMRC = rcVer1 + 0x055
-	rcFmt1               TPMRC = 0x00000080
 	// FMT1 error codes
 	TPMRCAsymmetric   TPMRC = rcFmt1 + 0x001
 	TPMRCAttributes   TPMRC = rcFmt1 + 0x002
@@ -263,7 +281,6 @@ const (
 	TPMRCCurve        TPMRC = rcFmt1 + 0x026
 	TPMRCECCPoint     TPMRC = rcFmt1 + 0x027
 	// Warnings
-	rcWarn              TPMRC = 0x00000900
 	TPMRCContextGap     TPMRC = rcWarn + 0x001
 	TPMRCObjectMemory   TPMRC = rcWarn + 0x002
 	TPMRCSessionMemory  TPMRC = rcWarn + 0x003
@@ -292,9 +309,11 @@ const (
 	TPMRCLockout        TPMRC = rcWarn + 0x021
 	TPMRCRetry          TPMRC = rcWarn + 0x022
 	TPMRCNVUnavailable  TPMRC = rcWarn + 0x023
-	rcP                 TPMRC = 0x00000040
-	rcS                 TPMRC = 0x00000800
 )
+
+// TPMEO represents a TPM_EO.
+// See definition in Part 2: Structures, section 6.8.
+type TPMEO uint16
 
 // TPMEO values come from Part 2: Structures, section 6.8.
 const (
@@ -311,6 +330,10 @@ const (
 	TPMEOBitSet     TPMEO = 0x000A
 	TPMEOBitClear   TPMEO = 0x000B
 )
+
+// TPMST represents a TPM_ST.
+// See definition in Part 2: Structures, section 6.9.
+type TPMST uint16
 
 // TPMST values come from Part 2: Structures, section 6.9.
 const (
@@ -334,11 +357,19 @@ const (
 	TPMSTFuManifest         TPMST = 0x8029
 )
 
+// TPMSU represents a TPM_SU.
+// See definition in Part 2: Structures, section 6.10.
+type TPMSU uint16
+
 // TPMSU values come from Part 2: Structures, section  6.10.
 const (
 	TPMSUClear TPMSU = 0x0000
 	TPMSUState TPMSU = 0x0001
 )
+
+// TPMSE represents a TPM_SE.
+// See definition in Part 2: Structures, section 6.11.
+type TPMSE uint8
 
 // TPMSE values come from Part 2: Structures, section 6.11.
 const (
@@ -346,6 +377,10 @@ const (
 	TPMSEPolicy TPMSE = 0x01
 	TPMSETrial  TPMSE = 0x03
 )
+
+// TPMCap represents a TPM_CAP.
+// See definition in Part 2: Structures, section 6.12.
+type TPMCap uint32
 
 // TPMCap values come from Part 2: Structures, section 6.12.
 const (
@@ -362,7 +397,11 @@ const (
 	TPMCapACT           TPMCap = 0x0000000A
 )
 
-// PTFamilyIndicator values come from Part 2: Structures, section  6.13.
+// TPMPT represents a TPM_PT.
+// See definition in Part 2: Structures, section 6.13.
+type TPMPT uint32
+
+// TPMPT values come from Part 2: Structures, section  6.13.
 const (
 	// a 4-octet character string containing the TPM Family value
 	// (TPM_SPEC_FAMILY)
@@ -526,6 +565,10 @@ const (
 	TPMPTAuditCounter1 TPMPT = 0x00000214
 )
 
+// TPMPTPCR represents a TPM_PT_PCR.
+// See definition in Part 2: Structures, section 6.14.
+type TPMPTPCR uint32
+
 // TPMPTPCR values come from Part 2: Structures, section 6.14.
 const (
 	// a SET bit in the TPMS_PCR_SELECT indicates that the PCR is saved and
@@ -575,6 +618,26 @@ const (
 	TPMPTPCRAuth TPMPTPCR = 0x00000014
 )
 
+// TPMHT represents a TPM_HT.
+// See definition in Part 2: Structures, section 7.2.
+type TPMHT uint8
+
+// TPMHT values come from Part 2: Structures, section 7.2.
+const (
+	TPMHTPCR           TPMHT = 0x00
+	TPMHTNVIndex       TPMHT = 0x01
+	TPMHTHMACSession   TPMHT = 0x02
+	TPMHTPolicySession TPMHT = 0x03
+	TPMHTPermanent     TPMHT = 0x40
+	TPMHTTransient     TPMHT = 0x80
+	TPMHTPersistent    TPMHT = 0x81
+	TPMHTAC            TPMHT = 0x90
+)
+
+// TPMHandle represents a TPM_HANDLE.
+// See definition in Part 2: Structures, section 7.1.
+type TPMHandle uint32
+
 // TPMHandle values come from Part 2: Structures, section 7.4.
 const (
 	TPMRHOwner       TPMHandle = 0x40000001
@@ -585,6 +648,10 @@ const (
 	TPMRHPlatform    TPMHandle = 0x4000000C
 	TPMRHPlatformNV  TPMHandle = 0x4000000D
 )
+
+// TPMNT represents a TPM_NT.
+// See definition in Part 2: Structures, section 13.4.
+type TPMNT uint8
 
 // TPMNT values come from Part 2: Structures, section 13.2.
 const (

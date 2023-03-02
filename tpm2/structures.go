@@ -80,14 +80,6 @@ func (g TPMGenerated) Check() error {
 	return nil
 }
 
-// TPMAlgID represents a TPM_ALG_ID.
-// See definition in Part 2: Structures, section 6.3.
-type TPMAlgID uint16
-
-// TPMECCCurve represents a TPM_ECC_Curve.
-// See definition in Part 2: Structures, section 6.4.
-type TPMECCCurve uint16
-
 // Curve returns the elliptic.Curve associated with a TPMECCCurve.
 func (c TPMECCCurve) Curve() (elliptic.Curve, error) {
 	switch c {
@@ -103,46 +95,6 @@ func (c TPMECCCurve) Curve() (elliptic.Curve, error) {
 		return nil, fmt.Errorf("unsupported ECC curve: %v", c)
 	}
 }
-
-// TPMCC represents a TPM_CC.
-// See definition in Part 2: Structures, section 6.5.2.
-type TPMCC uint32
-
-// TPMRC represents a TPM_RC.
-// See definition in Part 2: Structures, section 6.6.
-type TPMRC uint32
-
-// TPMEO represents a TPM_EO.
-// See definition in Part 2: Structures, section 6.8.
-type TPMEO uint16
-
-// TPMST represents a TPM_ST.
-// See definition in Part 2: Structures, section 6.9.
-type TPMST uint16
-
-// TPMSU represents a TPM_SU.
-// See definition in Part 2: Structures, section 6.10.
-type TPMSU uint16
-
-// TPMSE represents a TPM_SE.
-// See definition in Part 2: Structures, section 6.11.
-type TPMSE uint8
-
-// TPMCap represents a TPM_CAP.
-// See definition in Part 2: Structures, section 6.12.
-type TPMCap uint32
-
-// TPMPT represents a TPM_PT.
-// See definition in Part 2: Structures, section 6.13.
-type TPMPT uint32
-
-// TPMPTPCR represents a TPM_PT_PCR.
-// See definition in Part 2: Structures, section 6.14.
-type TPMPTPCR uint32
-
-// TPMHandle represents a TPM_HANDLE.
-// See definition in Part 2: Structures, section 7.1.
-type TPMHandle uint32
 
 // HandleValue returns the handle value. This behavior is intended to satisfy
 // an interface that can be implemented by other, more complex types as well.
@@ -3028,10 +2980,6 @@ type TPMSCreationData struct {
 // TPM2BIDObject represents a TPM2B_ID_OBJECT.
 // See definition in Part 2: Structures, section 12.4.3.
 type TPM2BIDObject TPM2BData
-
-// TPMNT represents a TPM_NT.
-// See definition in Part 2: Structures, section 13.4.
-type TPMNT uint8
 
 // TPMANV represents a TPMA_NV.
 // See definition in Part 2: Structures, section 13.4.
