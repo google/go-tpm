@@ -1,2 +1,5 @@
 *.test
 .vscode*
+
+# Generated files
+constants_string.go
