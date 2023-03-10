@@ -20,6 +20,7 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdh"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
@@ -47,37 +48,28 @@ const (
 // by the TPM. A 32 byte secret is a safe, recommended default.
 //
 // This function implements Credential Protection as defined in section 24 of the TPM
-// specification revision 2 part 1, with the additional caveat of not supporting ECC EKs.
+// specification revision 2 part 1.
 // See: https://trustedcomputinggroup.org/resource/tpm-library-specification/
 func Generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secret []byte) ([]byte, []byte, error) {
-	rsaPub, ok := pub.(*rsa.PublicKey)
-	if !ok {
-		return nil, nil, errors.New("only RSA public keys are supported for credential activation")
-	}
-
-	return generateRSA(aik, rsaPub, symBlockSize, secret, rand.Reader)
+	return generate(aik, pub, symBlockSize, secret, rand.Reader)
 }
 
-func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secret []byte, rnd io.Reader) ([]byte, []byte, error) {
-	crypothash, err := aik.Alg.Hash()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// The seed length should match the keysize used by the EKs symmetric cipher.
-	// For typical RSA EKs, this will be 128 bits (16 bytes).
-	// Spec: TCG 2.0 EK Credential Profile revision 14, section 2.1.5.1.
-	seed := make([]byte, symBlockSize)
-	if _, err := io.ReadFull(rnd, seed); err != nil {
-		return nil, nil, fmt.Errorf("generating seed: %v", err)
-	}
-
-	// Encrypt the seed value using the provided public key.
-	// See annex B, section 10.4 of the TPM specification revision 2 part 1.
-	label := append([]byte(labelIdentity), 0)
-	encSecret, err := rsa.EncryptOAEP(crypothash.New(), rnd, pub, seed, label)
-	if err != nil {
-		return nil, nil, fmt.Errorf("generating encrypted seed: %v", err)
+func generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secret []byte, rnd io.Reader) ([]byte, []byte, error) {
+	var seed, encSecret []byte
+	var err error
+	switch ekKey := pub.(type) {
+	case *ecdh.PublicKey:
+		seed, encSecret, err = createECSeed(aik, ekKey, rnd)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating seed: %v", err)
+		}
+	case *rsa.PublicKey:
+		seed, encSecret, err = createRSASeed(aik, ekKey, symBlockSize, rnd)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating seed: %v", err)
+		}
+	default:
+		return nil, nil, errors.New("only RSA and EC public keys are supported for credential activation")
 	}
 
 	// Generate the encrypted credential by convolving the seed with the digest of
@@ -87,7 +79,7 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	if err != nil {
 		return nil, nil, fmt.Errorf("encoding aikName: %v", err)
 	}
-	symmetricKey, err := tpm2.KDFa(aik.Alg, seed, labelStorage, aikNameEncoded, nil, len(seed)*8)
+	symmetricKey, err := tpm2.KDFa(aik.Alg, seed, labelStorage, aikNameEncoded, nil, symBlockSize*8)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating symmetric key: %v", err)
 	}
@@ -106,13 +98,17 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
-	// See section 24.5 of the TPM specification revision 2 part 1.
-	macKey, err := tpm2.KDFa(aik.Alg, seed, labelIntegrity, nil, nil, crypothash.Size()*8)
+	// See section 24.5 of the TPM 2.0 specification.
+	cryptohash, err := aik.Alg.Hash()
+	if err != nil {
+		return nil, nil, err
+	}
+	macKey, err := tpm2.KDFa(aik.Alg, seed, labelIntegrity, nil, nil, cryptohash.Size()*8)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generating HMAC key: %v", err)
 	}
 
-	mac := hmac.New(crypothash.New, macKey)
+	mac := hmac.New(cryptohash.New, macKey)
 	mac.Write(encIdentity)
 	mac.Write(aikNameEncoded)
 	integrityHMAC := mac.Sum(nil)
@@ -136,4 +132,68 @@ func generateRSA(aik *tpm2.HashValue, pub *rsa.PublicKey, symBlockSize int, secr
 	}
 
 	return packedID, packedEncSecret, nil
+}
+
+func createRSASeed(aik *tpm2.HashValue, ek *rsa.PublicKey, symBlockSize int, rnd io.Reader) ([]byte, []byte, error) {
+	crypothash, err := aik.Alg.Hash()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// The seed length should match the keysize used by the EKs symmetric cipher.
+	// For typical RSA EKs, this will be 128 bits (16 bytes).
+	// Spec: TCG 2.0 EK Credential Profile revision 14, section 2.1.5.1.
+	seed := make([]byte, symBlockSize)
+	if _, err := io.ReadFull(rnd, seed); err != nil {
+		return nil, nil, fmt.Errorf("generating seed: %v", err)
+	}
+
+	// Encrypt the seed value using the provided public key.
+	// See annex B, section 10.4 of the TPM specification revision 2 part 1.
+	label := append([]byte(labelIdentity), 0)
+	encryptedSeed, err := rsa.EncryptOAEP(crypothash.New(), rnd, ek, seed, label)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generating encrypted seed: %v", err)
+	}
+
+	encryptedSeed, err = tpmutil.Pack(encryptedSeed)
+	return seed, encryptedSeed, err
+}
+
+func createECSeed(ak *tpm2.HashValue, ek *ecdh.PublicKey, rnd io.Reader) (seed, encryptedSeed []byte, err error) {
+	ephemeralPriv, err := ek.Curve().GenerateKey(rnd)
+	if err != nil {
+		return nil, nil, err
+	}
+	ephemeralX, ephemeralY := deconstructECDHPublicKey(ephemeralPriv.PublicKey())
+
+	z, err := ephemeralPriv.ECDH(ek)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ekX, _ := deconstructECDHPublicKey(ek)
+
+	crypothash, err := ak.Alg.Hash()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	seed, err = tpm2.KDFe(
+		ak.Alg,
+		z,
+		labelIdentity,
+		ephemeralX,
+		ekX,
+		crypothash.Size()*8)
+	if err != nil {
+		return nil, nil, err
+	}
+	encryptedSeed, err = tpmutil.Pack(tpmutil.U16Bytes(ephemeralX), tpmutil.U16Bytes(ephemeralY))
+	return seed, encryptedSeed, err
+}
+
+func deconstructECDHPublicKey(key *ecdh.PublicKey) (x []byte, y []byte) {
+	b := key.Bytes()[1:]
+	return b[:len(b)/2], b[len(b)/2:]
 }

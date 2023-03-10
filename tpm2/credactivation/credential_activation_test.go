@@ -16,14 +16,39 @@ package credactivation
 
 import (
 	"bytes"
-	"crypto/rsa"
+	"crypto/ecdsa"
+	"crypto/x509"
 	"encoding/base64"
-	"math/big"
-	insecureRand "math/rand"
+	"encoding/pem"
 	"testing"
 
 	"github.com/google/go-tpm/tpm2"
 )
+
+var (
+	eccEKPub = []byte(`-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsIfixqsUp8cJBSeYDhJKCZ32eAHF
+3rS7HdTMOnoFj1MrX+PutPTxa6SFdhWGLnhEQyfcwRni8veQX/dSP2on2w==
+-----END PUBLIC KEY-----`)
+	rsaEKPub = []byte(`-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArIqmuAvuIcakIEPd2hZl
+avob21ehQ7zaHduJQNbNuKVSc1HTlvw9DkWN03b0SktcRIfsjw/omqPl60RhCx0j
+qxsYnf5Gk4jhfCnUeQVicAqHnUGrKjMkLIGTZVOpyqBEXHsdhugw6M5HVIKyfwNO
+KhvLZKRH8JkvtElVhLQ6E2+H83XoSpkt9oCnGPyN2Z5qRP+fhQiRylMCD8Rz8ABn
+YVqGBBrG+2cBt/0uFLjxHx2mm/4sI/1scG5xrcrDLva9WZB40MehW5VlS6Fwqq05
+dKtLGpk7ludjH38m2zhM5/UdKZ34skJaS/Aiyj+P5AT1BpJL2ZtjCbBdnMDUSbRF
+1QIDAQAB
+-----END PUBLIC KEY-----`)
+)
+
+type zeroReader struct{}
+
+func (zeroReader) Read(b []byte) (int, error) {
+	for i := range b {
+		b[i] = 0
+	}
+	return len(b), nil
+}
 
 func mustDecodeBase64(in string, t *testing.T) []byte {
 	d, err := base64.StdEncoding.DecodeString(in)
@@ -34,34 +59,53 @@ func mustDecodeBase64(in string, t *testing.T) []byte {
 }
 
 func TestCredentialActivation(t *testing.T) {
-	// These values were independently tested/derived-from from TCG 2.0.38-compliant hardware.
-	n, ok := new(big.Int).SetString("21781359931719875035142348126986833104406251147281912291128410183893060751686286557235105177011038982931176491091366273712008774268043339103634631078508025847736699362996617038459342869130285665581223736549299195932345592253444537445668838861984376176364138265105552997914795970576284975601851753797509031880704132484924873723738272046545068767315124876824011679223652746414206246649323781826144832659865886735865286033208505363212876011411861316385696414905053502571926429826843117374014575605550176234010475825493066764152314323863950174296024693364113127191375694561947145403061250952175062770094723660429657392597", 10)
-	if !ok {
-		t.Fatalf("Failed to parse publicN string.")
-	}
-	public := rsa.PublicKey{
-		N: n,
-		E: 65537,
-	}
-
-	aikDigest := mustDecodeBase64("5snpf9qRfKD2Tb72eLAZqC/a/MyUhg+IvdwDZkTJK9w=", t)
-	expected := mustDecodeBase64("AEQAIIQNQu1RkQagbyN+7JlCKUfwBJxIsONZ2/4BD7Q4A15+BcDylTlcvTDgl1CdTuiZk3JcechnrpbfdDXynZ9Sp0uOAwEApDH7zhzLAqsNMSiEdv0xoGrGf/sOCYzSccZ1pDIv7uHON3yMMrX8beOLtCZ9vEQ3vW4i6NdWUJEd/UeMYuc1+Ucu4IB5teUtExhNyvtOXEM7FNXnKooS2ltLA0L7jlkyqwGM7CE0MK4jeFvy13RFNek6S5Rd5MH3RpBuqpL5NjX/yr4g7xCyE2RmXrCSD2DiTm6wU/PtOxYXUVdXeuLaLD69g5pnEAWhARuYa9SomBI8Ewvcxm+slfJpTK/Unrg+FN/d/n0k0IajklNli/jRhuQh5nhrTZXg80kPsEGraSP8eJof49vR643EtoO88jzpTC+/9Tu3yiGCCxEMqR2szA==", t)
-	secret := mustDecodeBase64("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg=", t)
-
-	aikName := &tpm2.HashValue{
-		Alg:   tpm2.AlgSHA256,
-		Value: aikDigest,
+	var activateTests = []struct {
+		ekPub    []byte
+		expected string
+	}{
+		{
+			eccEKPub,
+			"AEQAIE4SquOcMAzLi7f3ru6P8nuIpSmzr8OTACXpzLo3PTOe/oBazv+fZF2JiKDZqNPNeHISCsZMdEtEfvyYjqmzZ/CB7ABEACAeGDfvDRlRiDV1cbXlVFsSLo8JZ/2nJCA+slYczpcoXgAg+CstT57xB59sS1uDVuIyQulYttdJprVoGkEDVmvcWok=",
+		},
+		{
+			rsaEKPub,
+			"AEQAIFjKZAUo3Wmgxu+CqHFzsQZr7BqawtprBmpXpZa77nb5S+iN6IcSPQLCKPZMNuunv7BIb4/VJA/xjMrj8RnQbjspCwEAJcQogjACOfStYTVjmR4p61ZbTTRt7ZNG5nc6iifq+TfnyfoU+E3T6Kount4M8fSUdMWlKx5A24Ms4ndi1VYOA+s4inPusyn1X1ZCHe5tNwT1E9jpVxc0jaUAVad6Q5cOgUyAp4qvc8wmaYXcIa/PzVfa6teF4iXxNqVDAYqpdmbP68v0Hk5gRqCa/tHAdg5avE3C20DP1SSvPitumWROL6mHMooVxjsyjPnHEBLo7y/BKwezEO/15xnBvPOvWs7ARIu1KdER+zrCJX9SMCPbn4cVMfLdrX70xko7XjdhV7pXtAeUeKmmKSYE45m5ZN0h83YgHXGDjf+ynWse10okyA==",
+		},
 	}
 
-	idObject, wrappedCredential, err := generateRSA(aikName, &public, 16, secret, insecureRand.New(insecureRand.NewSource(99)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	activationBlob := append(idObject, wrappedCredential...)
+	for _, test := range activateTests {
+		p, _ := pem.Decode(test.ekPub)
+		public, err := x509.ParsePKIXPublicKey(p.Bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if !bytes.Equal(expected, activationBlob) {
-		t.Errorf("generate(%v, %v, %v) returned incorrect result", aikName, public, secret)
-		t.Logf("  Got:  %v", activationBlob)
-		t.Logf("  Want: %v", expected)
+		if ecdsaPub, ok := public.(*ecdsa.PublicKey); ok {
+			public, err = ecdsaPub.ECDH()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		aikDigest := mustDecodeBase64("5snpf9qRfKD2Tb72eLAZqC/a/MyUhg+IvdwDZkTJK9w=", t)
+		expected := mustDecodeBase64(test.expected, t)
+		secret := mustDecodeBase64("AQIDBAUGBwgBAgMEBQYHCAECAwQFBgcIAQIDBAUGBwg=", t)
+
+		aikName := &tpm2.HashValue{
+			Alg:   tpm2.AlgSHA256,
+			Value: aikDigest,
+		}
+
+		idObject, wrappedCredential, err := generate(aikName, public, 16, secret, zeroReader{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		activationBlob := append(idObject, wrappedCredential...)
+
+		if !bytes.Equal(expected, activationBlob) {
+			t.Errorf("generate(%v, %v, %v) returned incorrect result", aikName, public, secret)
+			t.Logf("  Got:  %v", base64.StdEncoding.EncodeToString(activationBlob))
+			t.Logf("  Want: %v", base64.StdEncoding.EncodeToString(expected))
+		}
 	}
 }
