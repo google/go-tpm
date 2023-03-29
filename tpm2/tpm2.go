@@ -24,6 +24,32 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 )
 
+func SelfTest(rw io.ReadWriter, fullTest bool) error {
+	var yesno uint8
+	if fullTest {
+		yesno = 1
+	}
+	_, err := runCommand(rw, TagNoSessions, CmdSelfTest, yesno)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetTestResult(rw io.ReadWriter) ([]byte, error) {
+	resp, err := runCommand(rw, TagNoSessions, CmdGetTestResult)
+	if err != nil {
+		return nil, err
+	}
+
+	var testResult tpmutil.U16Bytes
+	if _, err := tpmutil.Unpack(resp, &testResult); err != nil {
+		return nil, err
+	}
+	return testResult, nil
+}
+
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriter, size uint16) ([]byte, error) {
 	resp, err := runCommand(rw, TagNoSessions, CmdGetRandom, size)

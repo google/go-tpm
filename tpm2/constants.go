@@ -456,6 +456,7 @@ const (
 	CmdPCREvent                   tpmutil.Command = 0x0000013C
 	CmdPCRReset                   tpmutil.Command = 0x0000013D
 	CmdSequenceComplete           tpmutil.Command = 0x0000013E
+	CmdSelfTest                   tpmutil.Command = 0x00000143
 	CmdStartup                    tpmutil.Command = 0x00000144
 	CmdShutdown                   tpmutil.Command = 0x00000145
 	CmdActivateCredential         tpmutil.Command = 0x00000147
@@ -489,6 +490,7 @@ const (
 	CmdStartAuthSession           tpmutil.Command = 0x00000176
 	CmdGetCapability              tpmutil.Command = 0x0000017A
 	CmdGetRandom                  tpmutil.Command = 0x0000017B
+	CmdGetTestResult              tpmutil.Command = 0x0000017C
 	CmdHash                       tpmutil.Command = 0x0000017D
 	CmdPCRRead                    tpmutil.Command = 0x0000017E
 	CmdPolicyPCR                  tpmutil.Command = 0x0000017F
