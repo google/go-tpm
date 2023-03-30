@@ -161,7 +161,7 @@ type Handle uint32
 
 type handleList []Handle
 
-func (l *handleList) TPMMarshal(out io.Writer) error {
+func (l *handleList) TPMMarshal(_ io.Writer) error {
 	return fmt.Errorf("TPMMarhsal on []Handle is not supported yet")
 }
 
