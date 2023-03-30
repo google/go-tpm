@@ -17,7 +17,6 @@ package tpmutil
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"testing"
 )
@@ -28,7 +27,7 @@ type invalidPacked struct {
 }
 
 func TestEncodingPackTypeInvalid(t *testing.T) {
-	d := ioutil.Discard
+	d := io.Discard
 
 	// The packedSize function doesn't handle slices to anything other than bytes.
 	var invalid []int
@@ -79,7 +78,7 @@ func TestEncodingPackType(t *testing.T) {
 		RawBytes(buf),
 	}
 	for _, i := range inputs {
-		if err := packType(ioutil.Discard, i); err != nil {
+		if err := packType(io.Discard, i); err != nil {
 			t.Errorf("packType(%#v): %v", i, err)
 		}
 	}

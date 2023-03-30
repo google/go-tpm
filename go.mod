@@ -1,6 +1,6 @@
 module github.com/google/go-tpm
 
-go 1.12
+go 1.20
 
 require (
 	github.com/google/go-tpm-tools v0.2.0
