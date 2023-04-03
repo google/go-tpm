@@ -16,7 +16,6 @@ package credactivation
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
@@ -78,13 +77,6 @@ func TestCredentialActivation(t *testing.T) {
 		public, err := x509.ParsePKIXPublicKey(p.Bytes)
 		if err != nil {
 			t.Fatal(err)
-		}
-
-		if ecdsaPub, ok := public.(*ecdsa.PublicKey); ok {
-			public, err = ecdsaPub.ECDH()
-			if err != nil {
-				t.Fatal(err)
-			}
 		}
 
 		aikDigest := mustDecodeBase64("5snpf9qRfKD2Tb72eLAZqC/a/MyUhg+IvdwDZkTJK9w=", t)
