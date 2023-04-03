@@ -21,6 +21,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
@@ -63,6 +64,12 @@ func generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secre
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating seed: %v", err)
 		}
+	case *ecdsa.PublicKey:
+		ecdhKey, err := ekKey.ECDH()
+		if err != nil {
+			return nil, nil, fmt.Errorf("transmuting ecdsa key to ecdh key: %v", err)
+		}
+		return generate(aik, ecdhKey, symBlockSize, secret, rnd)
 	case *rsa.PublicKey:
 		seed, encSecret, err = createRSASeed(aik, ekKey, symBlockSize, rnd)
 		if err != nil {
