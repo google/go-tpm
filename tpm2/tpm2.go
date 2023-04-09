@@ -183,6 +183,17 @@ func decodeReadPCRs(in []byte) (map[int][]byte, error) {
 // This is only a wrapper over TPM2_PCR_Read() call, thus can only return
 // at most 8 PCRs digests.
 func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
+	resp, err := ReadPCRsRaw(rw, sel)
+	if err != nil {
+		return nil, err
+	}
+
+	return decodeReadPCRs(resp)
+}
+
+// ReadPCRsRaw is very similar to ReadPCRs, except that it will return
+// the raw response of TPM2_PCR_Read() in a byte array without decoding.
+func ReadPCRsRaw(rw io.ReadWriter, sel PCRSelection) ([]byte, error) {
 	Cmd, err := encodeTPMLPCRSelection(sel)
 	if err != nil {
 		return nil, err
@@ -192,7 +203,7 @@ func ReadPCRs(rw io.ReadWriter, sel PCRSelection) (map[int][]byte, error) {
 		return nil, err
 	}
 
-	return decodeReadPCRs(resp)
+	return resp, nil
 }
 
 func decodeReadClock(in []byte) (uint64, uint64, error) {
