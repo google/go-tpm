@@ -2977,9 +2977,21 @@ type TPMSCreationData struct {
 	OutsideInfo TPM2BData
 }
 
+// TPMSIDObject represents a TPMS_ID_OBJECT.
+// See definition in Part 2: Structures, section 12.4.2.
+type TPMSIDObject struct {
+	// HMAC using the nameAlg of the storage key on the target TPM
+	IntegrityHMAC TPM2BDigest
+	// credential protector information returned if name matches the referenced object
+	// All of the encIdentity is encrypted, including the size field.
+	EncIdentity []byte
+}
+
 // TPM2BIDObject represents a TPM2B_ID_OBJECT.
 // See definition in Part 2: Structures, section 12.4.3.
-type TPM2BIDObject TPM2BData
+type TPM2BIDObject struct {
+	Credential TPMSIDObject `gotpm:"sized"`
+}
 
 // TPMANV represents a TPMA_NV.
 // See definition in Part 2: Structures, section 13.4.
