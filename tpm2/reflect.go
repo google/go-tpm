@@ -754,7 +754,7 @@ func cmdAuths[R any](cmd Command[R, *R]) ([]Session, error) {
 		if h, ok := authHandle.Interface().(AuthHandle); ok {
 			if h.Auth == nil {
 				return nil, fmt.Errorf("missing auth for '%v' parameter",
-					reflect.ValueOf(cmd).Elem().Type().Field(i).Name)
+					reflect.ValueOf(cmd).Type().Field(i).Name)
 			}
 			result = append(result, h.Auth)
 		} else {
@@ -781,7 +781,7 @@ func cmdHandles[R any](cmd Command[R, *R]) ([]byte, error) {
 
 		// Special behavior: nullable handles have an effective zero-value of
 		// TPM_RH_NULL.
-		if h.HandleValue() == 0 && hasTag(reflect.TypeOf(cmd).Elem().Field(i), "nullable") {
+		if h.HandleValue() == 0 && hasTag(reflect.TypeOf(cmd).Field(i), "nullable") {
 			h = TPMRHNull
 		}
 
@@ -804,14 +804,14 @@ func cmdNames[R any](cmd Command[R, *R]) ([]TPM2BName, error) {
 
 		// Special behavior: nullable handles have an effective zero-value of
 		// TPM_RH_NULL.
-		if h.HandleValue() == 0 && hasTag(reflect.TypeOf(cmd).Elem().Field(i), "nullable") {
+		if h.HandleValue() == 0 && hasTag(reflect.TypeOf(cmd).Field(i), "nullable") {
 			h = TPMRHNull
 		}
 
 		name := h.KnownName()
 		if name == nil {
 			return nil, fmt.Errorf("missing Name for '%v' parameter",
-				reflect.ValueOf(cmd).Elem().Type().Field(i).Name)
+				reflect.ValueOf(cmd).Type().Field(i).Name)
 		}
 		result = append(result, *name)
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"fmt"
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
@@ -119,6 +120,65 @@ func TestPCRReset(t *testing.T) {
 
 			if !allZero(postResetPCR16) {
 				t.Errorf("postResetPCR16 expected to be all Zero: %v", postExtendPCR16)
+			}
+		})
+	}
+}
+
+func TestPCREvent(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	cases := []struct {
+		name    string
+		hashalg TPMAlgID
+	}{
+		{"SHA1", TPMAlgSHA1},
+		{"SHA256", TPMAlgSHA256},
+		{"SHA384", TPMAlgSHA384},
+	}
+
+	// Extend every SRTM PCR with TPM2_PCR_Event
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			for i := 0; i < 17; i++ {
+				t.Run(fmt.Sprintf("PCR%02d", i), func(t *testing.T) {
+					PCRs, err := CreatePCRSelection([]int{i})
+					if err != nil {
+						t.Fatalf("Failed to create PCRSelection")
+					}
+
+					pcrRead := PCRRead{
+						PCRSelectionIn: TPMLPCRSelection{
+							PCRSelections: []TPMSPCRSelection{
+								{
+									Hash:      c.hashalg,
+									PCRSelect: PCRs,
+								},
+							},
+						},
+					}
+
+					pcrEvent := PCREvent{
+						PCRHandle: TPMHandle(i),
+						EventData: TPM2BEvent{Buffer: []byte("hello")},
+					}
+					if _, err := pcrEvent.Execute(thetpm); err != nil {
+						t.Fatalf("failed to extend pcr for test %v", err)
+					}
+
+					pcrReadRsp, err := pcrRead.Execute(thetpm)
+					if err != nil {
+						t.Fatalf("failed to read PCRs")
+					}
+					postExtendPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
+					if allZero(postExtendPCR16) {
+						t.Errorf("postExtendPCR16 not expected to be all Zero: %v", postExtendPCR16)
+					}
+				})
 			}
 		})
 	}
