@@ -87,10 +87,10 @@ func PasswordAuth(auth []byte) Session {
 }
 
 // Init is not required and has no effect for a password session.
-func (s *pwSession) Init(tpm transport.TPM) error { return nil }
+func (s *pwSession) Init(_ transport.TPM) error { return nil }
 
 // Cleanup is not required and has no effect for a password session.
-func (s *pwSession) CleanupFailure(tpm transport.TPM) error { return nil }
+func (s *pwSession) CleanupFailure(_ transport.TPM) error { return nil }
 
 // NonceTPM normally returns the last nonceTPM value from the session.
 // Since a password session is a pseudo-session with the auth value stuffed
@@ -102,7 +102,7 @@ func (s *pwSession) NonceTPM() TPM2BNonce { return TPM2BNonce{} }
 func (s *pwSession) NewNonceCaller() error { return nil }
 
 // Computes the authorization structure for the session.
-func (s *pwSession) Authorize(cc TPMCC, parms, addNonces []byte, _ []TPM2BName, _ int) (*TPMSAuthCommand, error) {
+func (s *pwSession) Authorize(_ TPMCC, _, _ []byte, _ []TPM2BName, _ int) (*TPMSAuthCommand, error) {
 	return &TPMSAuthCommand{
 		Handle:     TPMRSPW,
 		Nonce:      TPM2BNonce{},
@@ -114,7 +114,7 @@ func (s *pwSession) Authorize(cc TPMCC, parms, addNonces []byte, _ []TPM2BName, 
 }
 
 // Validates the response session structure for the session.
-func (s *pwSession) Validate(rc TPMRC, cc TPMCC, parms []byte, _ []TPM2BName, _ int, auth *TPMSAuthResponse) error {
+func (s *pwSession) Validate(_ TPMRC, _ TPMCC, _ []byte, _ []TPM2BName, _ int, auth *TPMSAuthResponse) error {
 	if len(auth.Nonce.Buffer) != 0 {
 		return fmt.Errorf("expected empty nonce in response auth to PW session, got %x", auth.Nonce)
 	}
@@ -141,12 +141,12 @@ func (s *pwSession) IsDecryption() bool { return false }
 // If this session is used for parameter decryption, encrypts the
 // parameter. Otherwise, does not modify the parameter.
 // Password sessions can't be used for decryption.
-func (s *pwSession) Encrypt(parameter []byte) error { return nil }
+func (s *pwSession) Encrypt(_ []byte) error { return nil }
 
 // If this session is used for parameter encryption, encrypts the
 // parameter. Otherwise, does not modify the parameter.
 // Password sessions can't be used for encryption.
-func (s *pwSession) Decrypt(parameter []byte) error { return nil }
+func (s *pwSession) Decrypt(_ []byte) error { return nil }
 
 // Handle returns the handle value associated with this session.
 // In the case of a password session, this is always TPM_RS_PW.

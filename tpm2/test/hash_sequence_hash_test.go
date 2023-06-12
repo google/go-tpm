@@ -2,9 +2,9 @@ package tpm2test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
-	"math/rand"
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
