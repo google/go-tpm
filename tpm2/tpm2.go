@@ -75,19 +75,18 @@ type PolicyCommand interface {
 	Update(policy *PolicyCalculator) error
 }
 
-// Shutdown_ is the input to TPM2_Shutdown.
+// Shutdown is the input to TPM2_Shutdown.
 // See definition in Part 3, Commands, section 9.4.
-// TODO: Rename this to Startup after adapter.go is deleted.
-type Shutdown_ struct {
+type Shutdown struct {
 	// TPM_SU_CLEAR or TPM_SU_STATE
 	ShutdownType TPMSU
 }
 
 // Command implements the Command interface.
-func (Shutdown_) Command() TPMCC { return TPMCCShutdown }
+func (Shutdown) Command() TPMCC { return TPMCCShutdown }
 
 // Execute executes the command and returns the response.
-func (cmd Shutdown_) Execute(t transport.TPM, s ...Session) (*ShutdownResponse, error) {
+func (cmd Shutdown) Execute(t transport.TPM, s ...Session) (*ShutdownResponse, error) {
 	var rsp ShutdownResponse
 	err := execute[ShutdownResponse](t, cmd, &rsp, s...)
 	if err != nil {
@@ -99,19 +98,18 @@ func (cmd Shutdown_) Execute(t transport.TPM, s ...Session) (*ShutdownResponse, 
 // ShutdownResponse is the response from TPM2_Shutdown.
 type ShutdownResponse struct{}
 
-// Startup_ is the input to TPM2_Startup.
+// Startup is the input to TPM2_Startup.
 // See definition in Part 3, Commands, section 9.3.
-// TODO: Rename this to Startup after adapter.go is deleted.
-type Startup_ struct {
+type Startup struct {
 	// TPM_SU_CLEAR or TPM_SU_STATE
 	StartupType TPMSU
 }
 
 // Command implements the Command interface.
-func (Startup_) Command() TPMCC { return TPMCCStartup }
+func (Startup) Command() TPMCC { return TPMCCStartup }
 
 // Execute executes the command and returns the response.
-func (cmd Startup_) Execute(t transport.TPM, s ...Session) (*StartupResponse, error) {
+func (cmd Startup) Execute(t transport.TPM, s ...Session) (*StartupResponse, error) {
 	var rsp StartupResponse
 	err := execute[StartupResponse](t, cmd, &rsp, s...)
 	if err != nil {
