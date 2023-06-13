@@ -74,17 +74,17 @@ func (mc *mockConn) RemoteAddr() net.Addr {
 }
 
 // SetDeadline returns nil.
-func (mc *mockConn) SetDeadline(t time.Time) error {
+func (mc *mockConn) SetDeadline(_ time.Time) error {
 	return nil
 }
 
 // SetReadDeadline returns nil.
-func (mc *mockConn) SetReadDeadline(t time.Time) error {
+func (mc *mockConn) SetReadDeadline(_ time.Time) error {
 	return nil
 }
 
 // SetWriteDeadline returns nil.
-func (mc *mockConn) SetWriteDeadline(t time.Time) error {
+func (mc *mockConn) SetWriteDeadline(_ time.Time) error {
 	return nil
 }
 

@@ -7,4 +7,4 @@ import (
 )
 
 // Not implemented on Windows.
-func poll(f *os.File) error { return nil }
+func poll(_ *os.File) error { return nil }
