@@ -20,7 +20,6 @@ import (
 	"crypto/sha1"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/google/go-tpm/tpm"
@@ -72,7 +71,7 @@ func main() {
 		return
 	}
 
-	if err := ioutil.WriteFile(*blobname, blob, 0600); err != nil {
+	if err := os.WriteFile(*blobname, blob, 0600); err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't write to file %s: %s\n", *blobname, err)
 		return
 	}

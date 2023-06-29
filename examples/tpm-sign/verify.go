@@ -21,7 +21,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 )
 
@@ -41,22 +41,22 @@ func verifyAction() {
 	var err error
 	var data []byte
 	if *dataPath == "" {
-		data, err = ioutil.ReadAll(os.Stdin)
+		data, err = io.ReadAll(os.Stdin)
 	} else {
-		data, err = ioutil.ReadFile(*dataPath)
+		data, err = os.ReadFile(*dataPath)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading input data: %s\n", err)
 		return
 	}
 
-	signature, err := ioutil.ReadFile(*signaturePath)
+	signature, err := os.ReadFile(*signaturePath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading signature file: %s\n", err)
 		return
 	}
 
-	pubKeyBytes, err := ioutil.ReadFile(*pubKeyPath)
+	pubKeyBytes, err := os.ReadFile(*pubKeyPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading public key file: %s\n", err)
 		return

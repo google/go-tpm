@@ -20,7 +20,7 @@ import (
 	"crypto/sha1"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/google/go-tpm/tpm"
@@ -48,9 +48,9 @@ func extendPcrAction() {
 	} else {
 		var data []byte
 		if *dataPath == "" {
-			data, err = ioutil.ReadAll(os.Stdin)
+			data, err = io.ReadAll(os.Stdin)
 		} else {
-			data, err = ioutil.ReadFile(*dataPath)
+			data, err = os.ReadFile(*dataPath)
 		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to read input: %s\n", err)

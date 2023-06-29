@@ -9,7 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 
@@ -64,7 +63,7 @@ func main() {
 		fmt.Println(string(cert))
 		return
 	}
-	if err := ioutil.WriteFile(*outPath, cert, os.ModePerm); err != nil {
+	if err := os.WriteFile(*outPath, cert, os.ModePerm); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

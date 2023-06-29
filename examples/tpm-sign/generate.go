@@ -21,7 +21,6 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -83,7 +82,7 @@ func generateAction() {
 		return
 	}
 	fmt.Printf("Writing keyblob to %s\n", *keyblobPath)
-	if err = ioutil.WriteFile(*keyblobPath, keyblob, 0644); err != nil {
+	if err = os.WriteFile(*keyblobPath, keyblob, 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing keyblob file: %s\n", err)
 		return
 	}
@@ -100,7 +99,7 @@ func generateAction() {
 		return
 	}
 	fmt.Printf("Writing public key to %s\n", *pubKeyPath)
-	if err = ioutil.WriteFile(*pubKeyPath, pubKeyBytes, 0644); err != nil {
+	if err = os.WriteFile(*pubKeyPath, pubKeyBytes, 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing public key file: %s\n", err)
 		return
 	}
