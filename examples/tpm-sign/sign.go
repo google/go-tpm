@@ -20,7 +20,7 @@ import (
 	"crypto/sha1"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/google/go-tpm/tpm"
@@ -69,7 +69,7 @@ func signAction() {
 		copy(migrationAuth[:], ma[:])
 	}
 
-	keyblob, err := ioutil.ReadFile(*keyblobPath)
+	keyblob, err := os.ReadFile(*keyblobPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading keyblob file: %s\n", err)
 		return
@@ -83,9 +83,9 @@ func signAction() {
 
 	var data []byte
 	if *dataPath == "" {
-		data, err = ioutil.ReadAll(os.Stdin)
+		data, err = io.ReadAll(os.Stdin)
 	} else {
-		data, err = ioutil.ReadFile(*dataPath)
+		data, err = os.ReadFile(*dataPath)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading input data: %s\n", err)
@@ -104,7 +104,7 @@ func signAction() {
 		return
 	}
 	fmt.Printf("Writing signature to %s\n", *signaturePath)
-	if err = ioutil.WriteFile(*signaturePath, signature, 0644); err != nil {
+	if err = os.WriteFile(*signaturePath, signature, 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to write signature to file: %s\n", err)
 		return
 	}

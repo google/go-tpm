@@ -20,7 +20,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
-	"io/ioutil"
 	mathrand "math/rand"
 	"os"
 	"testing"
@@ -372,7 +371,7 @@ func TestLoadKey2(t *testing.T) {
 	defer rwc.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
-	blob, err := ioutil.ReadFile("./aikblob")
+	blob, err := os.ReadFile("./aikblob")
 	if err != nil {
 		t.Skip("No aikblob file; skipping test")
 	}
@@ -394,7 +393,7 @@ func TestQuote2(t *testing.T) {
 	defer rwc.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
-	blob, err := ioutil.ReadFile("./aikblob")
+	blob, err := os.ReadFile("./aikblob")
 	if err != nil {
 		t.Skip("No aikblob file; skipping test")
 	}
@@ -429,7 +428,7 @@ func TestGetPubKey(t *testing.T) {
 	defer rwc.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
-	blob, err := ioutil.ReadFile("./aikblob")
+	blob, err := os.ReadFile("./aikblob")
 	if err != nil {
 		t.Skip("No aikblob file; skipping test")
 	}
@@ -458,7 +457,7 @@ func TestQuote(t *testing.T) {
 	defer rwc.Close()
 
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
-	blob, err := ioutil.ReadFile("./aikblob")
+	blob, err := os.ReadFile("./aikblob")
 	if err != nil {
 		t.Skip("No aikblob file; skipping test")
 	}
@@ -493,7 +492,7 @@ func TestQuote(t *testing.T) {
 
 func TestUnmarshalRSAPublicKey(t *testing.T) {
 	// Get the key from aikblob, assuming it exists. Otherwise, skip the test.
-	blob, err := ioutil.ReadFile("./aikblob")
+	blob, err := os.ReadFile("./aikblob")
 	if err != nil {
 		t.Skip("No aikblob file; skipping test")
 	}
