@@ -1469,6 +1469,30 @@ func (cmd FlushContext) Execute(t transport.TPM, s ...Session) (*FlushContextRes
 // FlushContextResponse is the response from TPM2_FlushContext.
 type FlushContextResponse struct{}
 
+// EvictControl is the input to TPM2_EvictControl.
+// See definition in Part 3, Commands, section 28.5
+type EvictControl struct {
+	// TPM_RH_OWNER or TPM_RH_PLATFORM+{PP}
+	Auth             handle `gotpm:"handle,auth"`
+	ObjectHandle     handle `gotpm:"handle"`
+	PersistentHandle TPMIDHPersistent
+}
+
+// EvictControlResponse is the response from TPM2_EvictControl.
+type EvictControlResponse struct{}
+
+// Command implements the Command interface.
+func (EvictControl) Command() TPMCC { return TPMCCEvictControl }
+
+// Execute executes the command and returns the response.
+func (cmd EvictControl) Execute(t transport.TPM, s ...Session) (*EvictControlResponse, error) {
+	var rsp EvictControlResponse
+	if err := execute[EvictControlResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
 // GetCapability is the input to TPM2_GetCapability.
 // See definition in Part 3, Commands, section 30.2
 type GetCapability struct {
