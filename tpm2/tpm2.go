@@ -1493,6 +1493,48 @@ func (cmd EvictControl) Execute(t transport.TPM, s ...Session) (*EvictControlRes
 	return &rsp, nil
 }
 
+// Import is the input to TPM2_Import.
+// See definition in Part 3, Commands, section 13.3
+type Import struct {
+	// handle of parent for new object
+	ParentHandle handle `gotpm:"handle,auth"`
+
+	// The optional symmetric encryption key used as the inner wrapper for duplicate
+	// If SymmetricAlg is TPM_ALG_NULL, then this parametert shall be the Empty Buffer
+	EncryptionKey TPM2BData
+
+	// The public area of the object to be imported
+	ObjectPublic TPM2BPublic
+
+	// The symmetrically encrypted duplicate object that may contain an inner
+	// symmetric wrapper
+	Duplicate TPM2BPrivate
+
+	// The seed for the symmetric key and HMAC key
+	InSymSeed TPM2BEncryptedSecret
+
+	// Definition of the symmetric algorithm to use for the inner wrapper
+	Symmetric TPMTSymDef
+}
+
+// ImportResponse is the response from TPM2_Import.
+type ImportResponse struct {
+	// the private portion of the object
+	OutPrivate TPM2BPrivate
+}
+
+// Command implements the Command interface.
+func (Import) Command() TPMCC { return TPMCCImport }
+
+// Execute executes the command and returns the response.
+func (cmd Import) Execute(t transport.TPM, s ...Session) (*ImportResponse, error) {
+	var rsp ImportResponse
+	if err := execute[ImportResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
 // GetCapability is the input to TPM2_GetCapability.
 // See definition in Part 3, Commands, section 30.2
 type GetCapability struct {
