@@ -172,10 +172,13 @@ func (c *Conn) Write(b []byte) (int, error) {
 	buff.WriteByte(0)
 	// size of the command
 	binary.Write(buff, binary.BigEndian, uint32(len(b)))
-	// raw command
-	buff.Write(b)
 
 	if _, err := buff.WriteTo(c.conn); err != nil {
+		return 0, fmt.Errorf("write MS simulator command: %v", err)
+	}
+	// The raw command is transmitted separately. Easy to analyze in wireshark.
+	// https://github.com/google/go-tpm/pull/339
+	if _, err := c.conn.Write(b); err != nil {
 		return 0, fmt.Errorf("write MS simulator command: %v", err)
 	}
 	return len(b), nil
