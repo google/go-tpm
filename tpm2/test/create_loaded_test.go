@@ -74,6 +74,10 @@ func TestCreateLoaded(t *testing.T) {
 			ParentHandle: TPMRHEndorsement,
 			InPublic:     New2BTemplate(&ECCEKTemplate),
 		},
+		"NoParentPrimaryKey": {
+			// Make the object in the null hierarchy and ensure that go-tpm supports not providing the parent handle at all.
+			InPublic: New2BTemplate(&ECCEKTemplate),
+		},
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,
 			InSensitive: TPM2BSensitiveCreate{
