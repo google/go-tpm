@@ -366,16 +366,11 @@ func TestPolicyPCR(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	PCRs, err := CreatePCRSelection([]int{0, 1, 2, 3, 7})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
-	}
-
 	selection := TPMLPCRSelection{
 		PCRSelections: []TPMSPCRSelection{
 			{
 				Hash:      TPMAlgSHA1,
-				PCRSelect: PCRs,
+				PCRSelect: PCClientCompatible.PCRs(0, 1, 2, 3, 7),
 			},
 		},
 	}
