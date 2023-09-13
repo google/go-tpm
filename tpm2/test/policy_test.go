@@ -10,6 +10,59 @@ import (
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
+// This test isn't interesting, but it checks that you can omit the handles on `StartAuthSession`.
+func TestCreatePolicySession(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		typ  TPMSE
+	}{
+		{
+			"trial",
+			TPMSETrial,
+		},
+		{
+			"policy",
+			TPMSEPolicy,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			thetpm, err := simulator.OpenSimulator()
+			if err != nil {
+				t.Fatalf("could not connect to TPM simulator: %v", err)
+			}
+			defer thetpm.Close()
+
+			sas, err := StartAuthSession{
+				SessionType: tc.typ,
+				AuthHash:    TPMAlgSHA256,
+				NonceCaller: TPM2BNonce{
+					Buffer: make([]byte, 16),
+				},
+			}.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("StartAuthSession() = %v", err)
+			}
+
+			pgd, err := PolicyGetDigest{
+				PolicySession: sas.SessionHandle,
+			}.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("PolicyGetDigest() = %v", err)
+			}
+			if digest := pgd.PolicyDigest.Buffer; !bytes.Equal(digest, make([]byte, len(digest))) {
+				t.Errorf("PolicyGetDigest() = %x, want all zeros", digest)
+			}
+
+			_, err = FlushContext{
+				FlushHandle: sas.SessionHandle,
+			}.Execute(thetpm)
+			if err != nil {
+				t.Errorf("FlushContext() = %v", err)
+			}
+		})
+	}
+}
+
 func signingKey(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{

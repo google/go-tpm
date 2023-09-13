@@ -126,10 +126,10 @@ type StartupResponse struct{}
 type StartAuthSession struct {
 	// handle of a loaded decrypt key used to encrypt salt
 	// may be TPM_RH_NULL
-	TPMKey handle `gotpm:"handle,nullable"`
+	TPMKey handle `gotpm:"handle"`
 	// entity providing the authValue
 	// may be TPM_RH_NULL
-	Bind handle `gotpm:"handle,nullable"`
+	Bind handle `gotpm:"handle"`
 	// initial nonceCaller, sets nonceTPM size for the session
 	// shall be at least 16 octets
 	NonceCaller TPM2BNonce
@@ -392,7 +392,7 @@ type UnsealResponse struct {
 type CreateLoaded struct {
 	// Handle of a transient storage key, a persistent storage key,
 	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER, TPM_RH_PLATFORM+{PP}, or TPM_RH_NULL
-	ParentHandle handle `gotpm:"handle,auth,nullable"`
+	ParentHandle handle `gotpm:"handle,auth"`
 	// the sensitive data, see TPM 2.0 Part 1 Sensitive Values
 	InSensitive TPM2BSensitiveCreate
 	// the public template
