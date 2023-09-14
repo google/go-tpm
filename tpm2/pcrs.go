@@ -2,19 +2,21 @@ package tpm2
 
 import "fmt"
 
-// PCRSelectionFormatter is a Platform TPM Profile-specific interface for
+// pcrSelectionFormatter is a Platform TPM Profile-specific interface for
 // formatting TPM PCR selections.
-type PCRSelectionFormatter interface {
+// This interface isn't (yet) part of the go-tpm public interface. After we
+// add a second implementation, we should consider making it public.
+type pcrSelectionFormatter interface {
 	// PCRs returns the TPM PCR selection bitmask associated with the given PCR indices.
 	// May panic if passed invalid PCR indices (e.g., negative values).
 	PCRs(pcrs ...int) []byte
 }
 
-// PCClientCompatible is a PCRSelectionFormatter that formats PCR selections
+// PCClientCompatible is a pcrSelectionFormatter that formats PCR selections
 // suitable for use in PC Client PTP-compatible TPMs (the vast majority):
 // https://trustedcomputinggroup.org/resource/pc-client-platform-tpm-profile-ptp-specification/
 // PC Client mandates at least 24 PCRs but does not provide an upper limit.
-var PCClientCompatible = pcClient{}
+var PCClientCompatible pcrSelectionFormatter = pcClient{}
 
 type pcClient struct{}
 
