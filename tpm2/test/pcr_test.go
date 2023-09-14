@@ -14,7 +14,7 @@ import (
 
 func TestPCRs(t *testing.T) {
 	for i, tc := range []struct {
-		pcrs       []int
+		pcrs       []uint
 		wantSelect []byte
 	}{
 		{
@@ -22,31 +22,31 @@ func TestPCRs(t *testing.T) {
 			wantSelect: []byte{0x00, 0x00, 0x00},
 		},
 		{
-			pcrs:       []int{0},
+			pcrs:       []uint{0},
 			wantSelect: []byte{0x01, 0x00, 0x00},
 		},
 		{
-			pcrs:       []int{0, 1, 2},
+			pcrs:       []uint{0, 1, 2},
 			wantSelect: []byte{0x07, 0x00, 0x00},
 		},
 		{
-			pcrs:       []int{0, 7},
+			pcrs:       []uint{0, 7},
 			wantSelect: []byte{0x81, 0x00, 0x00},
 		},
 		{
-			pcrs:       []int{8},
+			pcrs:       []uint{8},
 			wantSelect: []byte{0x00, 0x01, 0x00},
 		},
 		{
-			pcrs:       []int{1, 8, 9},
+			pcrs:       []uint{1, 8, 9},
 			wantSelect: []byte{0x02, 0x03, 0x00},
 		},
 		{
-			pcrs:       []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+			pcrs:       []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
 			wantSelect: []byte{0xff, 0xff, 0xff},
 		},
 		{
-			pcrs: []int{255},
+			pcrs: []uint{255},
 			wantSelect: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80},
 		},
@@ -93,7 +93,7 @@ func TestPCRReset(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	DebugPCR := 16
+	DebugPCR := uint(16)
 
 	cases := []struct {
 		name    string

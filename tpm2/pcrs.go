@@ -1,15 +1,12 @@
 package tpm2
 
-import "fmt"
-
 // pcrSelectionFormatter is a Platform TPM Profile-specific interface for
 // formatting TPM PCR selections.
 // This interface isn't (yet) part of the go-tpm public interface. After we
 // add a second implementation, we should consider making it public.
 type pcrSelectionFormatter interface {
 	// PCRs returns the TPM PCR selection bitmask associated with the given PCR indices.
-	// May panic if passed invalid PCR indices (e.g., negative values).
-	PCRs(pcrs ...int) []byte
+	PCRs(pcrs ...uint) []byte
 }
 
 // PCClientCompatible is a pcrSelectionFormatter that formats PCR selections
@@ -24,9 +21,9 @@ type pcClient struct{}
 // the PCRs in the minimum PCR allocation.
 const pcClientMinimumPCRCount = 24
 
-func (pcClient) PCRs(pcrs ...int) []byte {
+func (pcClient) PCRs(pcrs ...uint) []byte {
 	// Find the biggest PCR we selected.
-	maxPCR := 0
+	maxPCR := uint(0)
 	for _, pcr := range pcrs {
 		if pcr > maxPCR {
 			maxPCR = pcr
@@ -43,11 +40,6 @@ func (pcClient) PCRs(pcrs ...int) []byte {
 	// enough bits to store our selections.
 	selection := make([]byte, selectionSize)
 	for _, pcr := range pcrs {
-		// Panic if negative PCRs are selected.
-		if pcr < 0 {
-			panic(fmt.Sprintf("invalid PCR index %v selected", pcr))
-		}
-
 		// The PCR selection mask is byte-wise little-endian:
 		//   select[0] contains bits representing the selection of PCRs 0 through 7
 		//   select[1] contains PCRs 8 through 15, and so on.
