@@ -1,0 +1,75 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            c2:32:d1:86:c6:79:a6:a5
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: CN = CA, DC = vsphere, DC = local, C = US, ST = California, O = sc2-10-184-103-126.eng.vmware.com, OU = VMware Engineering
+        Validity
+            Not Before: Aug 29 20:38:56 2023 GMT
+            Not After : Aug 17 08:45:41 2033 GMT
+        Subject: 2.23.133.2.1 = id:564D5700, 2.23.133.2.2 = VMware TPM2, 2.23.133.2.3 = id:00020065
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:cf:86:ed:ce:5e:02:a2:04:bd:3d:18:92:de:b2:
+                    d5:ab:0d:75:df:8f:de:5c:be:f0:59:60:83:a8:16:
+                    70:86:91:ae:ba:bb:ec:f6:dd:c5:da:34:04:99:1e:
+                    76:72:c4:c4:dc:81:e0:ab:11:2f:16:7c:e1:ef:da:
+                    cb:3e:d1:ef:8c:33:c2:33:5d:32:25:84:49:13:be:
+                    a7:4d:70:10:a3:37:a8:20:5b:39:8c:98:93:4c:8d:
+                    34:26:00:48:ff:47:1e:34:9c:a2:06:5d:89:5f:c6:
+                    4d:74:8d:b1:a2:e4:a5:48:c7:11:0b:fd:a1:fb:b8:
+                    14:01:14:71:40:6c:5d:fd:e8:a5:6a:fc:f0:a0:5a:
+                    4c:87:68:76:21:12:fe:f4:12:0d:3d:03:a8:82:ba:
+                    1d:e7:2c:0b:58:f5:87:69:95:a1:d2:be:35:39:2f:
+                    85:ff:a1:b9:d5:4a:42:06:03:01:cf:66:f3:2e:f3:
+                    55:42:55:67:e9:0a:f1:4b:a7:fc:a1:4f:08:07:d6:
+                    b2:a2:23:5d:12:b0:e3:38:82:da:07:15:68:1e:0d:
+                    ee:95:77:06:01:8a:bd:9e:72:9e:f0:60:c7:7d:65:
+                    49:ca:b2:b7:8a:9d:1d:f1:4f:8a:cc:96:49:ba:0d:
+                    b3:ea:3a:c1:1e:56:5e:1f:7a:05:1e:98:36:1a:ca:
+                    65:ab
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Key Encipherment
+            X509v3 Subject Alternative Name: critical
+                DirName:/2.23.133.2.1=id:564D5700/2.23.133.2.2=VMware TPM2/2.23.133.2.3=id:00020065
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage: 
+                2.23.133.8.1
+            X509v3 Subject Directory Attributes: 
+0...2.0.....t   0.0...g....1
+            X509v3 Subject Key Identifier: 
+                F2:E8:28:BA:BE:1A:93:75:BB:D3:03:55:0D:E7:B3:EB:BF:CD:39:B7
+            X509v3 Authority Key Identifier: 
+                A6:C2:AF:A2:C3:CE:68:BC:5C:B1:8B:83:11:9A:79:FA:C8:96:C1:8B
+            Authority Information Access: 
+                CA Issuers - URI:https://sc2-10-184-103-126.eng.vmware.com/afd/vecs/ca
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        ab:44:11:4e:29:ef:5a:77:cd:73:93:72:79:6a:12:35:b9:e6:
+        c2:0c:f3:ef:01:67:e0:6e:69:2c:78:ca:21:eb:21:93:27:06:
+        ec:4d:f3:71:c3:87:dc:25:68:d6:91:9f:9d:d7:df:99:2a:e2:
+        58:75:bb:72:e5:ab:ce:56:e4:9b:d7:c9:d3:99:a2:87:80:62:
+        0d:0a:67:72:14:ed:20:f6:84:8f:1b:77:b6:48:b0:ea:a5:f0:
+        db:de:14:1f:38:e3:ab:b7:83:4e:3e:64:3e:78:c1:1d:70:b1:
+        c5:df:b6:44:92:f2:7b:12:7b:f6:5e:fd:7c:5e:97:3b:0e:97:
+        f5:c2:20:2b:ac:a8:8e:a3:db:87:01:5d:b3:5d:f0:9c:99:5a:
+        9a:b1:7b:a8:4c:83:e6:99:89:60:2e:81:a7:1c:30:29:4c:56:
+        67:9f:a7:c7:0a:a7:3f:85:5a:25:8a:67:33:46:19:36:cd:38:
+        9a:7a:65:2f:89:fd:22:31:d5:c8:73:0b:95:07:bb:b0:ec:dc:
+        b9:04:0d:ac:8a:b4:46:c2:d8:46:11:b3:91:a2:ac:8c:5e:5b:
+        94:b5:38:e3:d2:8e:87:ba:4e:b2:7a:8f:0e:33:5d:d5:00:9d:
+        f2:0c:4e:87:5d:e1:c9:62:ac:b6:90:98:3c:82:59:3a:b3:8a:
+        1b:25:4c:dd:63:49:0b:8d:2c:5f:67:2a:f0:33:09:30:8b:5c:
+        08:62:7a:2f:62:a9:f1:c2:70:57:a8:cd:73:48:51:1f:20:50:
+        a1:e6:b1:78:65:fe:a7:69:0d:cc:5c:62:28:a3:55:91:7c:d8:
+        e0:2b:31:10:d4:9b:69:03:91:b6:f0:ea:5d:1a:04:ec:0e:25:
+        fa:96:8f:fd:32:7d:35:10:a2:5e:4b:cb:a1:20:26:d0:15:97:
+        b8:7c:1e:54:10:f3:e4:64:e2:09:8c:6c:6d:e7:c1:51:64:91:
+        53:ec:5b:d3:5b:9c:b2:12:1b:4c:5e:1e:9c:97:00:cc:66:f3:
+        75:ee:42:04:4a:55

@@ -2781,6 +2781,23 @@ type TPMTPublic struct {
 	Unique TPMUPublicID `gotpm:"tag=Type"`
 }
 
+// Copy returns a deep-copy of this object.
+//
+// Please note, due to the marshalling logic's dependency on valid union tags,
+// this function panics if the source of the copy is an emptyTPMTPublic object.
+func Copy[T Marshallable, P interface {
+	*T
+	Unmarshallable
+}](t T) (T, error) {
+
+	cpy, err := Unmarshal[T, P](Marshal(t))
+	if err != nil {
+		var empty T
+		return empty, err
+	}
+	return *cpy, nil
+}
+
 // TPM2BPublic represents a TPM2B_PUBLIC.
 // See definition in Part 2: Structures, section 12.2.5.
 type TPM2BPublic = TPM2B[TPMTPublic, *TPMTPublic]

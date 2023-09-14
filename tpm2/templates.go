@@ -1,5 +1,9 @@
 package tpm2
 
+import (
+	"fmt"
+)
+
 var (
 	// RSASRKTemplate contains the TCG reference RSA-2048 SRK template.
 	// https://trustedcomputinggroup.org/wp-content/uploads/TCG-TPM-v2.0-Provisioning-Guidance-Published-v1r1.pdf
@@ -198,3 +202,25 @@ var (
 		),
 	}
 )
+
+// RSAEKTemplateWithPublicKey returns a new TPMT_PUBLIC using the template for
+// an RSA EK and the specified RSA public key.
+func RSAEKTemplateWithPublicKey(pubKey TPM2BPublicKeyRSA) (TPMTPublic, error) {
+	ek, err := Copy(RSAEKTemplate)
+	if err != nil {
+		return TPMTPublic{}, fmt.Errorf("failed to copy rsa ek tpl: %w", err)
+	}
+	ek.Unique = NewTPMUPublicID(TPMAlgRSA, &pubKey)
+	return ek, err
+}
+
+// ECCEKTemplateWithPoint returns a new TPMT_PUBLIC using the template for an
+// ECC EK and the specified ECC point.
+func ECCEKTemplateWithPoint(point TPMSECCPoint) (TPMTPublic, error) {
+	ek, err := Copy(ECCEKTemplate)
+	if err != nil {
+		return TPMTPublic{}, fmt.Errorf("failed to copy ecc ek tpl: %w", err)
+	}
+	ek.Unique = NewTPMUPublicID(TPMAlgECC, &point)
+	return ek, err
+}

@@ -1,0 +1,63 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            fc:83:32:14:9a:79:21:04
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: CN = CA, DC = vsphere, DC = local, C = US, ST = California, O = sc2-10-184-103-126.eng.vmware.com, OU = VMware Engineering
+        Validity
+            Not Before: Aug 29 20:38:56 2023 GMT
+            Not After : Aug 17 08:45:41 2033 GMT
+        Subject: 2.23.133.2.1 = id:564D5700, 2.23.133.2.2 = VMware TPM2, 2.23.133.2.3 = id:00020065
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:3e:3f:43:89:f9:26:ee:b4:d7:be:09:9d:d0:bf:
+                    18:e2:66:33:0b:4a:d6:35:db:68:6b:fc:8c:9b:09:
+                    88:2d:68:8c:bd:db:c5:1f:da:80:34:a7:cd:27:a3:
+                    2b:fb:cc:52:d1:25:65:25:d1:c8:c8:b7:a1:9e:b4:
+                    b2:ae:b1:3a:1c
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Key Agreement
+            X509v3 Subject Alternative Name: critical
+                DirName:/2.23.133.2.1=id:564D5700/2.23.133.2.2=VMware TPM2/2.23.133.2.3=id:00020065
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Extended Key Usage: 
+                2.23.133.8.1
+            X509v3 Subject Directory Attributes: 
+0...2.0.....t   0.0...g....1
+            X509v3 Subject Key Identifier: 
+                96:B5:1C:EA:7C:37:0F:79:AB:47:86:09:21:A3:06:FC:E4:48:72:08
+            X509v3 Authority Key Identifier: 
+                A6:C2:AF:A2:C3:CE:68:BC:5C:B1:8B:83:11:9A:79:FA:C8:96:C1:8B
+            Authority Information Access: 
+                CA Issuers - URI:https://sc2-10-184-103-126.eng.vmware.com/afd/vecs/ca
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        39:80:c3:64:13:eb:a9:90:91:41:e8:50:72:68:76:c7:d9:fa:
+        da:27:ab:4e:83:13:2c:6d:0b:e3:d8:6d:5d:a9:fe:eb:f1:6f:
+        57:26:3d:a8:1c:6f:90:eb:06:38:d8:f2:92:0d:15:58:35:80:
+        41:92:5e:f7:f6:77:8f:7e:b4:ba:ef:31:9b:38:e9:26:56:9d:
+        c2:53:32:63:05:a0:3b:b6:11:5a:e9:9a:92:d6:1e:4d:1e:89:
+        10:f3:58:06:15:7e:f0:cc:7a:cd:22:aa:24:60:84:65:2d:a2:
+        b7:05:ee:d7:54:75:c9:ac:43:3a:47:ec:62:fe:cd:99:9a:d4:
+        75:23:92:59:2d:c2:92:67:9a:85:62:f9:4a:26:84:57:d3:da:
+        4d:c8:41:3e:0c:73:4a:9b:d3:0f:53:47:22:71:7d:74:8a:07:
+        46:87:37:93:4e:6e:e7:bd:c6:e5:a7:c3:4b:97:d8:04:6d:c6:
+        fe:7a:3d:04:d5:da:0d:f4:e6:0a:cf:8b:c8:72:37:d3:e4:2e:
+        73:c0:cd:10:9e:34:ab:43:14:cf:6d:73:02:54:6e:fc:94:1e:
+        94:8e:c1:52:ee:13:69:d2:a9:94:e0:4b:12:fa:a6:72:64:8a:
+        25:02:b0:d1:72:39:b2:40:af:17:fc:95:2e:92:b3:ea:54:dc:
+        de:14:e5:95:7f:5d:dc:a0:ea:39:b2:25:18:05:6e:48:7c:ca:
+        09:d0:1a:cb:4b:21:ab:36:e1:a0:07:94:74:9b:f9:71:19:e6:
+        50:6f:9c:bf:dd:88:65:3e:7e:5a:7f:d1:49:ba:eb:5f:82:42:
+        53:44:45:0c:47:fb:9e:d0:fa:4e:48:f5:40:a9:c7:26:a6:b7:
+        85:ac:18:14:ea:25:2c:59:87:41:c2:35:54:ff:9f:51:53:17:
+        4b:46:6f:0e:7e:c9:c7:9e:db:96:24:f8:e8:dd:05:7a:90:0e:
+        d4:e3:3e:77:9c:f3:ba:81:42:e9:9f:8b:14:f5:d6:f9:1e:7c:
+        d1:bd:41:9e:3e:c4
