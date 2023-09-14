@@ -4,54 +4,11 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"fmt"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
 
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
-	"github.com/google/go-tpm/tpmutil"
 )
-
-func CreatePCRSelection(s []int) ([]byte, error) {
-
-	const sizeOfPCRSelect = 3
-
-	PCRs := make(tpmutil.RawBytes, sizeOfPCRSelect)
-
-	for _, n := range s {
-		if n >= 8*sizeOfPCRSelect {
-			return nil, fmt.Errorf("PCR index %d is out of range (exceeds maximum value %d)", n, 8*sizeOfPCRSelect-1)
-		}
-		byteNum := n / 8
-		bytePos := byte(1 << (n % 8))
-		PCRs[byteNum] |= bytePos
-	}
-
-	return PCRs, nil
-}
-
-func TestCreatePCRSelection(t *testing.T) {
-
-	emptyTest, err := CreatePCRSelection([]int{})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
-	}
-
-	if !cmp.Equal(emptyTest, []byte{0, 0, 0}) {
-		t.Fatalf("emptyTest does not return valid PCRs")
-	}
-
-	filledTest, err := CreatePCRSelection([]int{0, 1, 2})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
-	}
-
-	if !cmp.Equal(filledTest, []byte{7, 0, 0}) {
-		t.Fatalf("filledTest does not return valid PCRs")
-	}
-}
 
 func TestSign(t *testing.T) {
 
@@ -60,11 +17,6 @@ func TestSign(t *testing.T) {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
 	defer thetpm.Close()
-
-	PCR7, err := CreatePCRSelection([]int{7})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
-	}
 
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
@@ -99,7 +51,7 @@ func TestSign(t *testing.T) {
 			PCRSelections: []TPMSPCRSelection{
 				{
 					Hash:      TPMAlgSHA1,
-					PCRSelect: PCR7,
+					PCRSelect: PCClientCompatible.PCRs(7),
 				},
 			},
 		},

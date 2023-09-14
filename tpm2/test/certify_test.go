@@ -21,10 +21,6 @@ func TestCertify(t *testing.T) {
 
 	Auth := []byte("password")
 
-	PCR7, err := CreatePCRSelection([]int{7})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
-	}
 	public := New2B(TPMTPublic{
 		Type:    TPMAlgRSA,
 		NameAlg: TPMAlgSHA256,
@@ -58,7 +54,7 @@ func TestCertify(t *testing.T) {
 		PCRSelections: []TPMSPCRSelection{
 			{
 				Hash:      TPMAlgSHA256,
-				PCRSelect: PCR7,
+				PCRSelect: PCClientCompatible.PCRs(7),
 			},
 		},
 	}
@@ -211,15 +207,11 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 		),
 	})
 
-	PCR7, err := CreatePCRSelection([]int{7})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
-	}
 	pcrSelection := TPMLPCRSelection{
 		PCRSelections: []TPMSPCRSelection{
 			{
 				Hash:      TPMAlgSHA1,
-				PCRSelect: PCR7,
+				PCRSelect: PCClientCompatible.PCRs(7),
 			},
 		},
 	}

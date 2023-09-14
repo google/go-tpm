@@ -30,11 +30,6 @@ func TestCombinedContext(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	PCR7, err := CreatePCRSelection([]int{7})
-	if err != nil {
-		t.Fatalf("Failed to create PCRSelection")
-	}
-
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
 
@@ -67,7 +62,7 @@ func TestCombinedContext(t *testing.T) {
 			PCRSelections: []TPMSPCRSelection{
 				{
 					Hash:      TPMAlgSHA1,
-					PCRSelect: PCR7,
+					PCRSelect: PCClientCompatible.PCRs(7),
 				},
 			},
 		},

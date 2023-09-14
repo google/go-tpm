@@ -12,6 +12,54 @@ import (
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
+func TestPCRs(t *testing.T) {
+	for i, tc := range []struct {
+		pcrs       []uint
+		wantSelect []byte
+	}{
+		{
+			pcrs:       nil,
+			wantSelect: []byte{0x00, 0x00, 0x00},
+		},
+		{
+			pcrs:       []uint{0},
+			wantSelect: []byte{0x01, 0x00, 0x00},
+		},
+		{
+			pcrs:       []uint{0, 1, 2},
+			wantSelect: []byte{0x07, 0x00, 0x00},
+		},
+		{
+			pcrs:       []uint{0, 7},
+			wantSelect: []byte{0x81, 0x00, 0x00},
+		},
+		{
+			pcrs:       []uint{8},
+			wantSelect: []byte{0x00, 0x01, 0x00},
+		},
+		{
+			pcrs:       []uint{1, 8, 9},
+			wantSelect: []byte{0x02, 0x03, 0x00},
+		},
+		{
+			pcrs:       []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+			wantSelect: []byte{0xff, 0xff, 0xff},
+		},
+		{
+			pcrs: []uint{255},
+			wantSelect: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80},
+		},
+	} {
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+			selection := PCClientCompatible.PCRs(tc.pcrs...)
+			if !bytes.Equal(selection, tc.wantSelect) {
+				t.Errorf("PCRs() = 0x%x, want 0x%x", selection, tc.wantSelect)
+			}
+		})
+	}
+}
+
 var extendstpm2 = map[TPMAlgID][]struct {
 	digest []byte
 }{
@@ -45,7 +93,7 @@ func TestPCRReset(t *testing.T) {
 	}
 	defer thetpm.Close()
 
-	DebugPCR := 16
+	DebugPCR := uint(16)
 
 	cases := []struct {
 		name    string
@@ -58,11 +106,6 @@ func TestPCRReset(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			PCRs, err := CreatePCRSelection([]int{DebugPCR})
-			if err != nil {
-				t.Fatalf("Failed to create PCRSelection")
-			}
-
 			authHandle := AuthHandle{
 				Handle: TPMHandle(DebugPCR),
 				Auth:   PasswordAuth(nil),
@@ -73,7 +116,7 @@ func TestPCRReset(t *testing.T) {
 					PCRSelections: []TPMSPCRSelection{
 						{
 							Hash:      c.hashalg,
-							PCRSelect: PCRs,
+							PCRSelect: PCClientCompatible.PCRs(DebugPCR),
 						},
 					},
 				},
@@ -146,17 +189,12 @@ func TestPCREvent(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			for i := 0; i < 17; i++ {
 				t.Run(fmt.Sprintf("PCR%02d", i), func(t *testing.T) {
-					PCRs, err := CreatePCRSelection([]int{i})
-					if err != nil {
-						t.Fatalf("Failed to create PCRSelection")
-					}
-
 					pcrRead := PCRRead{
 						PCRSelectionIn: TPMLPCRSelection{
 							PCRSelections: []TPMSPCRSelection{
 								{
 									Hash:      c.hashalg,
-									PCRSelect: PCRs,
+									PCRSelect: PCClientCompatible.PCRs(20),
 								},
 							},
 						},
