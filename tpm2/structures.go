@@ -2450,7 +2450,7 @@ func (u *TPMUSignature) ECDSA() (*TPMSSignatureECC, error) {
 
 // ECDAA returns the 'ecdaa' member of the union.
 func (u *TPMUSignature) ECDAA() (*TPMSSignatureECC, error) {
-	if u.selector == TPMAlgRSASSA {
+	if u.selector == TPMAlgECDAA {
 		return u.contents.(*TPMSSignatureECC), nil
 	}
 	return nil, fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector)
