@@ -107,8 +107,8 @@ func (h TPMHandle) HandleValue() uint32 {
 // only PCR, session, and permanent values have known constant Names.
 // See definition in part 1: Architecture, section 16.
 func (h TPMHandle) KnownName() *TPM2BName {
-	switch (byte)(h >> 24) {
-	case 0x00, 0x02, 0x03, 0x40:
+	switch (TPMHT)(h >> 24) {
+	case TPMHTPCR, TPMHTHMACSession, TPMHTPolicySession, TPMHTPermanent, TPMHTTransient:
 		result := make([]byte, 4)
 		binary.BigEndian.PutUint32(result, h.HandleValue())
 		return &TPM2BName{Buffer: result}
