@@ -108,13 +108,20 @@ func (h TPMHandle) HandleValue() uint32 {
 // See definition in part 1: Architecture, section 16.
 func (h TPMHandle) KnownName() *TPM2BName {
 	switch (TPMHT)(h >> 24) {
-	case TPMHTPCR, TPMHTHMACSession, TPMHTPolicySession, TPMHTPermanent, TPMHTTransient:
+	case TPMHTPCR, TPMHTHMACSession, TPMHTPolicySession, TPMHTPermanent:
 		result := make([]byte, 4)
 		binary.BigEndian.PutUint32(result, h.HandleValue())
 		return &TPM2BName{Buffer: result}
-	default:
-		return nil
+	case TPMHTTransient:
+		// The Name of a sequence object is an Empty Buffer
+		// See part 1: Architecture, section 32.4.5
+		if h == TPMIDHSavedSequence {
+			return &TPM2BName{
+				Buffer: []byte{},
+			}
+		}
 	}
+	return nil
 }
 
 // TPMAAlgorithm represents a TPMA_ALGORITHM.

@@ -539,7 +539,7 @@ type HashSequenceStartResponse struct {
 // See definition in Part 3, Commands, section 17.2.2
 type HmacStart struct {
 	// HMAC key handle requiring an authorization session for the USER role
-	Handle handle `gotpm:"handle,auth"`
+	Handle AuthHandle `gotpm:"handle,auth"`
 	// authorization value for subsequent use of the sequence
 	Auth TPM2BAuth
 	// the hash algorithm to use for the hmac sequence

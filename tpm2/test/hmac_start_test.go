@@ -86,10 +86,8 @@ func TestHmacStart(t *testing.T) {
 
 		authHandle := AuthHandle{
 			Handle: rspHS.SequenceHandle,
-			Name:   *rspHS.SequenceHandle.KnownName(),
 			Auth:   PasswordAuth(password),
 		}
-
 		for len(data) > maxInputBuffer {
 			sequenceUpdate := SequenceUpdate{
 				SequenceHandle: authHandle,
