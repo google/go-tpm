@@ -639,11 +639,11 @@ const (
 // Context Handle Values come from table 211
 const (
 	// an ordinary transient object
-	TPMIDHSSavedTransient TPMIDHSaved = 0x80000000
+	TPMIDHSavedTransient TPMIDHSaved = 0x80000000
 	// a sequence object
-	TPMIDHSSavedSequence TPMIDHSaved = 0x80000001
+	TPMIDHSavedSequence TPMIDHSaved = 0x80000001
 	// a transient object with the stClear attribute SET
-	TPMIDHSSavedTransientClear TPMIDHSaved = 0x80000002
+	TPMIDHSavedTransientClear TPMIDHSaved = 0x80000002
 )
 
 // TPMHandle represents a TPM_HANDLE.
