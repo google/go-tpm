@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM golang:1.21
 # We need OpenSSL headers to build the simulator
 RUN apt-get update && apt-get install -y \
     libssl-dev \

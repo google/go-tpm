@@ -634,6 +634,18 @@ const (
 	TPMHTAC            TPMHT = 0x90
 )
 
+// Saved Context transient object handles.
+// See definition in Part 2: Structures, section 14.6.2
+// Context Handle Values come from table 211
+const (
+	// an ordinary transient object
+	TPMIDHSavedTransient TPMIDHSaved = 0x80000000
+	// a sequence object
+	TPMIDHSavedSequence TPMIDHSaved = 0x80000001
+	// a transient object with the stClear attribute SET
+	TPMIDHSavedTransientClear TPMIDHSaved = 0x80000002
+)
+
 // TPMHandle represents a TPM_HANDLE.
 // See definition in Part 2: Structures, section 7.1.
 type TPMHandle uint32

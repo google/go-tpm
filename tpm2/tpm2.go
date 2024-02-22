@@ -535,6 +535,36 @@ type HashSequenceStartResponse struct {
 	SequenceHandle TPMIDHObject
 }
 
+// HmacStart is the input to TPM2_HMAC_Start.
+// See definition in Part 3, Commands, section 17.2.2
+type HmacStart struct {
+	// HMAC key handle requiring an authorization session for the USER role
+	Handle AuthHandle `gotpm:"handle,auth"`
+	// authorization value for subsequent use of the sequence
+	Auth TPM2BAuth
+	// the hash algorithm to use for the hmac sequence
+	HashAlg TPMIAlgHash
+}
+
+// Command implements the Command interface.
+func (HmacStart) Command() TPMCC { return TPMCCHMACStart }
+
+// Execute executes the command and returns the response.
+func (cmd HmacStart) Execute(t transport.TPM, s ...Session) (*HmacStartResponse, error) {
+	var rsp HmacStartResponse
+	if err := execute[HmacStartResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// HmacStartResponse is the response from TPM2_HMAC_Start.
+// See definition in Part 3, Commands, section 17.2.2
+type HmacStartResponse struct {
+	// a handle to reference the sequence
+	SequenceHandle TPMIDHObject `gotpm:"handle"`
+}
+
 // SequenceUpdate is the input to TPM2_SequenceUpdate.
 // See definition in Part 3, Commands, section 17.4
 type SequenceUpdate struct {
