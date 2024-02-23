@@ -1,0 +1,36 @@
+name: 000b385ecb6c63be2a16c41b6439d568d48dde9fa9f8032e5c81dfb4c92ecac53c58
+qualified name: 000b62328dc70254afdf573a36af8096c6a6afc56a5bbb8edb3673dbc22884037591
+name-alg:
+  value: sha256
+  raw: 0xb
+attributes:
+  value: fixedtpm|fixedparent|sensitivedataorigin|adminwithpolicy|restricted|decrypt
+  raw: 0x300b2
+type:
+  value: ecc
+  raw: 0x23
+curve-id:
+  value: NIST p256
+  raw: 0x3
+kdfa-alg:
+  value: null
+  raw: 0x10
+kdfa-halg:
+  value: (null)
+  raw: 0x0
+scheme:
+  value: null
+  raw: 0x10
+scheme-halg:
+  value: (null)
+  raw: 0x0
+sym-alg:
+  value: aes
+  raw: 0x6
+sym-mode:
+  value: cfb
+  raw: 0x43
+sym-keybits: 128
+x: 3e3f4389f926eeb4d7be099dd0bf18e266330b4ad635db686bfc8c9b09882d68
+y: 8cbddbc51fda8034a7cd27a32bfbcc52d1256525d1c8c8b7a19eb4b2aeb13a1c
+authorization policy: 837197674484b3f81a90cc8d46a5d724fd52d76e06520b64f2a1da1b331469aa

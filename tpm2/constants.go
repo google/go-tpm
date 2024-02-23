@@ -687,3 +687,11 @@ const (
 	// a pinLimit
 	TPMNTPinPass TPMNT = 0x9
 )
+
+// MaxSymData is the maximum number of octets that may be in a sealed blob.
+//
+// See definition in Part 4: Supporting routines, Table 7 as well as Part 2:
+// Structures, section 11.1.13, which states "For interoperability, MAX_SYM_DATA
+// should be 128." So while it *is* possible to seal data with a length that
+// exceeds MaxSymData, it is not recommended to do so.
+const MaxSymData = 0x00000080
