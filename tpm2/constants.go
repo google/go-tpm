@@ -182,7 +182,7 @@ const (
 	TPMCCPolicyPhysicalPresence     TPMCC = 0x00000187
 	TPMCCPolicyDuplicationSelect    TPMCC = 0x00000188
 	TPMCCPolicyGetDigest            TPMCC = 0x00000189
-	TPMCCTestParams                 TPMCC = 0x0000018A
+	TPMCCTestParms                  TPMCC = 0x0000018A
 	TPMCCCommit                     TPMCC = 0x0000018B
 	TPMCCPolicyPassword             TPMCC = 0x0000018C
 	TPMCCZGen2Phase                 TPMCC = 0x0000018D

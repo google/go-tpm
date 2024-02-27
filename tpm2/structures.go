@@ -2796,6 +2796,16 @@ func (u *TPMUPublicParms) ECCDetail() (*TPMSECCParms, error) {
 	return nil, fmt.Errorf("did not contain eccDetail (selector value was %v)", u.selector)
 }
 
+// TPMTPublicParms represents a TPMT_PUBLIC_PARMS.
+// See definition in Part 2: Structures, section 12.2.3.8.
+type TPMTPublicParms struct {
+	marshalByReflection
+	// algorithm to be tested
+	Type TPMIAlgPublic
+	// algorithm details
+	Parameters TPMUPublicParms `gotpm:"tag=Type"`
+}
+
 // TPMTPublic represents a TPMT_PUBLIC.
 // See definition in Part 2: Structures, section 12.2.4.
 type TPMTPublic struct {
