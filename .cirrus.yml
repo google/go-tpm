@@ -18,17 +18,4 @@ lint_task:
       - GOOS: linux
       - GOOS: windows
   lint_script:
-    golangci-lint run
-      -D errcheck
-      -E stylecheck
-      -E goimports
-      -E misspell
-      -E revive
-      --exclude-use-default=false
-      --exclude stutters
-      --exclude underscores
-      --exclude unexported-return
-      --max-same-issues=0
-      --max-issues-per-linter=0
-      ./tpmutil/...
-      ./tpm2/...
+    golangci-lint run ./tpmutil/... ./tpm2/...

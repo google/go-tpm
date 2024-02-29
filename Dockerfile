@@ -1,10 +1,10 @@
-FROM golang:1.21
+FROM golang:1.22
 # We need OpenSSL headers to build the simulator
 RUN apt-get update && apt-get install -y \
     libssl-dev \
  && rm -rf /var/lib/apt/lists/*
 # We need golangci-lint for linting
-ARG VERSION=1.52.2
+ARG VERSION=1.56.2
 RUN curl -SL \
     https://github.com/golangci/golangci-lint/releases/download/v${VERSION}/golangci-lint-${VERSION}-linux-amd64.tar.gz \
     --output golangci.tar.gz \
