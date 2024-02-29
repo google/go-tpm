@@ -56,6 +56,9 @@ func TestECDH(t *testing.T) {
 		}),
 	}
 
+	// Use NIST P-256
+	curve := ecdh.P256()
+
 	tpmCreateRsp, err := tpmCreate.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not create the TPM key: %v", err)
@@ -68,13 +71,13 @@ func TestECDH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	tpmPubKey, err := ECDHPubKey(ecdh.P256(), tpmPub)
+	tpmPubKey, err := ECDHPubKey(curve, tpmPub)
 	if err != nil {
 		t.Fatalf("could not unmarshall pubkey: %v", err)
 	}
 
 	// Create a SW ECDH key
-	swPriv, err := ecdh.P256().GenerateKey(rand.Reader)
+	swPriv, err := curve.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatalf("could not create the SW key: %v", err)
 	}
