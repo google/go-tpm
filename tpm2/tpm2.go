@@ -387,6 +387,35 @@ type UnsealResponse struct {
 	OutData TPM2BSensitiveData
 }
 
+// ObjectChangeAuth is the input to TPM2_ObjectChangeAuth.
+// See definition in Part 3, Commands, section 12.8
+type ObjectChangeAuth struct {
+	// TPM handle of an object
+	ObjectHandle handle `gotpm:"handle,auth"`
+	// handle of the parent
+	ParentHandle handle `gotpm:"handle"`
+	// new authorization value
+	NewAuth TPM2BAuth
+}
+
+// Command implements the Command interface.
+func (ObjectChangeAuth) Command() TPMCC { return TPMCCObjectChangeAuth }
+
+// Execute executes the command and returns the response.
+func (cmd ObjectChangeAuth) Execute(t transport.TPM, s ...Session) (*ObjectChangeAuthResponse, error) {
+	var rsp ObjectChangeAuthResponse
+	if err := execute[ObjectChangeAuthResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// ObjectChangeAuthResponse the response from TPM2_ObjectChangeAuth.
+type ObjectChangeAuthResponse struct {
+	// private area containing the new authorization value
+	OutPrivate TPM2BPrivate
+}
+
 // CreateLoaded is the input to TPM2_CreateLoaded.
 // See definition in Part 3, Commands, section 12.9
 type CreateLoaded struct {
