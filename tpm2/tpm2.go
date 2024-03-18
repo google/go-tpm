@@ -423,6 +423,68 @@ type CreateLoadedResponse struct {
 	Name TPM2BName
 }
 
+// RSAEncrypt is the input to TPM2_RSA_Encrypt
+// See definition in Part 3, Commands, section 14.2.
+type RSAEncrypt struct {
+	// reference to public portion of RSA key to use for encryption
+	KeyHandle handle `gotpm:"handle"`
+	// message to be encrypted
+	Message TPM2BPublicKeyRSA
+	// the padding scheme to use if scheme associated with keyHandle is TPM_ALG_NULL
+	InScheme TPMTRSADecrypt `gotpm:"nullable"`
+	// optional label L to be associated with the message
+	Label TPM2BData `gotpm:"optional"`
+}
+
+// Command implements the Command interface.
+func (RSAEncrypt) Command() TPMCC { return TPMCCRSAEncrypt }
+
+// Execute executes the command and returns the response.
+func (cmd RSAEncrypt) Execute(t transport.TPM, s ...Session) (*RSAEncryptResponse, error) {
+	var rsp RSAEncryptResponse
+	if err := execute[RSAEncryptResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// RSAEncryptResponse is the response from TPM2_RSA_Encrypt
+type RSAEncryptResponse struct {
+	// encrypted output
+	OutData TPM2BPublicKeyRSA
+}
+
+// RSADecrypt is the input to TPM2_RSA_Decrypt
+// See definition in Part 3, Commands, section 14.3.
+type RSADecrypt struct {
+	// RSA key to use for decryption
+	KeyHandle handle `gotpm:"handle,auth"`
+	// cipher text to be decrypted
+	CipherText TPM2BPublicKeyRSA
+	// the padding scheme to use if scheme associated with keyHandle is TPM_ALG_NULL
+	InScheme TPMTRSADecrypt `gotpm:"nullable"`
+	// label whose association with the message is to be verified
+	Label TPM2BData `gotpm:"optional"`
+}
+
+// Command implements the Command interface.
+func (RSADecrypt) Command() TPMCC { return TPMCCRSADecrypt }
+
+// Execute executes the command and returns the response.
+func (cmd RSADecrypt) Execute(t transport.TPM, s ...Session) (*RSADecryptResponse, error) {
+	var rsp RSADecryptResponse
+	if err := execute[RSADecryptResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// RSADecryptResponse is the response from TPM2_RSA_Decrypt
+type RSADecryptResponse struct {
+	// decrypted output
+	Message TPM2BPublicKeyRSA
+}
+
 // ECDHZGen is the input to TPM2_ECDHZGen.
 // See definition in Part 3, Commands, section 14.5
 type ECDHZGen struct {
