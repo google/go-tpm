@@ -1552,6 +1552,53 @@ func (cmd EvictControl) Execute(t transport.TPM, s ...Session) (*EvictControlRes
 	return &rsp, nil
 }
 
+// Duplicate is the input to TPM2_Duplicate.
+// See definition in Part 3, Commands, section 13.1
+type Duplicate struct {
+	// ObjectHandle is the handle of the object to dupliate.
+	ObjectHandle handle `gotpm:"handle,auth"`
+
+	// NewParentHandle is the handle of the new parent.
+	NewParentHandle handle `gotpm:"handle"`
+
+	// EncryptionKeyIn is the optional symmetric encryption key used as the
+	// inner wrapper. If SymmetricAlg is TPM_ALG_NULL, then this parameter
+	// shall be the Empty Buffer.
+	EncryptionKeyIn TPM2BData
+
+	// Definition of the symmetric algorithm to use for the inner wrapper.
+	// It may be TPM_ALG_NULL if no inner wrapper is applied.
+	Symmetric TPMTSymDef
+}
+
+// DuplicateResponse is the response from TPM2_Duplicate.
+type DuplicateResponse struct {
+	// EncryptionKeyOut is the symmetric encryption key used as the
+	// inner wrapper. If SymmetricAlg is TPM_ALG_NULL, this value
+	// shall be the Empty Buffer.
+	EncryptionKeyOut TPM2BData
+
+	// Duplicate is the private area of the object. It may be encrypted by
+	// EncryptionKeyIn and may be doubly encrypted.
+	Duplicate TPM2BPrivate
+
+	// OutSymSeed is the seed protected by the asymmetric algorithms of new
+	// parent.
+	OutSymSeed TPM2BEncryptedSecret
+}
+
+// Command implements the Command interface.
+func (Duplicate) Command() TPMCC { return TPMCCDuplicate }
+
+// Execute executes the command and returns the response.
+func (cmd Duplicate) Execute(t transport.TPM, s ...Session) (*DuplicateResponse, error) {
+	var rsp DuplicateResponse
+	if err := execute[DuplicateResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
 // Import is the input to TPM2_Import.
 // See definition in Part 3, Commands, section 13.3
 type Import struct {
