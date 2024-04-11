@@ -2299,6 +2299,20 @@ type TPMTRSAScheme struct {
 	Details TPMUAsymScheme `gotpm:"tag=Scheme"`
 }
 
+// TPMIAlgRSADecrypt represents a TPMI_ALG_RSA_DECRYPT.
+// See definition in Part 2: Structures, section 11.2.4.3.
+type TPMIAlgRSADecrypt = TPMAlgID
+
+// TPMTRSADecrypt represents a TPMT_RSA_DECRYPT.
+// See definition in Part 2: Structures, section 11.2.4.4.
+type TPMTRSADecrypt struct {
+	marshalByReflection
+	// scheme selector
+	Scheme TPMIAlgRSADecrypt `gotpm:"nullable"`
+	// scheme parameters
+	Details TPMUAsymScheme `gotpm:"tag=Scheme"`
+}
+
 // TPM2BPublicKeyRSA represents a TPM2B_PUBLIC_KEY_RSA.
 // See definition in Part 2: Structures, section 11.2.4.5.
 type TPM2BPublicKeyRSA TPM2BData
