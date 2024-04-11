@@ -1734,6 +1734,28 @@ type GetCapabilityResponse struct {
 	CapabilityData TPMSCapabilityData
 }
 
+// TestParms is the input to TPM2_TestParms.
+// See definition in Part 3, Commands, section 30.3
+type TestParms struct {
+	// Algorithms parameters to be validates
+	Parameters TPMTPublicParms
+}
+
+// Command implements the Command interface.
+func (TestParms) Command() TPMCC { return TPMCCTestParms }
+
+// Execute executes the command and returns the response.
+func (cmd TestParms) Execute(t transport.TPM, s ...Session) (*TestParmsResponse, error) {
+	var rsp TestParmsResponse
+	if err := execute[TestParmsResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// TestParmsResponse is the response from TPM2_TestParms.
+type TestParmsResponse struct{}
+
 // NVDefineSpace is the input to TPM2_NV_DefineSpace.
 // See definition in Part 3, Commands, section 31.3.
 type NVDefineSpace struct {
