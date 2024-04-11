@@ -1,9 +1,8 @@
 package tpm2test
 
 import (
-	"crypto/elliptic"
+	"crypto/ecdh"
 	"crypto/rand"
-	"math/big"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -57,6 +56,9 @@ func TestECDH(t *testing.T) {
 		}),
 	}
 
+	// Use NIST P-256
+	curve := ecdh.P256()
+
 	tpmCreateRsp, err := tpmCreate.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not create the TPM key: %v", err)
@@ -69,13 +71,19 @@ func TestECDH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	tpmX := big.NewInt(0).SetBytes(tpmPub.X.Buffer)
-	tpmY := big.NewInt(0).SetBytes(tpmPub.Y.Buffer)
+	tpmPubKey, err := ECDHPubKey(curve, tpmPub)
+	if err != nil {
+		t.Fatalf("could not unmarshall pubkey: %v", err)
+	}
 
 	// Create a SW ECDH key
-	priv, x, y, err := elliptic.GenerateKey(elliptic.P256(), rand.Reader)
+	swPriv, err := curve.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatalf("could not create the SW key: %v", err)
+	}
+	x, y, err := ECCPoint(swPriv.PublicKey())
+	if err != nil {
+		t.Fatalf("could not get SW key point: %v", err)
 	}
 	swPub := TPMSECCPoint{
 		X: TPM2BECCParameter{Buffer: x.FillBytes(make([]byte, 32))},
@@ -83,10 +91,13 @@ func TestECDH(t *testing.T) {
 	}
 
 	// Calculate Z based on the SW priv * TPM pub
-	zx, zy := elliptic.P256().ScalarMult(tpmX, tpmY, priv)
+	zx, err := swPriv.ECDH(tpmPubKey)
+	if err != nil {
+		t.Fatalf("ecdh exchange: %v", err)
+	}
+
 	z := TPMSECCPoint{
-		X: TPM2BECCParameter{Buffer: zx.FillBytes(make([]byte, 32))},
-		Y: TPM2BECCParameter{Buffer: zy.FillBytes(make([]byte, 32))},
+		X: TPM2BECCParameter{Buffer: zx},
 	}
 
 	// Calculate Z based on TPM priv * SW pub

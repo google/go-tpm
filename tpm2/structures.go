@@ -4,6 +4,7 @@ package tpm2
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdh"
 	"crypto/elliptic"
 	"encoding/binary"
 	"reflect"
@@ -91,6 +92,20 @@ func (c TPMECCCurve) Curve() (elliptic.Curve, error) {
 		return elliptic.P384(), nil
 	case TPMECCNistP521:
 		return elliptic.P521(), nil
+	default:
+		return nil, fmt.Errorf("unsupported ECC curve: %v", c)
+	}
+}
+
+// ECDHCurve returns the ecdh.Curve associated with a TPMECCCurve.
+func (c TPMECCCurve) ECDHCurve() (ecdh.Curve, error) {
+	switch c {
+	case TPMECCNistP256:
+		return ecdh.P256(), nil
+	case TPMECCNistP384:
+		return ecdh.P384(), nil
+	case TPMECCNistP521:
+		return ecdh.P521(), nil
 	default:
 		return nil, fmt.Errorf("unsupported ECC curve: %v", c)
 	}

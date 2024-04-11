@@ -1,0 +1,21 @@
+linters:
+  disable:
+    - errcheck
+  enable:
+    - stylecheck
+    - goimports
+    - misspell
+    - revive
+linters-settings:
+  revive:
+    rules:
+    - name: dot-imports
+      disabled: true
+issues:
+  exclude-use-default: false
+  exclude:
+    - stutters
+    - underscores
+    - unexported-return
+  max-issues-per-linter: 0
+  max-same-issues: 0
