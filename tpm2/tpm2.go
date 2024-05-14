@@ -1518,6 +1518,30 @@ func (cmd Clear) Execute(t transport.TPM, s ...Session) (*ClearResponse, error) 
 // ClearResponse is the response from TPM2_Clear.
 type ClearResponse struct{}
 
+// HierarchyChangeAuth is the input to TPM2_HierarchyChangeAuth.
+// See definition in Part 3, Commands, section 24.8
+type HierarchyChangeAuth struct {
+	// TPM_RH_ENDORSEMENT, TPM_RH_LOCKOUT, TPM_RH_OWNER or TPM_RH_PLATFORM+{PP}
+	AuthHandle handle `gotpm:"handle,auth"`
+	// new authorization value
+	NewAuth TPM2BAuth
+}
+
+// Command implements the Command interface.
+func (HierarchyChangeAuth) Command() TPMCC { return TPMCCHierarchyChanegAuth }
+
+// Execute executes the command and returns the response.
+func (cmd HierarchyChangeAuth) Execute(t transport.TPM, s ...Session) (*HierarchyChangeAuthResponse, error) {
+	var rsp HierarchyChangeAuthResponse
+	if err := execute[HierarchyChangeAuthResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// HierarchyChangeAuthResponse is the response from TPM2_HierarchyChangeAuth.
+type HierarchyChangeAuthResponse struct{}
+
 // ContextSave is the input to TPM2_ContextSave.
 // See definition in Part 3, Commands, section 28.2
 type ContextSave struct {
