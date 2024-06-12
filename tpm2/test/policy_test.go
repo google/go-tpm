@@ -3,6 +3,7 @@ package tpm2test
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/sha256"
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
@@ -770,4 +771,200 @@ func TestPolicyCommandCodeUpdate(t *testing.T) {
 	if !bytes.Equal(got.Digest, want.PolicyDigest.Buffer) {
 		t.Errorf("PolicyCommandCode.Hash() = %x,\nwant %x", got.Digest, want.PolicyDigest.Buffer)
 	}
+}
+
+func primaryRSASRK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
+	t.Helper()
+	createPrimary := CreatePrimary{
+		PrimaryHandle: TPMRHOwner,
+		InPublic:      New2B(RSASRKTemplate),
+	}
+	rsp, err := createPrimary.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("could not create primary key: %v", err)
+	}
+	cleanup := func() {
+		t.Helper()
+		flush := FlushContext{
+			FlushHandle: rsp.ObjectHandle,
+		}
+		if _, err := flush.Execute(thetpm); err != nil {
+			t.Errorf("could not flush primary key: %v", err)
+		}
+	}
+	return NamedHandle{
+		Handle: rsp.ObjectHandle,
+		Name:   rsp.Name,
+	}, cleanup
+}
+
+func TestPolicyAuthValue(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	password := []byte("foo")
+	wrongPassword := []byte("bar")
+
+	tests := []struct {
+		name              string
+		password          []byte
+		authOption        []AuthOption
+		callShouldSucceed bool
+	}{
+		{"PasswordCorrect", password, []AuthOption{Auth(password)}, true},
+		{"PasswordIncorrect", wrongPassword, []AuthOption{Auth(password)}, false},
+		{"PasswordEmpty", nil, []AuthOption{Auth(password)}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			pk, pkcleanup := primaryRSASRK(t, thetpm)
+			defer pkcleanup()
+
+			sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
+			if err != nil {
+				t.Fatalf("setting up trial session: %v", err)
+			}
+			defer func() {
+				t.Helper()
+				if err := cleanup1(); err != nil {
+					t.Errorf("cleaning up trial session: %v", err)
+				}
+			}()
+
+			_, err = PolicyAuthValue{
+				PolicySession: sess.Handle(),
+			}.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("error executing policyAuthValue: %v", err)
+			}
+
+			pgd, err := PolicyGetDigest{
+				PolicySession: sess.Handle(),
+			}.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("error executing PolicyGetDigest: %v", pgd)
+			}
+
+			rsaTemplate := TPMTPublic{
+				Type:    TPMAlgRSA,
+				NameAlg: TPMAlgSHA256,
+				ObjectAttributes: TPMAObject{
+					SignEncrypt:         true,
+					FixedTPM:            true,
+					FixedParent:         true,
+					SensitiveDataOrigin: true,
+					UserWithAuth:        true,
+				},
+				AuthPolicy: pgd.PolicyDigest,
+				Parameters: NewTPMUPublicParms(
+					TPMAlgRSA,
+					&TPMSRSAParms{
+						Scheme: TPMTRSAScheme{
+							Scheme: TPMAlgRSASSA,
+							Details: NewTPMUAsymScheme(
+								TPMAlgRSASSA,
+								&TPMSSigSchemeRSASSA{
+									HashAlg: TPMAlgSHA256,
+								},
+							),
+						},
+						KeyBits: 2048,
+					},
+				),
+				Unique: NewTPMUPublicID(
+					TPMAlgRSA,
+					&TPM2BPublicKeyRSA{
+						Buffer: make([]byte, 256),
+					},
+				),
+			}
+
+			k, err := CreateLoaded{
+				ParentHandle: AuthHandle{
+					Handle: pk.Handle,
+					Name:   pk.Name,
+					Auth:   PasswordAuth(nil),
+				},
+				InPublic: New2BTemplate(&rsaTemplate),
+				InSensitive: TPM2BSensitiveCreate{
+					Sensitive: &TPMSSensitiveCreate{
+						UserAuth: TPM2BAuth{
+							Buffer: tt.password,
+						},
+					},
+				},
+			}.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("error creating key %v", err)
+			}
+			defer func() {
+				t.Helper()
+				_, err := FlushContext{
+					FlushHandle: k.ObjectHandle,
+				}.Execute(thetpm)
+				if err != nil {
+					t.Errorf("error cleaning up key: %v", err)
+				}
+			}()
+
+			sess2, cleanup2, err := PolicySession(thetpm, TPMAlgSHA256, 16, tt.authOption...)
+			if err != nil {
+				t.Fatalf("setting up policy session: %v", err)
+			}
+			defer cleanup2()
+
+			policyAuthValue2 := PolicyAuthValue{
+				PolicySession: sess2.Handle(),
+			}
+
+			_, err = policyAuthValue2.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("executing policyAuthValue: %v", err)
+			}
+
+			data := []byte("somedata")
+			digest := sha256.Sum256(data)
+
+			sign := Sign{
+				KeyHandle: AuthHandle{
+					Handle: k.ObjectHandle,
+					Name:   k.Name,
+					Auth:   sess2,
+				},
+				Digest: TPM2BDigest{
+					Buffer: digest[:],
+				},
+				InScheme: TPMTSigScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: NewTPMUSigScheme(
+						TPMAlgRSASSA,
+						&TPMSSchemeHash{
+							HashAlg: TPMAlgSHA256,
+						},
+					),
+				},
+				Validation: TPMTTKHashCheck{
+					Tag: TPMSTHashCheck,
+				},
+			}
+
+			_, err = sign.Execute(thetpm)
+			if tt.callShouldSucceed {
+				if err != nil {
+					t.Fatalf("expected no error for PolicyAuthValue but got: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("expected error for PolicyAuthValue, got nil")
+				}
+				return
+			}
+		})
+	}
+
 }
