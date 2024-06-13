@@ -162,6 +162,31 @@ func nvIndex(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	}, cleanup
 }
 
+func primaryRSASRK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
+	t.Helper()
+	createPrimary := CreatePrimary{
+		PrimaryHandle: TPMRHOwner,
+		InPublic:      New2B(RSASRKTemplate),
+	}
+	rsp, err := createPrimary.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("could not create primary key: %v", err)
+	}
+	cleanup := func() {
+		t.Helper()
+		flush := FlushContext{
+			FlushHandle: rsp.ObjectHandle,
+		}
+		if _, err := flush.Execute(thetpm); err != nil {
+			t.Errorf("could not flush primary key: %v", err)
+		}
+	}
+	return NamedHandle{
+		Handle: rsp.ObjectHandle,
+		Name:   rsp.Name,
+	}, cleanup
+}
+
 func TestPolicySignedUpdate(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
@@ -773,31 +798,6 @@ func TestPolicyCommandCodeUpdate(t *testing.T) {
 	}
 }
 
-func primaryRSASRK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
-	t.Helper()
-	createPrimary := CreatePrimary{
-		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(RSASRKTemplate),
-	}
-	rsp, err := createPrimary.Execute(thetpm)
-	if err != nil {
-		t.Fatalf("could not create primary key: %v", err)
-	}
-	cleanup := func() {
-		t.Helper()
-		flush := FlushContext{
-			FlushHandle: rsp.ObjectHandle,
-		}
-		if _, err := flush.Execute(thetpm); err != nil {
-			t.Errorf("could not flush primary key: %v", err)
-		}
-	}
-	return NamedHandle{
-		Handle: rsp.ObjectHandle,
-		Name:   rsp.Name,
-	}, cleanup
-}
-
 func TestPolicyAuthValue(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
@@ -817,6 +817,7 @@ func TestPolicyAuthValue(t *testing.T) {
 		{"PasswordCorrect", password, []AuthOption{Auth(password)}, true},
 		{"PasswordIncorrect", wrongPassword, []AuthOption{Auth(password)}, false},
 		{"PasswordEmpty", nil, []AuthOption{Auth(password)}, false},
+		{"AuthOptionEmpty", password, []AuthOption{}, false},
 	}
 
 	for _, tt := range tests {
@@ -825,6 +826,7 @@ func TestPolicyAuthValue(t *testing.T) {
 			pk, pkcleanup := primaryRSASRK(t, thetpm)
 			defer pkcleanup()
 
+			// create a trial policy with PolicyAuthValue
 			sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
 			if err != nil {
 				t.Fatalf("setting up trial session: %v", err)
@@ -836,13 +838,15 @@ func TestPolicyAuthValue(t *testing.T) {
 				}
 			}()
 
-			_, err = PolicyAuthValue{
+			pav := PolicyAuthValue{
 				PolicySession: sess.Handle(),
-			}.Execute(thetpm)
+			}
+			_, err = pav.Execute(thetpm)
 			if err != nil {
 				t.Fatalf("error executing policyAuthValue: %v", err)
 			}
 
+			// verify the digest
 			pgd, err := PolicyGetDigest{
 				PolicySession: sess.Handle(),
 			}.Execute(thetpm)
@@ -850,6 +854,19 @@ func TestPolicyAuthValue(t *testing.T) {
 				t.Fatalf("error executing PolicyGetDigest: %v", pgd)
 			}
 
+			// Use the policy helper to calculate the same policy
+			pol, err := NewPolicyCalculator(TPMAlgSHA256)
+			if err != nil {
+				t.Fatalf("creating policy calculator: %v", err)
+			}
+			pav.Update(pol)
+			got := pol.Hash()
+
+			if !bytes.Equal(got.Digest, pgd.PolicyDigest.Buffer) {
+				t.Errorf("PolicyAuthValue.Hash() = %x,\nwant %x", got.Digest, pgd.PolicyDigest.Buffer)
+			}
+
+			// now apply the policy to a new key
 			rsaTemplate := TPMTPublic{
 				Type:    TPMAlgRSA,
 				NameAlg: TPMAlgSHA256,
@@ -874,12 +891,6 @@ func TestPolicyAuthValue(t *testing.T) {
 							),
 						},
 						KeyBits: 2048,
-					},
-				),
-				Unique: NewTPMUPublicID(
-					TPMAlgRSA,
-					&TPM2BPublicKeyRSA{
-						Buffer: make([]byte, 256),
 					},
 				),
 			}
@@ -912,6 +923,7 @@ func TestPolicyAuthValue(t *testing.T) {
 				}
 			}()
 
+			// create a real policy session and use the password through the authOption
 			sess2, cleanup2, err := PolicySession(thetpm, TPMAlgSHA256, 16, tt.authOption...)
 			if err != nil {
 				t.Fatalf("setting up policy session: %v", err)
@@ -927,6 +939,7 @@ func TestPolicyAuthValue(t *testing.T) {
 				t.Fatalf("executing policyAuthValue: %v", err)
 			}
 
+			// sign some data with the key using the session
 			data := []byte("somedata")
 			digest := sha256.Sum256(data)
 
