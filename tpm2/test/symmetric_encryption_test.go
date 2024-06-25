@@ -25,26 +25,8 @@ func TestAESEncryption(t *testing.T) {
 		}
 	})
 
-	createPrimaryCmd := CreatePrimary{
+	primary, err := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(RSASRKTemplate),
-	}
-	createPrimaryRsp, err := createPrimaryCmd.Execute(theTpm)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	t.Cleanup(func() {
-		flushContextCmd := FlushContext{FlushHandle: createPrimaryRsp.ObjectHandle}
-		if _, err := flushContextCmd.Execute(theTpm); err != nil {
-			t.Errorf("%v", err)
-		}
-	})
-
-	createRsp, err := Create{
-		ParentHandle: NamedHandle{
-			Handle: createPrimaryRsp.ObjectHandle,
-			Name:   createPrimaryRsp.Name,
-		},
 		InPublic: New2B(TPMTPublic{
 			Type:    TPMAlgSymCipher,
 			NameAlg: TPMAlgSHA256,
@@ -74,21 +56,8 @@ func TestAESEncryption(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-
-	loadCmd := Load{
-		ParentHandle: NamedHandle{
-			Handle: createPrimaryRsp.ObjectHandle,
-			Name:   createPrimaryRsp.Name,
-		},
-		InPrivate: createRsp.OutPrivate,
-		InPublic:  createRsp.OutPublic,
-	}
-	loadRsp, err := loadCmd.Execute(theTpm)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
 	t.Cleanup(func() {
-		flushContextCmd := FlushContext{FlushHandle: loadRsp.ObjectHandle}
+		flushContextCmd := FlushContext{FlushHandle: primary.ObjectHandle}
 		if _, err := flushContextCmd.Execute(theTpm); err != nil {
 			t.Errorf("%v", err)
 		}
@@ -103,8 +72,8 @@ func TestAESEncryption(t *testing.T) {
 	}
 
 	keyAuth := AuthHandle{
-		Handle: loadRsp.ObjectHandle,
-		Name:   loadRsp.Name,
+		Handle: primary.ObjectHandle,
+		Name:   primary.Name,
 		Auth:   PasswordAuth(nil),
 	}
 
@@ -156,26 +125,8 @@ func TestAESEncryptionBlock(t *testing.T) {
 		}
 	})
 
-	createPrimaryCmd := CreatePrimary{
+	primary, err := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(RSASRKTemplate),
-	}
-	createPrimaryRsp, err := createPrimaryCmd.Execute(theTpm)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	t.Cleanup(func() {
-		flushContextCmd := FlushContext{FlushHandle: createPrimaryRsp.ObjectHandle}
-		if _, err := flushContextCmd.Execute(theTpm); err != nil {
-			t.Errorf("%v", err)
-		}
-	})
-
-	createRsp, err := Create{
-		ParentHandle: NamedHandle{
-			Handle: createPrimaryRsp.ObjectHandle,
-			Name:   createPrimaryRsp.Name,
-		},
 		InPublic: New2B(TPMTPublic{
 			Type:    TPMAlgSymCipher,
 			NameAlg: TPMAlgSHA256,
@@ -205,21 +156,8 @@ func TestAESEncryptionBlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-
-	loadCmd := Load{
-		ParentHandle: NamedHandle{
-			Handle: createPrimaryRsp.ObjectHandle,
-			Name:   createPrimaryRsp.Name,
-		},
-		InPrivate: createRsp.OutPrivate,
-		InPublic:  createRsp.OutPublic,
-	}
-	loadRsp, err := loadCmd.Execute(theTpm)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
 	t.Cleanup(func() {
-		flushContextCmd := FlushContext{FlushHandle: loadRsp.ObjectHandle}
+		flushContextCmd := FlushContext{FlushHandle: primary.ObjectHandle}
 		if _, err := flushContextCmd.Execute(theTpm); err != nil {
 			t.Errorf("%v", err)
 		}
@@ -238,8 +176,8 @@ func TestAESEncryptionBlock(t *testing.T) {
 	}
 
 	keyAuth := AuthHandle{
-		Handle: loadRsp.ObjectHandle,
-		Name:   loadRsp.Name,
+		Handle: primary.ObjectHandle,
+		Name:   primary.Name,
 		Auth:   PasswordAuth(nil),
 	}
 
