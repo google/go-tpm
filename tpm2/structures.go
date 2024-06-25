@@ -549,6 +549,10 @@ type TPM2BMaxBuffer TPM2BData
 // See definition in Part 2: Structures, section 10.4.9.
 type TPM2BMaxNVBuffer TPM2BData
 
+// TPM2BIV represents a TPM2B_IV.
+// See definition in Part 2: Structures, section 10.4.11.
+type TPM2BIV TPM2BData
+
 // TPM2BName represents a TPM2B_NAME.
 // See definition in Part 2: Structures, section 10.5.3.
 // NOTE: This structure does not contain a TPMUName, because that union
