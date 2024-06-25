@@ -452,6 +452,34 @@ type CreateLoadedResponse struct {
 	Name TPM2BName
 }
 
+// EncryptDecrypt2 is the input to TPM2_EncryptDecrypt2
+type EncryptDecrypt2 struct {
+	// reference to public portion of symmetric key to use for encryption
+	KeyHandle handle `gotpm:"handle,auth"`
+	Message   TPM2BMaxBuffer
+	Decrypt   TPMIYesNo
+	Mode      TPMIAlgSymMode `gotpm:"nullable"`
+	IV        TPM2BIV
+}
+
+// Command implements the Command interface.
+func (EncryptDecrypt2) Command() TPMCC { return TPMCCEncryptDecrypt2 }
+
+// Execute executes the command and returns the response.
+func (cmd EncryptDecrypt2) Execute(t transport.TPM, s ...Session) (*EncryptDecrypt2Response, error) {
+	var rsp EncryptDecrypt2Response
+	err := execute[EncryptDecrypt2Response](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+type EncryptDecrypt2Response struct {
+	OutData TPM2BMaxBuffer
+	IV      TPM2BIV
+}
+
 // RSAEncrypt is the input to TPM2_RSA_Encrypt
 // See definition in Part 3, Commands, section 14.2.
 type RSAEncrypt struct {
