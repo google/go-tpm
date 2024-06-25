@@ -1216,6 +1216,34 @@ func (cmd PolicyPCR) Update(policy *PolicyCalculator) error {
 // PolicyPCRResponse is the response from TPM2_PolicyPCR.
 type PolicyPCRResponse struct{}
 
+// PolicyAuthValue is the input to TPM2_PolicyAuthValue.
+// See definition in Part 3, Commands, section 23.17.
+type PolicyAuthValue struct {
+	// handle for the policy session being extended
+	PolicySession handle `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (PolicyAuthValue) Command() TPMCC { return TPMCCPolicyAuthValue }
+
+// Execute executes the command and returns the response.
+func (cmd PolicyAuthValue) Execute(t transport.TPM, s ...Session) (*PolicyAuthValueResponse, error) {
+	var rsp PolicyAuthValueResponse
+	err := execute[PolicyAuthValueResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// Update implements the PolicyAuthValue interface.
+func (cmd PolicyAuthValue) Update(policy *PolicyCalculator) error {
+	return policy.Update(TPMCCPolicyAuthValue)
+}
+
+// PolicyAuthValueResponse is the response from TPM2_PolicyAuthValue.
+type PolicyAuthValueResponse struct{}
+
 // PolicyNV is the input to TPM2_PolicyNV.
 // See definition in Part 3, Commands, section 23.9.
 type PolicyNV struct {
