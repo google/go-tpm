@@ -130,7 +130,7 @@ func (h TPMHandle) KnownName() *TPM2BName {
 	case TPMHTTransient:
 		// The Name of a sequence object is an Empty Buffer
 		// See part 1: Architecture, section 32.4.5
-		if h == TPMIDHSavedSequence {
+		if h == TPMIDHSavedSequence || h == TPMIDHSavedTransientClear {
 			return &TPM2BName{
 				Buffer: []byte{},
 			}
