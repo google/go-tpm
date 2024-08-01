@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && emu
 
 // Copyright (c) 2019, Google LLC All rights reserved.
 //

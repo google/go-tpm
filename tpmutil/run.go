@@ -63,8 +63,7 @@ func RunCommandRaw(rw io.ReadWriter, inb []byte) ([]byte, error) {
 		// Resize the buffer to match the amount read from the TPM.
 		outb = outb[:outlen]
 
-		_, err = Unpack(outb, &rh)
-		if err != nil {
+		if _, err = Unpack(outb, &rh); err != nil {
 			return nil, err
 		}
 
