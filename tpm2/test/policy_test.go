@@ -187,6 +187,31 @@ func primaryRSASRK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	}, cleanup
 }
 
+func primaryRSAEK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
+	t.Helper()
+	createPrimary := CreatePrimary{
+		PrimaryHandle: TPMRHEndorsement,
+		InPublic:      New2B(RSAEKTemplate),
+	}
+	rsp, err := createPrimary.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("could not create primary key: %v", err)
+	}
+	cleanup := func() {
+		t.Helper()
+		flush := FlushContext{
+			FlushHandle: rsp.ObjectHandle,
+		}
+		if _, err := flush.Execute(thetpm); err != nil {
+			t.Errorf("could not flush primary key: %v", err)
+		}
+	}
+	return NamedHandle{
+		Handle: rsp.ObjectHandle,
+		Name:   rsp.Name,
+	}, cleanup
+}
+
 func TestPolicySignedUpdate(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
@@ -976,6 +1001,163 @@ func TestPolicyAuthValue(t *testing.T) {
 					t.Fatalf("expected error for PolicyAuthValue, got nil")
 				}
 				return
+			}
+		})
+	}
+
+}
+
+func TestPolicyDuplicatonSelect(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	tests := []struct {
+		name          string
+		IncludeObject bool
+	}{
+		{"IncludeObjectFalse", false},
+		{"IncludeObjectTrue", true},
+	}
+
+	var pav PolicyDuplicationSelect
+	var pgd *PolicyGetDigestResponse
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			ek, ekcleanup := primaryRSAEK(t, thetpm)
+			defer ekcleanup()
+
+			pk, pkcleanup := primaryRSASRK(t, thetpm)
+			defer pkcleanup()
+
+			if tt.IncludeObject {
+
+				k, err := CreateLoaded{
+					ParentHandle: AuthHandle{
+						Handle: pk.Handle,
+						Name:   pk.Name,
+						Auth:   PasswordAuth(nil),
+					},
+					InPublic: New2BTemplate(&TPMTPublic{
+						Type:    TPMAlgRSA,
+						NameAlg: TPMAlgSHA256,
+						ObjectAttributes: TPMAObject{
+							FixedTPM:            false,
+							FixedParent:         false,
+							SensitiveDataOrigin: true,
+							UserWithAuth:        true,
+							SignEncrypt:         true,
+						},
+						Parameters: NewTPMUPublicParms(
+							TPMAlgRSA,
+							&TPMSRSAParms{
+								Scheme: TPMTRSAScheme{
+									Scheme: TPMAlgRSASSA,
+									Details: NewTPMUAsymScheme(
+										TPMAlgRSASSA,
+										&TPMSSigSchemeRSASSA{
+											HashAlg: TPMAlgSHA256,
+										},
+									),
+								},
+								KeyBits: 2048,
+							},
+						),
+					}),
+				}.Execute(thetpm)
+				if err != nil {
+					t.Fatalf("error creating key %v", err)
+				}
+				defer func() {
+					t.Helper()
+					_, err := FlushContext{
+						FlushHandle: k.ObjectHandle,
+					}.Execute(thetpm)
+					if err != nil {
+						t.Errorf("error cleaning up key: %v", err)
+					}
+				}()
+
+				// create a trial policy with PolicyDuplicationSelect
+				sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
+				if err != nil {
+					t.Fatalf("error setting up trial session: %v", err)
+				}
+				defer func() {
+					t.Helper()
+					if err := cleanup1(); err != nil {
+						t.Errorf("error cleaning up trial session: %v", err)
+					}
+				}()
+
+				pav = PolicyDuplicationSelect{
+					PolicySession: sess.Handle(),
+					NewParentName: ek.Name,
+					ObjectName:    k.Name,
+					IncludeObject: tt.IncludeObject,
+				}
+				_, err = pav.Execute(thetpm)
+				if err != nil {
+					t.Fatalf("error executing PolicyDuplicationSelect: %v", err)
+				}
+
+				// verify the digest
+				pgd, err = PolicyGetDigest{
+					PolicySession: sess.Handle(),
+				}.Execute(thetpm)
+				if err != nil {
+					t.Fatalf("error executing PolicyGetDigest: %v", pgd)
+				}
+
+			} else {
+				// create a trial policy with PolicyDuplicationSelect
+				sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
+				if err != nil {
+					t.Fatalf("error setting up trial session: %v", err)
+				}
+				defer func() {
+					t.Helper()
+					if err := cleanup1(); err != nil {
+						t.Errorf("error cleaning up trial session: %v", err)
+					}
+				}()
+
+				pav = PolicyDuplicationSelect{
+					PolicySession: sess.Handle(),
+					NewParentName: ek.Name,
+				}
+				_, err = pav.Execute(thetpm)
+				if err != nil {
+					t.Fatalf("error executing PolicyDuplicationSelect: %v", err)
+				}
+
+				// verify the digest
+				pgd, err = PolicyGetDigest{
+					PolicySession: sess.Handle(),
+				}.Execute(thetpm)
+				if err != nil {
+					t.Fatalf("error executing PolicyGetDigest: %v", pgd)
+				}
+
+			}
+
+			// Use the policy helper to calculate the same policy
+			pol, err := NewPolicyCalculator(TPMAlgSHA256)
+			if err != nil {
+				t.Fatalf("creating policy calculator: %v", err)
+			}
+			err = pav.Update(pol)
+			if err != nil {
+				t.Fatalf("error updating policy calculator: %v", err)
+			}
+			got := pol.Hash()
+
+			if !bytes.Equal(got.Digest, pgd.PolicyDigest.Buffer) {
+				t.Errorf("PolicyAuthValue.Hash() = %x,\nwant %x", got.Digest, pgd.PolicyDigest.Buffer)
 			}
 		})
 	}

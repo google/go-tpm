@@ -1272,6 +1272,40 @@ func (cmd PolicyAuthValue) Update(policy *PolicyCalculator) error {
 // PolicyAuthValueResponse is the response from TPM2_PolicyAuthValue.
 type PolicyAuthValueResponse struct{}
 
+// PolicyDuplicationSelect is the input to TPM2_PolicyDuplicationSelect.
+// See definition in Part 3, Commands, section 23.15.
+type PolicyDuplicationSelect struct {
+	// handle for the policy session being extended
+	PolicySession handle `gotpm:"handle"`
+	ObjectName    TPM2BName
+	NewParentName TPM2BName
+	IncludeObject TPMIYesNo
+}
+
+// Command implements the Command interface.
+func (PolicyDuplicationSelect) Command() TPMCC { return TPMCCPolicyDuplicationSelect }
+
+// Execute executes the command and returns the response.
+func (cmd PolicyDuplicationSelect) Execute(t transport.TPM, s ...Session) (*PolicyDuplicationSelectResponse, error) {
+	var rsp PolicyDuplicationSelectResponse
+	err := execute[PolicyDuplicationSelectResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// Update implements the PolicyDuplicationSelect interface.
+func (cmd PolicyDuplicationSelect) Update(policy *PolicyCalculator) error {
+	if cmd.IncludeObject {
+		return policy.Update(TPMCCPolicyDuplicationSelect, cmd.ObjectName.Buffer, cmd.NewParentName.Buffer, cmd.IncludeObject)
+	}
+	return policy.Update(TPMCCPolicyDuplicationSelect, cmd.NewParentName.Buffer, cmd.IncludeObject)
+}
+
+// PolicyDuplicationSelectResponse is the response from TPM2_PolicyDuplicationSelect.
+type PolicyDuplicationSelectResponse struct{}
+
 // PolicyNV is the input to TPM2_PolicyNV.
 // See definition in Part 3, Commands, section 23.9.
 type PolicyNV struct {
