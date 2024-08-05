@@ -1007,12 +1007,76 @@ func TestPolicyAuthValue(t *testing.T) {
 
 }
 
-func TestPolicyDuplicatonSelect(t *testing.T) {
+func TestPolicyDuplicationSelectUpdate(t *testing.T) {
 	thetpm, err := simulator.OpenSimulator()
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
 	defer thetpm.Close()
+
+	ek, ekcleanup := primaryRSAEK(t, thetpm)
+	defer ekcleanup()
+
+	pk, pkcleanup := primaryRSASRK(t, thetpm)
+	defer pkcleanup()
+
+	k, err := CreateLoaded{
+		ParentHandle: AuthHandle{
+			Handle: pk.Handle,
+			Name:   pk.Name,
+			Auth:   PasswordAuth(nil),
+		},
+		InPublic: New2BTemplate(&TPMTPublic{
+			Type:    TPMAlgRSA,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:            false,
+				FixedParent:         false,
+				SensitiveDataOrigin: true,
+				UserWithAuth:        true,
+				SignEncrypt:         true,
+			},
+			Parameters: NewTPMUPublicParms(
+				TPMAlgRSA,
+				&TPMSRSAParms{
+					Scheme: TPMTRSAScheme{
+						Scheme: TPMAlgRSASSA,
+						Details: NewTPMUAsymScheme(
+							TPMAlgRSASSA,
+							&TPMSSigSchemeRSASSA{
+								HashAlg: TPMAlgSHA256,
+							},
+						),
+					},
+					KeyBits: 2048,
+				},
+			),
+		}),
+	}.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("error creating key %v", err)
+	}
+	defer func() {
+		t.Helper()
+		_, err := FlushContext{
+			FlushHandle: k.ObjectHandle,
+		}.Execute(thetpm)
+		if err != nil {
+			t.Errorf("error cleaning up key: %v", err)
+		}
+	}()
+
+	// create a trial policy with PolicyDuplicationSelect
+	sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
+	if err != nil {
+		t.Fatalf("error setting up trial session: %v", err)
+	}
+	defer func() {
+		t.Helper()
+		if err := cleanup1(); err != nil {
+			t.Errorf("error cleaning up trial session: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name          string
@@ -1022,125 +1086,57 @@ func TestPolicyDuplicatonSelect(t *testing.T) {
 		{"IncludeObjectTrue", true},
 	}
 
-	var pav PolicyDuplicationSelect
-	var pgd *PolicyGetDigestResponse
+	var pds PolicyDuplicationSelect
+	var pdr *PolicyGetDigestResponse
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			ek, ekcleanup := primaryRSAEK(t, thetpm)
-			defer ekcleanup()
-
-			pk, pkcleanup := primaryRSASRK(t, thetpm)
-			defer pkcleanup()
-
 			if tt.IncludeObject {
-
-				k, err := CreateLoaded{
-					ParentHandle: AuthHandle{
-						Handle: pk.Handle,
-						Name:   pk.Name,
-						Auth:   PasswordAuth(nil),
-					},
-					InPublic: New2BTemplate(&TPMTPublic{
-						Type:    TPMAlgRSA,
-						NameAlg: TPMAlgSHA256,
-						ObjectAttributes: TPMAObject{
-							FixedTPM:            false,
-							FixedParent:         false,
-							SensitiveDataOrigin: true,
-							UserWithAuth:        true,
-							SignEncrypt:         true,
-						},
-						Parameters: NewTPMUPublicParms(
-							TPMAlgRSA,
-							&TPMSRSAParms{
-								Scheme: TPMTRSAScheme{
-									Scheme: TPMAlgRSASSA,
-									Details: NewTPMUAsymScheme(
-										TPMAlgRSASSA,
-										&TPMSSigSchemeRSASSA{
-											HashAlg: TPMAlgSHA256,
-										},
-									),
-								},
-								KeyBits: 2048,
-							},
-						),
-					}),
-				}.Execute(thetpm)
-				if err != nil {
-					t.Fatalf("error creating key %v", err)
-				}
-				defer func() {
-					t.Helper()
-					_, err := FlushContext{
-						FlushHandle: k.ObjectHandle,
-					}.Execute(thetpm)
-					if err != nil {
-						t.Errorf("error cleaning up key: %v", err)
-					}
-				}()
-
-				// create a trial policy with PolicyDuplicationSelect
-				sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
-				if err != nil {
-					t.Fatalf("error setting up trial session: %v", err)
-				}
-				defer func() {
-					t.Helper()
-					if err := cleanup1(); err != nil {
-						t.Errorf("error cleaning up trial session: %v", err)
-					}
-				}()
-
-				pav = PolicyDuplicationSelect{
+				pds = PolicyDuplicationSelect{
 					PolicySession: sess.Handle(),
 					NewParentName: ek.Name,
 					ObjectName:    k.Name,
 					IncludeObject: tt.IncludeObject,
 				}
-				_, err = pav.Execute(thetpm)
+				_, err = pds.Execute(thetpm)
 				if err != nil {
 					t.Fatalf("error executing PolicyDuplicationSelect: %v", err)
 				}
 
-				// verify the digest
-				pgd, err = PolicyGetDigest{
+				pdr, err = PolicyGetDigest{
 					PolicySession: sess.Handle(),
 				}.Execute(thetpm)
 				if err != nil {
-					t.Fatalf("error executing PolicyGetDigest: %v", pgd)
+					t.Fatalf("error executing PolicyGetDigest: %v", pdr)
 				}
 
 			} else {
 				// create a trial policy with PolicyDuplicationSelect
-				sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
+				sess, cleanup, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
 				if err != nil {
 					t.Fatalf("error setting up trial session: %v", err)
 				}
 				defer func() {
 					t.Helper()
-					if err := cleanup1(); err != nil {
+					if err := cleanup(); err != nil {
 						t.Errorf("error cleaning up trial session: %v", err)
 					}
 				}()
 
-				pav = PolicyDuplicationSelect{
+				pds = PolicyDuplicationSelect{
 					PolicySession: sess.Handle(),
 					NewParentName: ek.Name,
 				}
-				_, err = pav.Execute(thetpm)
+				_, err = pds.Execute(thetpm)
 				if err != nil {
 					t.Fatalf("error executing PolicyDuplicationSelect: %v", err)
 				}
 
-				// verify the digest
-				pgd, err = PolicyGetDigest{
+				pdr, err = PolicyGetDigest{
 					PolicySession: sess.Handle(),
 				}.Execute(thetpm)
 				if err != nil {
-					t.Fatalf("error executing PolicyGetDigest: %v", pgd)
+					t.Fatalf("error executing PolicyGetDigest: %v", pdr)
 				}
 
 			}
@@ -1150,14 +1146,14 @@ func TestPolicyDuplicatonSelect(t *testing.T) {
 			if err != nil {
 				t.Fatalf("creating policy calculator: %v", err)
 			}
-			err = pav.Update(pol)
+			err = pds.Update(pol)
 			if err != nil {
 				t.Fatalf("error updating policy calculator: %v", err)
 			}
 			got := pol.Hash()
 
-			if !bytes.Equal(got.Digest, pgd.PolicyDigest.Buffer) {
-				t.Errorf("PolicyAuthValue.Hash() = %x,\nwant %x", got.Digest, pgd.PolicyDigest.Buffer)
+			if !bytes.Equal(got.Digest, pdr.PolicyDigest.Buffer) {
+				t.Errorf("PolicyAuthValue.Hash() = %x,\nwant %x", got.Digest, pdr.PolicyDigest.Buffer)
 			}
 		})
 	}
