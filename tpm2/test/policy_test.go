@@ -1066,79 +1066,46 @@ func TestPolicyDuplicationSelectUpdate(t *testing.T) {
 		}
 	}()
 
-	// create a trial policy with PolicyDuplicationSelect
-	sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
-	if err != nil {
-		t.Fatalf("error setting up trial session: %v", err)
-	}
-	defer func() {
-		t.Helper()
-		if err := cleanup1(); err != nil {
-			t.Errorf("error cleaning up trial session: %v", err)
-		}
-	}()
-
 	tests := []struct {
 		name          string
-		IncludeObject bool
+		objectName    TPM2BName
+		includeObject bool
 	}{
-		{"IncludeObjectFalse", false},
-		{"IncludeObjectTrue", true},
+		{"IncludeObjectFalse", TPM2BName{}, false},
+		{"IncludeObjectTrue", k.Name, true},
 	}
-
-	var pds PolicyDuplicationSelect
-	var pdr *PolicyGetDigestResponse
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.IncludeObject {
-				pds = PolicyDuplicationSelect{
-					PolicySession: sess.Handle(),
-					NewParentName: ek.Name,
-					ObjectName:    k.Name,
-					IncludeObject: tt.IncludeObject,
-				}
-				_, err = pds.Execute(thetpm)
-				if err != nil {
-					t.Fatalf("error executing PolicyDuplicationSelect: %v", err)
-				}
 
-				pdr, err = PolicyGetDigest{
-					PolicySession: sess.Handle(),
-				}.Execute(thetpm)
-				if err != nil {
-					t.Fatalf("error executing PolicyGetDigest: %v", pdr)
+			// create a trial policy with PolicyDuplicationSelect
+			sess, cleanup1, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
+			if err != nil {
+				t.Fatalf("error setting up trial session: %v", err)
+			}
+			defer func() {
+				t.Helper()
+				if err := cleanup1(); err != nil {
+					t.Errorf("error cleaning up trial session: %v", err)
 				}
+			}()
 
-			} else {
-				// create a trial policy with PolicyDuplicationSelect
-				sess, cleanup, err := PolicySession(thetpm, TPMAlgSHA256, 16, Trial())
-				if err != nil {
-					t.Fatalf("error setting up trial session: %v", err)
-				}
-				defer func() {
-					t.Helper()
-					if err := cleanup(); err != nil {
-						t.Errorf("error cleaning up trial session: %v", err)
-					}
-				}()
+			pds := PolicyDuplicationSelect{
+				PolicySession: sess.Handle(),
+				NewParentName: ek.Name,
+				ObjectName:    tt.objectName,
+				IncludeObject: tt.includeObject,
+			}
+			_, err = pds.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("error executing PolicyDuplicationSelect: %v", err)
+			}
 
-				pds = PolicyDuplicationSelect{
-					PolicySession: sess.Handle(),
-					NewParentName: ek.Name,
-				}
-				_, err = pds.Execute(thetpm)
-				if err != nil {
-					t.Fatalf("error executing PolicyDuplicationSelect: %v", err)
-				}
-
-				pdr, err = PolicyGetDigest{
-					PolicySession: sess.Handle(),
-				}.Execute(thetpm)
-				if err != nil {
-					t.Fatalf("error executing PolicyGetDigest: %v", pdr)
-				}
-
+			pdr, err := PolicyGetDigest{
+				PolicySession: sess.Handle(),
+			}.Execute(thetpm)
+			if err != nil {
+				t.Fatalf("error executing PolicyGetDigest: %v", pdr)
 			}
 
 			// Use the policy helper to calculate the same policy
@@ -1157,5 +1124,4 @@ func TestPolicyDuplicationSelectUpdate(t *testing.T) {
 			}
 		})
 	}
-
 }
