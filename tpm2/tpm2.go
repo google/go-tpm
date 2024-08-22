@@ -4,6 +4,7 @@ package tpm2
 import (
 	"bytes"
 	"encoding/binary"
+
 	"github.com/google/go-tpm/tpm2/transport"
 )
 
