@@ -652,13 +652,17 @@ type TPMHandle uint32
 
 // TPMHandle values come from Part 2: Structures, section 7.4.
 const (
-	TPMRHOwner       TPMHandle = 0x40000001
-	TPMRHNull        TPMHandle = 0x40000007
-	TPMRSPW          TPMHandle = 0x40000009
-	TPMRHLockout     TPMHandle = 0x4000000A
-	TPMRHEndorsement TPMHandle = 0x4000000B
-	TPMRHPlatform    TPMHandle = 0x4000000C
-	TPMRHPlatformNV  TPMHandle = 0x4000000D
+	TPMRHOwner         TPMHandle = 0x40000001
+	TPMRHNull          TPMHandle = 0x40000007
+	TPMRSPW            TPMHandle = 0x40000009
+	TPMRHLockout       TPMHandle = 0x4000000A
+	TPMRHEndorsement   TPMHandle = 0x4000000B
+	TPMRHPlatform      TPMHandle = 0x4000000C
+	TPMRHPlatformNV    TPMHandle = 0x4000000D
+	TPMRHFWOwner       TPMHandle = 0x40000140
+	TPMRHFWEndorsement TPMHandle = 0x40000141
+	TPMRHFWPlatform    TPMHandle = 0x40000142
+	TPMRHFWNull        TPMHandle = 0x40000143
 )
 
 // TPMNT represents a TPM_NT.

@@ -1542,7 +1542,8 @@ type PolicyAuthorizeNVResponse struct{}
 // See definition in Part 3, Commands, section 24.1
 type CreatePrimary struct {
 	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER, TPM_RH_PLATFORM+{PP},
-	// or TPM_RH_NULL
+	// TPM_RH_NULL, TPM_RH_FW_ENDORSEMENT, TPM_RH_FW_OWNER
+	// TPM_RH_FW_PLATFORM+{PP}  or TPM_RH_FW_NULL
 	PrimaryHandle handle `gotpm:"handle,auth"`
 	// the sensitive data
 	InSensitive TPM2BSensitiveCreate
