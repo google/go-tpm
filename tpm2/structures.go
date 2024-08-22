@@ -208,6 +208,9 @@ type TPMAObject struct {
 	// be with an HMAC session or with a password using the authValue
 	// of the object or a policy session.
 	AdminWithPolicy bool `gotpm:"bit=7"`
+	// SET (1): The object exists only within a firmware-limited hierarchy.
+	// CLEAR (0): The object can exist outside a firmware-limited hierarchy.
+	FirmwareLimited bool `gotpm:"bit=8"`
 	// SET (1): The object is not subject to dictionary attack
 	// protections.
 	// CLEAR (0): The object is subject to dictionary attack
