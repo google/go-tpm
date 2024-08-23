@@ -475,6 +475,7 @@ func (cmd EncryptDecrypt2) Execute(t transport.TPM, s ...Session) (*EncryptDecry
 	return &rsp, nil
 }
 
+// EncryptDecrypt2Response is the response from TPM2_EncryptDecrypt2.
 type EncryptDecrypt2Response struct {
 	OutData TPM2BMaxBuffer
 	IV      TPM2BIV
@@ -662,7 +663,7 @@ type HmacStart struct {
 	// authorization value for subsequent use of the sequence
 	Auth TPM2BAuth
 	// the hash algorithm to use for the hmac sequence
-	HashAlg TPMIAlgHash
+	HashAlg TPMIAlgHash `gotpm:"nullable"`
 }
 
 // Command implements the Command interface.
