@@ -48,5 +48,5 @@ func RunTest(t *testing.T, skipErrs []error, tpmOpener func() (transport.TPMClos
 	var idBuf bytes.Buffer
 	idBuf.Grow(4)
 	binary.Write(&idBuf, binary.BigEndian, props.TPMProperty[0].Value)
-	t.Logf("Manufacturer ID: %q", string(idBuf.Bytes()))
+	t.Logf("Manufacturer ID: %q", idBuf.String())
 }
