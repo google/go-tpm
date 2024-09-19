@@ -12,7 +12,3 @@ import (
 func TestLocalTPM(t *testing.T) {
 	testhelper.RunTest(t, []error{os.ErrNotExist, os.ErrPermission, ErrNotTPM20}, Open)
 }
-
-func TestLocalResourceManagedTPM(t *testing.T) {
-	testhelper.RunTest(t, []error{os.ErrNotExist, os.ErrPermission, ErrNotTPM20}, Open)
-}
