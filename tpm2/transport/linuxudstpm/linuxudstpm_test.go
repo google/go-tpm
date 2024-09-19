@@ -5,6 +5,7 @@ package linuxudstpm
 import (
 	"flag"
 	"os"
+	"syscall"
 	"testing"
 
 	"github.com/google/go-tpm/tpm2/transport"
@@ -25,5 +26,5 @@ func open() func() (transport.TPMCloser, error) {
 }
 
 func TestLocalUDSTPM(t *testing.T) {
-	testhelper.RunTest(t, []error{os.ErrNotExist, os.ErrPermission, ErrFileIsNotSocket}, open())
+	testhelper.RunTest(t, []error{os.ErrNotExist, os.ErrPermission, ErrFileIsNotSocket, syscall.ECONNREFUSED}, open())
 }

@@ -34,6 +34,13 @@ func RunTest(t *testing.T, skipErrs []error, tpmOpener func() (transport.TPMClos
 		Property:      uint32(tpm2.TPMPTManufacturer),
 		PropertyCount: 1,
 	}.Execute(tpm)
+
+	// We might run into one of the known "skip if this error" cases.
+	for _, skipErr := range skipErrs {
+		if errors.Is(err, skipErr) {
+			t.Skipf("%v", err)
+		}
+	}
 	if err != nil {
 		t.Fatalf("GetCapability() = %v", err)
 	}
