@@ -85,7 +85,8 @@ func (erw *emulatorReadWriteCloser) Write(p []byte) (int, error) {
 // Close implements the io.Closer interface.
 func (erw *emulatorReadWriteCloser) Close() error {
 	if erw.conn == nil {
-		return ErrNotOpen
+		// This is an expected possible state, e.g., if someone sent the TPM a command and didn't read the response.
+		return nil
 	}
 	err := erw.conn.Close()
 	erw.conn = nil

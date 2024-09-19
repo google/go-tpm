@@ -3,6 +3,7 @@
 package linuxudstpm
 
 import (
+	"flag"
 	"os"
 	"testing"
 
@@ -10,16 +11,19 @@ import (
 	testhelper "github.com/google/go-tpm/tpm2/transport/test"
 )
 
-func open(path string) func() (transport.TPMCloser, error) {
+var tpmSocket = flag.String("tpm_socket", "/dev/tpm0", "path to the TPM simulator UDS")
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	os.Exit(m.Run())
+}
+
+func open() func() (transport.TPMCloser, error) {
 	return func() (transport.TPMCloser, error) {
-		return Open(path)
+		return Open(*tpmSocket)
 	}
 }
 
 func TestLocalUDSTPM(t *testing.T) {
-	testhelper.RunTest(t, []error{os.ErrNotExist, os.ErrPermission, ErrFileIsNotSocket}, open("/dev/tpm0"))
-}
-
-func TestLocalResourceManagedUDSTPM(t *testing.T) {
-	testhelper.RunTest(t, []error{os.ErrNotExist, os.ErrPermission, ErrFileIsNotSocket}, open("/dev/tpmrm0"))
+	testhelper.RunTest(t, []error{os.ErrNotExist, os.ErrPermission, ErrFileIsNotSocket}, open())
 }
