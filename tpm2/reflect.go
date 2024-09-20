@@ -815,8 +815,10 @@ func cmdNames[R any](cmd Command[R, *R]) ([]TPM2BName, error) {
 		}
 
 		// Special case: handles with an empty name buffer (anonymous:anon)
-		// The Name of a sequence object is an Empty Buffer
-		// See part 1: Architecture, section 32.4.5
+		// See part 1: Architecture, section 32.4.5:
+		// The Name of a sequence object is an Empty Buffer (sized array with no
+		// data; indicated by a size field of zero followed by an array
+		// containing no elements)
 		if hasTag(reflect.ValueOf(cmd).Type().Field(i), "anon") {
 			continue
 		}
