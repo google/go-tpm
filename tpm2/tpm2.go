@@ -658,8 +658,8 @@ type HashSequenceStartResponse struct {
 // HmacStart is the input to TPM2_HMAC_Start.
 // See definition in Part 3, Commands, section 17.2.2
 type HmacStart struct {
-	// HMAC key handle requiring an authorization session for the USER role
-	Handle AuthHandle `gotpm:"handle,auth"`
+	// HMAC key handle
+	Handle handle `gotpm:"handle,auth"`
 	// authorization value for subsequent use of the sequence
 	Auth TPM2BAuth
 	// the hash algorithm to use for the hmac sequence
@@ -689,7 +689,7 @@ type HmacStartResponse struct {
 // See definition in Part 3, Commands, section 17.4
 type SequenceUpdate struct {
 	// handle for the sequence object
-	SequenceHandle handle `gotpm:"handle,auth"`
+	SequenceHandle handle `gotpm:"handle,auth,anon"`
 	// data to be added to hash
 	Buffer TPM2BMaxBuffer
 }
@@ -713,7 +713,7 @@ type SequenceUpdateResponse struct{}
 // See definition in Part 3, Commands, section 17.5
 type SequenceComplete struct {
 	// authorization for the sequence
-	SequenceHandle handle `gotpm:"handle,auth"`
+	SequenceHandle handle `gotpm:"handle,auth,anon"`
 	// data to be added to the hash/HMAC
 	Buffer TPM2BMaxBuffer
 	// hierarchy of the ticket for a hash

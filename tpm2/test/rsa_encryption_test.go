@@ -114,7 +114,10 @@ func TestRSAEncryption(t *testing.T) {
 	}
 
 	decryptCmd := RSADecrypt{
-		KeyHandle:  loadRsp.ObjectHandle,
+		KeyHandle: NamedHandle{
+			Handle: loadRsp.ObjectHandle,
+			Name:   loadRsp.Name,
+		},
 		CipherText: TPM2BPublicKeyRSA{Buffer: encryptRsp.OutData.Buffer},
 		InScheme: TPMTRSADecrypt{
 			Scheme: TPMAlgOAEP,
