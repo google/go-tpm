@@ -813,6 +813,14 @@ func cmdNames[R any](cmd Command[R, *R]) ([]TPM2BName, error) {
 			return nil, fmt.Errorf("invalid 'handle'-tagged member of %q: %v",
 				reflect.TypeOf(cmd), err)
 		}
+
+		// Special case: handles with an empty name buffer (anonymous:anon)
+		// The Name of a sequence object is an Empty Buffer
+		// See part 1: Architecture, section 32.4.5
+		if hasTag(reflect.ValueOf(cmd).Type().Field(i), "anon") {
+			continue
+		}
+
 		name := h.KnownName()
 		if name == nil {
 			return nil, fmt.Errorf("missing Name for '%v' parameter",

@@ -689,7 +689,7 @@ type HmacStartResponse struct {
 // See definition in Part 3, Commands, section 17.4
 type SequenceUpdate struct {
 	// handle for the sequence object
-	SequenceHandle handle `gotpm:"handle,auth"`
+	SequenceHandle handle `gotpm:"handle,auth,anon"`
 	// data to be added to hash
 	Buffer TPM2BMaxBuffer
 }
@@ -713,7 +713,7 @@ type SequenceUpdateResponse struct{}
 // See definition in Part 3, Commands, section 17.5
 type SequenceComplete struct {
 	// authorization for the sequence
-	SequenceHandle handle `gotpm:"handle,auth"`
+	SequenceHandle handle `gotpm:"handle,auth,anon"`
 	// data to be added to the hash/HMAC
 	Buffer TPM2BMaxBuffer
 	// hierarchy of the ticket for a hash

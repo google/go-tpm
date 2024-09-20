@@ -88,6 +88,7 @@ func TestHmacStart(t *testing.T) {
 			Handle: rspHS.SequenceHandle,
 			Auth:   PasswordAuth(password),
 		}
+
 		for len(data) > maxInputBuffer {
 			sequenceUpdate := SequenceUpdate{
 				SequenceHandle: authHandle,
@@ -123,10 +124,15 @@ func TestHmacStart(t *testing.T) {
 	password := make([]byte, 8)
 	_, _ = rand.Read(password)
 
+	hierarchies := map[string]TPMHandle{
+		"Null":        TPMRHNull,
+		"Owner":       TPMRHOwner,
+		"Endorsement": TPMRHEndorsement}
+
 	for _, bufferSize := range bufferSizes {
 		data := make([]byte, bufferSize)
-		for _, hierarchy := range []TPMHandle{TPMRHNull, TPMRHOwner, TPMRHEndorsement} {
-			t.Run(fmt.Sprintf("Null hierarchy [bufferSize=%d]", bufferSize), func(t *testing.T) {
+		for name, hierarchy := range hierarchies {
+			t.Run(fmt.Sprintf("%s hierarchy [bufferSize=%d]", name, bufferSize), func(t *testing.T) {
 				_, _ = rand.Read(data)
 				// HMAC Key is not exported and can not be externally validated,
 				// run HMAC twice with same data and confirm they are the same
@@ -138,4 +144,108 @@ func TestHmacStart(t *testing.T) {
 			})
 		}
 	}
+
+	t.Run("Same key multiple sequences", func(t *testing.T) {
+		sas, sasCloser, err := HMACSession(thetpm, TPMAlgSHA256, 16)
+		if err != nil {
+			t.Fatalf("could not create hmac key authorization session: %v", err)
+		}
+		defer func() {
+			_ = sasCloser()
+		}()
+
+		createPrimary := CreatePrimary{
+			PrimaryHandle: AuthHandle{
+				Handle: TPMRHNull,
+				Auth:   sas,
+			},
+			InPublic: New2B(TPMTPublic{
+				Type:    TPMAlgKeyedHash,
+				NameAlg: TPMAlgSHA256,
+				ObjectAttributes: TPMAObject{
+					SignEncrypt:         true,
+					FixedTPM:            true,
+					FixedParent:         true,
+					SensitiveDataOrigin: true,
+					UserWithAuth:        true,
+				},
+				Parameters: NewTPMUPublicParms(TPMAlgKeyedHash,
+					&TPMSKeyedHashParms{
+						Scheme: TPMTKeyedHashScheme{
+							Scheme: TPMAlgHMAC,
+							Details: NewTPMUSchemeKeyedHash(TPMAlgHMAC,
+								&TPMSSchemeHMAC{
+									HashAlg: TPMAlgSHA256,
+								}),
+						},
+					}),
+			}),
+		}
+
+		rspCP, err := createPrimary.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("CreatePrimary HMAC key failed: %v", err)
+		}
+
+		flushContext := FlushContext{FlushHandle: rspCP.ObjectHandle}
+		defer func() {
+			_, _ = flushContext.Execute(thetpm)
+		}()
+
+		hmacStart := HmacStart{
+			Handle: AuthHandle{
+				Handle: rspCP.ObjectHandle,
+				Name:   rspCP.Name,
+				Auth:   sas,
+			},
+			Auth: TPM2BAuth{
+				Buffer: password,
+			},
+			HashAlg: TPMAlgNull,
+		}
+
+		rspHS1, err := hmacStart.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("HmacStart failed: %v", err)
+		}
+
+		authHandle1 := AuthHandle{
+			Handle: rspHS1.SequenceHandle,
+			Auth:   PasswordAuth(password),
+		}
+
+		rspHS2, err := hmacStart.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("HmacStart failed: %v", err)
+		}
+
+		authHandle2 := AuthHandle{
+			Handle: rspHS2.SequenceHandle,
+			Auth:   PasswordAuth(password),
+		}
+
+		if rspHS1.SequenceHandle.HandleValue() == rspHS2.SequenceHandle.HandleValue() {
+			t.Error("sequence handles are not unique")
+		}
+
+		sequenceComplete1 := SequenceComplete{
+			SequenceHandle: authHandle1,
+		}
+
+		_, err = sequenceComplete1.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("SequenceComplete failed: %v", err)
+		}
+
+		sequenceComplete2 := SequenceComplete{
+			SequenceHandle: authHandle2,
+		}
+
+		_, err = sequenceComplete2.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("SequenceComplete failed: %v", err)
+		}
+
+	})
+
 }

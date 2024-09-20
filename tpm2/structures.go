@@ -127,14 +127,6 @@ func (h TPMHandle) KnownName() *TPM2BName {
 		result := make([]byte, 4)
 		binary.BigEndian.PutUint32(result, h.HandleValue())
 		return &TPM2BName{Buffer: result}
-	case TPMHTTransient:
-		// The Name of a sequence object is an Empty Buffer
-		// See part 1: Architecture, section 32.4.5
-		if h == TPMIDHSavedSequence {
-			return &TPM2BName{
-				Buffer: []byte{},
-			}
-		}
 	}
 	return nil
 }
