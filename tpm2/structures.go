@@ -2881,7 +2881,6 @@ func (u *TPMUSensitiveComposite) Bits() (*TPM2BSensitiveData, error) {
 	if u.selector == TPMAlgKeyedHash {
 		return u.contents.(*TPM2BSensitiveData), nil
 	}
-	
 	return nil, fmt.Errorf("did not contain bits (selector value was %v)", u.selector)
 }
 
