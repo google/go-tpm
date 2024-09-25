@@ -1,7 +1,6 @@
 package tpm2
 
 import (
-	"crypto"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
