@@ -1,6 +1,7 @@
 package tpm2
 
 import (
+	"crypto"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -22,6 +23,41 @@ func RSAPub(parms *TPMSRSAParms, pub *TPM2BPublicKeyRSA) (*rsa.PublicKey, error)
 		result.E = 65537
 	}
 	return &result, nil
+}
+
+// ECDHPub converts a TPM ECC public key into one recognized by the ecdh package
+func ECDSAPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdsa.PublicKey, error) {
+
+	var c elliptic.Curve
+	switch parms.CurveID {
+	case TPMECCNistP256:
+		c = elliptic.P256()
+	case TPMECCNistP384:
+		c = elliptic.P384()
+	case TPMECCNistP521:
+		c = elliptic.P521()
+	default:
+		return nil, fmt.Errorf("unknown curve: %v", parms.CurveID)
+	}
+
+	pubKey := ecdsa.PublicKey{
+		Curve: c,
+		X:     big.NewInt(0).SetBytes(pub.X.Buffer),
+		Y:     big.NewInt(0).SetBytes(pub.Y.Buffer),
+	}
+
+	return &pubKey, nil
+}
+
+// ECDHPub converts a TPM ECC public key into one recognized by the ecdh package
+func ECDHPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdh.PublicKey, error) {
+
+	pubKey, err := ECDSAPub(parms, pub)
+	if err != nil {
+		return nil, err
+	}
+
+	return pubKey.ECDH()
 }
 
 // ECDHPubKey converts a TPM ECC public key into one recognized by the ecdh package
