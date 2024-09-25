@@ -2875,7 +2875,7 @@ func (u *TPMUSensitiveComposite) Sym() (*TPM2BSymKey, error) {
 	}
 	return nil, fmt.Errorf("did not contain sym (selector value was %v)", u.selector)
 }
-// bits returns the 'bits' member of the union.
+// Bits returns the 'bits' member of the union.
 func (u *TPMUSensitiveComposite) Bits() (*TPM2BSensitiveData, error) {
 	if u.selector == TPMAlgKeyedHash {
 		return u.contents.(*TPM2BSensitiveData), nil
