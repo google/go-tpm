@@ -2884,6 +2884,7 @@ func (u *TPMUSensitiveComposite) Bits() (*TPM2BSensitiveData, error) {
 	
 	return nil, fmt.Errorf("did not contain bits (selector value was %v)", u.selector)
 }
+
 // RSA returns the 'rsa' member of the union.
 func (u *TPMUSensitiveComposite) RSA() (*TPM2BPrivateKeyRSA, error) {
 	if u.selector == TPMAlgRSA {
@@ -2891,6 +2892,7 @@ func (u *TPMUSensitiveComposite) RSA() (*TPM2BPrivateKeyRSA, error) {
 	}
 	return nil, fmt.Errorf("did not contain rsa (selector value was %v)", u.selector)
 }
+
 // ECC returns the 'ecc' member of the union.
 func (u *TPMUSensitiveComposite) ECC() (*TPM2BECCParameter, error) {
 	if u.selector == TPMAlgECC {
