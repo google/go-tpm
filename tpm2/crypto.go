@@ -22,7 +22,7 @@ func Pub(public TPMTPublic) (crypto.PublicKey, error) {
 
 		n, err := public.Unique.RSA()
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse and retreive the RSA modulus")
+			return nil, fmt.Errorf("failed to parse and retrieve the RSA modulus")
 		}
 
 		publicKey, err = RSAPub(parameters, n)
@@ -37,7 +37,7 @@ func Pub(public TPMTPublic) (crypto.PublicKey, error) {
 
 		pub, err := public.Unique.ECC()
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse and retreive the ECC point")
+			return nil, fmt.Errorf("failed to parse and retrieve the ECC point")
 		}
 
 		publicKey, err = ECDSAPub(parameters, pub)
