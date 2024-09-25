@@ -1,6 +1,7 @@
 package tpm2
 
 import (
+	"crypto"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -8,6 +9,48 @@ import (
 	"fmt"
 	"math/big"
 )
+
+func Pub(public TPMTPublic) (crypto.PublicKey, error) {
+	var publicKey crypto.PublicKey
+
+	switch public.Type {
+	case TPMAlgRSA:
+		parameters, err := public.Parameters.RSADetail()
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve the RSA parameters")
+		}
+
+		n, err := public.Unique.RSA()
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse and retreive the RSA modulus")
+		}
+
+		publicKey, err = RSAPub(parameters, n)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve the RSA public key")
+		}
+	case TPMAlgECC:
+		parameters, err := public.Parameters.ECCDetail()
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve the ECC parameters")
+		}
+
+		pub, err := public.Unique.ECC()
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse and retreive the ECC point")
+		}
+
+		publicKey, err = ECDSAPub(parameters, pub)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve the ECC public key")
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
+	}
+
+	return publicKey, nil
+}
 
 // RSAPub converts a TPM RSA public key into one recognized by the rsa package.
 func RSAPub(parms *TPMSRSAParms, pub *TPM2BPublicKeyRSA) (*rsa.PublicKey, error) {
