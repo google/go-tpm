@@ -24,7 +24,7 @@ func RSAPub(parms *TPMSRSAParms, pub *TPM2BPublicKeyRSA) (*rsa.PublicKey, error)
 	return &result, nil
 }
 
-// ECDHPub converts a TPM ECC public key into one recognized by the ecdh package
+// ECDSAPub converts a TPM ECC public key into one recognized by the ecdh package
 func ECDSAPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdsa.PublicKey, error) {
 
 	var c elliptic.Curve
