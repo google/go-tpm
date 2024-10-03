@@ -46,7 +46,7 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
 
-	return &privateKey, nil
+	return privateKey, nil
 }
 
 // Pub converts a TPM public key into one recognized by the crypto package.
