@@ -37,12 +37,12 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 		privateKey = rsa.PrivateKey{
 			PublicKey: publicKey,
 			D:         D,
-			Primes: []*big.Int{P, Q},
+			Primes:    []*big.Int{P, Q},
 		}
 		privateKey := privateKey.(rsa.PrivateKey)
 
 		privateKey.Precompute()
-	
+
 	default:
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
