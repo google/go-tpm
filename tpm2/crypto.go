@@ -23,7 +23,7 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 	switch public.Type {
 	case TPMAlgRSA:
 		publicKey := publicKey.(*rsa.PublicKey)
-		
+
 		prime, err := sensitive.Sensitive.RSA()
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve the RSA prime number")
