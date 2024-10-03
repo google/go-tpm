@@ -22,7 +22,7 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 
 	switch public.Type {
 	case TPMAlgRSA:
-		publicKey := publicKey.(rsa.PublicKey)
+		publicKey := publicKey.(*rsa.PublicKey)
 
 		prime, err := sensitive.Sensitive.RSA()
 		if err != nil {
@@ -35,7 +35,7 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 		D := new(big.Int).ModInverse(big.NewInt(int64(publicKey.E)), phiN)
 
 		privateKey = &rsa.PrivateKey{
-			PublicKey: publicKey,
+			PublicKey: *publicKey,
 			D:         D,
 			Primes:    []*big.Int{P, Q},
 		}
