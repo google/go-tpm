@@ -23,7 +23,7 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 	switch public.Type {
 	case TPMAlgRSA:
 		publicKey := publicKey.(*rsa.PublicKey)
-
+		
 		prime, err := sensitive.Sensitive.RSA()
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve the RSA prime number")
@@ -34,7 +34,7 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 		phiN := new(big.Int).Mul(new(big.Int).Sub(P, big.NewInt(1)), new(big.Int).Sub(Q, big.NewInt(1)))
 		D := new(big.Int).ModInverse(big.NewInt(int64(publicKey.E)), phiN)
 
-		privateKey = &rsa.PrivateKey{
+		privateKey = rsa.PrivateKey{
 			PublicKey: *publicKey,
 			D:         D,
 			Primes:    []*big.Int{P, Q},
@@ -42,7 +42,6 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 		privateKey := privateKey.(rsa.PrivateKey)
 
 		privateKey.Precompute()
-
 	default:
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
@@ -89,7 +88,7 @@ func Pub(public TPMTPublic) (crypto.PublicKey, error) {
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
 
-	return &publicKey, nil
+	return publicKey, nil
 }
 
 // RSAPub converts a TPM RSA public key into one recognized by the rsa package.
