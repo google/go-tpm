@@ -10,6 +10,47 @@ import (
 	"math/big"
 )
 
+// Priv converts a TPM private key into one recognized by the crypto package.
+func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error) {
+
+	var privateKey crypto.PrivateKey
+
+	publicKey, err := Pub(public)
+	if err != nil {
+		return nil, err
+	}
+
+	switch public.Type {
+	case TPMAlgRSA:
+		prime, err := sensitive.Sensitive.RSA()
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve the RSA prime number")
+		}
+
+		publicKey := publicKey.(rsa.PublicKey)
+
+		P := new(big.Int).SetBytes(prime.Buffer)
+		Q := new(big.Int).Div(publicKey.N, P)
+		phiN := new(big.Int).Mul(new(big.Int).Sub(P, big.NewInt(1)), new(big.Int).Sub(Q, big.NewInt(1)))
+		D := new(big.Int).ModInverse(big.NewInt(int64(publicKey.E)), phiN)
+
+		privateKey = rsa.PrivateKey{
+			PublicKey: publicKey,
+			D:         D,
+			Primes: []*big.Int{P, Q},
+		}
+		privateKey := privateKey.(rsa.PrivateKey)
+
+		privateKey.Precompute()
+	
+	default:
+		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
+	}
+
+	return privateKey, nil
+}
+
+// Pub converts a TPM public key into one recognized by the crypto package.
 func Pub(public TPMTPublic) (crypto.PublicKey, error) {
 	var publicKey crypto.PublicKey
 
@@ -44,7 +85,6 @@ func Pub(public TPMTPublic) (crypto.PublicKey, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve the ECC public key")
 		}
-
 	default:
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
