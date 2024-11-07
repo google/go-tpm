@@ -1,39 +1,45 @@
-name: Lint
+name: Lint  # Workflow for linting modified Go files
 
 on:
   pull_request:
     branches:
-      - fuzz-tester  # Add the specific branch you want to use
+      - fuzz-tester  # Trigger workflow on pull requests targeting the fuzz-tester branch
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Run job on the latest Ubuntu environment
 
     steps:
       - name: Checkout code
+        # Checks out the repository code to make it available for linting
         uses: actions/checkout@v2
         with:
-          fetch-depth: 0             # Fetch all history for diffing
-          ref: fuzz-tester           # Ensure the fuzz-tester branch is available
+          fetch-depth: 0  # Fetches full commit history for accurate diffing
 
       - name: Set up Go
+        # Sets up the specified version of Go for the environment
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.19' # Adjust for your project requirements
+          go-version: '^1.19'  # Specifies the Go version required for the project
 
       - name: Install golangci-lint
+        # Installs golangci-lint using the official installation script
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.52.2
 
       - name: Identify Modified Files
+        # Identifies modified .go files compared to the fuzz-tester branch
         id: modified_files
         run: |
-          # Fetch main and other branches to ensure origin/fuzz-tester is available
-          git fetch origin main
-          MODIFIED_FILES=$(git diff --name-only origin/fuzz-tester -- '*.go')
-          echo "::set-output name=files::$MODIFIED_FILES"
+          git fetch origin fuzz-tester  # Fetches fuzz-tester branch for comparison
+          MODIFIED_FILES=$(git diff --name-only origin/fuzz-tester -- '*.go')  # Lists modified .go files compared to fuzz-tester
+          echo "${MODIFIED_FILES}"  # Output modified files
+        shell: bash
+        outputs:
+          files: ${{ steps.modified_files.outputs.files }}
 
       - name: Run golangci-lint
-        if: steps.modified_files.outputs.files != ''
+        # Runs golangci-lint only on modified .go files if any are found
+        if: ${{ steps.modified_files.outputs.files != '' }}  # Checks if there are modified files
         run: |
-          echo "${{ steps.modified_files.outputs.files }}" | xargs golangci-lint run
+          echo "${{ steps.modified_files.outputs.files }}" | xargs golangci-lint run  # Lints only modified .go files
