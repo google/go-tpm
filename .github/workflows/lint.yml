@@ -3,7 +3,7 @@ name: Lint
 on:
   pull_request:
     branches:
-      - fuzz-tester
+      - fuzz-tester  # Add the specific branch you want to use
 
 jobs:
   lint:
@@ -12,11 +12,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0             # Fetch all history for diffing
+          ref: fuzz-tester           # Ensure the fuzz-tester branch is available
 
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.19' # Use the Go version required for your project
+          go-version: '^1.19' # Adjust for your project requirements
 
       - name: Install golangci-lint
         run: |
@@ -25,7 +28,9 @@ jobs:
       - name: Identify Modified Files
         id: modified_files
         run: |
-          MODIFIED_FILES=$(git diff --name-only origin/main -- '*.go')
+          # Fetch main and other branches to ensure origin/fuzz-tester is available
+          git fetch origin main
+          MODIFIED_FILES=$(git diff --name-only origin/fuzz-tester -- '*.go')
           echo "::set-output name=files::$MODIFIED_FILES"
 
       - name: Run golangci-lint
