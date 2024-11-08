@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - fuzz-tester  # Trigger workflow on pull requests targeting the fuzz-tester branch
+  workflow_dispatch:  # Allows manual triggering for testing purposes
 
 jobs:
   lint:
@@ -27,19 +28,14 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.52.2
 
-      - name: Identify Modified Files
-        # Identifies modified .go files compared to the fuzz-tester branch
-        id: modified_files
+      - name: Identify and Lint Modified Files
+        # Identifies modified .go files compared to the fuzz-tester branch and lints them directly
         run: |
-          git fetch origin fuzz-tester  # Fetches fuzz-tester branch for comparison
-          MODIFIED_FILES=$(git diff --name-only origin/fuzz-tester -- '*.go')  # Lists modified .go files compared to fuzz-tester
-          echo "${MODIFIED_FILES}"  # Output modified files
-        shell: bash
-        outputs:
-          files: ${{ steps.modified_files.outputs.files }}
-
-      - name: Run golangci-lint
-        # Runs golangci-lint only on modified .go files if any are found
-        if: ${{ steps.modified_files.outputs.files != '' }}  # Checks if there are modified files
-        run: |
-          echo "${{ steps.modified_files.outputs.files }}" | xargs golangci-lint run  # Lints only modified .go files
+          git fetch origin fuzz-tester 
+          MODIFIED_FILES=$(git diff --name-only origin/fuzz-tester -- '*.go') 
+          echo "Modified files: $MODIFIED_FILES" 
+          if [ -n "$MODIFIED_FILES" ]; then
+            echo "$MODIFIED_FILES" | xargs golangci-lint run 
+          else
+            echo "No modified .go files to lint."
+          fi
