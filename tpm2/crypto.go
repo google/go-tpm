@@ -141,30 +141,6 @@ func ECDHPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdh.PublicKey, error) {
 	return pubKey.ECDH()
 }
 
-// ECDHPubKey converts a TPM ECC public key into one recognized by the ecdh package
-func ECDHPubKey(curve ecdh.Curve, pub *TPMSECCPoint) (*ecdh.PublicKey, error) {
-
-	var c elliptic.Curve
-	switch curve {
-	case ecdh.P256():
-		c = elliptic.P256()
-	case ecdh.P384():
-		c = elliptic.P384()
-	case ecdh.P521():
-		c = elliptic.P521()
-	default:
-		return nil, fmt.Errorf("unknown curve: %v", curve)
-	}
-
-	pubKey := ecdsa.PublicKey{
-		Curve: c,
-		X:     big.NewInt(0).SetBytes(pub.X.Buffer),
-		Y:     big.NewInt(0).SetBytes(pub.Y.Buffer),
-	}
-
-	return pubKey.ECDH()
-}
-
 // ECCPoint returns an uncompressed ECC Point
 func ECCPoint(pubKey *ecdh.PublicKey) (*big.Int, *big.Int, error) {
 	b := pubKey.Bytes()
