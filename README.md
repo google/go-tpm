@@ -14,15 +14,15 @@ Please note that this is not an official Google product.
 The `tpm` directory contains TPM 1.2 client library. This library is in
 ["maintenance mode"](#tpm-1.2).
 
-The `tpm2` directory contains TPM 2.0 client library.
+The `legacy/tpm2` directory contains the legacy TPM 2.0 client library.
 
-The `examples` directory contains some simple examples for both versions of the
-spec.
-
-The `direct` directory contains the prototype "TPMDirect" TPM 2.0 API, which is
+The `tpm2` directory contains the prototype "TPMDirect" TPM 2.0 API, which is
 intended to (eventually) be 1:1 with the TPM 2.0 spec. Please report issues,
 complaints, or suggestions using the label
 https://github.com/google/go-tpm/labels/tpmdirect.
+
+The `examples` directory contains some simple examples for both legacy versions
+of the spec.
 
 ## TPM 1.2
 
