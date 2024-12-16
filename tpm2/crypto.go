@@ -73,7 +73,6 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 	return privateKey, nil
 }
 
-
 // Pub converts a TPM public key into one recognized by the crypto package.
 func Pub(public TPMTPublic) (crypto.PublicKey, error) {
 	var publicKey crypto.PublicKey
