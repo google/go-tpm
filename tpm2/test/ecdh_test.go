@@ -71,9 +71,13 @@ func TestECDH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	tpmPubKey, err := ECDHPubKey(curve, tpmPub)
+	eccParms, err := outPub.Parameters.ECCDetail()
 	if err != nil {
-		t.Fatalf("could not unmarshall pubkey: %v", err)
+		t.Fatalf("%v", err)
+	}
+	tpmPubKey, err := ECDHPub(eccParms, tpmPub)
+	if err != nil {
+		t.Fatalf("could not unmarshal pubkey: %v", err)
 	}
 
 	// Create a SW ECDH key

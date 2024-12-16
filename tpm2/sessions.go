@@ -428,9 +428,9 @@ func getEncryptedSaltECC(nameAlg TPMIAlgHash, parms *TPMSECCParms, pub *TPMSECCP
 	if err != nil {
 		return nil, nil, fmt.Errorf("ecc salt: param curve: %w", err)
 	}
-	eccPub, err := ECDHPubKey(curve, pub)
+	eccPub, err := ECDHPub(parms, pub)
 	if err != nil {
-		return nil, nil, fmt.Errorf("ecc salt: unmarshalling tpm ecc key: %w", err)
+		return nil, nil, fmt.Errorf("ecc salt: unmarshaling tpm ecc key: %w", err)
 	}
 
 	// Generate new ECDH key
