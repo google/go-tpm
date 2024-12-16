@@ -24,6 +24,10 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 	case TPMAlgRSA:
 		publicKey := publicKey.(*rsa.PublicKey)
 
+		if sensitive.SensitiveType != TPMAlgRSA {
+			return nil, fmt.Errorf("sensitive type is not equal to public type")
+		}
+
 		prime, err := sensitive.Sensitive.RSA()
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve the RSA prime number")
@@ -34,14 +38,34 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 		phiN := new(big.Int).Mul(new(big.Int).Sub(P, big.NewInt(1)), new(big.Int).Sub(Q, big.NewInt(1)))
 		D := new(big.Int).ModInverse(big.NewInt(int64(publicKey.E)), phiN)
 
-		privateKey = rsa.PrivateKey{
+		rsaKey := &rsa.PrivateKey{
 			PublicKey: *publicKey,
 			D:         D,
 			Primes:    []*big.Int{P, Q},
 		}
-		privateKey := privateKey.(rsa.PrivateKey)
+		rsaKey.Precompute()
 
-		privateKey.Precompute()
+		privateKey = rsaKey
+	case TPMAlgECC:
+		publicKey := publicKey.(*ecdsa.PublicKey)
+
+		if sensitive.SensitiveType != TPMAlgECC {
+			return nil, fmt.Errorf("sensitive type is not equal to public type")
+		}
+
+		d, err := sensitive.Sensitive.ECC()
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve the ECC")
+		}
+
+		D := new(big.Int).SetBytes(d.Buffer)
+
+		ecdsaKey := &ecdsa.PrivateKey{
+			PublicKey: *publicKey,
+			D:         D,
+		}
+
+		privateKey = ecdsaKey
 	default:
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
