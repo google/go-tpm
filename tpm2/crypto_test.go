@@ -508,7 +508,7 @@ func TestRoundTrip(t *testing.T) {
 				InPublic: tc.pub,
 			}.Execute(tpm)
 			if err != nil {
-				t.Fatalf("could not create RSA key: %v", err)
+				t.Fatalf("could not create key: %v", err)
 			}
 
 			load, err := Load{
@@ -520,7 +520,7 @@ func TestRoundTrip(t *testing.T) {
 				InPublic:  create.OutPublic,
 			}.Execute(tpm)
 			if err != nil {
-				t.Fatalf("could not load RSA key: %v", err)
+				t.Fatalf("could not load key: %v", err)
 			}
 			defer FlushContext{
 				FlushHandle: load.ObjectHandle,
@@ -568,7 +568,7 @@ func duplicateAndImport(t *testing.T, tpm transport.TPM, h TPMHandle) (crypto.Pu
 		NewParentHandle: TPMRHNull,
 	}.Execute(tpm)
 	if err != nil {
-		t.Fatalf("could not duplicate RSA key: %v", err)
+		t.Fatalf("could not duplicate key: %v", err)
 	}
 
 	sens, err := Unmarshal[TPM2BSensitive](dup.Duplicate.Buffer)
