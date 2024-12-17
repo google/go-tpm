@@ -526,7 +526,7 @@ func TestRoundTrip(t *testing.T) {
 				FlushHandle: load.ObjectHandle,
 			}.Execute(tpm)
 
-			pub, priv := duplicateAndImport(t, tpm, load.ObjectHandle)
+			pub, priv := duplicateToSoftware(t, tpm, load.ObjectHandle)
 			checkSignVerify(t, tpm, NamedHandle{
 				Handle: load.ObjectHandle,
 				Name:   load.Name,
@@ -539,7 +539,7 @@ func TestRoundTrip(t *testing.T) {
 // Note that in practice, one could just use `crypto.PrivateKey.Public()` to
 // derive the public key from the private key. This helper uses the `Pub`
 // routine to validate that function specifically while we test the rest.
-func duplicateAndImport(t *testing.T, tpm transport.TPM, h TPMHandle) (crypto.PublicKey, crypto.PrivateKey) {
+func duplicateToSoftware(t *testing.T, tpm transport.TPM, h TPMHandle) (crypto.PublicKey, crypto.PrivateKey) {
 	t.Helper()
 
 	readPublic, err := ReadPublic{
