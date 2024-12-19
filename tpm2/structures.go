@@ -1426,6 +1426,9 @@ func (u *TPMUSymKeyBits) Sym() (*TPMKeyBits, error) {
 }
 
 // AES returns the 'aes' member of the union.
+//
+// Deprecated: AES exists for historical compatibility
+// and should not be used. Sym should be used instead.
 func (u *TPMUSymKeyBits) AES() (*TPMKeyBits, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMKeyBits]).unbox()
@@ -1515,6 +1518,9 @@ func (u *TPMUSymMode) Sym() (*TPMIAlgSymMode, error) {
 }
 
 // AES returns the 'aes' member of the union.
+//
+// Deprecated: AES exists for historical compatibility
+// and should not be used. Sym should be used instead.
 func (u *TPMUSymMode) AES() (*TPMIAlgSymMode, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
