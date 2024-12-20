@@ -15,6 +15,25 @@ import (
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
+// Subtle: Some RSA crypto libraries compute D (the private exponent)
+// based on phi(N) (Euler's totient function). Phi(N) is the order of the
+// multiplicative group of integers modulo N.
+// Other libraries compute lambda(N), the Carmichael function: the
+// minimum order among all the elements of the multiplicative group of
+// integers modulo N. Lambda(N) divides phi(N).
+// This test isn't intended to ensure that the underlying crypto
+// implementation chooses one or the other, or that it agrees with the
+// implementation of the tpm2.Priv() function. So, we compare RSA private keys
+// in tests by checking that the public exponent, modulus, and primes are the
+// same. We also have tests to ensure that signatures produced by the TPM and
+// by the software implementation validate (which has the effect of confirming
+// that the private exponents are correct).
+func areRSAPrivateKeysEqual(a, b *rsa.PrivateKey) bool {
+	return a.E == b.E &&
+		a.N.Cmp(b.N) == 0 &&
+		reflect.DeepEqual(a.Primes, b.Primes)
+}
+
 func TestPriv(t *testing.T) {
 
 	t.Parallel()
@@ -186,7 +205,7 @@ func TestPriv(t *testing.T) {
 			if key != nil {
 				switch key := key.(type) {
 				case *rsa.PrivateKey:
-					if !reflect.DeepEqual(rsaKey, key) {
+					if !areRSAPrivateKeysEqual(rsaKey, key) {
 						t.Errorf("Not equal: \n"+
 							"expected: %v\n"+
 							"actual  : %v",
