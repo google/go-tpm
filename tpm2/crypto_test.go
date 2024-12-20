@@ -11,8 +11,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/go-tpm/tpm2/transport"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
@@ -31,14 +29,9 @@ import (
 // by the software implementation validate (which has the effect of confirming
 // that the private exponents are correct).
 func areRSAPrivateKeysEqual(a, b *rsa.PrivateKey) bool {
-	// Tolerate the primes being in different order, and ignore the unexported
-	// fields of big.Int.
-	less := func(a, b *big.Int) bool { return a.Cmp(b) < 1 }
-	opts := []cmp.Option{cmpopts.SortSlices(less), cmpopts.IgnoreUnexported(big.Int{})}
-
 	return a.E == b.E &&
 		a.N.Cmp(b.N) == 0 &&
-		cmp.Diff(a.Primes, b.Primes, opts...) == ""
+		reflect.DeepEqual(a.Primes, b.Primes)
 }
 
 func TestPriv(t *testing.T) {
