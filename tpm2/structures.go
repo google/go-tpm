@@ -1368,7 +1368,7 @@ type SymKeyBitsContents interface {
 // create implements the unmarshallableWithHint interface.
 func (u *TPMUSymKeyBits) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
-	case TPMAlgAES:
+	case TPMAlgTDES, TPMAlgAES, TPMAlgSM4, TPMAlgCamellia:
 		var contents boxed[TPMKeyBits]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
@@ -1388,7 +1388,7 @@ func (u TPMUSymKeyBits) get(hint int64) (reflect.Value, error) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
 	switch TPMAlgID(hint) {
-	case TPMAlgAES:
+	case TPMAlgTDES, TPMAlgAES, TPMAlgSM4, TPMAlgCamellia:
 		var contents boxed[TPMKeyBits]
 		if u.contents != nil {
 			contents = *u.contents.(*boxed[TPMKeyBits])
@@ -1413,7 +1413,22 @@ func NewTPMUSymKeyBits[C SymKeyBitsContents](selector TPMAlgID, contents C) TPMU
 	}
 }
 
+// Sym returns the 'sym' member of the union.
+func (u *TPMUSymKeyBits) Sym() (*TPMKeyBits, error) {
+
+	switch u.selector {
+	case TPMAlgTDES, TPMAlgAES, TPMAlgSM4, TPMAlgCamellia:
+		value := u.contents.(*boxed[TPMKeyBits]).unbox()
+		return value, nil
+	default:
+		return nil, fmt.Errorf("did not contain sym (selector value was %v)", u.selector)
+	}
+}
+
 // AES returns the 'aes' member of the union.
+//
+// Deprecated: AES exists for historical compatibility
+// and should not be used. Sym should be used instead.
 func (u *TPMUSymKeyBits) AES() (*TPMKeyBits, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMKeyBits]).unbox()
@@ -1446,7 +1461,7 @@ type SymModeContents interface {
 // create implements the unmarshallableWithHint interface.
 func (u *TPMUSymMode) create(hint int64) (reflect.Value, error) {
 	switch TPMAlgID(hint) {
-	case TPMAlgAES:
+	case TPMAlgTDES, TPMAlgAES, TPMAlgSM4, TPMAlgCamellia:
 		var contents boxed[TPMAlgID]
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
@@ -1466,7 +1481,7 @@ func (u TPMUSymMode) get(hint int64) (reflect.Value, error) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
 	switch TPMAlgID(hint) {
-	case TPMAlgAES:
+	case TPMAlgTDES, TPMAlgAES, TPMAlgSM4, TPMAlgCamellia:
 		var contents boxed[TPMAlgID]
 		if u.contents != nil {
 			contents = *u.contents.(*boxed[TPMAlgID])
@@ -1491,7 +1506,21 @@ func NewTPMUSymMode[C SymModeContents](selector TPMAlgID, contents C) TPMUSymMod
 	}
 }
 
+// Sym returns the 'sym' member of the union.
+func (u *TPMUSymMode) Sym() (*TPMIAlgSymMode, error) {
+	switch u.selector {
+	case TPMAlgTDES, TPMAlgAES, TPMAlgSM4, TPMAlgCamellia:
+		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
+		return value, nil
+	default:
+		return nil, fmt.Errorf("did not contain sym (selector value was %v)", u.selector)
+	}
+}
+
 // AES returns the 'aes' member of the union.
+//
+// Deprecated: AES exists for historical compatibility
+// and should not be used. Sym should be used instead.
 func (u *TPMUSymMode) AES() (*TPMIAlgSymMode, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
