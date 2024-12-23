@@ -1426,15 +1426,39 @@ func (u *TPMUSymKeyBits) Sym() (*TPMKeyBits, error) {
 }
 
 // AES returns the 'aes' member of the union.
-//
-// Deprecated: AES exists for historical compatibility
-// and should not be used. Sym should be used instead.
 func (u *TPMUSymKeyBits) AES() (*TPMKeyBits, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMKeyBits]).unbox()
 		return value, nil
 	}
 	return nil, fmt.Errorf("did not contain aes (selector value was %v)", u.selector)
+}
+
+// TDES returns the 'tdes' member of the union.
+func (u *TPMUSymKeyBits) TDES() (*TPMKeyBits, error) {
+	if u.selector == TPMAlgTDES {
+		value := u.contents.(*boxed[TPMKeyBits]).unbox()
+		return value, nil
+	}
+	return nil, fmt.Errorf("did not contain tdes (selector value was %v)", u.selector)
+}
+
+// SM4 returns the 'sm4' member of the union.
+func (u *TPMUSymKeyBits) SM4() (*TPMKeyBits, error) {
+	if u.selector == TPMAlgSM4 {
+		value := u.contents.(*boxed[TPMKeyBits]).unbox()
+		return value, nil
+	}
+	return nil, fmt.Errorf("did not contain sm4 (selector value was %v)", u.selector)
+}
+
+// Camellia returns the 'camellia' member of the union.
+func (u *TPMUSymKeyBits) Camellia() (*TPMKeyBits, error) {
+	if u.selector == TPMAlgCamellia {
+		value := u.contents.(*boxed[TPMKeyBits]).unbox()
+		return value, nil
+	}
+	return nil, fmt.Errorf("did not contain camellia (selector value was %v)", u.selector)
 }
 
 // XOR returns the 'xor' member of the union.
@@ -1518,15 +1542,39 @@ func (u *TPMUSymMode) Sym() (*TPMIAlgSymMode, error) {
 }
 
 // AES returns the 'aes' member of the union.
-//
-// Deprecated: AES exists for historical compatibility
-// and should not be used. Sym should be used instead.
 func (u *TPMUSymMode) AES() (*TPMIAlgSymMode, error) {
 	if u.selector == TPMAlgAES {
 		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
 		return value, nil
 	}
 	return nil, fmt.Errorf("did not contain aes (selector value was %v)", u.selector)
+}
+
+// TDES returns the 'tdes' member of the union.
+func (u *TPMUSymMode) TDES() (*TPMIAlgSymMode, error) {
+	if u.selector == TPMAlgTDES {
+		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
+		return value, nil
+	}
+	return nil, fmt.Errorf("did not contain tdes (selector value was %v)", u.selector)
+}
+
+// SM4 returns the 'sm4' member of the union.
+func (u *TPMUSymMode) SM4() (*TPMIAlgSymMode, error) {
+	if u.selector == TPMAlgSM4 {
+		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
+		return value, nil
+	}
+	return nil, fmt.Errorf("did not contain sm4 (selector value was %v)", u.selector)
+}
+
+// Camellia returns the 'camellia' member of the union.
+func (u *TPMUSymMode) Camellia() (*TPMIAlgSymMode, error) {
+	if u.selector == TPMAlgCamellia {
+		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
+		return value, nil
+	}
+	return nil, fmt.Errorf("did not contain camellia (selector value was %v)", u.selector)
 }
 
 // TPMUSymDetails represents a TPMU_SYM_DETAILS.
