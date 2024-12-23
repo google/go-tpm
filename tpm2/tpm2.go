@@ -602,6 +602,35 @@ type HashResponse struct {
 	Validation TPMTTKHashCheck
 }
 
+// Hmac is the input to TPM2_HMAC.
+// See definition in Part 3, Commands, section 15.5.
+type Hmac struct {
+	// HMAC key handle requiring an authorization session for the USER role
+	Handle AuthHandle `gotpm:"handle,auth"`
+	// HMAC data
+	Buffer TPM2BMaxBuffer
+	// Algorithm to use for HMAC
+	HashAlg TPMIAlgHash
+}
+
+// Command implements the Command interface.
+func (Hmac) Command() TPMCC { return TPMCCHMAC }
+
+// Execute executes the command and returns the response.
+func (cmd Hmac) Execute(t transport.TPM, s ...Session) (*HmacResponse, error) {
+	var rsp HmacResponse
+	if err := execute[HmacResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// HmacResponse is the response from TPM2_HMAC.
+type HmacResponse struct {
+	// the returned HMAC in a sized buffer
+	OutHMAC TPM2BDigest
+}
+
 // GetRandom is the input to TPM2_GetRandom.
 // See definition in Part 3, Commands, section 16.1
 type GetRandom struct {
