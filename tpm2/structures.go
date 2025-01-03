@@ -1435,6 +1435,10 @@ func (u *TPMUSymKeyBits) AES() (*TPMKeyBits, error) {
 }
 
 // TDES returns the 'tdes' member of the union.
+//
+// Deprecated: TDES exists for historical compatibility
+// and is not recommended anymore.
+// https://csrc.nist.gov/news/2023/nist-to-withdraw-sp-800-67-rev-2
 func (u *TPMUSymKeyBits) TDES() (*TPMKeyBits, error) {
 	if u.selector == TPMAlgTDES {
 		value := u.contents.(*boxed[TPMKeyBits]).unbox()
@@ -1551,6 +1555,10 @@ func (u *TPMUSymMode) AES() (*TPMIAlgSymMode, error) {
 }
 
 // TDES returns the 'tdes' member of the union.
+//
+// Deprecated: TDES exists for historical compatibility
+// and is not recommended anymore.
+// https://csrc.nist.gov/news/2023/nist-to-withdraw-sp-800-67-rev-2
 func (u *TPMUSymMode) TDES() (*TPMIAlgSymMode, error) {
 	if u.selector == TPMAlgTDES {
 		value := u.contents.(*boxed[TPMIAlgSymMode]).unbox()
