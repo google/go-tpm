@@ -14,6 +14,14 @@ var (
 	platAddr = flag.String("plat_addr", "", "platform port (e.g., 'localhost:2322')")
 )
 
+// The tests in this file are skipped unless the flags above are provided.
+// To run the tests:
+// Fetch the TPM reference code at https://github.com/trustedcomputinggroup/tpm
+// Build the simulator per the instructions for your platform
+// In one shell, run the simulator, e.g., TPMCmd/Simulator/src/tpm2-simulator
+// In the other, run the tests, e.g.:
+//   go test --cmd_addr localhost:2321 --plat_addr localhost:2322
+
 // Helper to open the TPM based on command-line flags passed to the test, or skip.
 func getTPM(t *testing.T, powerOnStartUp bool) *TPM {
 	t.Helper()
@@ -162,7 +170,7 @@ func TestResetRestart(t *testing.T) {
 	}
 	if clock2.CurrentTime.ClockInfo.ResetCount != clock1.CurrentTime.ClockInfo.ResetCount {
 		t.Errorf("resetCount after Restart was %v, want %v",
-			clock1.CurrentTime.ClockInfo.ResetCount,
+			clock2.CurrentTime.ClockInfo.ResetCount,
 			clock1.CurrentTime.ClockInfo.ResetCount)
 	}
 
