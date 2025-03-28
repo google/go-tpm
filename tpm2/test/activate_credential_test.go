@@ -56,9 +56,9 @@ func TestActivateCredential(t *testing.T) {
 	secret := TPM2BDigest{Buffer: []byte("Secrets!!!")}
 
 	mc := MakeCredential{
-		Handle:      ekCreateRsp.ObjectHandle,
-		Credential:  secret,
-		ObjectNamae: srkCreateRsp.Name,
+		Handle:     ekCreateRsp.ObjectHandle,
+		Credential: secret,
+		ObjectName: srkCreateRsp.Name,
 	}
 	mcRsp, err := mc.Execute(thetpm)
 	if err != nil {

@@ -341,7 +341,7 @@ type MakeCredential struct {
 	// the credential information
 	Credential TPM2BDigest
 	// Name of the object to which the credential applies
-	ObjectNamae TPM2BName
+	ObjectName TPM2BName
 }
 
 // Command implements the Command interface.
