@@ -51,6 +51,10 @@ func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
 		return tpmutil.Pack(uint32(0))
 	}
 
+	if len(sel) == 1 && len(sel[0].PCRs) == 0 && sel[0].Hash == 0 {
+		return tpmutil.Pack(uint32(0))
+	}
+
 	// PCR selection is a variable-size bitmask, where position of a set bit is
 	// the selected PCR index.
 	// Size of the bitmask in bytes is pre-pended. It should be at least
@@ -61,10 +65,6 @@ func encodeTPMLPCRSelection(sel ...PCRSelection) ([]byte, error) {
 	// 00000011 00000000 00000001 00000100
 	var retBytes []byte
 	for _, s := range sel {
-		if len(s.PCRs) == 0 {
-			return tpmutil.Pack(uint32(0))
-		}
-
 		ts := tpmsPCRSelection{
 			Hash: s.Hash,
 			Size: sizeOfPCRSelect,
