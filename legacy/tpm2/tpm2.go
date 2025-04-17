@@ -1153,6 +1153,34 @@ func Clear(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand) error {
 	return err
 }
 
+func encodePCRAllocate(handle tpmutil.Handle, auth AuthCommand, pcrSelection []PCRSelection) ([]byte, error) {
+	ah, err := tpmutil.Pack(handle)
+	if err != nil {
+		return nil, err
+	}
+	authEncoded, err := encodeAuthArea(auth)
+	if err != nil {
+		return nil, err
+	}
+
+	pcrEncoded, err := encodeTPMLPCRSelection(pcrSelection...)
+	if err != nil {
+		return nil, err
+	}
+	return concat(ah, authEncoded, pcrEncoded)
+}
+
+// PCRAllocate sets the desired PCR allocation of PCR and algorithms.
+// The changes take effect once the TPM is restarted.
+func PCRAllocate(rw io.ReadWriter, handle tpmutil.Handle, auth AuthCommand, pcrSelection []PCRSelection) error {
+	Cmd, err := encodePCRAllocate(handle, auth, pcrSelection)
+	if err != nil {
+		return err
+	}
+	_, err = runCommand(rw, TagSessions, CmdPCRAllocate, tpmutil.RawBytes(Cmd))
+	return err
+}
+
 func encodeHierarchyChangeAuth(handle tpmutil.Handle, auth AuthCommand, newAuth string) ([]byte, error) {
 	ah, err := tpmutil.Pack(handle)
 	if err != nil {
