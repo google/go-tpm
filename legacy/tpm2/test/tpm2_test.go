@@ -1135,6 +1135,21 @@ func TestPCRReset(t *testing.T) {
 	}
 }
 
+func TestPCRAllocate(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	pcrSelectionRemoveSHA1 := []PCRSelection{
+		{Hash: AlgSHA1, PCRs: []int{}},
+		{Hash: AlgSHA256, PCRs: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}},
+	}
+
+	err := PCRAllocate(rw, HandlePlatform, AuthCommand{Session: HandlePasswordSession, Attributes: AttrContinueSession}, pcrSelectionRemoveSHA1)
+	if err != nil {
+		t.Fatalf("PCRAllocate failed: %v", err)
+	}
+}
+
 func makeAttestationData() AttestationData {
 	signer := tpmutil.Handle(100)
 	return AttestationData{
