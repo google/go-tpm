@@ -6,7 +6,6 @@ import (
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/rsa"
 	"encoding/binary"
 	"fmt"
 
@@ -369,129 +368,20 @@ func HMACSession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthO
 	return &sess, closer, nil
 }
 
-// Part 1, B.10.2
-func getEncryptedSaltRSA(nameAlg TPMIAlgHash, parms *TPMSRSAParms, pub *TPM2BPublicKeyRSA) (*TPM2BEncryptedSecret, []byte, error) {
-	rsaPub, err := RSAPub(parms, pub)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not encrypt salt to RSA key: %w", err)
-	}
-	// Odd special case: the size of the salt depends on the RSA scheme's
-	// hash alg.
-	var hAlg TPMIAlgHash
-	switch parms.Scheme.Scheme {
-	case TPMAlgRSASSA:
-		rsassa, err := parms.Scheme.Details.RSASSA()
-		if err != nil {
-			return nil, nil, err
-		}
-		hAlg = rsassa.HashAlg
-	case TPMAlgRSAES:
-		hAlg = nameAlg
-	case TPMAlgRSAPSS:
-		rsapss, err := parms.Scheme.Details.RSAPSS()
-		if err != nil {
-			return nil, nil, err
-		}
-		hAlg = rsapss.HashAlg
-	case TPMAlgOAEP:
-		oaep, err := parms.Scheme.Details.OAEP()
-		if err != nil {
-			return nil, nil, err
-		}
-		hAlg = oaep.HashAlg
-	case TPMAlgNull:
-		hAlg = nameAlg
-	default:
-		return nil, nil, fmt.Errorf("unsupported RSA salt key scheme: %v", parms.Scheme.Scheme)
-	}
-	ha, err := hAlg.Hash()
+// getEncryptedSalt creates a salt value for salted sessions.
+// Returns the encrypted salt and plaintext salt, or an error value.
+func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
+	key, err := ImportEncapsulationKey(&pub)
 	if err != nil {
 		return nil, nil, err
 	}
-	salt := make([]byte, ha.Size())
-	if _, err := rand.Read(salt); err != nil {
-		return nil, nil, fmt.Errorf("generating random salt: %w", err)
-	}
-	// Part 1, section 4.6 specifies the trailing NULL byte for the label.
-	encSalt, err := rsa.EncryptOAEP(ha.New(), rand.Reader, rsaPub, salt, []byte("SECRET\x00"))
+	salt, encSalt, err := CreateEncryptedSalt(rand.Reader, key)
 	if err != nil {
-		return nil, nil, fmt.Errorf("encrypting salt: %w", err)
+		return nil, nil, err
 	}
 	return &TPM2BEncryptedSecret{
 		Buffer: encSalt,
 	}, salt, nil
-}
-
-// Part 1, 19.6.13
-func getEncryptedSaltECC(nameAlg TPMIAlgHash, parms *TPMSECCParms, pub *TPMSECCPoint) (*TPM2BEncryptedSecret, []byte, error) {
-	curve, err := parms.CurveID.ECDHCurve()
-	if err != nil {
-		return nil, nil, fmt.Errorf("ecc salt: param curve: %w", err)
-	}
-	eccPub, err := ECDHPub(parms, pub)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ecc salt: unmarshaling tpm ecc key: %w", err)
-	}
-
-	// Generate new ECDH key
-	ephPriv, err := curve.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ecc salt: generating ecc private key: %w", err)
-	}
-	ephPubX, ephPubY, err := ECCPoint(ephPriv.PublicKey())
-	if err != nil {
-		return nil, nil, fmt.Errorf("ecc salt: ecc pubkey: %w", err)
-	}
-
-	// Calculate Z (ECDH key * TPM pub)
-	z, err := ephPriv.ECDH(eccPub)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ecc salt: z calc: %w", err)
-	}
-
-	ha, err := nameAlg.Hash()
-	if err != nil {
-		return nil, nil, err
-	}
-	salt := KDFe(ha, z, "SECRET", ephPubX.Bytes(), pub.X.Buffer, ha.Size()*8)
-
-	var encSalt bytes.Buffer
-	binary.Write(&encSalt, binary.BigEndian, uint16(len(ephPubX.Bytes())))
-	encSalt.Write(ephPubX.Bytes())
-	binary.Write(&encSalt, binary.BigEndian, uint16(len(ephPubY.Bytes())))
-	encSalt.Write(ephPubY.Bytes())
-	return &TPM2BEncryptedSecret{
-		Buffer: encSalt.Bytes(),
-	}, salt, nil
-}
-
-// getEncryptedSalt creates a salt value for salted sessions.
-// Returns the encrypted salt and plaintext salt, or an error value.
-func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
-	switch pub.Type {
-	case TPMAlgRSA:
-		rsaParms, err := pub.Parameters.RSADetail()
-		if err != nil {
-			return nil, nil, err
-		}
-		rsaPub, err := pub.Unique.RSA()
-		if err != nil {
-			return nil, nil, err
-		}
-		return getEncryptedSaltRSA(pub.NameAlg, rsaParms, rsaPub)
-	case TPMAlgECC:
-		eccParms, err := pub.Parameters.ECCDetail()
-		if err != nil {
-			return nil, nil, err
-		}
-		eccPub, err := pub.Unique.ECC()
-		if err != nil {
-			return nil, nil, err
-		}
-		return getEncryptedSaltECC(pub.NameAlg, eccParms, eccPub)
-	default:
-		return nil, nil, fmt.Errorf("salt encryption alg '%v' not supported", pub.Type)
-	}
 }
 
 // Init initializes the session, just in time, if needed.
