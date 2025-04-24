@@ -80,6 +80,7 @@ func readEKCert(path string, certIdx, tmplIdx uint32) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading EK cert: %v", err)
 	}
+
 	// Identify if any `padding` exists in the EK cert that was read
 	var raw asn1.RawValue
 	paddingBytes, err := asn1.Unmarshal(ekCert, &raw)
