@@ -6,6 +6,7 @@ package main
 import (
 	"crypto"
 	"crypto/x509"
+	"encoding/asn1"
 	"errors"
 	"flag"
 	"fmt"
@@ -79,8 +80,17 @@ func readEKCert(path string, certIdx, tmplIdx uint32) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading EK cert: %v", err)
 	}
+	// Identify if any `padding` exists in the EK cert that was read
+	var raw asn1.RawValue
+	paddingBytes, err := asn1.Unmarshal(ekCert, &raw)
+	if err != nil {
+		return nil, fmt.Errorf("ASN.1 Unmarshal failed: %v", err)
+	}
+	fmt.Printf("TPM NV Index bytes read: %d\n", len(ekCert))
+	fmt.Printf("Padding found from ASN.1 Unmarshal: %d\n", len(paddingBytes))
+
 	// Sanity-check that this is a valid certificate.
-	cert, err := x509.ParseCertificate(ekCert)
+	cert, err := x509.ParseCertificate(ekCert[0 : len(ekCert)-len(paddingBytes)])
 	if err != nil {
 		return nil, fmt.Errorf("parsing EK cert: %v", err)
 	}
