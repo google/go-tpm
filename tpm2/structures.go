@@ -2032,6 +2032,10 @@ type TPMSEncSchemeOAEP TPMSSchemeHash
 // See definition in Part 2: Structures, section 11.2.2.3.
 type TPMSKeySchemeECDH TPMSSchemeHash
 
+// TPMSKeySchemeECMQV represents a TPMS_KEY_SCHEME_ECMQV.
+// See definition in Part 2: Structures, section 11.2.2.3.
+type TPMSKeySchemeECMQV TPMSSchemeHash
+
 // TPMSKDFSchemeMGF1 represents a TPMS_KDF_SCHEME_MGF1.
 // See definition in Part 2: Structures, section 11.2.3.1.
 type TPMSKDFSchemeMGF1 TPMSSchemeHash
@@ -2208,7 +2212,7 @@ type TPMUAsymScheme struct {
 type AsymSchemeContents interface {
 	Marshallable
 	*TPMSSigSchemeRSASSA | *TPMSEncSchemeRSAES | *TPMSSigSchemeRSAPSS | *TPMSEncSchemeOAEP |
-		*TPMSSigSchemeECDSA | *TPMSKeySchemeECDH | *TPMSSchemeECDAA
+		*TPMSSigSchemeECDSA | *TPMSKeySchemeECDH | *TPMSKeySchemeECMQV | *TPMSSchemeECDAA
 }
 
 // create implements the unmarshallableWithHint interface.
@@ -2241,6 +2245,11 @@ func (u *TPMUAsymScheme) create(hint int64) (reflect.Value, error) {
 		return reflect.ValueOf(&contents), nil
 	case TPMAlgECDH:
 		var contents TPMSKeySchemeECDH
+		u.contents = &contents
+		u.selector = TPMAlgID(hint)
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECMQV:
+		var contents TPMSKeySchemeECMQV
 		u.contents = &contents
 		u.selector = TPMAlgID(hint)
 		return reflect.ValueOf(&contents), nil
@@ -2293,6 +2302,12 @@ func (u TPMUAsymScheme) get(hint int64) (reflect.Value, error) {
 		var contents TPMSKeySchemeECDH
 		if u.contents != nil {
 			contents = *u.contents.(*TPMSKeySchemeECDH)
+		}
+		return reflect.ValueOf(&contents), nil
+	case TPMAlgECMQV:
+		var contents TPMSKeySchemeECMQV
+		if u.contents != nil {
+			contents = *u.contents.(*TPMSKeySchemeECMQV)
 		}
 		return reflect.ValueOf(&contents), nil
 	case TPMAlgECDAA:
