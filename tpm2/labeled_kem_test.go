@@ -54,7 +54,7 @@ func TestRSALabeledEncapsulation(t *testing.T) {
 
 			ciphertext, err := encapsPub.encapsulateDerandomized(bytes.NewReader(testcase.OAEPSalt), testcase.Secret, testcase.Label)
 			if err != nil {
-				t.Fatalf("Encapsulate() = %v", err)
+				t.Fatalf("encapsulateDerandomized() = %v", err)
 			}
 
 			if !bytes.Equal(testcase.Ciphertext, ciphertext) {
