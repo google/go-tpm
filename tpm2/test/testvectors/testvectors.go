@@ -49,7 +49,7 @@ func ECCLabeledEncapsulation(t *testing.T) []ECCLabeledEncapsTestCase {
 //go:embed rsa_labeled_encaps.json
 var rsaLabeledEncapsJSON []byte
 
-// RSALabeledEncapsTestCase is a test case for ECC Labeled Encapsulation (Secret Sharing).
+// RSALabeledEncapsTestCase is a test case for RSA Labeled Encapsulation (Secret Sharing).
 type RSALabeledEncapsTestCase struct {
 	Name        string
 	Description string
@@ -60,7 +60,7 @@ type RSALabeledEncapsTestCase struct {
 	Ciphertext  hexBytes
 }
 
-// RSALabeledEncapsulation iterates the ECC Labeled Encapsulation test cases.
+// RSALabeledEncapsulation iterates the RSA Labeled Encapsulation test cases.
 func RSALabeledEncapsulation(t *testing.T) []RSALabeledEncapsTestCase {
 	t.Helper()
 
