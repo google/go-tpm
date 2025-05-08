@@ -1,0 +1,1002 @@
+[
+    {
+        "Name": "00_SHA1_140",
+        "HashAlg": 4,
+        "Key": "ff",
+        "Label": "CFB",
+        "ContextU": "86ed23c15d086e70a8eae700680e75d20cff",
+        "ContextV": "51122c5879b277ff",
+        "Bits": 140,
+        "Result": "0d0be71c885d10eb61f2219000885c2d7658"
+    },
+    {
+        "Name": "01_SHA1_283",
+        "HashAlg": 4,
+        "Key": "",
+        "Label": "IDENTITY",
+        "ContextU": "4e462df0430f697bdb85c61a4ec7628943",
+        "ContextV": "ff80c59598996ff148c6574472ece01c608a02",
+        "Bits": 283,
+        "Result": "04512482418b546925489d197cadb96768cfe9744a9142f1360de6021a94bc8dda277697"
+    },
+    {
+        "Name": "02_SHA1_297",
+        "HashAlg": 4,
+        "Key": "4599ec1b3c30340e8b4f2b5869",
+        "Label": "STORAGE",
+        "ContextU": "ff",
+        "ContextV": "5a2b980322a96c6db49b15ff16ff",
+        "Bits": 297,
+        "Result": "00f47f8fdd0bdaf9f22ec614a8ccc370fb822fa3dd80758fddc0140a45443e4be4cbc41fe74d"
+    },
+    {
+        "Name": "03_SHA1_301",
+        "HashAlg": 4,
+        "Key": "004d14",
+        "Label": "INTEGRITY",
+        "ContextU": "397b87f45beb2d1a53bcda3ea92fd65bff",
+        "ContextV": "8d08ddc05ff5213c20f9242874ca57d58dff",
+        "Bits": 301,
+        "Result": "03e749fb1853b2508b370a17cb51aa3c3f749576a37afdcf9247750c9a3bf298846f6cd358f6"
+    },
+    {
+        "Name": "04_SHA1_342",
+        "HashAlg": 4,
+        "Key": "9ddcff",
+        "Label": "SECRET",
+        "ContextU": "ef5ad68780913e0a981d695ed8517bd900",
+        "ContextV": "ff9ac867c88ab67de534839aa57822234917e4",
+        "Bits": 342,
+        "Result": "0a7ef01b84aab81ed0c59a32932c9fe178532510da066a4bdb403771d08a6c8f9f003ca044c8b63333dd76"
+    },
+    {
+        "Name": "05_SHA1_346",
+        "HashAlg": 4,
+        "Key": "ffcbdde98bdfc8de28e0",
+        "Label": "CFB",
+        "ContextU": "00",
+        "ContextV": "a378",
+        "Bits": 346,
+        "Result": "005fd7d7c1c78a0792d904d5c95686b35941ae52f3ccebf5d00d2c24a04d29a00e145df41c21359715ae9fb2"
+    },
+    {
+        "Name": "06_SHA1_370",
+        "HashAlg": 4,
+        "Key": "779566c4f380b8b3274f7fbdf941232600",
+        "Label": "CFB",
+        "ContextU": "0eb2486704ff",
+        "ContextV": "5dd5517ba741d100ff",
+        "Bits": 370,
+        "Result": "008c917b51ca17f4423468d88c112f0c67a576fda3cde7f9edd8d60026b503b0b38243d630dd8639fef73db56348cf"
+    },
+    {
+        "Name": "07_SHA1_374",
+        "HashAlg": 4,
+        "Key": "c79595a7eb0f00",
+        "Label": "OBFUSCATE",
+        "ContextU": "e217f9f0475b30259cd67026e184552597cd00",
+        "ContextV": "ff8cff",
+        "Bits": 374,
+        "Result": "27e0633a515f841a57c3d02939a54383d7cd7ead433789d75c9bb98a46cb3f7464fe76bb83f136b26a711132a4a9ad"
+    },
+    {
+        "Name": "08_SHA1_400",
+        "HashAlg": 4,
+        "Key": "f33e8c7d0efe0f",
+        "Label": "CFB",
+        "ContextU": "002ba8440f2e389a7a086726c47b2bc332a0",
+        "ContextV": "fb4746f1b68c0f75174fa7",
+        "Bits": 400,
+        "Result": "6e5d4c0212cb1f908c0aa34c91f74b3bf429eab89f0b532b1cc7f34f240ee100c63e0b4cf5bb0017e178ef8902a5bf18a3fd"
+    },
+    {
+        "Name": "09_SHA1_462",
+        "HashAlg": 4,
+        "Key": "ff",
+        "Label": "SECRET",
+        "ContextU": "f3a30f9f2c220049cdc7efa0e16c3572565c",
+        "ContextV": "00d7ab7c2254268d37e2f5378db549",
+        "Bits": 462,
+        "Result": "13490dd3c94892484fef5b7cd089640ab860d6e21f636db48b95571f70b4d7325fe278849928a741a0c41743b56f1ae6e7618bab26d75d31b310"
+    },
+    {
+        "Name": "10_SHA1_466",
+        "HashAlg": 4,
+        "Key": "0c8b1d1d33eeb9b6e94014c6f989d36c8e86231c",
+        "Label": "INTEGRITY",
+        "ContextU": "68dbd3ffe2dd2f4e10a2634d1de990be06c3",
+        "ContextV": "24ba47",
+        "Bits": 466,
+        "Result": "01f60059ee50f3519e3cd25fdd04c8580882e466acc4bb16a7b22b71e3fe2340615fcd65a8a893ee03cd57be9024e51cbcbf4d27fe4d3744617389"
+    },
+    {
+        "Name": "11_SHA1_481",
+        "HashAlg": 4,
+        "Key": "06",
+        "Label": "INTEGRITY",
+        "ContextU": "2cfd682f336db06675d5b3982c2575cf1b1100",
+        "ContextV": "cd35dda7b8ff605aab8e347eb48dbd",
+        "Bits": 481,
+        "Result": "0119c30b9b9c3705ed0fc7aa5fe6cef9309d1663ff8f4bf32d8e8978b28276eead5e98e884a04e049d4687446cdd5e6683f11a477b1b92e0fd8c95e45e"
+    },
+    {
+        "Name": "12_SHA1_503",
+        "HashAlg": 4,
+        "Key": "00",
+        "Label": "INTEGRITY",
+        "ContextU": "ffced351d37e05d6706f",
+        "ContextV": "00582fdf56",
+        "Bits": 503,
+        "Result": "4d87f5bdd1661b5ee526a9891a7fa4585c9c5d07a21da2ca947fcf5b9f30b5112774d916af604f1f415cf977fbc3887e94c53f2aa9d5f60a72c1029e6eec89"
+    },
+    {
+        "Name": "13_SHA1_512",
+        "HashAlg": 4,
+        "Key": "ff9af522feced768e90933b774c6fb35f6086054",
+        "Label": "IDENTITY",
+        "ContextU": "2a2c2392200800",
+        "ContextV": "",
+        "Bits": 512,
+        "Result": "04384a8ae06d793d28c402c088c29185fb6de2bb3227df9a604edf7beb2f29b46ff5aa66150ffcfb5d6d9130db5bc59d644c0d6259d111ed8fe8b81547d07bfe"
+    },
+    {
+        "Name": "14_SHA1_513",
+        "HashAlg": 4,
+        "Key": "ffd011bc46063877c6fc121407ab7e432b1004",
+        "Label": "STORAGE",
+        "ContextU": "ffffa46c9d15f92a958589da1bcbd7eb09",
+        "ContextV": "45df93d9e535b1b76f00",
+        "Bits": 513,
+        "Result": "01bcb00f8ff8605d3b1ad49821eefd0489d5b02af1cae083eb5b24cf65692ca209ab780cbe8c48698ac63a4effc5cd7e9bee77a274a067ba9082859ece18504895"
+    },
+    {
+        "Name": "15_SHA1_545",
+        "HashAlg": 4,
+        "Key": "ea523cff",
+        "Label": "STORAGE",
+        "ContextU": "00fbf1d5bc210987117eea25",
+        "ContextV": "ff442ababcd5fba747ff149b106aa843",
+        "Bits": 545,
+        "Result": "0101e5d2a651619a64cd521d7ce7d352e53340e818c193f7f442cb176f3adcaef6605c4613ba5caf49e938663c735f6aef24ebd497879f573983e4386f881236c8d32f6ca5"
+    },
+    {
+        "Name": "16_SHA1_571",
+        "HashAlg": 4,
+        "Key": "ffa02b4249a2",
+        "Label": "IDENTITY",
+        "ContextU": "ff7e87289ea4b4786d94c165",
+        "ContextV": "0085c11d005560a55582",
+        "Bits": 571,
+        "Result": "07b0358683c3337a841153d528909066bab5cf6efaeb9bf7e2e5c9800e75c203d3213264fce72ed07a3ae20706b4b92c84a97f2eebc845541b4a0b671f23dfcbeb4662a088b69b96"
+    },
+    {
+        "Name": "17_SHA1_629",
+        "HashAlg": 4,
+        "Key": "",
+        "Label": "CFB",
+        "ContextU": "56c4d59f6991b639c1",
+        "ContextV": "ff74f706f3969e3e683cc4f2d0e903676dda",
+        "Bits": 629,
+        "Result": "003fde22e1c13e9204657fde3fc18cef55e76622e90addb15b20cd3e96550a5f18295796c65a314650cecef3bcc537f7b9ce7bfa46dbd00cbebcf28f06c4f702d90b28922b5c2495ae8ad96b1b44f2"
+    },
+    {
+        "Name": "18_SHA1_657",
+        "HashAlg": 4,
+        "Key": "18728c5174c9c999ce84",
+        "Label": "STORAGE",
+        "ContextU": "ffdf9846cb13296dbd534cd8388587bd",
+        "ContextV": "deba1c2f3a80d8dd7d59103eedff",
+        "Bits": 657,
+        "Result": "006a0b6b56180a265779fc9709db7041f3ef0a90bca9bbe39d4dc091cdd48ece6c6c1f3451ba70c6f98f10e74ba24080889d862507b9a39af77fe0fbd093e8381fa919837f5e1a6341934eac7832743aecb36a"
+    },
+    {
+        "Name": "19_SHA1_740",
+        "HashAlg": 4,
+        "Key": "c7e502e7",
+        "Label": "INTEGRITY",
+        "ContextU": "15bc49e565d4c4483576d830f3ff",
+        "ContextV": "dc21db1843604b5c818200",
+        "Bits": 740,
+        "Result": "0f584df71f543d006fcd9d05cf8bd7edd14894baa71445a5428f42b3a40498acc991b28b7681061237e2c6a410622742d148f5e6e649b20868a1f186ff88a3e8469dc2c767d6d75cb5c9ce26d0367ed0aad18b0688005b47c2fadaecdd"
+    },
+    {
+        "Name": "20_SHA1_765",
+        "HashAlg": 4,
+        "Key": "4d0c8d4fa316ace316b190d3872226ff",
+        "Label": "STORAGE",
+        "ContextU": "c24373087f9ffaf670f577d55737e3dccda86f",
+        "ContextV": "53b78f5713ff",
+        "Bits": 765,
+        "Result": "04449e7328f86351b41383b301311a7a036210ff177b03f98ebde6a428fd229f17ca2c6d882743da70175bb46e7475e8f6a50e28f09f00bba07b63d920d6c2def242baba816b29f83963b3e93463a2dd208d5be00d90be87dd98d8d0f1b2771e"
+    },
+    {
+        "Name": "21_SHA1_815",
+        "HashAlg": 4,
+        "Key": "ff76",
+        "Label": "IDENTITY",
+        "ContextU": "0006ab2815f9f16def4c75456911c1a06a49",
+        "ContextV": "ff4e32d36fee73eb87ac406889b5381e9e5781f3",
+        "Bits": 815,
+        "Result": "62f7d77d552f6f4489bb41c473305d37802459d49840b5f62946d01ce79eda6ee4a84a3dd14f0e0baf8cfd3bd24af6bcf53a0a037db77c0576b86c8820f8db2cd9f18c4fefca28c6c0dd55ac2d5131e57697e644c2432fa2ee1fe0ed30e05b7843f93114b08f"
+    },
+    {
+        "Name": "22_SHA1_825",
+        "HashAlg": 4,
+        "Key": "bc33175189eb8ab3505c85bde48252d4a6a328",
+        "Label": "IDENTITY",
+        "ContextU": "ff1bedcbfdfd4e25d57e5f",
+        "ContextV": "b0209fc2ff",
+        "Bits": 825,
+        "Result": "01d997d2a90cb187aedfe8316a030fd5739d6c730b80ba660336745b357d77dbba66d1c25bccc21b9a7eb6f2b2e5ea9c6466d236083e5b1b11b3f5f141abb1ee702a7c8b08a05ded1fef4791ac56811561920e70602f52ba5f8c7afb6bfbbb987a86f516d5c0aee2"
+    },
+    {
+        "Name": "23_SHA1_84",
+        "HashAlg": 4,
+        "Key": "337688663edbe90646f1cf53b8bd8d5f0000",
+        "Label": "IDENTITY",
+        "ContextU": "64ed7ccb42e53935df81444908ddff",
+        "ContextV": "ff",
+        "Bits": 84,
+        "Result": "0a53fad8e72962f4b36d09"
+    },
+    {
+        "Name": "24_SHA1_858",
+        "HashAlg": 4,
+        "Key": "00012d8252bc5ea259b488",
+        "Label": "ATH",
+        "ContextU": "e2c6d0b7ea7316034282bdb30cb7fcea8800",
+        "ContextV": "ffe586ae2795d6f65fa182",
+        "Bits": 858,
+        "Result": "00ccb26de10836ca5336fd15acb94bc1a8ec04df73ca9718e794e228bd6d3d66acc16eb4dd31db0fd8365e0cfac310df67bf50e02510aead1823ab960ecea9ec0081fa3668282bc132dd19aecf5afe073260434c2e8fc386b06c346b156e1013314f8dad30a54cfe189517db"
+    },
+    {
+        "Name": "25_SHA1_91",
+        "HashAlg": 4,
+        "Key": "0d975134a69943ff6196330048ded08de80388ff",
+        "Label": "ATH",
+        "ContextU": "529f21ca37a9eaf2b6018c8e5abd67ff",
+        "ContextV": "ff7915ff",
+        "Bits": 91,
+        "Result": "071e33fcf4b9729858cc9312"
+    },
+    {
+        "Name": "26_SHA1_980",
+        "HashAlg": 4,
+        "Key": "0048ed1181513e66d69fb72a6461ee",
+        "Label": "CFB",
+        "ContextU": "",
+        "ContextV": "158441b04e23cdf45b8484d6",
+        "Bits": 980,
+        "Result": "0964a7397c516980bb75d66328023b26759208c862f67219435345b81b5c4f3660968f949bc93bc1f1784f21670a5a7db911fc64b4998017c8d5187e7dc719c2d8d8d3be909c1dd82a2c418d4a3e093ae3af4303b6e861cfeaf268c5774038c3d4856e87e88e7bb2d7af530c1e4275ac881f1ee5ab19d98d4c39ea"
+    },
+    {
+        "Name": "27_SHA256_116",
+        "HashAlg": 11,
+        "Key": "aff14e568afc0ea51eea748c8915df067c7700",
+        "Label": "IDENTITY",
+        "ContextU": "ce4edfb881540700e300",
+        "ContextV": "68ddb4a0e59d74cd34dfe631d91e1ea3fbc95865440adedff7e9d011890fba",
+        "Bits": 116,
+        "Result": "019ed5e0956338ddda4413ecee5cf2"
+    },
+    {
+        "Name": "28_SHA256_17",
+        "HashAlg": 11,
+        "Key": "ff5625623188b99180b53e96108e3e01d19c18db598631d56c",
+        "Label": "STORAGE",
+        "ContextU": "ef12916d91f3ed8355f100ef7d3553ff69eb63edd59a0048eeda77",
+        "ContextV": "800bce408c34f800",
+        "Bits": 17,
+        "Result": "0051bb"
+    },
+    {
+        "Name": "29_SHA256_175",
+        "HashAlg": 11,
+        "Key": "ff29ff21930d6a35ae4a",
+        "Label": "STORAGE",
+        "ContextU": "00f0fe886c43cb9c67a79b2d8a70585c2a7fbf8d3fc4e101f1c7",
+        "ContextV": "2d",
+        "Bits": 175,
+        "Result": "438e1b194c52951d00d003410a51a95a936e036eb28f"
+    },
+    {
+        "Name": "30_SHA256_200",
+        "HashAlg": 11,
+        "Key": "",
+        "Label": "SECRET",
+        "ContextU": "fbf51f160255018bbc8efea4c36ac4fb4cbba34e9eff",
+        "ContextV": "3cea0fdc2600",
+        "Bits": 200,
+        "Result": "a26c73dca13a265e09eec4b0abc4ecb2bf8d26db04e8823ee6"
+    },
+    {
+        "Name": "31_SHA256_261",
+        "HashAlg": 11,
+        "Key": "2eff",
+        "Label": "CFB",
+        "ContextU": "ff2427af98c60f2bbc5480e24c64459dbe66a754f3",
+        "ContextV": "69b182c92e3f79304513027c388100",
+        "Bits": 261,
+        "Result": "18bef37aae51edc4c229e179e7b401b98fc88eabd608262b41730d2d7c54927549"
+    },
+    {
+        "Name": "32_SHA256_262",
+        "HashAlg": 11,
+        "Key": "4113736dc1998ae1f0ac8ac0fd234b309a9fa4bcb165ff",
+        "Label": "CFB",
+        "ContextU": "b292bd16f9cc08dbd873e9d7d2",
+        "ContextV": "f4668d45b28d3af2c912c9978c58f6c10c60572700",
+        "Bits": 262,
+        "Result": "21007b1ff5cd9102f48a79fd53df169f8cd4792ecd7e2ec2cde339d518141e5979"
+    },
+    {
+        "Name": "33_SHA256_315",
+        "HashAlg": 11,
+        "Key": "e66e91fe6ed04bb200",
+        "Label": "STORAGE",
+        "ContextU": "9af570f533830c1cff511f65b9",
+        "ContextV": "004612",
+        "Bits": 315,
+        "Result": "0234a472981ff43f076da4659d44006b704968f05a314558a9d52b466d395de8cbeab4c8becf413d"
+    },
+    {
+        "Name": "34_SHA256_329",
+        "HashAlg": 11,
+        "Key": "3428e6b28713297adac61248df818ecaff",
+        "Label": "STORAGE",
+        "ContextU": "5a50",
+        "ContextV": "ff00887a01ecdc09ed046501cfda011bd900",
+        "Bits": 329,
+        "Result": "00b9432f98866351d1e5d19a0004ef8e6130c9ede081f6aba43aced8d104d160035d7f70b37851030c97"
+    },
+    {
+        "Name": "35_SHA256_394",
+        "HashAlg": 11,
+        "Key": "8c9484fbda6231d9dcaff59d0c0029ce9a7a14edc868a1",
+        "Label": "DUPLICATE",
+        "ContextU": "ffc39a9894705474150e59a7ff299d9c1498dfc67016d40295c3c1",
+        "ContextV": "2e3c4087185c623abfeafb797d60a12fc701734a0cf4",
+        "Bits": 394,
+        "Result": "03652df20ffe2e17de6df27f9673b7365e98a428578c66e409747531fc8a4055b1dc193632985225d1c5c6a8f81cb16e0b12"
+    },
+    {
+        "Name": "36_SHA256_535",
+        "HashAlg": 11,
+        "Key": "00",
+        "Label": "IDENTITY",
+        "ContextU": "4a9e5bd0e8",
+        "ContextV": "006316d04e3f3b8148fc9e58de5f8dbe595648ac",
+        "Bits": 535,
+        "Result": "41cde5fccf6b0b050ee7b13de3403f4249a43ed848c3be944183b20d0e6976614639751df9912e9952201bd7c1eb88453ca00fc642df1c491668a1bb09b912b5a51653"
+    },
+    {
+        "Name": "37_SHA256_54",
+        "HashAlg": 11,
+        "Key": "8d623f4e95bfb5029d231b265cffe400",
+        "Label": "ATH",
+        "ContextU": "59c425e2a53045feb889dca9f444e4d271f787d4964af8c4c500",
+        "ContextV": "de8b18c078218015789b9667472dd0cd579300",
+        "Bits": 54,
+        "Result": "2f65e1381b6e5b"
+    },
+    {
+        "Name": "38_SHA256_552",
+        "HashAlg": 11,
+        "Key": "e38573d849a5cfc9973f58b4535e42b7c08ef28b1b3e775375b5c66b9644be",
+        "Label": "STORAGE",
+        "ContextU": "00586dccbebc998087e4",
+        "ContextV": "",
+        "Bits": 552,
+        "Result": "968f349b066ed26be3bd4e78333eb5c5b51c26ea376efe5dfaf061a2cf7f5eb82e4fcc2a30736e30f12b48ab17efd10576a4cf33450324b3f20011628df7a07c411f8c0f6c"
+    },
+    {
+        "Name": "39_SHA256_585",
+        "HashAlg": 11,
+        "Key": "0045a75785e18651a6ff622715d0fc735a03fa862ec1e4d15b970d108c409586",
+        "Label": "STORAGE",
+        "ContextU": "ff5a1b187aa54012ebc31a0ac468e0c9",
+        "ContextV": "b733e852ff",
+        "Bits": 585,
+        "Result": "00b5b3c718916c66377234f4176abab442b69697edb414f9fc5c7e4e967512875360b4b5b3245ad798ff2fa33645c5856de5983fc7519a60f0d7124e8b8b7472839379d249ee5031b875"
+    },
+    {
+        "Name": "40_SHA256_611",
+        "HashAlg": 11,
+        "Key": "001a6b3ad671f4cefce5f6931cfdfec3cd80a1313c23a2e173c22a",
+        "Label": "OBFUSCATE",
+        "ContextU": "856a981a949942c982439c3c185d81fd5c4997bbdad587417e7ca134ff",
+        "ContextV": "",
+        "Bits": 611,
+        "Result": "058e252cf2123267f9ba964dbc173f9ae67500b065420dd514bd2b10b72669adb873ed1a86bd8415497e64cc65079dad59ff9ba778777831fff42f7e815786eac5f361b37c278af96600afa26e"
+    },
+    {
+        "Name": "41_SHA256_619",
+        "HashAlg": 11,
+        "Key": "3fe2de1a96c5bd22f659f41d4b8ee39f7650820a00",
+        "Label": "STORAGE",
+        "ContextU": "c06666637f9365e223cd0d",
+        "ContextV": "ff45ad2f1e0586",
+        "Bits": 619,
+        "Result": "05634fb3567aa522cbb70f01eb74ca4cad7b75f7414b2759de5eee609ac4bc7049dda89e64f8da3702af43f608f1d1d24df1451fd0b58ce8dc612f3ef01b577169d3b8bc16d55f4188ec1dbc1491"
+    },
+    {
+        "Name": "42_SHA256_634",
+        "HashAlg": 11,
+        "Key": "ff1af865cd5e025871d18f284ba7c56864718ed0fae930",
+        "Label": "DUPLICATE",
+        "ContextU": "35f947b9e6a80a1bb4298696ba527d9baeb4c5e9f100",
+        "ContextV": "787794d9ff3ace",
+        "Bits": 634,
+        "Result": "02562fc8e05f3804de27332750a55928ba3e10d65fe697ae257540879a6d5b03ac60e5c1d0539c5d307b5826c20e71f475a41ee3a6e2c2e8954c52bcddc43faf63b076f195f60c374c769cd6b02c7e1a"
+    },
+    {
+        "Name": "43_SHA256_665",
+        "HashAlg": 11,
+        "Key": "ff81aff787883f5bb68967bc2c4216",
+        "Label": "STORAGE",
+        "ContextU": "1ba9c965ca8f88b9e52a5eeee916ff",
+        "ContextV": "ff3efc78debd6bb48ac8a2691f71b8c50e0bfa3749d6b7602d",
+        "Bits": 665,
+        "Result": "01975c7a279926e42ebc602e70091e5a67c6c22e9b8825f67738a0a5ba1a6098bcc18e6d43c399089702797c7dd926bccc7f9211a6d63fbf382743f5eaaefd36635647113ce8aa0896d153253e0119848a7adc37"
+    },
+    {
+        "Name": "44_SHA256_674",
+        "HashAlg": 11,
+        "Key": "c1f8ce35be5478339a865d4f38aa64593a215b5c257b403ec6e41e69d864ff",
+        "Label": "OBFUSCATE",
+        "ContextU": "c0e2920df7a5bc74b08b8d0ad21ce0f97ba800",
+        "ContextV": "f1bcaca21dff",
+        "Bits": 674,
+        "Result": "02aaefdb156895981e47cea598a3388c7883e4d9dda8d8930d05b443b3f19eeae6b91b449f7d71791bea8187ece3beb80d763483f4ad6c507cc1ab1646ca0b783be3d67233c1fe74e55c897eef849ea83624c1ab51"
+    },
+    {
+        "Name": "45_SHA256_707",
+        "HashAlg": 11,
+        "Key": "80996c9a9c46e17ea2ed00",
+        "Label": "SECRET",
+        "ContextU": "82d8b7ccc5cd8dcb65fda1951a693a2ae800",
+        "ContextV": "",
+        "Bits": 707,
+        "Result": "07cb13574f71d0c44932f5b06be4c49fb422422db2542d2970047b17834e03ce5c3587655927a165eb033db564982df35a39dabd61993b50ce56b5477094c878ac28dffea75dbabbfabef0f97746f058fe678c5d89baaa7d4c"
+    },
+    {
+        "Name": "46_SHA256_740",
+        "HashAlg": 11,
+        "Key": "6958559d883bac212a6a39cdae3641ff",
+        "Label": "XOR",
+        "ContextU": "ff99933f2fbc7839f8ead8e8dd9e2d9380e61fb25f1e5d76",
+        "ContextV": "fff63008f40a74790353",
+        "Bits": 740,
+        "Result": "06fe3af2f1248b15b4b01fab46175c893e9e2006ecd4a9e9e08a83adf90f4346e7b2582f7538f7a7a1fe6a8316b1455c5d3e3d1a65ac0bdd90412f53820054f42596a6bbfe56898c33750f2c85c7d6500eaeaa704c33d658d87e394949"
+    },
+    {
+        "Name": "47_SHA256_751",
+        "HashAlg": 11,
+        "Key": "e2489b7f02e26372cfd43d487fd90560966025cb0f5de682f8c209ff",
+        "Label": "OBFUSCATE",
+        "ContextU": "2b1e0808d07cedb247f9061c55e288b755cd7eebabff",
+        "ContextV": "ea5c5c476bc4d3ff",
+        "Bits": 751,
+        "Result": "2a2236b3eec558db02fbc787c7a05995f3db00dbdbb45512961a3922e4342d1fee60ed1069db54eebe0a6308c904c5821acc656e57458634ce58d1bfa205062768724265d4551ac6bbeb440ad15c1d26b6480510e4ebfead2017fd8926e5"
+    },
+    {
+        "Name": "48_SHA256_753",
+        "HashAlg": 11,
+        "Key": "570cdb5589cd7e13ba0000a97cfc3509a1f1eb42fd53afb6ff",
+        "Label": "OBFUSCATE",
+        "ContextU": "68ad73aaffb175",
+        "ContextV": "6c93793500",
+        "Bits": 753,
+        "Result": "002fee56f7bc9445cc0170f2091582041832855676cc80c009ecf8d4575262c9efd26bb147b297194681cf233eae420fb6d53e51309aa668004507c337e5b7dac1f4de08f08697935ae0a5d0bd9f53b48e7b4d5093d5b507d090ea3ac3d802"
+    },
+    {
+        "Name": "49_SHA256_781",
+        "HashAlg": 11,
+        "Key": "2a42cc37f4e07a094de7d1fa3acdd3b2230203fe2be55e25f2b5ce1700",
+        "Label": "INTEGRITY",
+        "ContextU": "5b2cbd6f1764ff",
+        "ContextV": "1381b89a37653d2e028723922b98948c4a6c6cc9dc296848e2380052434700",
+        "Bits": 781,
+        "Result": "0ced07eeb97dca927d485e45ff29badfdad0b8244dc77edee5a7704947f537c65a9b06eeb20b3cbc6fd02fa0cc55c35f6f4e87063cd3bfe4c9ae1525085b1e8ed6941739f24a7f5c91b93920a20b60ede760dd23d0bc629235f2b6e6ce6ea5bee61b"
+    },
+    {
+        "Name": "50_SHA256_855",
+        "HashAlg": 11,
+        "Key": "62f3bb08ec4e35ea03da00",
+        "Label": "CFB",
+        "ContextU": "005489",
+        "ContextV": "e86c875bf574675c44f03b31747e28928630a6b2d453aba4ecc866782300",
+        "Bits": 855,
+        "Result": "55c821beafe4d3d41bde3c1410700b83840081ada88b8afe04a6e1271f0e3db062bb38675b226cf728234c80efc1b440bd9425a394eceddf91b60e566b7da1da3531bd60576e88a7d6bb879e3c1e6a5e415d5c57e01fb73192d79161b3e3ef8eb27c408335d0934033580e"
+    },
+    {
+        "Name": "51_SHA256_90",
+        "HashAlg": 11,
+        "Key": "",
+        "Label": "INTEGRITY",
+        "ContextU": "ff84394f0c76ba386d4239",
+        "ContextV": "a8ea61c975214cc4afafc557464d56db34fa00",
+        "Bits": 90,
+        "Result": "01375165ff1f4e7ab263071f"
+    },
+    {
+        "Name": "52_SHA256_936",
+        "HashAlg": 11,
+        "Key": "ff2d0870fe8b86cbea",
+        "Label": "CFB",
+        "ContextU": "f2dd2e3f861541ff",
+        "ContextV": "e3911d492333cc64b838a788e9cf0289f2",
+        "Bits": 936,
+        "Result": "f8b0ab7ea70d1e7a261307bd1cf4565d2323336edd257bc5fcaac584305db17140d036c5e5a442f32b1d838560a22fd5d157eef337fa4378b18d64483037d08a40d75b43031491a64b568311992e53ccf139edc7423319facc9085ef193a3fa511afbd12799825c455d99f8843a65fc47233b00ddb"
+    },
+    {
+        "Name": "53_SHA256_976",
+        "HashAlg": 11,
+        "Key": "3b12a6b38672109f30df6cf587db498d777d",
+        "Label": "CFB",
+        "ContextU": "c162bbbff1366f9cd641d398a8c977ec1ab2c7977208151f9f65e600",
+        "ContextV": "ff45f0",
+        "Bits": 976,
+        "Result": "d1a85a656db2de3f27c9d949f0f897861564095fc90b41e34a65dd53402b87b3e0a532d6ad1a8368be00a939813b02a7d728b8949a42225eada4c59260ebfd8e591cce73419b47e2bea8a465f15827bf74b7eaf95a825927883a71496f962544be5a54f542ad3edadc943a29777c408d3797a195c0789a2455df"
+    },
+    {
+        "Name": "54_SHA384_107",
+        "HashAlg": 12,
+        "Key": "407c690e26a916d42b396e0650d0d1fa32b26182fbe8696af8795f7046febb0f10070a5c",
+        "Label": "CFB",
+        "ContextU": "a6ea7f4af368d953580a0c2a00",
+        "ContextV": "fbbd51b1e120ea187847",
+        "Bits": 107,
+        "Result": "0435309894c071e659e1351e6ece"
+    },
+    {
+        "Name": "55_SHA384_168",
+        "HashAlg": 12,
+        "Key": "ff873218c658337b133d95677b350db6fad5f0fcee50ed948dbfa7bcf1eb7cf3da7b65e30d1004be0a29db0b94cb",
+        "Label": "INTEGRITY",
+        "ContextU": "f4ba2ca34d644c764621b3fa4ec217018d38d18b759bbae330484a8ac2d5e8fb626b063555b85fa100",
+        "ContextV": "005a66eb842dc34064ac55b3cfd1234692de",
+        "Bits": 168,
+        "Result": "41dcda37d9eb927530e3802cc23a2b2346ffddaeea"
+    },
+    {
+        "Name": "56_SHA384_221",
+        "HashAlg": 12,
+        "Key": "ff7414",
+        "Label": "OBFUSCATE",
+        "ContextU": "4f11e1abbcdcda116c26bf4ef2ece3f2536c1fb9ee5883fa1ef8e7a490146590b62d74",
+        "ContextV": "008e7751a6a65cb95e7a630266b8746fa515b6",
+        "Bits": 221,
+        "Result": "1f664dd7bd81cc541bc98b745aff092308700fa57feddae807e09cda"
+    },
+    {
+        "Name": "57_SHA384_280",
+        "HashAlg": 12,
+        "Key": "cf7ea9ea141062d868de89bd470ebae09dcd1f765d5e74dd851ab193a7b900",
+        "Label": "XOR",
+        "ContextU": "4a52839a9ff2c7b5dfc5f38b00",
+        "ContextV": "00e54a9ded5f648747f61879e6845e9cb16f2fdd1722954231d01f4c3229ee99a1abcb6c80fbb47fc40d981a10b688b6",
+        "Bits": 280,
+        "Result": "fef247244e1dc2824b099273b3467ffa1934f29200ed2c4f7b4268638139a7b8255b43"
+    },
+    {
+        "Name": "58_SHA384_363",
+        "HashAlg": 12,
+        "Key": "f49c19971a18034be90a46a291709f66b4583214a20575edda70db5324b1c8ac486b",
+        "Label": "XOR",
+        "ContextU": "ffaea909308d02c14646f1120b9199bae4c423126725ccfa458b62961d3aac95",
+        "ContextV": "3e085f9ad217ffa5c3838248be1025d2e5d22f50748497673e5d7a213f895a1238dd36c32e9aa859464578f000",
+        "Bits": 363,
+        "Result": "06d534ed69777f7d26a485af20729baa9441987b0571c7f9453bc0c254b938b98faf90d76596ae006c161c7606f4"
+    },
+    {
+        "Name": "59_SHA384_411",
+        "HashAlg": 12,
+        "Key": "657ba612294fc6dd27351dbc018120e9f342f0bc788ef0ff",
+        "Label": "OBFUSCATE",
+        "ContextU": "e9d36661",
+        "ContextV": "ffd50a949bd16adf631dc51766d198f10c7394303e6971c19872b0fea98d5a939e626bfc36",
+        "Bits": 411,
+        "Result": "05fcbd7c1bd9c302613e0c5880089622e72ad54dff90de6b18a0bcb939ae090f4eb57b0ac5d9cfe4caf896b92a793e5b915f0426"
+    },
+    {
+        "Name": "60_SHA384_463",
+        "HashAlg": 12,
+        "Key": "3dda23f9861f77ca8d874ef6b900",
+        "Label": "SECRET",
+        "ContextU": "ff",
+        "ContextV": "76356506b3564ce4204903d31777196beb2d4ed4d2dc37c6be8fd2c82038444b85390d",
+        "Bits": 463,
+        "Result": "52674662f7ecb3a0d95a73ef688eae2c39e9618404975ac63169a8b9cb304d58bb60e7b815f64109b45294cd8e3b598a0a6d081b6e5ce4b95ce7"
+    },
+    {
+        "Name": "61_SHA384_5",
+        "HashAlg": 12,
+        "Key": "00836d3bcd",
+        "Label": "IDENTITY",
+        "ContextU": "ff43ce7b0129592593a33f331b7e337356dc0b82b07214bf5b985ed5431a574f325d355169deadff0a0d",
+        "ContextV": "1e3f6100",
+        "Bits": 5,
+        "Result": "12"
+    },
+    {
+        "Name": "62_SHA384_528",
+        "HashAlg": 12,
+        "Key": "e6c8422bede9724223e23a3a9c9364a2fe0042a27bd24484d467d2cb936b0d78a0d583f5574fd9f14f72f6e833",
+        "Label": "IDENTITY",
+        "ContextU": "ffb259ea49aee027af8491d41a438d07e0ae061131815e24398e759c82e67cf7becac6d4d1b31d",
+        "ContextV": "00fc431cac1d532d09030e2ab3e7",
+        "Bits": 528,
+        "Result": "5c4022860654b6cd81f650e68533cb4a0cadea6bbf06ec513d9f1bdd21736aea8fc95be08d7412d449277de7227fdc644ff9e61a676dc34c440be0b3238501f55939"
+    },
+    {
+        "Name": "63_SHA384_534",
+        "HashAlg": 12,
+        "Key": "1b639408026711711204781cd635818e1350f66ca91a7c39fbdd127d30bf2803ba73c7544647453925c61914",
+        "Label": "IDENTITY",
+        "ContextU": "0006",
+        "ContextV": "ff24989af0b182baffebe3f25881754d99",
+        "Bits": 534,
+        "Result": "01330316b3d1e530d0d9fc43a45da08a71e9d2debb3c5ae27d5e7959676fe9ec0453d9e51d10c2be8e468c4d65020de40f0800906145ec06c52ce5e7639253fd050fce"
+    },
+    {
+        "Name": "64_SHA384_590",
+        "HashAlg": 12,
+        "Key": "f673d803a3c7e8931629126f548d0c0252f9f1a284d8c5affc44582ad1192cff",
+        "Label": "SECRET",
+        "ContextU": "7ea5b235c98309bf71ff",
+        "ContextV": "00",
+        "Bits": 590,
+        "Result": "3bb98da893b0caf07e50699d14a0190a7ae3fb7cb9c090bf5cff670804ac6b06403a84636d6f4d147f53e02856dea70c5fa0ea64eeb8ccbb2c731f0f27400febe497aab8e2566ec8df17"
+    },
+    {
+        "Name": "65_SHA384_612",
+        "HashAlg": 12,
+        "Key": "c6f665ba32dbe4154a127e8be20a3965ef025f2d0d9d6f9f0c71fff55318e2bc7e7dfd969f68fc01ff",
+        "Label": "SECRET",
+        "ContextU": "8463637cc47bbfba85f44675de76be855109261769c29b04a64583821e2a8ec18484e46dc79ba7e817fd9800",
+        "ContextV": "fff8535fce4713efb2607f18771ed378619101a987",
+        "Bits": 612,
+        "Result": "07f65617077cdcb466b5a9587dde500b77f07f3b53c9a9936a1d980f1e3a550133b6e8e52c93e3d2469b69df6d030ebf4311b1db511519b851785f1d8a1a95648e0016768186747cf9cfa620c6"
+    },
+    {
+        "Name": "66_SHA384_625",
+        "HashAlg": 12,
+        "Key": "ff39",
+        "Label": "OBFUSCATE",
+        "ContextU": "706aa1c6662677e6f1688e2ba44000a74169bd29ccb6a53688f7377ada04a19f29fe0fb685679c682232bc92ceaf6b00",
+        "ContextV": "92bcbb00",
+        "Bits": 625,
+        "Result": "0057b2d012133427d4481d6a98095d88725935d08c6fe188486cc1f1bfbcc3a94b3dbe82527387dddd15ee9dc497fb88657ad27616763708e62c5b3a83863b6570073239282c82bf7a23d96833c3e5"
+    },
+    {
+        "Name": "67_SHA384_629",
+        "HashAlg": 12,
+        "Key": "a096250fb1f9e1480860f2ad7214fdb2128c804c83909746349e32e462ee923b5757",
+        "Label": "XOR",
+        "ContextU": "ff71c65367ac766878d08708eb278e8058158599ea814f7f905755b1bb81",
+        "ContextV": "00e5a987fa82eeb2824b6c52d3",
+        "Bits": 629,
+        "Result": "191fe92d875d3eed12bfc1ba4c2859d1d5b45ef3f107a2f8d3e32b1f6c9f2a52fb5deabecde76537a10a01f854773e867fc1ffa0ac4ff21bbf598c4960a7093e745963e0bff5b1d5cb4c429a2cc485"
+    },
+    {
+        "Name": "68_SHA384_629",
+        "HashAlg": 12,
+        "Key": "1b92ff",
+        "Label": "DUPLICATE",
+        "ContextU": "ff68d32c466a1896ca09986bc854d586041ab792de0ae6f3e8cacfd6b73c3fefeadaa6fd9f0a95",
+        "ContextV": "4999b759c4ec84774ea22ec9039ac12322e412105fbf80d4fe3ccd7d5fb6863bb6ec489b985cd0b75ba2c0e22100",
+        "Bits": 629,
+        "Result": "07d0822539f1a9933dafc29fbbaacafa7bdd2b5b661bb535992de865378b8556d0e881e3c554228d73727147d548faef1fbb096b0865ad5d65cbd1967f5c6135ebb491b42a7cfd619077de67e05ba1"
+    },
+    {
+        "Name": "69_SHA384_631",
+        "HashAlg": 12,
+        "Key": "ffba570f3098397f5acac1ac11bfb3278e27949af1280011686d81083c7e91c04299793faf73be",
+        "Label": "INTEGRITY",
+        "ContextU": "30d19831b227e85e57e8aba93c69d2425e57",
+        "ContextV": "231cdcff",
+        "Bits": 631,
+        "Result": "3ddecc8068aba267268bb46064185d590a1b7f630d7e7c277b992e637a53402c3dd6c259c99fc045d0f159ba75773cc0f81a29c45cb6da094b242460cb055c7f889d926fb723738134f78915bd39ab"
+    },
+    {
+        "Name": "70_SHA384_705",
+        "HashAlg": 12,
+        "Key": "17f5c2a11b1fbf4118e2bc7e978b6f70ff",
+        "Label": "DUPLICATE",
+        "ContextU": "102593def4684280e5273963acaeb34986bdab1da5acf1fe5606af6dff",
+        "ContextV": "e940cc5932d516689ee7248c450a4d2e",
+        "Bits": 705,
+        "Result": "018000939d5172353ab201d9b599ceef3e0fadb63e087628e58c1044aec0251d91482240b9bf907bcd65ed083252c9bb10cd5d941c07dda93a458978b0707bae68834c134cbef0e68a9d0d860133feb1072fa52625f74aadf7"
+    },
+    {
+        "Name": "71_SHA384_710",
+        "HashAlg": 12,
+        "Key": "b697ff",
+        "Label": "DUPLICATE",
+        "ContextU": "0ab248d8ae2d283f183c5eeb4e87e0",
+        "ContextV": "ff513658930e844bc50b8d7cd9fe28f286355ac89c49bc093af7c19fc5c43de17db7a377ffc3",
+        "Bits": 710,
+        "Result": "25bb4b994da3087e5f3dd025fb3ae2bd5f22ae97877560affb33b1b0c07fca6cf853b37499507f3ad17c56c5aa407efbd16a87fe586c97e4ed4d49cf5cafaeffba8040a1fc413c7081b8725d1bf38fb45c64f6fc23e80b0b5d"
+    },
+    {
+        "Name": "72_SHA384_718",
+        "HashAlg": 12,
+        "Key": "3d8a0a6b1e01dbfd6878ef93ded8bf780e86cad4c433988bdae42639bf2e227626de06",
+        "Label": "XOR",
+        "ContextU": "ff8aabf036f9737a3b50bd364381dd84df290ff2243716729650a5b8761d90e8586fb649d8d9ff398dcb93fb2ce3",
+        "ContextV": "8257046fcaf3bbcffd2c4eaa746c9bd7b1b86d7b57f1314c73d2f1f9241710bd92c39b00",
+        "Bits": 718,
+        "Result": "0ce59cb318c2ac1820283b1101b8a912d1f04efd45962c476796941569694733bc0078d46ae857d3801ef8f8221ae11f7806f22324b09b96aa890f87f37275b0220363583d33102e5bf4c368e6d13bdadec5006e41983e54412e"
+    },
+    {
+        "Name": "73_SHA384_759",
+        "HashAlg": 12,
+        "Key": "0d087debd9625da6d1d154655d98a9b04bdfe9a2963c3cafe2ca5912ca143af0cc29b806c1e3309b00",
+        "Label": "OBFUSCATE",
+        "ContextU": "0d791d03cbb91c94bfa58e265fdaf240759e7ba09124",
+        "ContextV": "00c94ce4109c06ad9e7188a271854cc441bb583d28ff0ef9b898d73a4ebd4438d3abb36082a743a29bb0b3c9d87fcf",
+        "Bits": 759,
+        "Result": "0a7a3efe1e5e984d55700a86a8fc73bbe81f1a002c1fb209acb796b16d2ba3fcb456c7921764fcbcb03fd2db64529e063d25be21539a63f33525febd1fc55e90f283adbed689f4f2ba73eb9ad71c7a2973fdcc691b6bd2b5681d9a4c33455c"
+    },
+    {
+        "Name": "74_SHA384_838",
+        "HashAlg": 12,
+        "Key": "ff99d816f3d17e7ef2b4e1",
+        "Label": "CFB",
+        "ContextU": "ff",
+        "ContextV": "fff445754cc8e113244234c3c3506fe8fa147ed4d5a7ab60353dbbcc5c4317",
+        "Bits": 838,
+        "Result": "094c7a8fa31210777491278588d5df5c37dc178c481f31992800be84930f658d0a6fb0ae6f276b7e83da8dbf618f4d4721bc433da4b6d464d16f784dd8cda65bd3b09d7febe53cab351a1e895e4b8ef3017086bc71435ce23e1b7fdea58bed938d35fbbb37b1cb0e74"
+    },
+    {
+        "Name": "75_SHA384_858",
+        "HashAlg": 12,
+        "Key": "0813a3611b62810ffdc0227464c88d510057f7d41b269297c58bfa9b4b5ffb9a23ad022c1ae200",
+        "Label": "XOR",
+        "ContextU": "4b2e925ed516a278dc3411daa848540e8cce8cdd1384492e7da681f287eefea0e83d348b44506bff",
+        "ContextV": "002e7fc5",
+        "Bits": 858,
+        "Result": "039043bdd9da1a034876279bb9da22110cf0a20b98bed3df4f62b99e98ed048ff0e751c7511a4903dacf19d2aa1ae67f03f079e282d766cd3a1a4758126f0c9ef2a0a07f2017b701e6bab7cb7b55f7af0613e8775287895b5bff0b518380ab8c17b7a8a9f871fed24978c280"
+    },
+    {
+        "Name": "76_SHA384_884",
+        "HashAlg": 12,
+        "Key": "fffc0654c473b8a69de9c533984e",
+        "Label": "ATH",
+        "ContextU": "ff27121103c8c31a88",
+        "ContextV": "d7be00",
+        "Bits": 884,
+        "Result": "09821c859457ae5d0865b0c8cd61d733439f4f8abfcfb728eb64bf632fe3a0362f245a36f3c645cb02f6637ea3e2906b6046fc6d23a965e72b7153ca40a6e8e7c4e53fa632002751cb547e510293faf8b9a9f0fc83609ab970d4d0be854d83470fd4cd8e58ccab8f5c5fc55238e348"
+    },
+    {
+        "Name": "77_SHA384_90",
+        "HashAlg": 12,
+        "Key": "f587f8220ee6906003436c9b6560341d1355e1df05434df4ae73b2702d0f246eb9b0ce9fc6b8c900",
+        "Label": "OBFUSCATE",
+        "ContextU": "fff1d82322d358eda8f14f5e5db4d2546f9eae5bcaf1ad0f4080c15b074b65b74a4e145e9fdfdcfee5b4e5076a",
+        "ContextV": "00b36efcfee61936e72aa8ad51556f95fc97abdf4f11c0d2146fa967f648cedb",
+        "Bits": 90,
+        "Result": "03a58b7155669b4ff569a57a"
+    },
+    {
+        "Name": "78_SHA512_100",
+        "HashAlg": 13,
+        "Key": "910b14fb4f950dd1df58d743c90d44d931d033727a9b1c7da0ab4459601300",
+        "Label": "SECRET",
+        "ContextU": "ff393b2a88bd25d3787dc383306c403f77caafeb37a1b4007f76cc349f82cf489650eff173d2e6f62eb8723f88d453b4e7d73db1be325f0334b6675901a7",
+        "ContextV": "ff4893b669e0b43954e0c5a072cb76135d2d2f6327abbe4f9953053fefed07b67da4b07bdeb807dfe2961f0b2734d2635a5f89de59a1fd",
+        "Bits": 100,
+        "Result": "0c896c0991abd7b379067fb43b"
+    },
+    {
+        "Name": "79_SHA512_120",
+        "HashAlg": 13,
+        "Key": "f6829d524d11a31db8907f44ea5e21442b9edb27b4d46e6f66944357cd29068906a93a3e936a0d7532cc0e00",
+        "Label": "OBFUSCATE",
+        "ContextU": "43c9d69244be6610f663c48dd9f0472e0cebc18c",
+        "ContextV": "2f7de74cd72c4bd6a86d4eb225d8b608068bad852378431bd211c0899a6d7c9dbc206fdb0642",
+        "Bits": 120,
+        "Result": "eb4b38b54d3fbbedd164870bd46298"
+    },
+    {
+        "Name": "80_SHA512_130",
+        "HashAlg": 13,
+        "Key": "2e5dce8167f7dd660e34a09b7d7d613e6b99f280d99ec5775bc45e95fbff19c4c69ef7662b3dff",
+        "Label": "IDENTITY",
+        "ContextU": "a4",
+        "ContextV": "2800",
+        "Bits": 130,
+        "Result": "0155bfb189bd92cd1b82dd72e1e70ebbe7"
+    },
+    {
+        "Name": "81_SHA512_133",
+        "HashAlg": 13,
+        "Key": "59f9262d26ccac324d07b7468753316b06",
+        "Label": "OBFUSCATE",
+        "ContextU": "ff802b77e75a23530d4ee7c9a6f20d8688ac477018d8c3a32272e3a81d695e07b6",
+        "ContextV": "d27d61a2c7fa0fb39374f851d8371e1342e36528bf4daa47eb2eb978cbc9ae6c7e751d697cd9da0ee6b900",
+        "Bits": 133,
+        "Result": "0b46d523974a2424899b6126bbf0728cbd"
+    },
+    {
+        "Name": "82_SHA512_201",
+        "HashAlg": 13,
+        "Key": "ff5c3e618c07e43dfe72ce6383fffd6e39a9f47e006146e0d9a1e2f5c2aabdadf78cba51591679a8f7d4ffaced5f1fa2a5a2ad85c9719710aa57002231",
+        "Label": "STORAGE",
+        "ContextU": "ff0631c92e1357b73308f84093d0e2fbb0002e8e770487fa2d11e449758c99edb4e58013",
+        "ContextV": "00",
+        "Bits": 201,
+        "Result": "017e9db6baf5584adb11e6b7023071bfb4d82ebb8eddb0d3bf14"
+    },
+    {
+        "Name": "83_SHA512_301",
+        "HashAlg": 13,
+        "Key": "fdd2384d169012261c6e7659525e6b3e",
+        "Label": "INTEGRITY",
+        "ContextU": "ff81b325828e545af1bfd78b4aa4e3651d5a07",
+        "ContextV": "00d44212353934fed29db6c4",
+        "Bits": 301,
+        "Result": "0ca16abbb1ef8efb3c7bf3613d0ec0386c52cf79f8e0f5cc115be87709f6fdc1e54e8b971e24"
+    },
+    {
+        "Name": "84_SHA512_321",
+        "HashAlg": 13,
+        "Key": "5d03afd5c6fdcd0e00",
+        "Label": "XOR",
+        "ContextU": "a8b784be0a7961bd0e9f97d823a7d21faeadc12fbb41d08e19ff",
+        "ContextV": "0410865e26e536c23c4147df9cd143b54f031cd2352bcf24854c7550992900",
+        "Bits": 321,
+        "Result": "01e27576782a4517e87b1db0774e9b45599870d06a88be8cbe190f8d0fb37ce5c1d1639622c8a5fe9a"
+    },
+    {
+        "Name": "85_SHA512_322",
+        "HashAlg": 13,
+        "Key": "ff774a548a15fa13e0f701f93077be89eda22919677cf9ff45d534ecbfd4f0006a04535a10f39ad44bdd4021b779824253b9f20b",
+        "Label": "SECRET",
+        "ContextU": "0082616a58cafba8",
+        "ContextV": "ff8620d681d17bc51e401d1b56e0e630373aed1d0a3d2f921b3bc6369029f1cd568645802802516b0b58d3764274917f",
+        "Bits": 322,
+        "Result": "00274cf8b80bd002b41825f42c9263270abbfb54ef05e7923a3c063cbcba69bee1ef36f8f080d13175"
+    },
+    {
+        "Name": "86_SHA512_335",
+        "HashAlg": 13,
+        "Key": "b2fe5ad58d77ef8ff3b0332646549857ff06e63ac529a8e8b8969f0c2e8c467d8c847dc74b19a6d19166b9d1bc9606fe6ea6ddb5a41411acff",
+        "Label": "DUPLICATE",
+        "ContextU": "236a33153b7dbdec35efd2711dff",
+        "ContextV": "ad920861ded68ef607fcdbf17ccdb4bfe1",
+        "Bits": 335,
+        "Result": "663b66351a96e283920679bbb5d1e5d46f1d31a4264ac9d96e2f12895fd1a2e2bfcd49a7ae2fa1470088"
+    },
+    {
+        "Name": "87_SHA512_361",
+        "HashAlg": 13,
+        "Key": "7b30756ff520889cd09aace0c6e976dc8dc03fb71922ed79307670e50f521bb0bd29c8c24488ff",
+        "Label": "XOR",
+        "ContextU": "006f498447350a6cd909ecbc9c47210a78f7523cc063ae7255101105eca03a03ff1b7ddb198976fa3d65d5de3597cba903ac805187a6",
+        "ContextV": "00a60461081ca6e779d0ad",
+        "Bits": 361,
+        "Result": "00838758ea7816cc8468c3aaaff065b4b74e4720d35712b399bee90219fe0a1527b04632dd199c76135d8bafa59b"
+    },
+    {
+        "Name": "88_SHA512_379",
+        "HashAlg": 13,
+        "Key": "2700",
+        "Label": "SECRET",
+        "ContextU": "ff81fa580edd14d0427da3c3880826f8bd8e2c1d4f7e912bbcf065",
+        "ContextV": "86e5b2e6dcbc5f86603fa84a5539575d9d7b788138f0a3ae96e133a8ff",
+        "Bits": 379,
+        "Result": "0556fb6fa3280c1233516f47f53ba9bdf2760ec4d197da7a192f5457bc52c9d22fcb839f793f58cecee2cd1b7af0bf45"
+    },
+    {
+        "Name": "89_SHA512_404",
+        "HashAlg": 13,
+        "Key": "75d1807216dba74e5bcb7cad9c8b6a81763e2c0b7ec3b97dec4d54fabe34315d61fbbc8b65c7450ba27180f1924679445968ea3c6b2ea9adb2ae87bfb81f5fff",
+        "Label": "XOR",
+        "ContextU": "0052ec9f127e17bc30e7eac0efec0023d82c29c8d6a1ad4cc61bbf6ac0c665a90cfd0efde113169dc67e8474f07f5448c3",
+        "ContextV": "dbf8e80b2e67df93769fbc9fb543f9074ac56f424df2d702",
+        "Bits": 404,
+        "Result": "0a8146a2bf9500309bc123a0fed1cfc9c5c461c4b3d69f560ab38779d46fad5d1b5d2346c352971d8390b60e55f3ed99686288"
+    },
+    {
+        "Name": "90_SHA512_429",
+        "HashAlg": 13,
+        "Key": "e901d1bbe98206a086e70dd88713b9c8f8affa301912ce0c61f0aab5815fe5ad7a10333d952904f19d1f99441bd13d0683e4d2f282986bddf6964455ff",
+        "Label": "INTEGRITY",
+        "ContextU": "ffaa65412a9926d9e3b824bdbca7a5782908cb2c423b138b84d48984fd1daa",
+        "ContextV": "3d79762e70c4cba45c6ceb963ed4c283756b4f8008796adeb0866481da82fad211312f61b664c44a00",
+        "Bits": 429,
+        "Result": "1f8528a9b0be44ae7658ef3d99dfdfb34b40aedf084eb48fc0012cc3b78779616816a900bd89aa05cd4df883b2db19f11f3eafa2ffdb"
+    },
+    {
+        "Name": "91_SHA512_429",
+        "HashAlg": 13,
+        "Key": "c7c00aeb2fd745e0e86d26b405aaae5e8c1287990a2efe502fb95a4fe6cbdb87909e5b05f3d4f2a6a91aaea5cc1bff",
+        "Label": "OBFUSCATE",
+        "ContextU": "00c08a969794844242614a656b7c56ddb88de7",
+        "ContextV": "0b86613cd22a88f2047e213ae6541bc76f9fea8da1882be6cc6fbc6ddd343009d4d9c58094fa62b029c65435d3b2d895240ff360627d66a200",
+        "Bits": 429,
+        "Result": "1e5ddc090da47fdd0d72480734792aeaff45b9396d942068c8d492651662f95d9eff13c51719c360c57b782f061018e9db1dc87cf6f9"
+    },
+    {
+        "Name": "92_SHA512_443",
+        "HashAlg": 13,
+        "Key": "44836282e82f1258580cd5443119d22b19dbf1d7d31e265134316bdcf34ecee0c434830cec625582d25ca5dacf2771c26fb2067dffe6745cfb160e0017ff",
+        "Label": "DUPLICATE",
+        "ContextU": "3c24bcb951c0dfab2da884a9648624a26a3e203d487a692ce01c5cb7f9beaaff",
+        "ContextV": "6757ec414f21d9152933d9b23198c1ff3d011727be22b898089c3c968ed286ecf02f8af465b1bd99b1d4ae4b6bb03757d0563ba4c688a600",
+        "Bits": 443,
+        "Result": "05aea88a15a15c01bcf60e06619edd21f62fe9d098ca4c995106bdf8c125b3e88e301816eafc1cab8a55818652a326ebe55ca3dbe0741536"
+    },
+    {
+        "Name": "93_SHA512_458",
+        "HashAlg": 13,
+        "Key": "28558be1ad720f766d957d91eb4b2aba9127dc7f1b98481666682c66f101ad40cda98672789774e161d20068c8f90e",
+        "Label": "STORAGE",
+        "ContextU": "0617c9a12e10592d4802c128051836dcfaff6645fb8f69eeeae0bccec9a3d16ce4a9b222dd351a019e73001000",
+        "ContextV": "ffa8f1887a12d3ac4711fd282c41d12d7a86496cd78bd107e7",
+        "Bits": 458,
+        "Result": "00ed6c2c4d1232f2ddeea2d634fd16fa415c8d2cf95282eaac73c527ab886f25ad4c5cf8350f4f597bf92835606fbf4fbd1fdd0bbab4dab08fb9"
+    },
+    {
+        "Name": "94_SHA512_51",
+        "HashAlg": 13,
+        "Key": "52dc243976a4a0cfd20d79d88eabc933e2058532833e305a075bce4f741d1558917f48e4b013a51d52aa30884abbbb88fb68bdc39e383d3c388d00",
+        "Label": "INTEGRITY",
+        "ContextU": "ffb144a9ecabc8cffda282d7b46198d3a6bcda153c16e819",
+        "ContextV": "ff0d7fc828e25d80d01e8b5c93505bc7fc5a5d",
+        "Bits": 51,
+        "Result": "0672e6e2f0b53e"
+    },
+    {
+        "Name": "95_SHA512_560",
+        "HashAlg": 13,
+        "Key": "ff891e21825fecde6ff9",
+        "Label": "INTEGRITY",
+        "ContextU": "f9a3a62709e51f9fe4e79012bff5e1edb763dfa6acf25d972c9b997711bd91bc0183f58c49fb476e17f2a617058b1c43fe5e3956566a552443b3ff",
+        "ContextV": "ce1c7a460d0d60361a36b1f187d981f468038a99dcc2d82cc8392b5cace83ce6684aa100",
+        "Bits": 560,
+        "Result": "d54c048abdd7a22ed7b91a6e3e6deda34b6c71cb14e9d4541e8b3fe71670580da5312e5decca3a9875b9ef8f658f3cfe0150ac2b87fcc46155fd5253178190afbae979211502"
+    },
+    {
+        "Name": "96_SHA512_608",
+        "HashAlg": 13,
+        "Key": "8324d25fb1ac8d8d497d85b78d5fc83f78c8",
+        "Label": "INTEGRITY",
+        "ContextU": "b6ba530aea0128bc7d1ec8ebe256e9a8a057ed3e76692d7eda44b46115f236e9222b",
+        "ContextV": "3f12539b9ba2142672ee6fb373817e525c5523afe3bb0f6f519c3edbb4a06fc12135e51c3a5c84b57c7286",
+        "Bits": 608,
+        "Result": "5bd307b2dba73ea8b54730eaffee2c4156e387be799f52c35dec5cdba5836879a73c19c9c7658328d4c4b2ad6fb86e029409d7d5d1705f47aafdf506cb0d7b49ba4d4dafb8fa82f358188202"
+    },
+    {
+        "Name": "97_SHA512_683",
+        "HashAlg": 13,
+        "Key": "098cfa04f6aaca9f7105932607805d2dcb3e50c7e7af41e519ec0103e2ef5643ecef03feebff",
+        "Label": "SECRET",
+        "ContextU": "ff251678c50cf69474b03b40183fb048147ce054e88eb2142595370cd22405ec00cab28a3a024f390df9cc4dac533ce9",
+        "ContextV": "00829ef5e570decb3a20c38524ad049a6fa58281402cc8369d",
+        "Bits": 683,
+        "Result": "00db3354dc35f9e7f8956172ff1acf9a718091da6f16b24be96aa49a504f888eea9df41bdc366a50740bc4a22b602da585b7f316d48004bb4f4271860373a509880c2141496a01cb195200f27cfcd006e0de89ec24b4"
+    },
+    {
+        "Name": "98_SHA512_693",
+        "HashAlg": 13,
+        "Key": "0092dbe98ed5763aef297a0e2bece7291503a826a61b237f7c69c382741d70bbb792b332a2f3e0ec3ba555a32eed654aa07bafd277b54f36c9ed",
+        "Label": "IDENTITY",
+        "ContextU": "de740316f0",
+        "ContextV": "c0b5b692dabdc4589819867f5960f18749000baa202d0fe8261b36e9e39d39a82969c1958b6f07054ffd5379d6cd7bb4608bd900",
+        "Bits": 693,
+        "Result": "0fa6a16e920e3d0c34b8f53bace300c6b378326a15dd56e2503f93f6586e3183ac8c7ef049359b6ca6b868afdbff59882b8e25ca4571cfe796b060a536227f15d31255ae1aac06acbcf25fb6c77e69e97fd68464988235"
+    },
+    {
+        "Name": "99_SHA512_778",
+        "HashAlg": 13,
+        "Key": "86b8ec56056569a17739c8bcff2705534a0a6af608e930ab0c0ef28153ed3e27cb7b57abb68c5a79bd56b2181520c8d60ab02a360d450e85a1ff",
+        "Label": "OBFUSCATE",
+        "ContextU": "003658229c82365d9384742b9722a9e0ab219929841c",
+        "ContextV": "da50523f9a44",
+        "Bits": 778,
+        "Result": "03232b50be18a77f128d6af71d3b2e7486ba41bcebb9636b2101ef8117bb969b36e550debd0fa0b537e07025a7e765c7d5bf9f0491130b4778d728ec132fd3a20c727da25d5471c6733c5318aaef3a0c210aa4b140028a5d20f3c4c9a31a95ab945a"
+    }
+]
