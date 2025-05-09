@@ -71,3 +71,55 @@ func RSALabeledEncapsulation(t *testing.T) []RSALabeledEncapsTestCase {
 
 	return testCases
 }
+
+//go:embed kdfa.json
+var kdfaJSON []byte
+
+// KDFaTestCase is a test case for KDFa.
+type KDFaTestCase struct {
+	Name     string
+	HashAlg  uint16
+	Key      hexBytes
+	Label    string
+	ContextU hexBytes
+	ContextV hexBytes
+	Bits     int
+	Result   hexBytes
+}
+
+func KDFa(t *testing.T) []KDFaTestCase {
+	t.Helper()
+
+	var testCases []KDFaTestCase
+	if err := json.Unmarshal(kdfaJSON, &testCases); err != nil {
+		t.Fatalf("could not unmarshal JSON: %v", err)
+	}
+
+	return testCases
+}
+
+//go:embed kdfe.json
+var kdfeJSON []byte
+
+// KDFeTestCase is a test case for KDFe.
+type KDFeTestCase struct {
+	Name     string
+	HashAlg  uint16
+	Z        hexBytes
+	Label    string
+	ContextU hexBytes
+	ContextV hexBytes
+	Bits     int
+	Result   hexBytes
+}
+
+func KDFe(t *testing.T) []KDFeTestCase {
+	t.Helper()
+
+	var testCases []KDFeTestCase
+	if err := json.Unmarshal(kdfeJSON, &testCases); err != nil {
+		t.Fatalf("could not unmarshal JSON: %v", err)
+	}
+
+	return testCases
+}
