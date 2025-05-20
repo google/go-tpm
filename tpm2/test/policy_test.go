@@ -235,9 +235,8 @@ func TestPolicySignedUpdate(t *testing.T) {
 	}()
 
 	policySigned := PolicySigned{
-		AuthObject:    sk,
-		PolicySession: sess.Handle(),
-		PolicyRef:     TPM2BNonce{Buffer: []byte{5, 6, 7, 8}},
+		AuthObject: sk,
+		PolicyRef:  TPM2BNonce{Buffer: []byte{5, 6, 7, 8}},
 		Auth: TPMTSignature{
 			SigAlg: TPMAlgECDSA,
 			Signature: NewTPMUSignature(
@@ -249,7 +248,7 @@ func TestPolicySignedUpdate(t *testing.T) {
 		},
 	}
 
-	if _, err := policySigned.Execute(thetpm); err != nil {
+	if _, err := policySigned.ExecutePolicyInSession(thetpm, sess); err != nil {
 		t.Fatalf("executing PolicySigned: %v", err)
 	}
 
