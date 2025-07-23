@@ -2134,6 +2134,31 @@ type NVReadResponse struct {
 	Data TPM2BMaxNVBuffer
 }
 
+// NVReadLock is the input to TPM2_NV_NVReadLock.
+// See definition in Part 3, Commands, section 31.14.
+type NVReadLock struct {
+	// handle indicating the source of the authorization value
+	AuthHandle handle `gotpm:"handle,auth"`
+	// the NV index of the area to lock
+	NVIndex handle `gotpm:"handle"`
+}
+
+// Command implements the Command interface.
+func (NVReadLock) Command() TPMCC { return TPMCCNVReadLock }
+
+// Execute executes the command and returns the response.
+func (cmd NVReadLock) Execute(t transport.TPM, s ...Session) (*NVReadLockResponse, error) {
+	var rsp NVReadLockResponse
+	err := execute[NVReadLockResponse](t, cmd, &rsp, s...)
+	if err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// NVReadLockResponse is the response from TPM2_NV_ReadLock.
+type NVReadLockResponse struct{}
+
 // NVCertify is the input to TPM2_NV_Certify.
 // See definition in Part 3, Commands, section 31.16.
 type NVCertify struct {
