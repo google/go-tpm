@@ -2197,3 +2197,36 @@ type NVCertifyResponse struct {
 	// the asymmetric signature over certifyInfo using the key referenced by signHandle
 	Signature TPMTSignature
 }
+
+// GetTime is the input to TPM2_GetTime.
+// See definition in Part 3, Commands, section 18.7.
+type GetTime struct {
+	// handle of the privacy administrator (Must be the value TPM_RH_ENDORSEMENT or command will fail)
+	PrivacyAdminHandle TPMIRHEndorsement `gotpm:"handle,auth"`
+	// the keyHandle identifier of a loaded key that can perform digital signatures
+	SignHandle handle `gotpm:"handle,auth"`
+	// data to "tick stamp"
+	QualifyingData TPM2BData
+	// signing scheme to use if the scheme for signHandle is TPM_ALG_NULL
+	InScheme TPMTSigScheme `gotpm:"nullable"`
+}
+
+// Command implements the Command interface.
+func (GetTime) Command() TPMCC { return TPMCCGetTime }
+
+// Execute executes the command and returns the response.
+func (cmd GetTime) Execute(t transport.TPM, s ...Session) (*GetTimeResponse, error) {
+	var rsp GetTimeResponse
+	if err := execute[GetTimeResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// GetTimeResponse is the response from TPM2_GetTime.
+type GetTimeResponse struct {
+	// standard TPM-generated attestation block
+	TimeInfo TPM2BAttest
+	// the signature over timeInfo
+	Signature TPMTSignature
+}
