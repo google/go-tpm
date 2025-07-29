@@ -1194,8 +1194,8 @@ func (cmd PolicySecret) Execute(t transport.TPM, s ...Session) (*PolicySecretRes
 }
 
 // Update implements the PolicyCommand interface.
-func (cmd PolicySecret) Update(policy *PolicyCalculator) {
-	policyUpdate(policy, TPMCCPolicySecret, cmd.AuthHandle.KnownName().Buffer, cmd.PolicyRef.Buffer)
+func (cmd PolicySecret) Update(policy *PolicyCalculator) error {
+	return policyUpdate(policy, TPMCCPolicySecret, cmd.AuthHandle.KnownName().Buffer, cmd.PolicyRef.Buffer)
 }
 
 // PolicySecretResponse is the response from TPM2_PolicySecret.
