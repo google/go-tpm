@@ -2354,7 +2354,7 @@ func (u *TPMUAsymScheme) RSAPSS() (*TPMSSigSchemeRSAPSS, error) {
 
 // OAEP returns the 'oaep' member of the union.
 func (u *TPMUAsymScheme) OAEP() (*TPMSEncSchemeOAEP, error) {
-	if u.selector == TPMAlgOAEP {
+	if u.selector == TPMAlgRSASSA {
 		return u.contents.(*TPMSEncSchemeOAEP), nil
 	}
 	return nil, fmt.Errorf("did not contain oaep (selector value was %v)", u.selector)
