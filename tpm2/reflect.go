@@ -854,6 +854,63 @@ func marshalParameter[R any](buf *bytes.Buffer, cmd Command[R, *R], i int) error
 	return marshal(buf, parm)
 }
 
+// unmarshalParameter will deserialize the given parameter of the command from the buffer.
+// Returns an error if the value is not unmarshallable or if there's insufficient data.
+func unmarshalParameter[C Command[R, *R], R any](buf *bytes.Buffer, cmd *C, i int) error {
+	numHandles := len(taggedMembers(reflect.ValueOf(*cmd), "handle", false))
+	if numHandles+i >= reflect.TypeOf(*cmd).NumField() {
+		return fmt.Errorf("invalid parameter index %v", i)
+	}
+	parm := reflect.ValueOf(cmd).Elem().Field(numHandles + i)
+	field := reflect.TypeOf(*cmd).Field(numHandles + i)
+
+	if hasTag(field, "optional") {
+		// Special case: Part 3 specifies some input/output
+		// parameters as "optional", which means that they are
+		// (2B-) sized fields that can be zero-length, even if the
+		// enclosed type has no legal empty serialization.
+		// When unmarshalling an optional field, test for zero size
+		// and skip if empty.
+		if buf.Len() >= 2 {
+			var checkBytes [2]byte
+			tempBuf := *buf
+			if err := binary.Read(&tempBuf, binary.BigEndian, &checkBytes); err != nil {
+				return fmt.Errorf("reading optional parameter size: %w", err)
+			}
+
+			if checkBytes == [2]byte{} {
+				// This is a nil pointer, consume the bytes and leave the field as nil
+				binary.Read(buf, binary.BigEndian, &checkBytes)
+				return nil
+			}
+			// Fall through to unmarshal the contents normally
+		} else {
+			return fmt.Errorf("not enough data for optional parameter %d", i)
+		}
+	}
+
+	// Handle nullable fields during unmarshaling
+	if parm.Kind() == reflect.Uint32 && hasTag(field, "nullable") {
+		var val uint32
+		if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+			return fmt.Errorf("reading nullable uint32 parameter: %w", err)
+		}
+		// TPMRHNull is the default for nullable uint32 fields
+		parm.SetUint(uint64(val))
+		return nil
+	} else if parm.Kind() == reflect.Uint16 && hasTag(field, "nullable") {
+		var val uint16
+		if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+			return fmt.Errorf("reading nullable uint16 parameter: %w", err)
+		}
+		// TPMAlgNull is the default for nullable uint16 fields
+		parm.SetUint(uint64(val))
+		return nil
+	}
+
+	return unmarshal(buf, parm)
+}
+
 // cmdParameters returns the parameters area of the command.
 // The first parameter may be encrypted by one of the sessions.
 func cmdParameters[R any](cmd Command[R, *R], sess []Session) ([]byte, error) {

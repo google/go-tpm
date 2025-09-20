@@ -126,3 +126,85 @@ func (b *boxed[T]) unmarshal(buf *bytes.Buffer) error {
 	b.Contents = new(T)
 	return unmarshal(buf, reflect.ValueOf(b.Contents))
 }
+
+// MarshalCommandResponse marshals both command and response.
+func MarshalCommandResponse[C Command[R, *R], R any](cmd C, rsp *R) (cmdData []byte, rspData []byte, err error) {
+	cmdData, err = MarshalCommand(cmd)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshalling command: %w", err)
+	}
+	rspData, err = MarshalResponse(rsp)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshalling response: %w", err)
+	}
+	return cmdData, rspData, nil
+}
+
+// UnmarshalCommandResponse unmarshals both command and response.
+func UnmarshalCommandResponse[C Command[R, *R], R any](cmdData []byte, rspData []byte) (cmd C, rsp *R, err error) {
+	cmd, err = UnmarshalCommand[C, R](cmdData)
+	if err != nil {
+		return cmd, rsp, fmt.Errorf("unmarshalling command: %w", err)
+	}
+	rsp, err = UnmarshalResponse[R](rspData)
+	if err != nil {
+		return cmd, rsp, fmt.Errorf("unmarshalling response: %w", err)
+	}
+	return cmd, rsp, nil
+}
+
+// MarshalCommand marshals a TPM command.
+func MarshalCommand[C Command[R, *R], R any](cmd C) ([]byte, error) {
+	var buf bytes.Buffer
+	params := taggedMembers(reflect.ValueOf(cmd), "handle", true)
+	for i := range len(params) {
+		if err := marshalParameter(&buf, cmd, i); err != nil {
+			return nil, fmt.Errorf("marshalling command's parameter: %w", err)
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalCommand unmarshals a TPM command.
+func UnmarshalCommand[C Command[R, *R], R any](data []byte) (C, error) {
+	var cmd C
+	if data == nil {
+		return cmd, fmt.Errorf("data cannot be nil")
+	}
+	buf := bytes.NewBuffer(data)
+	params := taggedMembers(reflect.ValueOf(cmd), "handle", true)
+	for i := range len(params) {
+		if err := unmarshalParameter(buf, &cmd, i); err != nil {
+			return cmd, fmt.Errorf("unmarshalling command's parameter: %w", err)
+		}
+	}
+	return cmd, nil
+}
+
+// MarshalResponse marshals a TPM response.
+func MarshalResponse[R any](rsp *R) ([]byte, error) {
+	var buf bytes.Buffer
+	parameters := taggedMembers(reflect.ValueOf(rsp).Elem(), "handle", true)
+	for i, parameter := range parameters {
+		if err := marshal(&buf, parameter); err != nil {
+			return nil, fmt.Errorf("marshalling response parameter %d: %w", i, err)
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalResponse unmarshals a TPM response.
+func UnmarshalResponse[R any](data []byte) (*R, error) {
+	var rsp R
+	if data == nil {
+		return nil, fmt.Errorf("data cannot be nil")
+	}
+	buf := bytes.NewBuffer(data)
+	parameters := taggedMembers(reflect.ValueOf(&rsp).Elem(), "handle", true)
+	for i, parameter := range parameters {
+		if err := unmarshal(buf, parameter); err != nil {
+			return nil, fmt.Errorf("unmarshalling response parameter %d: %w", i, err)
+		}
+	}
+	return &rsp, nil
+}
