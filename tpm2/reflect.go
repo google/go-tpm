@@ -911,6 +911,130 @@ func unmarshalParameter[C Command[R, *R], R any](buf *bytes.Buffer, cmd *C, i in
 	return unmarshal(buf, parm)
 }
 
+// populateHandlesFromNames populates the handle fields of a command with NamedHandles
+// created from the provided names.
+//
+// Supports different handle types based on struct tags:
+//   - gotpm:"handle" → NamedHandle (without handle value)
+//   - gotpm:"handle,auth" → AuthHandle (without handle value and nil Auth)
+func populateHandlesFromNames[C Command[R, *R], R any](cmd *C, names []TPM2BName) error {
+	cmdValue := reflect.ValueOf(cmd).Elem()
+	cmdType := reflect.TypeOf(*cmd)
+
+	nameIdx := 0
+	for i := 0; i < cmdType.NumField(); i++ {
+		field := cmdType.Field(i)
+
+		if !hasTag(field, "handle") {
+			break
+		}
+
+		// Skip anonymous handles
+		if hasTag(field, "anon") {
+			continue
+		}
+
+		if nameIdx >= len(names) {
+			return fmt.Errorf("not enough names for handle field %d", i)
+		}
+
+		// Create the appropriate handle type based on the "auth" tag
+		var handleValue any
+		if hasTag(field, "auth") {
+			handleValue = AuthHandle{
+				Handle: 0, // Handle value not available from CommandPreimage
+				Name:   names[nameIdx],
+				Auth:   nil, // No session available
+			}
+		} else {
+			handleValue = NamedHandle{
+				Handle: 0, // Handle value not available from CommandPreimage
+				Name:   names[nameIdx],
+			}
+		}
+
+		cmdValue.Field(i).Set(reflect.ValueOf(handleValue))
+		nameIdx++
+	}
+
+	if nameIdx != len(names) {
+		return fmt.Errorf("name count mismatch: used %d names, got %d", nameIdx, len(names))
+	}
+	return nil
+}
+
+// unmarshalCmdParameters unmarshals the parameters area of the command from a buffer.
+// This is the inverse operation of cmdParameters.
+// The first parameter may be decrypted by one of the sessions if provided.
+func unmarshalCmdParameters[C Command[R, *R], R any](buf *bytes.Buffer, cmd *C, sess []Session) error {
+	parms := taggedMembers(reflect.ValueOf(*cmd), "handle", true)
+	if len(parms) == 0 {
+		return nil
+	}
+
+	// Check if we need to decrypt the first parameter
+	decrypted := false
+	for i, s := range sess {
+		if s.IsDecryption() {
+			if decrypted {
+				return fmt.Errorf("too many decrypt sessions")
+			}
+			// Read the first parameter's size (2 bytes for TPM2B)
+			if buf.Len() < 2 {
+				return fmt.Errorf("insufficient data for first parameter size")
+			}
+
+			// Peek at the size to know how much to decrypt
+			var size uint16
+			tempBuf := *buf
+			if err := binary.Read(&tempBuf, binary.BigEndian, &size); err != nil {
+				return fmt.Errorf("reading first parameter size: %w", err)
+			}
+
+			// Read size + content
+			if buf.Len() < int(2+size) {
+				return fmt.Errorf("insufficient data for first parameter")
+			}
+
+			// Extract the parameter bytes (including size prefix)
+			paramBytes := make([]byte, 2+size)
+			if _, err := buf.Read(paramBytes); err != nil {
+				return fmt.Errorf("reading first parameter: %w", err)
+			}
+
+			// Decrypt the content (skip the 2-byte size prefix)
+			if err := s.Decrypt(paramBytes[2:]); err != nil {
+				return fmt.Errorf("decrypting with session %d: %w", i, err)
+			}
+
+			// Now unmarshal the decrypted parameter
+			paramBuf := bytes.NewBuffer(paramBytes)
+			if err := unmarshalParameter(paramBuf, cmd, 0); err != nil {
+				return fmt.Errorf("unmarshalling first parameter: %w", err)
+			}
+
+			decrypted = true
+			break
+		}
+	}
+
+	// If we didn't decrypt, unmarshal the first parameter normally
+	if !decrypted {
+		if err := unmarshalParameter(buf, cmd, 0); err != nil {
+			return fmt.Errorf("unmarshalling first parameter: %w", err)
+		}
+	}
+
+	// Unmarshal the rest of the parameters
+	for i := 1; i < len(parms); i++ {
+		if err := unmarshalParameter(buf, cmd, i); err != nil {
+			return fmt.Errorf("unmarshalling parameter %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
 // cmdParameters returns the parameters area of the command.
 // The first parameter may be encrypted by one of the sessions.
 func cmdParameters[R any](cmd Command[R, *R], sess []Session) ([]byte, error) {
@@ -1108,6 +1232,48 @@ func rspSessions(rsp *bytes.Buffer, rc TPMRC, cc TPMCC, names []TPM2BName, parms
 		return fmt.Errorf("%d unaccounted-for bytes at the end of the TPM response", rsp.Len())
 	}
 	return nil
+}
+
+// marshalRspParameters marshals the parameters area of a response.
+func marshalRspParameters(rspStruct any, sess []Session) ([]byte, error) {
+	parameters := taggedMembers(reflect.ValueOf(rspStruct).Elem(), "handle", true)
+	if len(parameters) == 0 {
+		return nil, nil
+	}
+
+	var firstParm bytes.Buffer
+	if err := marshal(&firstParm, parameters[0]); err != nil {
+		return nil, fmt.Errorf("marshalling first parameter: %w", err)
+	}
+	firstParmBytes := firstParm.Bytes()
+
+	// Encrypt the first parameter if there are any encryption sessions.
+	encrypted := false
+	for i, s := range sess {
+		if s.IsEncryption() {
+			if encrypted {
+				return nil, fmt.Errorf("too many encrypt sessions")
+			}
+			if len(firstParmBytes) < 2 {
+				return nil, fmt.Errorf("first parameter is not a tpm2b")
+			}
+			err := s.Encrypt(firstParmBytes[2:])
+			if err != nil {
+				return nil, fmt.Errorf("encrypting with session %d: %w", i, err)
+			}
+			encrypted = true
+		}
+	}
+
+	var result bytes.Buffer
+	result.Write(firstParmBytes)
+	// Write the rest of the parameters normally.
+	for i := 1; i < len(parameters); i++ {
+		if err := marshal(&result, parameters[i]); err != nil {
+			return nil, fmt.Errorf("marshalling parameter %d: %w", i, err)
+		}
+	}
+	return result.Bytes(), nil
 }
 
 // rspParameters decrypts (if needed) the parameters area of the response

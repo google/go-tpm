@@ -2,6 +2,7 @@ package tpm2
 
 import (
 	"bytes"
+	"encoding/binary"
 	"reflect"
 	"testing"
 
@@ -200,5 +201,234 @@ func TestMarshalCommandResponse(t *testing.T) {
 	}
 	if !reflect.DeepEqual(capabilityRsp, unmarshalRsp) {
 		t.Errorf("Responses do not match \nwant: %+v\ngot: %+v", capabilityRsp, unmarshalRsp)
+	}
+}
+
+func TestCommandPreimage(t *testing.T) {
+	tests := []struct {
+		name        string
+		marshalFunc func(t *testing.T) ([]byte, error)
+		nameCount   int
+	}{
+		{
+			name: "no handle",
+			marshalFunc: func(_ *testing.T) ([]byte, error) {
+				return MarshalCommand(GetCapability{
+					Capability:    TPMCapTPMProperties,
+					Property:      uint32(TPMPTFamilyIndicator),
+					PropertyCount: 1,
+				})
+			},
+			nameCount: 0,
+		},
+		{
+			name: "one handle",
+			marshalFunc: func(_ *testing.T) ([]byte, error) {
+				return MarshalCommand(CreatePrimary{
+					PrimaryHandle: TPMRHOwner,
+					InPublic:      New2B(ECCSRKTemplate),
+				})
+			},
+			nameCount: 1,
+		},
+		{
+			name: "two handles",
+			marshalFunc: func(_ *testing.T) ([]byte, error) {
+				thetpm, err := simulator.OpenSimulator()
+				if err != nil {
+					t.Fatalf("could not connect to TPM simulator: %v", err)
+				}
+				defer thetpm.Close()
+
+				public := New2B(TPMTPublic{
+					Type:    TPMAlgRSA,
+					NameAlg: TPMAlgSHA256,
+					ObjectAttributes: TPMAObject{
+						SignEncrypt:         true,
+						Restricted:          true,
+						FixedTPM:            true,
+						FixedParent:         true,
+						SensitiveDataOrigin: true,
+						UserWithAuth:        true,
+						NoDA:                true,
+					},
+					Parameters: NewTPMUPublicParms(
+						TPMAlgRSA,
+						&TPMSRSAParms{
+							Scheme: TPMTRSAScheme{
+								Scheme: TPMAlgRSASSA,
+								Details: NewTPMUAsymScheme(
+									TPMAlgRSASSA,
+									&TPMSSigSchemeRSASSA{
+										HashAlg: TPMAlgSHA256,
+									},
+								),
+							},
+							KeyBits: 2048,
+						},
+					),
+				})
+
+				createPrimary := CreatePrimary{
+					PrimaryHandle: TPMRHEndorsement,
+					InPublic:      public,
+				}
+				rspCP, err := createPrimary.Execute(thetpm)
+				if err != nil {
+					t.Fatalf("Failed to create primary: %v", err)
+				}
+				flushContext := FlushContext{FlushHandle: rspCP.ObjectHandle}
+				defer flushContext.Execute(thetpm)
+
+				inScheme := TPMTSigScheme{
+					Scheme: TPMAlgRSASSA,
+					Details: NewTPMUSigScheme(
+						TPMAlgRSASSA,
+						&TPMSSchemeHash{
+							HashAlg: TPMAlgSHA256,
+						},
+					),
+				}
+
+				return MarshalCommand(CertifyCreation{
+					SignHandle: AuthHandle{
+						Handle: rspCP.ObjectHandle,
+						Name:   rspCP.Name,
+						Auth:   PasswordAuth(nil),
+					},
+					ObjectHandle: NamedHandle{
+						Handle: rspCP.ObjectHandle,
+						Name:   rspCP.Name,
+					},
+					CreationHash:   rspCP.CreationHash,
+					InScheme:       inScheme,
+					CreationTicket: rspCP.CreationTicket,
+				})
+			},
+			nameCount: 2,
+		},
+		{
+			name: "three handles",
+			marshalFunc: func(t *testing.T) ([]byte, error) {
+				thetpm, err := simulator.OpenSimulator()
+				if err != nil {
+					return nil, err
+				}
+				defer thetpm.Close()
+
+				createAKCmd := CreatePrimary{
+					PrimaryHandle: TPMRHOwner,
+					InPublic: New2B(TPMTPublic{
+						Type:    TPMAlgECC,
+						NameAlg: TPMAlgSHA256,
+						ObjectAttributes: TPMAObject{
+							FixedTPM:             true,
+							STClear:              false,
+							FixedParent:          true,
+							SensitiveDataOrigin:  true,
+							UserWithAuth:         true,
+							AdminWithPolicy:      false,
+							NoDA:                 true,
+							EncryptedDuplication: false,
+							Restricted:           true,
+							Decrypt:              false,
+							SignEncrypt:          true,
+						},
+						Parameters: NewTPMUPublicParms(
+							TPMAlgECC,
+							&TPMSECCParms{
+								Scheme: TPMTECCScheme{
+									Scheme: TPMAlgECDSA,
+									Details: NewTPMUAsymScheme(
+										TPMAlgECDSA,
+										&TPMSSigSchemeECDSA{
+											HashAlg: TPMAlgSHA256,
+										},
+									),
+								},
+								CurveID: TPMECCNistP256,
+							},
+						),
+					}),
+				}
+				createAKRsp, err := createAKCmd.Execute(thetpm)
+				if err != nil {
+					return nil, err
+				}
+				defer FlushContext{FlushHandle: createAKRsp.ObjectHandle}.Execute(thetpm)
+
+				sess, cleanup, err := HMACSession(thetpm, TPMAlgSHA256, 16, Audit())
+				if err != nil {
+					return nil, err
+				}
+				defer cleanup()
+
+				return MarshalCommand(GetSessionAuditDigest{
+					PrivacyAdminHandle: TPMRHEndorsement,
+					SignHandle: NamedHandle{
+						Handle: createAKRsp.ObjectHandle,
+						Name:   createAKRsp.Name,
+					},
+					SessionHandle: sess.Handle(),
+				})
+			},
+			nameCount: 3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmdBytes, err := tt.marshalFunc(t)
+			if err != nil {
+				t.Fatalf("MarshalCommand failed: %v", err)
+			}
+			_, names, _, err := unmarshalCommandPreimage(cmdBytes)
+			if err != nil {
+				t.Fatalf("unmarshalCommandPreimage failed: %v", err)
+			}
+			if len(names) != tt.nameCount {
+				t.Errorf("name count mismatch: want %d, got %d", tt.nameCount, len(names))
+			}
+		})
+	}
+}
+func TestCommandPreimageToCPHash(t *testing.T) {
+	getCmd := GetCapability{
+		Capability:    TPMCapTPMProperties,
+		Property:      uint32(TPMPTFamilyIndicator),
+		PropertyCount: 1,
+	}
+
+	cmdBytes, err := MarshalCommand(getCmd)
+	if err != nil {
+		t.Fatalf("MarshalCommand failed: %v", err)
+	}
+
+	cc, names, params, err := unmarshalCommandPreimage(cmdBytes)
+	if err != nil {
+		t.Fatalf("unmarshalCommandPreimage failed: %v", err)
+	}
+
+	preimage := &CommandPreimage{
+		CommandCode: cc,
+		Names:       names,
+		Parameters: TPM2BData{
+			Buffer: params,
+		},
+	}
+
+	cpHashPreimage := preimage.ToCPHashPreimage()
+
+	if len(cpHashPreimage) < 4 {
+		t.Fatalf("cpHash preimage too short: %d bytes", len(cpHashPreimage))
+	}
+
+	var ccFromPreimage TPMCC
+	buf := bytes.NewReader(cpHashPreimage[:4])
+	if err := binary.Read(buf, binary.BigEndian, &ccFromPreimage); err != nil {
+		t.Fatalf("reading command code from preimage: %v", err)
+	}
+
+	if ccFromPreimage != TPMCCGetCapability {
+		t.Errorf("command code mismatch: want %v, got %v", TPMCCGetCapability, ccFromPreimage)
 	}
 }
