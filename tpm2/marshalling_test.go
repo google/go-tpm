@@ -2,7 +2,6 @@ package tpm2
 
 import (
 	"bytes"
-	"encoding/binary"
 	"reflect"
 	"testing"
 
@@ -389,46 +388,5 @@ func TestCommandPreimage(t *testing.T) {
 				t.Errorf("name count mismatch: want %d, got %d", tt.nameCount, len(names))
 			}
 		})
-	}
-}
-func TestCommandPreimageToCPHash(t *testing.T) {
-	getCmd := GetCapability{
-		Capability:    TPMCapTPMProperties,
-		Property:      uint32(TPMPTFamilyIndicator),
-		PropertyCount: 1,
-	}
-
-	cmdBytes, err := MarshalCommand(getCmd)
-	if err != nil {
-		t.Fatalf("MarshalCommand failed: %v", err)
-	}
-
-	cc, names, params, err := unmarshalCommandPreimage(cmdBytes)
-	if err != nil {
-		t.Fatalf("unmarshalCommandPreimage failed: %v", err)
-	}
-
-	preimage := &CommandPreimage{
-		CommandCode: cc,
-		Names:       names,
-		Parameters: TPM2BData{
-			Buffer: params,
-		},
-	}
-
-	cpHashPreimage := preimage.ToCPHashPreimage()
-
-	if len(cpHashPreimage) < 4 {
-		t.Fatalf("cpHash preimage too short: %d bytes", len(cpHashPreimage))
-	}
-
-	var ccFromPreimage TPMCC
-	buf := bytes.NewReader(cpHashPreimage[:4])
-	if err := binary.Read(buf, binary.BigEndian, &ccFromPreimage); err != nil {
-		t.Fatalf("reading command code from preimage: %v", err)
-	}
-
-	if ccFromPreimage != TPMCCGetCapability {
-		t.Errorf("command code mismatch: want %v, got %v", TPMCCGetCapability, ccFromPreimage)
 	}
 }

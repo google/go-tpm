@@ -27,39 +27,71 @@ type marshallableWithHint interface {
 // This structure is marshaled to bytes using [Marshal] for storage/transmission
 // and can be converted to the raw cpHash preimage format for hashing.
 //
-// Format when marshaled:
-//   - CommandCode: 4 bytes (TPMCC)
-//   - Names: sized list of TPM2BName
-//   - Parameters: sized buffer
-//
 // See definition in Part 1: Architecture, section 16.7.
 type CommandPreimage struct {
-	marshalByReflection
 	// CommandCode is the TPM command code
 	CommandCode TPMCC
 	// Names are the names of the handles referenced by the command
-	Names []TPM2BName `gotpm:"list"`
+	Names []TPM2BName
 	// Parameters are the marshaled command parameters
 	Parameters TPM2BData
 }
 
-// ToCPHashPreimage converts the CommandPreimage to the raw buffer format
-// used to compute cpHash according to TPM 2.0 spec.
-func (cp *CommandPreimage) ToCPHashPreimage() []byte {
-	var buf bytes.Buffer
-
-	// Write command code (4 bytes, big endian)
-	binary.Write(&buf, binary.BigEndian, cp.CommandCode)
-
-	// Write names (raw buffers without size prefix)
+// Marshal converts the CommandPreimage to its byte representation.
+//
+// Format:
+//   - CommandCode: 4 bytes (TPMCC)
+//   - NameCount: 4 bytes (uint32)
+//   - For each Name:
+//   - NameSize: 4 bytes (uint32)
+//   - Parameters: remaining bytes
+func (cp *CommandPreimage) Marshal() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, cp.CommandCode); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, uint32(len(cp.Names))); err != nil {
+		return nil, err
+	}
 	for _, name := range cp.Names {
+		if err := binary.Write(buf, binary.BigEndian, uint32(len(name.Buffer))); err != nil {
+			return nil, err
+		}
 		buf.Write(name.Buffer)
 	}
-
-	// Write parameters
 	buf.Write(cp.Parameters.Buffer)
+	return buf.Bytes(), nil
+}
 
-	return buf.Bytes()
+// Unmarshal populates the [CommandPreimage] from its byte representation.
+func (cp *CommandPreimage) Unmarshal(b []byte) error {
+	buf := bytes.NewBuffer(b)
+
+	if err := binary.Read(buf, binary.BigEndian, &cp.CommandCode); err != nil {
+		return fmt.Errorf("unmarshalling CommandCode: %w", err)
+	}
+
+	var nameCount uint32
+	if err := binary.Read(buf, binary.BigEndian, &nameCount); err != nil {
+		return fmt.Errorf("unmarshalling Names count: %w", err)
+	}
+
+	cp.Names = make([]TPM2BName, nameCount)
+	for i := uint32(0); i < nameCount; i++ {
+		var name TPM2BName
+
+		var nameSize uint32
+		if err := binary.Read(buf, binary.BigEndian, &nameSize); err != nil {
+			return fmt.Errorf("unmarshalling Name size %d: %w", i, err)
+		}
+		name.Buffer = make([]byte, nameSize)
+		if _, err := buf.Read(name.Buffer); err != nil {
+			return fmt.Errorf("unmarshalling Name %d: %w", i, err)
+		}
+		cp.Names[i] = name
+	}
+	cp.Parameters.Buffer = buf.Bytes()
+	return nil
 }
 
 // Unmarshallable represents any TPM type that can be marshalled or unmarshalled.
@@ -196,15 +228,16 @@ func toCommandPreimage[C Command[R, *R], R any](cmd C) (*CommandPreimage, error)
 //   - Names (sized list)
 //   - Parameters (sized buffer)
 //
-// This can be stored, transmitted, or later unmarshaled.
+// This can be stored, transmitted, or later unmarshaled [UnmarshalCommand].
 //
-// To compute cpHash use [CommandPreimage.ToCPHashPreimage].
+// Note: Encrypted command parameters (via sessions) are not currently supported.
+// The marshaled parameters are in their unencrypted form.
 func MarshalCommand[C Command[R, *R], R any](cmd C) ([]byte, error) {
 	preimage, err := toCommandPreimage(cmd)
 	if err != nil {
 		return nil, err
 	}
-	return Marshal(preimage), nil
+	return preimage.Marshal()
 }
 
 // unmarshalCommandPreimage unmarshals serialized data into CommandPreimage components.
@@ -214,8 +247,8 @@ func unmarshalCommandPreimage(data []byte) (TPMCC, []TPM2BName, []byte, error) {
 		return 0, nil, nil, fmt.Errorf("data cannot be nil")
 	}
 
-	preimage, err := Unmarshal[CommandPreimage](data)
-	if err != nil {
+	var preimage CommandPreimage
+	if err := preimage.Unmarshal(data); err != nil {
 		return 0, nil, nil, fmt.Errorf("unmarshalling CommandPreimage: %w", err)
 	}
 
@@ -225,8 +258,10 @@ func unmarshalCommandPreimage(data []byte) (TPMCC, []TPM2BName, []byte, error) {
 // UnmarshalCommand unmarshals a serialized [CommandPreimage] back into a TPM command.
 // The data should be the output from [MarshalCommand].
 //
-// Note: command produced from this function is not meant to be executed directly on a TPM,
-// instead it is expected to be used for purposes such as auditing or inspection.
+// Notes:
+//   - command produced from this function is not meant to be executed directly on a TPM,
+//     instead it is expected to be used for purposes such as auditing or inspection.
+//   - encrypted command parameters (via sessions) are not currently supported.
 func UnmarshalCommand[C Command[R, *R], R any](data []byte) (C, error) {
 	var cmd C
 
@@ -271,7 +306,10 @@ func MarshalResponse[R any](rsp *R) ([]byte, error) {
 
 // UnmarshalResponse unmarshals a TPM response.
 //
-// Note: the result from this function is expected to be used for purposes such as auditing or inspection.
+// Notes:
+//   - the result from this function is expected to be used for purposes such as auditing or inspection.
+//   - encrypted response parameters (via sessions) are not currently supported.
+//     The marshaled parameters are always in their unencrypted form.
 func UnmarshalResponse[R any](data []byte) (*R, error) {
 	var rsp R
 	if data == nil {
