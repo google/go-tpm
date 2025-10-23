@@ -903,12 +903,10 @@ func unmarshalParameter[C Command[R, *R], R any](buf *bytes.Buffer, cmd *C, i in
 	return unmarshalStructField(buf, cmdValue, fieldIndex)
 }
 
-// populateHandlesFromNames populates the handle fields of a command with NamedHandles
+// populateHandlesFromNames populates the handle fields of a command with handles
 // created from the provided names.
 //
-// Supports different handle types based on struct tags:
-//   - gotpm:"handle" → NamedHandle (without handle value)
-//   - gotpm:"handle,auth" → AuthHandle (without handle value and nil Auth)
+// All handle fields are populated with [UnmarshalledHandle]
 func populateHandlesFromNames[C Command[R, *R], R any](cmd *C, names []TPM2BName) error {
 	cmdValue := reflect.ValueOf(cmd).Elem()
 	cmdType := reflect.TypeOf(*cmd)
@@ -930,19 +928,8 @@ func populateHandlesFromNames[C Command[R, *R], R any](cmd *C, names []TPM2BName
 			return fmt.Errorf("not enough names for handle field %d", i)
 		}
 
-		// Create the appropriate handle type based on the "auth" tag
-		var handleValue any
-		if hasTag(field, "auth") {
-			handleValue = AuthHandle{
-				Handle: 0, // Handle value not available from CommandPreimage
-				Name:   names[nameIdx],
-				Auth:   nil, // No session available
-			}
-		} else {
-			handleValue = NamedHandle{
-				Handle: 0, // Handle value not available from CommandPreimage
-				Name:   names[nameIdx],
-			}
+		handleValue := UnmarshalledHandle{
+			Name: names[nameIdx],
 		}
 
 		cmdValue.Field(i).Set(reflect.ValueOf(handleValue))
