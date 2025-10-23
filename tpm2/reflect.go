@@ -455,6 +455,165 @@ func unmarshalArray(buf *bytes.Buffer, v reflect.Value) error {
 	return nil
 }
 
+// unmarshalStructField unmarshals a single field of a struct.
+// Returns nil if successful or if the field was skipped (e.g., optional field with zero size).
+func unmarshalStructField(buf *bytes.Buffer, v reflect.Value, i int) error {
+	fieldType := v.Type().Field(i)
+	fieldValue := v.Field(i)
+
+	if hasTag(fieldType, "skip") {
+		return nil
+	}
+
+	list := hasTag(fieldType, "list")
+	if list && (fieldValue.Kind() != reflect.Slice) {
+		return fmt.Errorf("field '%v' of struct '%v' had the 'list' tag but was not a slice",
+			fieldType.Name, v.Type().Name())
+	}
+	// Slices of anything but byte/uint8 must have the 'list' tag.
+	if !list && (fieldValue.Kind() == reflect.Slice) && (fieldType.Type.Elem().Kind() != reflect.Uint8) {
+		return fmt.Errorf("field '%v' of struct '%v' was a slice of non-byte but did not have the 'list' tag",
+			fieldType.Name, v.Type().Name())
+	}
+
+	if hasTag(fieldType, "optional") {
+		// Special case: Part 3 specifies some input/output
+		// parameters as "optional", which means that they are
+		// (2B-) sized fields that can be zero-length, even if the
+		// enclosed type has no legal empty serialization.
+		// When unmarshalling an optional field, test for zero size
+		// and skip if empty.
+		if buf.Len() >= 2 {
+			if binary.BigEndian.Uint16(buf.Bytes()) == 0 {
+				// Advance the buffer past the zero size and skip to the
+				// next field of the struct.
+				buf.Next(2)
+				return nil
+			}
+			// If non-zero size, proceed to unmarshal the contents below.
+		}
+	}
+
+	// Handle nullable fields (for command parameters)
+	if fieldValue.Kind() == reflect.Uint32 && hasTag(fieldType, "nullable") {
+		var val uint32
+		if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+			return fmt.Errorf("reading nullable uint32 parameter: %w", err)
+		}
+		fieldValue.SetUint(uint64(val))
+		return nil
+	} else if fieldValue.Kind() == reflect.Uint16 && hasTag(fieldType, "nullable") {
+		var val uint16
+		if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
+			return fmt.Errorf("reading nullable uint16 parameter: %w", err)
+		}
+		fieldValue.SetUint(uint64(val))
+		return nil
+	}
+
+	sized := hasTag(fieldType, "sized")
+	sized8 := hasTag(fieldType, "sized8")
+	// If sized, unmarshal a size field first, then restrict
+	// unmarshalling to the given size
+	bufToReadFrom := buf
+	if sized {
+		var expectedSize uint16
+		binary.Read(buf, binary.BigEndian, &expectedSize)
+		sizedBufArray := make([]byte, int(expectedSize))
+		n, err := buf.Read(sizedBufArray)
+		if n != int(expectedSize) {
+			return fmt.Errorf("ran out of data reading sized parameter '%v' inside struct of type '%v'",
+				fieldType.Name, v.Type().Name())
+		}
+		if err != nil {
+			return fmt.Errorf("error reading data for parameter '%v' inside struct of type '%v'",
+				fieldType.Name, v.Type().Name())
+		}
+		bufToReadFrom = bytes.NewBuffer(sizedBufArray)
+	}
+	if sized8 {
+		var expectedSize uint8
+		binary.Read(buf, binary.BigEndian, &expectedSize)
+		sizedBufArray := make([]byte, int(expectedSize))
+		n, err := buf.Read(sizedBufArray)
+		if n != int(expectedSize) {
+			return fmt.Errorf("ran out of data reading sized parameter '%v' inside struct of type '%v'",
+				fieldType.Name, v.Type().Name())
+		}
+		if err != nil {
+			return fmt.Errorf("error reading data for parameter '%v' inside struct of type '%v'",
+				fieldType.Name, v.Type().Name())
+		}
+		bufToReadFrom = bytes.NewBuffer(sizedBufArray)
+	}
+
+	tagName, _ := tag(fieldType, "tag")
+	if tagName != "" {
+		// Make a pass to create a map of tag values
+		// UInt64-valued fields with values greater than
+		// MaxInt64 cannot be selectors.
+		possibleSelectors := make(map[string]int64)
+		for j := 0; j < v.NumField(); j++ {
+			switch v.Field(j).Kind() {
+			case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				possibleSelectors[v.Type().Field(j).Name] = v.Field(j).Int()
+			case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				val := v.Field(j).Uint()
+				if val <= math.MaxInt64 {
+					possibleSelectors[v.Type().Field(j).Name] = int64(val)
+				}
+			}
+		}
+		// Check that the tagged value was present (and numeric
+		// and smaller than MaxInt64)
+		tagValue, ok := possibleSelectors[tagName]
+		// Don't marshal anything if the tag value was TPM_ALG_NULL
+		if tagValue == int64(TPMAlgNull) {
+			return nil
+		}
+		if !ok {
+			return fmt.Errorf("union tag '%v' for member '%v' of struct '%v' did not reference "+
+				"a numeric field of in64-compatible value",
+				tagName, fieldType.Name, v.Type().Name())
+		}
+		var uwh unmarshallableWithHint
+		if fieldValue.CanAddr() && fieldValue.Addr().Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
+			u := fieldValue.Addr().Interface().(unmarshallableWithHint)
+			contents, err := u.create(tagValue)
+			if err != nil {
+				return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+			}
+			err = unmarshal(buf, contents)
+			if err != nil {
+				return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+			}
+		} else if fieldValue.Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
+			u := fieldValue.Interface().(unmarshallableWithHint)
+			contents, err := u.create(tagValue)
+			if err != nil {
+				return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+			}
+			err = unmarshal(buf, contents)
+			if err != nil {
+				return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+			}
+		}
+	} else {
+		if err := unmarshal(bufToReadFrom, fieldValue); err != nil {
+			return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
+		}
+	}
+
+	if sized || sized8 {
+		if bufToReadFrom.Len() != 0 {
+			return fmt.Errorf("extra data at the end of sized parameter '%v' inside struct of type '%v'",
+				fieldType.Name, v.Type().Name())
+		}
+	}
+
+	return nil
+}
+
 func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 	// Check if this is a bitwise-defined structure. This requires all the
 	// exported members to be bitwise-defined.
@@ -487,133 +646,9 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 	if numBitwise > 0 {
 		return unmarshalBitwise(buf, v)
 	}
-	for i := 0; i < v.NumField(); i++ {
-		if hasTag(v.Type().Field(i), "skip") {
-			continue
-		}
-		list := hasTag(v.Type().Field(i), "list")
-		if list && (v.Field(i).Kind() != reflect.Slice) {
-			return fmt.Errorf("field '%v' of struct '%v' had the 'list' tag but was not a slice",
-				v.Type().Field(i).Name, v.Type().Name())
-		}
-		// Slices of anything but byte/uint8 must have the 'list' tag.
-		if !list && (v.Field(i).Kind() == reflect.Slice) && (v.Type().Field(i).Type.Elem().Kind() != reflect.Uint8) {
-			return fmt.Errorf("field '%v' of struct '%v' was a slice of non-byte but did not have the 'list' tag",
-				v.Type().Field(i).Name, v.Type().Name())
-		}
-		if hasTag(v.Type().Field(i), "optional") {
-			// Special case: Part 3 specifies some input/output
-			// parameters as "optional", which means that they are
-			// (2B-) sized fields that can be zero-length, even if the
-			// enclosed type has no legal empty serialization.
-			// When unmarshalling an optional field, test for zero size
-			// and skip if empty.
-			if buf.Len() < 2 {
-				if binary.BigEndian.Uint16(buf.Bytes()) == 0 {
-					// Advance the buffer past the zero size and skip to the
-					// next field of the struct.
-					buf.Next(2)
-					continue
-				}
-				// If non-zero size, proceed to unmarshal the contents below.
-			}
-		}
-		sized := hasTag(v.Type().Field(i), "sized")
-		sized8 := hasTag(v.Type().Field(i), "sized8")
-		// If sized, unmarshal a size field first, then restrict
-		// unmarshalling to the given size
-		bufToReadFrom := buf
-		if sized {
-			var expectedSize uint16
-			binary.Read(buf, binary.BigEndian, &expectedSize)
-			sizedBufArray := make([]byte, int(expectedSize))
-			n, err := buf.Read(sizedBufArray)
-			if n != int(expectedSize) {
-				return fmt.Errorf("ran out of data reading sized parameter '%v' inside struct of type '%v'",
-					v.Type().Field(i).Name, v.Type().Name())
-			}
-			if err != nil {
-				return fmt.Errorf("error reading data for parameter '%v' inside struct of type '%v'",
-					v.Type().Field(i).Name, v.Type().Name())
-			}
-			bufToReadFrom = bytes.NewBuffer(sizedBufArray)
-		}
-		if sized8 {
-			var expectedSize uint8
-			binary.Read(buf, binary.BigEndian, &expectedSize)
-			sizedBufArray := make([]byte, int(expectedSize))
-			n, err := buf.Read(sizedBufArray)
-			if n != int(expectedSize) {
-				return fmt.Errorf("ran out of data reading sized parameter '%v' inside struct of type '%v'",
-					v.Type().Field(i).Name, v.Type().Name())
-			}
-			if err != nil {
-				return fmt.Errorf("error reading data for parameter '%v' inside struct of type '%v'",
-					v.Type().Field(i).Name, v.Type().Name())
-			}
-			bufToReadFrom = bytes.NewBuffer(sizedBufArray)
-		}
-		tag, _ := tag(v.Type().Field(i), "tag")
-		if tag != "" {
-			// Make a pass to create a map of tag values
-			// UInt64-valued fields with values greater than
-			// MaxInt64 cannot be selectors.
-			possibleSelectors := make(map[string]int64)
-			for j := 0; j < v.NumField(); j++ {
-				switch v.Field(j).Kind() {
-				case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					possibleSelectors[v.Type().Field(j).Name] = v.Field(j).Int()
-				case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-					val := v.Field(j).Uint()
-					if val <= math.MaxInt64 {
-						possibleSelectors[v.Type().Field(j).Name] = int64(val)
-					}
-				}
-			}
-			// Check that the tagged value was present (and numeric
-			// and smaller than MaxInt64)
-			tagValue, ok := possibleSelectors[tag]
-			// Don't marshal anything if the tag value was TPM_ALG_NULL
-			if tagValue == int64(TPMAlgNull) {
-				continue
-			}
-			if !ok {
-				return fmt.Errorf("union tag '%v' for member '%v' of struct '%v' did not reference "+
-					"a numeric field of in64-compatible value",
-					tag, v.Type().Field(i).Name, v.Type().Name())
-			}
-			var uwh unmarshallableWithHint
-			if v.Field(i).CanAddr() && v.Field(i).Addr().Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
-				u := v.Field(i).Addr().Interface().(unmarshallableWithHint)
-				contents, err := u.create(tagValue)
-				if err != nil {
-					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
-				}
-				err = unmarshal(buf, contents)
-				if err != nil {
-					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
-				}
-			} else if v.Field(i).Type().AssignableTo(reflect.TypeOf(&uwh).Elem()) {
-				u := v.Field(i).Interface().(unmarshallableWithHint)
-				contents, err := u.create(tagValue)
-				if err != nil {
-					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
-				}
-				err = unmarshal(buf, contents)
-				if err != nil {
-					return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
-				}
-			}
-		} else {
-			if err := unmarshal(bufToReadFrom, v.Field(i)); err != nil {
-				return fmt.Errorf("unmarshalling field %v of struct of type '%v', %w", i, v.Type(), err)
-			}
-		}
-		if sized || sized8 {
-			if bufToReadFrom.Len() != 0 {
-				return fmt.Errorf("extra data at the end of sized parameter '%v' inside struct of type '%v'",
-					v.Type().Field(i).Name, v.Type().Name())
-			}
+	for i := range v.NumField() {
+		if err := unmarshalStructField(buf, v, i); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -858,57 +893,14 @@ func marshalParameter[R any](buf *bytes.Buffer, cmd Command[R, *R], i int) error
 // Returns an error if the value is not unmarshallable or if there's insufficient data.
 func unmarshalParameter[C Command[R, *R], R any](buf *bytes.Buffer, cmd *C, i int) error {
 	numHandles := len(taggedMembers(reflect.ValueOf(*cmd), "handle", false))
-	if numHandles+i >= reflect.TypeOf(*cmd).NumField() {
+	fieldIndex := numHandles + i
+	if fieldIndex >= reflect.TypeOf(*cmd).NumField() {
 		return fmt.Errorf("invalid parameter index %v", i)
 	}
-	parm := reflect.ValueOf(cmd).Elem().Field(numHandles + i)
-	field := reflect.TypeOf(*cmd).Field(numHandles + i)
 
-	if hasTag(field, "optional") {
-		// Special case: Part 3 specifies some input/output
-		// parameters as "optional", which means that they are
-		// (2B-) sized fields that can be zero-length, even if the
-		// enclosed type has no legal empty serialization.
-		// When unmarshalling an optional field, test for zero size
-		// and skip if empty.
-		if buf.Len() >= 2 {
-			var checkBytes [2]byte
-			tempBuf := *buf
-			if err := binary.Read(&tempBuf, binary.BigEndian, &checkBytes); err != nil {
-				return fmt.Errorf("reading optional parameter size: %w", err)
-			}
-
-			if checkBytes == [2]byte{} {
-				// This is a nil pointer, consume the bytes and leave the field as nil
-				binary.Read(buf, binary.BigEndian, &checkBytes)
-				return nil
-			}
-			// Fall through to unmarshal the contents normally
-		} else {
-			return fmt.Errorf("not enough data for optional parameter %d", i)
-		}
-	}
-
-	// Handle nullable fields during unmarshaling
-	if parm.Kind() == reflect.Uint32 && hasTag(field, "nullable") {
-		var val uint32
-		if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
-			return fmt.Errorf("reading nullable uint32 parameter: %w", err)
-		}
-		// TPMRHNull is the default for nullable uint32 fields
-		parm.SetUint(uint64(val))
-		return nil
-	} else if parm.Kind() == reflect.Uint16 && hasTag(field, "nullable") {
-		var val uint16
-		if err := binary.Read(buf, binary.BigEndian, &val); err != nil {
-			return fmt.Errorf("reading nullable uint16 parameter: %w", err)
-		}
-		// TPMAlgNull is the default for nullable uint16 fields
-		parm.SetUint(uint64(val))
-		return nil
-	}
-
-	return unmarshal(buf, parm)
+	// Use unmarshalStructField to handle this field with all its tags
+	cmdValue := reflect.ValueOf(cmd).Elem()
+	return unmarshalStructField(buf, cmdValue, fieldIndex)
 }
 
 // populateHandlesFromNames populates the handle fields of a command with NamedHandles
