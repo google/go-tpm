@@ -2,6 +2,7 @@ package tpm2test
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
@@ -79,6 +80,12 @@ func TestAuditSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
+	var accumulatedDigest []byte
+	if h, err := TPMAlgSHA256.Hash(); err == nil {
+		accumulatedDigest = make([]byte, h.Size())
+	} else {
+		t.Fatalf("TPMAlgSHA256.Hash(): %v", err)
+	}
 	// Call GetCapability a bunch of times with the audit session and make sure it extends like
 	// we expect it to.
 	props := []TPMPT{
@@ -113,7 +120,7 @@ func TestAuditSession(t *testing.T) {
 		if err != nil {
 			t.Fatalf("MarshalCommand: %v", err)
 		}
-		rspBytes, err := MarshalResponse(getRsp)
+		rspBytes, err := MarshalResponse(getCmd, getRsp)
 		if err != nil {
 			t.Fatalf("MarshalResponse: %v", err)
 		}
@@ -149,7 +156,7 @@ func TestAuditSession(t *testing.T) {
 			t.Errorf("unexpected audit value:\ngot %x\nwant %x", got, want)
 		}
 
-		// do the audit again from the audit log to make sure it matches
+		// This demonstrates that audit value can be replayed from an audit log
 		cmd, err := UnmarshalCommand[GetCapability](auditLog.command)
 		if err != nil {
 			t.Fatalf("UnmarshalCommand: %v", err)
@@ -164,6 +171,20 @@ func TestAuditSession(t *testing.T) {
 		got2 := audit2.Digest()
 		if !bytes.Equal(want, got2) {
 			t.Errorf("unexpected audit value from replay:\ngot %x\nwant %x", got2, want)
+		}
+
+		// This demonstrates that MarshalCommand/MarshalResponse provide everything needed
+		cpHashFromBytes := sha256.Sum256(cmdBytes)
+		rpHashFromBytes := sha256.Sum256(rspBytes)
+
+		h := sha256.New()
+		h.Write(accumulatedDigest)
+		h.Write(cpHashFromBytes[:])
+		h.Write(rpHashFromBytes[:])
+		accumulatedDigest = h.Sum(nil)
+
+		if !bytes.Equal(want, accumulatedDigest) {
+			t.Errorf("unexpected audit value from direct hash reconstruction:\ngot %x\nwant %x", want, accumulatedDigest)
 		}
 	}
 
@@ -355,7 +376,7 @@ func TestAuditSessionWithCertify(t *testing.T) {
 		t.Fatalf("MarshalCommand: %v", err)
 	}
 
-	rspBytes, err := MarshalResponse(originalRsp)
+	rspBytes, err := MarshalResponse(originalCmd, originalRsp)
 	if err != nil {
 		t.Fatalf("MarshalResponse: %v", err)
 	}

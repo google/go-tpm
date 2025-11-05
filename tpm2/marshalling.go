@@ -23,77 +23,6 @@ type marshallableWithHint interface {
 	get(hint int64) (reflect.Value, error)
 }
 
-// CommandPreimage represents a structured preimage of cpHash for a TPM command.
-// This structure is marshaled to bytes using [Marshal] for storage/transmission
-// and can be converted to the raw cpHash preimage format for hashing.
-//
-// See definition in Part 1: Architecture, section 16.7.
-type CommandPreimage struct {
-	// CommandCode is the TPM command code
-	CommandCode TPMCC
-	// Names are the names of the handles referenced by the command
-	Names []TPM2BName
-	// Parameters are the marshaled command parameters
-	Parameters TPM2BData
-}
-
-// Marshal converts the CommandPreimage to its byte representation.
-//
-// Format:
-//   - CommandCode: 4 bytes (TPMCC)
-//   - NameCount: 4 bytes (uint32)
-//   - For each Name:
-//   - NameSize: 4 bytes (uint32)
-//   - Parameters: remaining bytes
-func (cp *CommandPreimage) Marshal() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	if err := binary.Write(buf, binary.BigEndian, cp.CommandCode); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, uint32(len(cp.Names))); err != nil {
-		return nil, err
-	}
-	for _, name := range cp.Names {
-		if err := binary.Write(buf, binary.BigEndian, uint32(len(name.Buffer))); err != nil {
-			return nil, err
-		}
-		buf.Write(name.Buffer)
-	}
-	buf.Write(cp.Parameters.Buffer)
-	return buf.Bytes(), nil
-}
-
-// Unmarshal populates the [CommandPreimage] from its byte representation.
-func (cp *CommandPreimage) Unmarshal(b []byte) error {
-	buf := bytes.NewBuffer(b)
-
-	if err := binary.Read(buf, binary.BigEndian, &cp.CommandCode); err != nil {
-		return fmt.Errorf("unmarshalling CommandCode: %w", err)
-	}
-
-	var nameCount uint32
-	if err := binary.Read(buf, binary.BigEndian, &nameCount); err != nil {
-		return fmt.Errorf("unmarshalling Names count: %w", err)
-	}
-
-	cp.Names = make([]TPM2BName, nameCount)
-	for i := uint32(0); i < nameCount; i++ {
-		var name TPM2BName
-
-		var nameSize uint32
-		if err := binary.Read(buf, binary.BigEndian, &nameSize); err != nil {
-			return fmt.Errorf("unmarshalling Name size %d: %w", i, err)
-		}
-		name.Buffer = make([]byte, nameSize)
-		if _, err := buf.Read(name.Buffer); err != nil {
-			return fmt.Errorf("unmarshalling Name %d: %w", i, err)
-		}
-		cp.Names[i] = name
-	}
-	cp.Parameters.Buffer = buf.Bytes()
-	return nil
-}
-
 // Unmarshallable represents any TPM type that can be marshalled or unmarshalled.
 type Unmarshallable interface {
 	Marshallable
@@ -199,8 +128,17 @@ func (b *boxed[T]) unmarshal(buf *bytes.Buffer) error {
 	return unmarshal(buf, reflect.ValueOf(b.Contents))
 }
 
-// toCommandPreimage convert a Command to a CommandPreimage structure from a command.
-func toCommandPreimage[C Command[R, *R], R any](cmd C) (*CommandPreimage, error) {
+// MarshalCommand marshals a TPM command into its raw cpHash preimage format.
+// The returned bytes can be directly hashed to compute cpHash.
+//
+// Example:
+//
+//	cmdData, _ := MarshalCommand(myCmd)
+//	cpHash := sha256.Sum256(cmdData)
+//
+// Note: Encrypted command parameters (via sessions) are not currently supported.
+// The marshaled parameters are in their unencrypted form.
+func MarshalCommand[C Command[R, *R], R any](cmd C) ([]byte, error) {
 	cc := cmd.Command()
 
 	names, err := cmdNames(cmd)
@@ -213,50 +151,34 @@ func toCommandPreimage[C Command[R, *R], R any](cmd C) (*CommandPreimage, error)
 		return nil, err
 	}
 
-	return &CommandPreimage{
-		CommandCode: cc,
-		Names:       names,
-		Parameters: TPM2BData{
-			Buffer: params,
-		},
-	}, nil
-}
+	// Build raw cpHash preimage: CommandCode {∥ Name1 {∥ Name2 {∥ Name3 }}} {∥ Parameters }
+	// See section 16.7 of TPM 2.0 specification, part 1.
+	buf := new(bytes.Buffer)
 
-// MarshalCommand marshals a TPM command into a serialized CommandPreimage.
-// The returned bytes contain a marshaled CommandPreimage structure that includes:
-//   - CommandCode (4 bytes)
-//   - Names (sized list)
-//   - Parameters (sized buffer)
-//
-// This can be stored, transmitted, or later unmarshaled [UnmarshalCommand].
-//
-// Note: Encrypted command parameters (via sessions) are not currently supported.
-// The marshaled parameters are in their unencrypted form.
-func MarshalCommand[C Command[R, *R], R any](cmd C) ([]byte, error) {
-	preimage, err := toCommandPreimage(cmd)
-	if err != nil {
-		return nil, err
-	}
-	return preimage.Marshal()
-}
-
-// unmarshalCommandPreimage unmarshals serialized data into CommandPreimage components.
-// Returns the command code, names, and parameters.
-func unmarshalCommandPreimage(data []byte) (TPMCC, []TPM2BName, []byte, error) {
-	if data == nil {
-		return 0, nil, nil, fmt.Errorf("data cannot be nil")
+	if err := binary.Write(buf, binary.BigEndian, cc); err != nil {
+		return nil, fmt.Errorf("marshalling command code: %w", err)
 	}
 
-	var preimage CommandPreimage
-	if err := preimage.Unmarshal(data); err != nil {
-		return 0, nil, nil, fmt.Errorf("unmarshalling CommandPreimage: %w", err)
+	for i, name := range names {
+		if _, err := buf.Write(name.Buffer); err != nil {
+			return nil, fmt.Errorf("marshalling name %d: %w", i, err)
+		}
 	}
 
-	return preimage.CommandCode, preimage.Names, preimage.Parameters.Buffer, nil
+	if _, err := buf.Write(params); err != nil {
+		return nil, fmt.Errorf("marshalling parameters: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
-// UnmarshalCommand unmarshals a serialized [CommandPreimage] back into a TPM command.
+// UnmarshalCommand unmarshals a raw cpHash preimage back into a TPM command.
 // The data should be the output from [MarshalCommand].
+//
+// Example:
+//
+//	cmdData, _ := MarshalCommand(myCmd)
+//	cmd, _ := UnmarshalCommand[MyCommandType](cmdData)
 //
 // Notes:
 //   - command produced from this function is not meant to be executed directly on a TPM,
@@ -265,57 +187,190 @@ func unmarshalCommandPreimage(data []byte) (TPMCC, []TPM2BName, []byte, error) {
 func UnmarshalCommand[C Command[R, *R], R any](data []byte) (C, error) {
 	var cmd C
 
-	cc, names, params, err := unmarshalCommandPreimage(data)
-	if err != nil {
-		return cmd, err
+	if data == nil {
+		return cmd, fmt.Errorf("data cannot be nil")
+	}
+
+	buf := bytes.NewBuffer(data)
+
+	var cc TPMCC
+	if err := binary.Read(buf, binary.BigEndian, &cc); err != nil {
+		return cmd, fmt.Errorf("unmarshalling command code: %w", err)
 	}
 
 	if cc != cmd.Command() {
 		return cmd, fmt.Errorf("command code mismatch: expected %v, got %v", cmd.Command(), cc)
 	}
 
-	{
-		n, err := cmdNames(cmd)
-		if err != nil {
-			return cmd, err
+	expectedNames, err := cmdNames(cmd)
+	if err != nil {
+		return cmd, fmt.Errorf("getting expected names count: %w", err)
+	}
+	numNames := len(expectedNames)
+
+	names := make([]TPM2BName, numNames)
+	for i := range numNames {
+		remaining := buf.Bytes()
+		if len(remaining) == 0 {
+			return cmd, fmt.Errorf("unexpected end of data while parsing name %d", i)
 		}
 
-		expectedNames := len(names)
-		if len(n) != expectedNames {
-			return cmd, fmt.Errorf("name count mismatch: command expects %d names, got %d", expectedNames, len(n))
+		nameSize, err := parseNameSize(remaining)
+		if err != nil {
+			return cmd, fmt.Errorf("parsing name %d size: %w", i, err)
 		}
+
+		if len(remaining) < nameSize {
+			return cmd, fmt.Errorf("insufficient data for name %d: need %d bytes, have %d", i, nameSize, len(remaining))
+		}
+
+		nameBytes := make([]byte, nameSize)
+		if _, err := buf.Read(nameBytes); err != nil {
+			return cmd, fmt.Errorf("reading name %d: %w", i, err)
+		}
+
+		names[i] = TPM2BName{Buffer: nameBytes}
 	}
 
 	// Populate the command's handle fields from the names
 	if err := populateHandlesFromNames(&cmd, names); err != nil {
-		return cmd, fmt.Errorf("populating handles: %w", err)
+		return cmd, err
 	}
 
-	// Now unmarshal the parameters using the helper
-	buf := bytes.NewBuffer(params)
-	if err := unmarshalCmdParameters(buf, &cmd, nil); err != nil {
+	params := buf.Bytes()
+
+	paramsBuf := bytes.NewBuffer(params)
+	if err := unmarshalCmdParameters(paramsBuf, &cmd, nil); err != nil {
 		return cmd, err
 	}
 	return cmd, nil
 }
 
-// MarshalResponse marshals a TPM response.
-func MarshalResponse[R any](rsp *R) ([]byte, error) {
-	return marshalRspParameters(rsp, nil)
+// parseNameSize determines the size of a TPM2BName by inspecting its first bytes.
+// Returns the total size in bytes for the name.
+//
+// Case 1: Handle-based names (4 bytes)
+//   - 0x0000... → PCR
+//   - 0x02...   → HMAC Session
+//   - 0x03...   → Policy Session
+//   - 0x40...   → Permanent Values
+//
+// Case 2: Hash-based names (2 + hash_size bytes) - for all other entities
+//   - Format: nameAlg (2 bytes) || H_nameAlg (hash digest)
+//
+// See section 14 of TPM 2.0 specification, part 1.
+func parseNameSize(buf []byte) (int, error) {
+	if len(buf) < 2 {
+		return 0, fmt.Errorf("buffer too short to parse name")
+	}
+
+	firstByte := TPMHT(buf[0])
+	firstTwoBytes := binary.BigEndian.Uint16(buf[0:2])
+
+	// Case 1: Handle-based names (4 bytes)
+	switch {
+	case firstTwoBytes == 0x0000:
+		// PCR handles (pattern: 0x0000XXXX)
+		// Must check both bytes to distinguish from hash algorithms
+		// that also start with 0x00 (e.g., TPMAlgSHA256 = 0x000B)
+		return 4, nil
+	case firstByte == TPMHTHMACSession: // 0x02
+		return 4, nil
+	case firstByte == TPMHTPolicySession: // 0x03
+		return 4, nil
+	case firstByte == TPMHTPermanent: // 0x40
+		return 4, nil
+	}
+
+	// Case 2: Hash-based names (nameAlg || hash)
+	// firstTwoBytes is the algorithm ID (0x0001 to 0x00B3)
+	algID := TPMIAlgHash(firstTwoBytes)
+	hashAlg, err := algID.Hash()
+	if err != nil {
+		return 0, fmt.Errorf("unsupported hash algorithm 0x%x in name: %w", firstTwoBytes, err)
+	}
+
+	// 2 bytes for algID + hash size
+	return 2 + hashAlg.Size(), nil
 }
 
-// UnmarshalResponse unmarshals a TPM response.
+// MarshalResponse marshals a TPM response into its raw rpHash preimage format.
+// The returned bytes can be directly hashed to compute rpHash.
+//
+// Example:
+//
+//	rspData, _ := MarshalResponse(myCmd, myRsp)
+//	rpHash := sha256.Sum256(rspData)
+//
+// Note: Encrypted response parameters (via sessions) are not currently supported.
+func MarshalResponse[C Command[R, *R], R any](cmd C, rsp *R) ([]byte, error) {
+	cc := cmd.Command()
+
+	params, err := marshalRspParameters(rsp, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build raw rpHash preimage: responseCode || commandCode || parameters
+	buf := new(bytes.Buffer)
+
+	// Write responseCode (4 bytes, always 0 for successful responses)
+	if err := binary.Write(buf, binary.BigEndian, uint32(0)); err != nil {
+		return nil, fmt.Errorf("marshalling response code: %w", err)
+	}
+
+	if err := binary.Write(buf, binary.BigEndian, cc); err != nil {
+		return nil, fmt.Errorf("marshalling command code: %w", err)
+	}
+
+	if _, err := buf.Write(params); err != nil {
+		return nil, fmt.Errorf("marshalling parameters: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// UnmarshalResponse unmarshals a raw rpHash preimage back into a TPM response.
+// The data should be the output from [MarshalResponse].
+//
+// Example:
+//
+//	rspData, _ := MarshalResponse(commandCode, myRsp)
+//	rsp, _ := UnmarshalResponse[MyResponseType](rspData)
 //
 // Notes:
 //   - the result from this function is expected to be used for purposes such as auditing or inspection.
 //   - encrypted response parameters (via sessions) are not currently supported.
-//     The marshaled parameters are always in their unencrypted form.
 func UnmarshalResponse[R any](data []byte) (*R, error) {
 	var rsp R
+
 	if data == nil {
 		return nil, fmt.Errorf("data cannot be nil")
 	}
-	if err := rspParameters(data, nil, &rsp); err != nil {
+
+	if len(data) < 8 {
+		return nil, fmt.Errorf("data too short: need at least 8 bytes (responseCode + commandCode), got %d", len(data))
+	}
+
+	buf := bytes.NewBuffer(data)
+
+	var responseCode uint32
+	if err := binary.Read(buf, binary.BigEndian, &responseCode); err != nil {
+		return nil, fmt.Errorf("unmarshalling response code: %w", err)
+	}
+
+	if responseCode != 0 {
+		return nil, fmt.Errorf("invalid response code: expected 0, got 0x%x", responseCode)
+	}
+
+	var cc TPMCC
+	if err := binary.Read(buf, binary.BigEndian, &cc); err != nil {
+		return nil, fmt.Errorf("unmarshalling command code: %w", err)
+	}
+
+	params := buf.Bytes()
+
+	if err := rspParameters(params, nil, &rsp); err != nil {
 		return nil, err
 	}
 	return &rsp, nil
