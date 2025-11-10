@@ -2,7 +2,10 @@ package tpm2
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
+
+	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
 func TestMarshal2B(t *testing.T) {
@@ -152,5 +155,50 @@ func TestMarshalT(t *testing.T) {
 
 	if !bytes.Equal(pubBytes, pub2Bytes) {
 		t.Errorf("want %x\ngot %x", pubBytes, pub2Bytes)
+	}
+}
+
+func TestMarshalCommandResponse(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	getCmd := GetCapability{
+		Capability:    TPMCapTPMProperties,
+		Property:      uint32(TPMPTFamilyIndicator),
+		PropertyCount: 1,
+	}
+	capabilityRsp, err := getCmd.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("executing GetCapability: %v", err)
+	}
+
+	cmdParamsBytes, err := MarshalCommand(getCmd)
+	if err != nil {
+		t.Fatalf("MarshalCommand failed: %v", err)
+	}
+
+	unmarshalCmd, err := UnmarshalCommand[GetCapability](cmdParamsBytes)
+	if err != nil {
+		t.Fatalf("UnmarshalCommand failed: %v", err)
+	}
+
+	if !reflect.DeepEqual(getCmd, unmarshalCmd) {
+		t.Errorf("Commands do not match \nwant: %+v\ngot: %+v", getCmd, unmarshalCmd)
+	}
+
+	respParamsBytes, err := MarshalResponse(getCmd, capabilityRsp)
+	if err != nil {
+		t.Fatalf("MarshalResponse failed: %v", err)
+	}
+
+	unmarshalRsp, err := UnmarshalResponse[GetCapabilityResponse](respParamsBytes)
+	if err != nil {
+		t.Fatalf("UnmarshalResponse failed: %v", err)
+	}
+	if !reflect.DeepEqual(capabilityRsp, unmarshalRsp) {
+		t.Errorf("Responses do not match \nwant: %+v\ngot: %+v", capabilityRsp, unmarshalRsp)
 	}
 }
