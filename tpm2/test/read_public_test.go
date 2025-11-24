@@ -110,3 +110,53 @@ func TestReadPublicKey(t *testing.T) {
 		t.Error("Mismatch between public returned from CreatePrimary & ReadPublic")
 	}
 }
+
+// TestReadPublicWithHMACSession tests that ReadPublic works when called with an HMAC session.
+func TestReadPublicWithHMACSession(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	createPrimaryCmd := CreatePrimary{
+		PrimaryHandle: TPMRHOwner,
+		InPublic:      New2B(ECCSRKTemplate),
+	}
+
+	createRsp, err := createPrimaryCmd.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("CreatePrimary failed: %v", err)
+	}
+	defer func() {
+		flushCmd := FlushContext{FlushHandle: createRsp.ObjectHandle}
+		if _, err := flushCmd.Execute(thetpm); err != nil {
+			t.Errorf("FlushContext failed: %v", err)
+		}
+	}()
+
+	t.Run("ReadPublic with HMAC session", func(t *testing.T) {
+		sess := HMAC(TPMAlgSHA256, 16 /* nonceSize */, AESEncryption(128 /* keySize */, EncryptOut))
+		readPublicCmd := ReadPublic{
+			ObjectHandle: NamedHandle{
+				Handle: createRsp.ObjectHandle,
+				Name:   createRsp.Name,
+			},
+		}
+		_, err = readPublicCmd.Execute(thetpm, sess)
+		if err != nil {
+			t.Fatalf("ReadPublic failed: %v", err)
+		}
+	})
+
+	// This test ensures that migration from TPMIDHObject to handle didn't introduced a regression.
+	t.Run("ReadPublic without HMAC session", func(t *testing.T) {
+		readPublicCmd := ReadPublic{
+			ObjectHandle: createRsp.ObjectHandle,
+		}
+		_, err = readPublicCmd.Execute(thetpm)
+		if err != nil {
+			t.Fatalf("ReadPublic failed: %v", err)
+		}
+	})
+}
