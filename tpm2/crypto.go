@@ -166,14 +166,28 @@ func ECDHPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdh.PublicKey, error) {
 }
 
 // ECCPoint returns an uncompressed ECC Point
+// Deprecated: [big.Int] is being deprecated in the ECC libraries. Use ECCBytes instead.
 func ECCPoint(pubKey *ecdh.PublicKey) (*big.Int, *big.Int, error) {
+	x, y, err := ECCBytes(pubKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	return big.NewInt(0).SetBytes(x), big.NewInt(0).SetBytes(y), nil
+}
+
+// ECCPoints returns an uncompressed ECC Point
+func ECCBytes(pubKey *ecdh.PublicKey) ([]byte, []byte, error) {
 	b := pubKey.Bytes()
+	// 0x04 denotes an uncompressed ECC key
+	// https://datatracker.ietf.org/doc/rfc5480/
+	if len(b) == 0 || b[0] != 0x04 {
+		return nil, nil, fmt.Errorf("could not decode %x as an uncompressed point", b)
+	}
 	size, err := elementLength(pubKey.Curve())
 	if err != nil {
 		return nil, nil, fmt.Errorf("ECCPoint: %w", err)
 	}
-	return big.NewInt(0).SetBytes(b[1 : size+1]),
-		big.NewInt(0).SetBytes(b[size+1:]), nil
+	return b[1 : size+1], b[size+1:], nil
 }
 
 func elementLength(c ecdh.Curve) (int, error) {

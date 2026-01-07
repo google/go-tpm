@@ -3,7 +3,6 @@ package tpm2
 import (
 	"crypto/ecdh"
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -46,17 +45,6 @@ func importECCEncapsulationKey(pub *TPMTPublic) (*eccKey, error) {
 	}, nil
 }
 
-// getXY gets the big-endian X/Y coordinates as full-length buffers.
-func getXY(pub *ecdh.PublicKey) ([]byte, []byte, error) {
-	// Check and strip the leading 0x04 byte, which indicates an uncompressed ECC point.
-	rawPub := pub.Bytes()
-	if len(rawPub) == 0 || rawPub[0] != 0x04 {
-		return nil, nil, fmt.Errorf("%w: could not decode %x as an uncompressed point", ErrBadEphemeralKey, rawPub)
-	}
-	rawPub = rawPub[1:]
-	return rawPub[:len(rawPub)/2], rawPub[len(rawPub)/2:], nil
-}
-
 // Encapsulate implements LabeledEncapsulationKey.
 func (pub *eccKey) Encapsulate(random io.Reader, label string) (secret []byte, ciphertext []byte, err error) {
 	ephemeralPriv, err := pub.eccPub.Curve().GenerateKey(random)
@@ -72,11 +60,11 @@ func (pub *eccKey) encapsulateDerandomized(ephPrivate *ecdh.PrivateKey, label st
 	if err != nil {
 		return nil, nil, err
 	}
-	pubX, _, err := getXY(pub.eccPub)
+	pubX, _, err := ECCBytes(pub.eccPub)
 	if err != nil {
 		return nil, nil, err
 	}
-	ephX, ephY, err := getXY(ephPrivate.PublicKey())
+	ephX, ephY, err := ECCBytes(ephPrivate.PublicKey())
 	if err != nil {
 		return nil, nil, err
 	}
