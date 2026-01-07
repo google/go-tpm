@@ -58,14 +58,11 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 			return nil, fmt.Errorf("failed to retrieve the ECC")
 		}
 
-		D := new(big.Int).SetBytes(d.Buffer)
-
-		ecdsaKey := &ecdsa.PrivateKey{
-			PublicKey: *publicKey,
-			D:         D,
+		privateKey, err = ecdsa.ParseRawPrivateKey(publicKey.Curve, d.Buffer)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing ECC private key: %v", err)
 		}
 
-		privateKey = ecdsaKey
 	default:
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
@@ -145,18 +142,19 @@ func ECDSAPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdsa.PublicKey, error) 
 		return nil, fmt.Errorf("unknown curve: %v", parms.CurveID)
 	}
 
-	pubKey := ecdsa.PublicKey{
-		Curve: c,
-		X:     big.NewInt(0).SetBytes(pub.X.Buffer),
-		Y:     big.NewInt(0).SetBytes(pub.Y.Buffer),
-	}
+	// Create a buffer with the uncompressed ECC public key
+	data := make([]byte, 0, len(pub.X.Buffer)+len(pub.Y.Buffer)+1)
+	// 0x04 denotes an uncompressed ECC key
+	// https://datatracker.ietf.org/doc/rfc5480/
+	data = append(data, 0x04)
+	data = append(data, pub.X.Buffer...)
+	data = append(data, pub.Y.Buffer...)
 
-	return &pubKey, nil
+	return ecdsa.ParseUncompressedPublicKey(c, data)
 }
 
 // ECDHPub converts a TPM ECC public key into one recognized by the ecdh package
 func ECDHPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdh.PublicKey, error) {
-
 	pubKey, err := ECDSAPub(parms, pub)
 	if err != nil {
 		return nil, err

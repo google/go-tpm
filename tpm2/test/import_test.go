@@ -42,12 +42,18 @@ func TestCleartextImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to generate ecdsa key: %v", err)
 	}
+	ecdhPK, _ := pk.ECDH()
+
+	X, Y, err := ECCBytes(ecdhPK.PublicKey())
+	if err != nil {
+		t.Fatalf("failed to get ecc bytes from key: %v", err)
+	}
 
 	sens2B := Marshal(TPMTSensitive{
 		SensitiveType: TPMAlgECC,
 		Sensitive: NewTPMUSensitiveComposite(
 			TPMAlgECC,
-			&TPM2BECCParameter{Buffer: pk.D.FillBytes(make([]byte, 32))},
+			&TPM2BECCParameter{Buffer: ecdhPK.Bytes()},
 		),
 	})
 
@@ -87,10 +93,10 @@ func TestCleartextImport(t *testing.T) {
 				TPMAlgECC,
 				&TPMSECCPoint{
 					X: TPM2BECCParameter{
-						Buffer: pk.X.FillBytes(make([]byte, 32)),
+						Buffer: X,
 					},
 					Y: TPM2BECCParameter{
-						Buffer: pk.Y.FillBytes(make([]byte, 32)),
+						Buffer: Y,
 					},
 				},
 			),
