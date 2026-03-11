@@ -17,6 +17,7 @@ package tpm2
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"encoding/binary"
@@ -113,11 +114,16 @@ func (p Public) Key() (crypto.PublicKey, error) {
 		if !ok {
 			return nil, fmt.Errorf("can't map TPM EC curve ID 0x%x to Go elliptic.Curve value", p.ECCParameters.CurveID)
 		}
-		pubKey = &ecdsa.PublicKey{
-			X:     p.ECCParameters.Point.X(),
-			Y:     p.ECCParameters.Point.Y(),
-			Curve: curve,
-		}
+
+		// Create a buffer with the uncompressed ECC public key
+		data := make([]byte, 0, len(p.ECCParameters.Point.XRaw)+len(p.ECCParameters.Point.YRaw)+1)
+		// 0x04 denotes an uncompressed ECC key
+		// https://datatracker.ietf.org/doc/rfc5480/
+		data = append(data, 0x04)
+		data = append(data, p.ECCParameters.Point.XRaw...)
+		data = append(data, p.ECCParameters.Point.YRaw...)
+
+		return ecdsa.ParseUncompressedPublicKey(curve, data)
 	default:
 		return nil, fmt.Errorf("unsupported public key type 0x%x", p.Type)
 	}
@@ -263,6 +269,38 @@ func decodeRSAParams(in *bytes.Buffer) (*RSAParams, error) {
 		return nil, fmt.Errorf("decoding KeyBits, Exponent, Modulus: %v", err)
 	}
 	return &params, nil
+}
+
+// Code from tpm2/crypto.go
+func elementLength(c ecdh.Curve) (int, error) {
+	switch c {
+	case ecdh.P256():
+		// crypto/internal/nistec/fiat.p256ElementLen
+		return 32, nil
+	case ecdh.P384():
+		// crypto/internal/nistec/fiat.p384ElementLen
+		return 48, nil
+	case ecdh.P521():
+		// crypto/internal/nistec/fiat.p521ElementLen
+		return 66, nil
+	default:
+		return 0, fmt.Errorf("unknown element length for curve: %v", c)
+	}
+}
+
+// ECCBytes returns an uncompressed ECC Point
+func ECCBytes(pubKey *ecdh.PublicKey) ([]byte, []byte, error) {
+	b := pubKey.Bytes()
+	// 0x04 denotes an uncompressed ECC key
+	// https://datatracker.ietf.org/doc/rfc5480/
+	if len(b) == 0 || b[0] != 0x04 {
+		return nil, nil, fmt.Errorf("could not decode %x as an uncompressed point", b)
+	}
+	size, err := elementLength(pubKey.Curve())
+	if err != nil {
+		return nil, nil, fmt.Errorf("ECCPoint: %w", err)
+	}
+	return b[1 : size+1], b[size+1:], nil
 }
 
 // ECCParams represents parameters of an ECC key pair:

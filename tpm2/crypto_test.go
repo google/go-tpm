@@ -40,6 +40,8 @@ func TestPriv(t *testing.T) {
 
 	rsaKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	ecdsaKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	ecdhKey, _ := ecdsaKey.ECDH()
+	eccPointX, eccPointY, _ := ECCBytes(ecdhKey.PublicKey())
 
 	seed := make([]byte, crypto.SHA256.New().Size())
 	rand.Read(seed)
@@ -119,7 +121,7 @@ func TestPriv(t *testing.T) {
 				},
 				Sensitive: NewTPMUSensitiveComposite(
 					TPMAlgECC,
-					&TPM2BECCParameter{Buffer: ecdsaKey.D.FillBytes(make([]byte, len(ecdsaKey.D.Bytes())))},
+					&TPM2BECCParameter{Buffer: ecdhKey.Bytes()},
 				),
 			},
 			public: TPMTPublic{
@@ -157,10 +159,10 @@ func TestPriv(t *testing.T) {
 					TPMAlgECC,
 					&TPMSECCPoint{
 						X: TPM2BECCParameter{
-							Buffer: ecdsaKey.X.Bytes(),
+							Buffer: eccPointX,
 						},
 						Y: TPM2BECCParameter{
-							Buffer: ecdsaKey.Y.Bytes(),
+							Buffer: eccPointY,
 						},
 					},
 				),
@@ -236,6 +238,8 @@ func TestPub(t *testing.T) {
 
 	rsaKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	ecdsaKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	ecdhKey, _ := ecdsaKey.ECDH()
+	X, Y, _ := ECCBytes(ecdhKey.PublicKey())
 
 	tests := map[string]struct {
 		public TPMTPublic
@@ -321,10 +325,10 @@ func TestPub(t *testing.T) {
 					TPMAlgECC,
 					&TPMSECCPoint{
 						X: TPM2BECCParameter{
-							Buffer: ecdsaKey.X.Bytes(),
+							Buffer: X,
 						},
 						Y: TPM2BECCParameter{
-							Buffer: ecdsaKey.Y.Bytes(),
+							Buffer: Y,
 						},
 					},
 				),

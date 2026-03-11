@@ -586,6 +586,14 @@ func TestLoadExternalPublicKey(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		ecdhKey, err := pk.ECDH()
+		if err != nil {
+			t.Fatal(err)
+		}
+		X, Y, err := ECCBytes(ecdhKey.PublicKey())
+		if err != nil {
+			t.Fatal(err)
+		}
 		public := Public{
 			Type:       AlgECC,
 			NameAlg:    AlgSHA1,
@@ -596,12 +604,12 @@ func TestLoadExternalPublicKey(t *testing.T) {
 					Hash: AlgSHA1,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{XRaw: pk.PublicKey.X.Bytes(), YRaw: pk.PublicKey.Y.Bytes()},
+				Point:   ECPoint{XRaw: X, YRaw: Y},
 			},
 		}
 		private := Private{
 			Type:      AlgECC,
-			Sensitive: pk.D.Bytes(),
+			Sensitive: ecdhKey.Bytes(),
 		}
 		run(t, public, private)
 	})
@@ -813,6 +821,14 @@ func TestCertifyExternalKey(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		ecdhPK, err := pk.ECDH()
+		if err != nil {
+			t.Fatal(err)
+		}
+		X, Y, err := ECCBytes(ecdhPK.PublicKey())
+		if err != nil {
+			t.Fatal(err)
+		}
 		public := Public{
 			Type:       AlgECC,
 			NameAlg:    AlgSHA1,
@@ -823,12 +839,12 @@ func TestCertifyExternalKey(t *testing.T) {
 					Hash: AlgSHA1,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{XRaw: pk.PublicKey.X.Bytes(), YRaw: pk.PublicKey.Y.Bytes()},
+				Point:   ECPoint{XRaw: X, YRaw: Y},
 			},
 		}
 		private := Private{
 			Type:      AlgECC,
-			Sensitive: pk.D.Bytes(),
+			Sensitive: ecdhPK.Bytes(),
 		}
 		run(t, public, private)
 	})
@@ -1463,9 +1479,18 @@ func TestCreateAndCertifyCreationECC(t *testing.T) {
 		t.Logf("Public: %v", p)
 	}
 
-	var pkEcdsa ecdsa.PublicKey
 	var hsh hash.Hash
-	pkEcdsa = ecdsa.PublicKey{Curve: elliptic.P256(), X: p.ECCParameters.Point.X(), Y: p.ECCParameters.Point.Y()}
+	pk, err := p.Key()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Convert to ecdsa.PublicKey
+	pkEcdsa, ok := pk.(*ecdsa.PublicKey)
+	if !ok {
+		t.Fatalf("Failed getting *ecdsa.PublicKey")
+	}
+
 	signHash, err := p.ECCParameters.Sign.Hash.Hash()
 	if err != nil {
 		t.Fatalf("Hash failed: %v", err)
@@ -1473,7 +1498,7 @@ func TestCreateAndCertifyCreationECC(t *testing.T) {
 	hsh = signHash.New()
 	hsh.Write(attestation)
 
-	if !ecdsa.Verify(&pkEcdsa, hsh.Sum(nil), signature.ECC.R, signature.ECC.S) {
+	if !ecdsa.Verify(pkEcdsa, hsh.Sum(nil), signature.ECC.R, signature.ECC.S) {
 		t.Fatalf("Verify failed")
 	}
 }
@@ -1771,6 +1796,11 @@ func TestReadPublicKey(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		ecdhPK, err := pk.ECDH()
+		if err != nil {
+			t.Fatal(err)
+		}
+		X, Y, err := ECCBytes(ecdhPK.PublicKey())
 		public := Public{
 			Type:       AlgECC,
 			NameAlg:    AlgSHA1,
@@ -1781,12 +1811,12 @@ func TestReadPublicKey(t *testing.T) {
 					Hash: AlgSHA1,
 				},
 				CurveID: CurveNISTP256,
-				Point:   ECPoint{XRaw: pk.PublicKey.X.Bytes(), YRaw: pk.PublicKey.Y.Bytes()},
+				Point:   ECPoint{XRaw: X, YRaw: Y},
 			},
 		}
 		private := Private{
 			Type:      AlgECC,
-			Sensitive: pk.D.Bytes(),
+			Sensitive: ecdhPK.Bytes(),
 		}
 		run(t, public, private, &pk.PublicKey)
 	})

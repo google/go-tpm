@@ -85,13 +85,13 @@ func TestECDH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not create the SW key: %v", err)
 	}
-	x, y, err := ECCPoint(swPriv.PublicKey())
+	x, y, err := ECCBytes(swPriv.PublicKey())
 	if err != nil {
 		t.Fatalf("could not get SW key point: %v", err)
 	}
 	swPub := TPMSECCPoint{
-		X: TPM2BECCParameter{Buffer: x.FillBytes(make([]byte, 32))},
-		Y: TPM2BECCParameter{Buffer: y.FillBytes(make([]byte, 32))},
+		X: TPM2BECCParameter{Buffer: x},
+		Y: TPM2BECCParameter{Buffer: y},
 	}
 
 	// Calculate Z based on the SW priv * TPM pub

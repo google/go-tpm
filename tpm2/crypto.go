@@ -58,14 +58,11 @@ func Priv(public TPMTPublic, sensitive TPMTSensitive) (crypto.PrivateKey, error)
 			return nil, fmt.Errorf("failed to retrieve the ECC")
 		}
 
-		D := new(big.Int).SetBytes(d.Buffer)
-
-		ecdsaKey := &ecdsa.PrivateKey{
-			PublicKey: *publicKey,
-			D:         D,
+		privateKey, err = ecdsa.ParseRawPrivateKey(publicKey.Curve, d.Buffer)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing ECC private key: %v", err)
 		}
 
-		privateKey = ecdsaKey
 	default:
 		return nil, fmt.Errorf("unsupported public key type: %v", public.Type)
 	}
@@ -145,18 +142,19 @@ func ECDSAPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdsa.PublicKey, error) 
 		return nil, fmt.Errorf("unknown curve: %v", parms.CurveID)
 	}
 
-	pubKey := ecdsa.PublicKey{
-		Curve: c,
-		X:     big.NewInt(0).SetBytes(pub.X.Buffer),
-		Y:     big.NewInt(0).SetBytes(pub.Y.Buffer),
-	}
+	// Create a buffer with the uncompressed ECC public key
+	data := make([]byte, 0, len(pub.X.Buffer)+len(pub.Y.Buffer)+1)
+	// 0x04 denotes an uncompressed ECC key
+	// https://datatracker.ietf.org/doc/rfc5480/
+	data = append(data, 0x04)
+	data = append(data, pub.X.Buffer...)
+	data = append(data, pub.Y.Buffer...)
 
-	return &pubKey, nil
+	return ecdsa.ParseUncompressedPublicKey(c, data)
 }
 
 // ECDHPub converts a TPM ECC public key into one recognized by the ecdh package
 func ECDHPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdh.PublicKey, error) {
-
 	pubKey, err := ECDSAPub(parms, pub)
 	if err != nil {
 		return nil, err
@@ -166,14 +164,28 @@ func ECDHPub(parms *TPMSECCParms, pub *TPMSECCPoint) (*ecdh.PublicKey, error) {
 }
 
 // ECCPoint returns an uncompressed ECC Point
+// Deprecated: [big.Int] is being deprecated in the ECC libraries. Use ECCBytes instead.
 func ECCPoint(pubKey *ecdh.PublicKey) (*big.Int, *big.Int, error) {
+	x, y, err := ECCBytes(pubKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	return big.NewInt(0).SetBytes(x), big.NewInt(0).SetBytes(y), nil
+}
+
+// ECCPoints returns an uncompressed ECC Point
+func ECCBytes(pubKey *ecdh.PublicKey) ([]byte, []byte, error) {
 	b := pubKey.Bytes()
+	// 0x04 denotes an uncompressed ECC key
+	// https://datatracker.ietf.org/doc/rfc5480/
+	if len(b) == 0 || b[0] != 0x04 {
+		return nil, nil, fmt.Errorf("could not decode %x as an uncompressed point", b)
+	}
 	size, err := elementLength(pubKey.Curve())
 	if err != nil {
 		return nil, nil, fmt.Errorf("ECCPoint: %w", err)
 	}
-	return big.NewInt(0).SetBytes(b[1 : size+1]),
-		big.NewInt(0).SetBytes(b[size+1:]), nil
+	return b[1 : size+1], b[size+1:], nil
 }
 
 func elementLength(c ecdh.Curve) (int, error) {
