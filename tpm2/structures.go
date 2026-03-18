@@ -1599,19 +1599,11 @@ type SymDetailsContents interface {
 
 // create implements the unmarshallableWithHint interface.
 func (u *TPMUSymDetails) create(hint int64) (reflect.Value, error) {
-	switch TPMAlgID(hint) {
-	case TPMAlgAES:
-		var contents boxed[TPMSEmpty]
-		u.contents = &contents
-		u.selector = TPMAlgID(hint)
-		return reflect.ValueOf(&contents), nil
-	case TPMAlgXOR:
-		var contents boxed[TPMSEmpty]
-		u.contents = &contents
-		u.selector = TPMAlgID(hint)
-		return reflect.ValueOf(&contents), nil
-	}
-	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+	// All members of TPMU_SYM_DETAILS are empty
+	var contents boxed[TPMSEmpty]
+	u.contents = &contents
+	u.selector = TPMAlgID(hint)
+	return reflect.ValueOf(&contents), nil
 }
 
 // get implements the marshallableWithHint interface.
@@ -1619,15 +1611,12 @@ func (u TPMUSymDetails) get(hint int64) (reflect.Value, error) {
 	if u.selector != 0 && hint != int64(u.selector) {
 		return reflect.ValueOf(nil), fmt.Errorf("incorrect union tag %v, is %v", hint, u.selector)
 	}
-	switch TPMAlgID(hint) {
-	case TPMAlgAES, TPMAlgXOR:
-		var contents boxed[TPMSEmpty]
-		if u.contents != nil {
-			contents = *u.contents.(*boxed[TPMSEmpty])
-		}
-		return reflect.ValueOf(&contents), nil
+	// All members of TPMU_SYM_DETAILS are empty
+	var contents boxed[TPMSEmpty]
+	if u.contents != nil {
+		contents = *u.contents.(*boxed[TPMSEmpty])
 	}
-	return reflect.ValueOf(nil), fmt.Errorf("no union member for tag %v", hint)
+	return reflect.ValueOf(&contents), nil
 }
 
 // NewTPMUSymDetails instantiates a TPMUSymDetails with the given contents.
