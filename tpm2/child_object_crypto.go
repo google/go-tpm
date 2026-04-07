@@ -43,6 +43,7 @@ func deriveAndEncrypt(pub LabeledEncapsulationKey, seed []byte, context []byte, 
 		return nil, err
 	}
 	ciphertext := make([]byte, len(plaintext))
+	//nolint:staticcheck // CFB mode is required for the TPM 2.0 specification.
 	cipher.NewCFBEncrypter(key, make([]byte, key.BlockSize())).XORKeyStream(ciphertext, plaintext)
 	return ciphertext, nil
 }

@@ -631,6 +631,7 @@ func (s *hmacSession) Encrypt(parameter []byte) error {
 	if err != nil {
 		return err
 	}
+	//nolint:staticcheck // CFB mode is required for the TPM 2.0 specification.
 	stream := cipher.NewCFBEncrypter(key, keyIV[keyBytes:])
 	stream.XORKeyStream(parameter, parameter)
 	return nil
@@ -662,6 +663,7 @@ func (s *hmacSession) Decrypt(parameter []byte) error {
 	if err != nil {
 		return err
 	}
+	//nolint:staticcheck // CFB mode is required for the TPM 2.0 specification.
 	stream := cipher.NewCFBDecrypter(key, keyIV[keyBytes:])
 	stream.XORKeyStream(parameter, parameter)
 	return nil
@@ -952,6 +954,7 @@ func (s *policySession) Encrypt(parameter []byte) error {
 	if err != nil {
 		return err
 	}
+	//nolint:staticcheck // CFB mode is required for the TPM 2.0 specification.
 	stream := cipher.NewCFBEncrypter(key, keyIV[keyBytes:])
 	stream.XORKeyStream(parameter, parameter)
 	return nil
@@ -983,6 +986,7 @@ func (s *policySession) Decrypt(parameter []byte) error {
 	if err != nil {
 		return err
 	}
+	//nolint:staticcheck // CFB mode is required for the TPM 2.0 specification.
 	stream := cipher.NewCFBDecrypter(key, keyIV[keyBytes:])
 	stream.XORKeyStream(parameter, parameter)
 	return nil
