@@ -353,7 +353,7 @@ func HMACSession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthO
 	}
 	// This session is reusable and is closed with the function we'll
 	// return.
-	sess.sessionOptions.attrs.ContinueSession = true
+	sess.attrs.ContinueSession = true
 
 	// Initialize the session.
 	if err := sess.Init(t); err != nil {
@@ -732,7 +732,7 @@ func PolicySession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...Aut
 
 	// This session is reusable and is closed with the function we'll
 	// return.
-	sess.sessionOptions.attrs.ContinueSession = true
+	sess.attrs.ContinueSession = true
 
 	// Initialize the session.
 	if err := sess.Init(t); err != nil {
@@ -764,7 +764,7 @@ func (s *policySession) Init(t transport.TPM) error {
 	}
 
 	sessType := TPMSEPolicy
-	if s.sessionOptions.trialPolicy {
+	if s.trialPolicy {
 		sessType = TPMSETrial
 	}
 

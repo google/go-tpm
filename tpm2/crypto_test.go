@@ -84,7 +84,7 @@ func TestPriv(t *testing.T) {
 				Parameters: NewTPMUPublicParms(
 					TPMAlgRSA,
 					&TPMSRSAParms{
-						KeyBits:  TPMKeyBits(rsaKey.PublicKey.N.BitLen()),
+						KeyBits:  TPMKeyBits(rsaKey.N.BitLen()),
 						Exponent: 0,
 						Symmetric: TPMTSymDefObject{
 							Algorithm: TPMAlgAES,
@@ -102,7 +102,7 @@ func TestPriv(t *testing.T) {
 				Unique: NewTPMUPublicID(
 					TPMAlgRSA,
 					&TPM2BPublicKeyRSA{
-						Buffer: rsaKey.PublicKey.N.Bytes(),
+						Buffer: rsaKey.N.Bytes(),
 					},
 				),
 			},
@@ -261,7 +261,7 @@ func TestPub(t *testing.T) {
 				Parameters: NewTPMUPublicParms(
 					TPMAlgRSA,
 					&TPMSRSAParms{
-						KeyBits:  TPMKeyBits(rsaKey.PublicKey.N.BitLen()),
+						KeyBits:  TPMKeyBits(rsaKey.N.BitLen()),
 						Exponent: 0,
 						Symmetric: TPMTSymDefObject{
 							Algorithm: TPMAlgAES,
@@ -279,7 +279,7 @@ func TestPub(t *testing.T) {
 				Unique: NewTPMUPublicID(
 					TPMAlgRSA,
 					&TPM2BPublicKeyRSA{
-						Buffer: rsaKey.PublicKey.N.Bytes(),
+						Buffer: rsaKey.N.Bytes(),
 					},
 				),
 			},
