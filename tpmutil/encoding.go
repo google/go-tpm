@@ -79,7 +79,7 @@ func tryMarshal(buf io.Writer, v reflect.Value) (bool, error) {
 	// If the pointer of the type implements the interface, we should be
 	// able to construct a value to call TPMMarshal() with.
 	// TODO(awly): Try and avoid blowing away private data by using Addr() instead of Set()
-	if reflect.PtrTo(t).Implements(selfMarshalerType) {
+	if reflect.PointerTo(t).Implements(selfMarshalerType) {
 		tmp := reflect.New(t)
 		tmp.Elem().Set(v)
 		return true, tmp.Interface().(SelfMarshaler).TPMMarshal(buf)
@@ -141,7 +141,7 @@ func tryUnmarshal(buf io.Reader, v reflect.Value) (bool, error) {
 	// We might have a non-pointer struct field, which is addressable,
 	// If the pointer of the type implements the interface, and the
 	// value is addressable, we should be able to call TPMUnmarshal().
-	if v.CanAddr() && reflect.PtrTo(t).Implements(selfMarshalerType) {
+	if v.CanAddr() && reflect.PointerTo(t).Implements(selfMarshalerType) {
 		return true, v.Addr().Interface().(SelfMarshaler).TPMUnmarshal(buf)
 	}
 
