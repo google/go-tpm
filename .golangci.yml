@@ -1,21 +1,28 @@
+version: "2"
 linters:
-  disable:
-    - errcheck
   enable:
-    - stylecheck
-    - goimports
     - misspell
     - revive
-linters-settings:
-  revive:
+    - staticcheck
+  disable:
+    - errcheck
+  settings:
+    revive:
+      rules:
+        - name: dot-imports
+          disabled: true
+  exclusions:
+    generated: lax
     rules:
-    - name: dot-imports
-      disabled: true
+      - path: (.+)\.go$
+        text: stutters
+      - path: (.+)\.go$
+        text: underscores
+      - path: (.+)\.go$
+        text: unexported-return
 issues:
-  exclude-use-default: false
-  exclude:
-    - stutters
-    - underscores
-    - unexported-return
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  enable:
+    - goimports
