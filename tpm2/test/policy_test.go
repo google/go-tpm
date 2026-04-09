@@ -428,7 +428,7 @@ func TestPolicyPCR(t *testing.T) {
 
 	expectedDigest := getExpectedPCRDigest(t, thetpm, selection, TPMAlgSHA1)
 
-	wrongDigest := sha1.Sum(expectedDigest[:])
+	wrongDigest := sha1.Sum(expectedDigest)
 
 	tests := []struct {
 		name              string
@@ -486,7 +486,7 @@ func TestPolicyPCR(t *testing.T) {
 				t.Logf("expectedDigest=%x", expectedDigest)
 
 				// Create a populated policyPCR for the PolicyCalculator
-				policyPCR.PcrDigest.Buffer = expectedDigest[:]
+				policyPCR.PcrDigest.Buffer = expectedDigest
 			}
 
 			// Use the policy helper to calculate the same policy

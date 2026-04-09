@@ -273,10 +273,6 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 	}
 
 	info := Marshal(certifyInfo)
-	if err != nil {
-		t.Fatalf("Failed to marshal: %v", err)
-	}
-
 	attestHash := sha256.Sum256(info)
 
 	pub, err := rspCP.OutPublic.Contents()

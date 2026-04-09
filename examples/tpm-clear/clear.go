@@ -47,6 +47,4 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Couldn't clear the TPM using owner auth: %s\n", err)
 		return
 	}
-
-	return
 }

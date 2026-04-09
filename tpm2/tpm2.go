@@ -599,7 +599,7 @@ type ECDHZGenResponse struct {
 // Hash is the input to TPM2_Hash.
 // See definition in Part 3, Commands, section 15.4
 type Hash struct {
-	//data to be hashed
+	// data to be hashed
 	Data TPM2BMaxBuffer
 	// algorithm for the hash being computed - shall not be TPM_ALH_NULL
 	HashAlg TPMIAlgHash

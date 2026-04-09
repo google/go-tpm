@@ -1,0 +1,70 @@
+name: CI
+on:
+  push:
+    tags: [ "v*", "*/v*" ]
+    branches: [ master, main ]
+  pull_request:
+
+permissions:
+  # Testing and Linting only needs to read the source code.
+  contents: read
+
+jobs:
+  test:
+    # We want to test the root module on both Linux and Windows, but the
+    # googleipmi submodule is Linux only.
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        module: [ ./ ]
+        include:
+          - os: ubuntu-latest
+            module: ./tpm2/transport/googleipmi/
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+
+      - name: Configure OpenSSL paths (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Copy-Item "C:\Program Files\OpenSSL\lib\VC\x64\MD\libcrypto.lib" "C:\Program Files\OpenSSL\lib\VC\x64\MD\libcrypto.a"
+          "CGO_CFLAGS=-IC:/PROGRA~1/OpenSSL/include" | Add-Content -Path $env:GITHUB_ENV
+          "CGO_LDFLAGS=-LC:/PROGRA~1/OpenSSL/lib/VC/x64/MD" | Add-Content -Path $env:GITHUB_ENV
+        shell: pwsh
+
+      - run: go build -C ${{ matrix.module }} -v ./...
+      - run: go test -C ${{ matrix.module }} -v ./...
+
+  lint:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Configure Git line endings
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+
+      - name: Lint top-level module
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # We don't try to keep the Legacy or TPM 1.2 packages lint-free.
+          args: ./examples/... ./tpmutil/... ./tpm2/...
+        env:
+          # Disable CGO on Windows to avoid OpenSSL dependency issues.
+          CGO_ENABLED: ${{ runner.os == 'Windows' && '0' || '1' }}
+
+      - name: Lint googleipmi
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # Change working directory to lint a submodule
+          working-directory: ./tpm2/transport/googleipmi/
+        if: runner.os == 'Linux'

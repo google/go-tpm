@@ -218,6 +218,7 @@ func Auth(auth []byte) AuthOption {
 // Password is a policy-session-only option that specifies to provide the
 // object's auth value in place of the authorization HMAC when authorizing.
 // For HMAC sessions, has the same effect as using Auth.
+//
 // Deprecated: This is not recommended and is only provided for completeness;
 // use Auth instead.
 func Password(auth []byte) AuthOption {

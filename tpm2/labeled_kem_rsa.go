@@ -87,7 +87,7 @@ func (pub *rsaKey) Encapsulate(random io.Reader, label string) (secret []byte, c
 func (pub *rsaKey) encapsulateDerandomized(oaepSaltReader io.Reader, secret []byte, label string) (ciphertext []byte, err error) {
 	// Ensure label is null-terminated.
 	if !strings.HasSuffix(label, "\x00") {
-		label = label + "\x00"
+		label += "\x00"
 	}
 
 	if len(secret) != pub.hash.Size() {

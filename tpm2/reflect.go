@@ -63,8 +63,8 @@ func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Se
 			return err
 		}
 	}
-	hdr := cmdHeader(hasSessions, 10 /* size of command header */ +len(handles)+len(sessions)+len(parms), cc)
-	command := append(hdr, handles...)
+	command := cmdHeader(hasSessions, 10 /* size of command header */ +len(handles)+len(sessions)+len(parms), cc)
+	command = append(command, handles...)
 	command = append(command, sessions...)
 	command = append(command, parms...)
 
@@ -222,7 +222,7 @@ func marshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 	for i := 0; i < v.NumField(); i++ {
 		// Ignore embedded Bitfield hints.
 		if !v.Type().Field(i).IsExported() {
-			//if _, isBitfield := v.Field(i).Interface().(TPMABitfield); isBitfield {
+			// if _, isBitfield := v.Field(i).Interface().(TPMABitfield); isBitfield {
 			continue
 		}
 		thisBitwise := hasTag(v.Type().Field(i), "bit")
@@ -623,7 +623,7 @@ func unmarshalStruct(buf *bytes.Buffer, v reflect.Value) error {
 		// Ignore embedded Bitfield hints.
 		// Ignore embedded Bitfield hints.
 		if !v.Type().Field(i).IsExported() {
-			//if _, isBitfield := v.Field(i).Interface().(TPMABitfield); isBitfield {
+			// if _, isBitfield := v.Field(i).Interface().(TPMABitfield); isBitfield {
 			continue
 		}
 		thisBitwise := hasTag(v.Type().Field(i), "bit")
@@ -884,9 +884,9 @@ func marshalParameter[R any](buf *bytes.Buffer, cmd Command[R, *R], i int) error
 		return marshal(buf, reflect.ValueOf(TPMRHNull))
 	} else if parm.IsZero() && parm.Kind() == reflect.Uint16 && hasTag(field, "nullable") {
 		return marshal(buf, reflect.ValueOf(TPMAlgNull))
+	} else {
+		return marshal(buf, parm)
 	}
-
-	return marshal(buf, parm)
 }
 
 // unmarshalParameter will deserialize the given parameter of the command from the buffer.

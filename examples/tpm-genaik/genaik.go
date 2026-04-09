@@ -75,6 +75,4 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Couldn't write to file %s: %s\n", *blobname, err)
 		return
 	}
-
-	return
 }

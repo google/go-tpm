@@ -65,6 +65,4 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Couldn't take ownership of the TPM: %s\n", err)
 		return
 	}
-
-	return
 }
