@@ -69,14 +69,16 @@ func TestCreateLoaded(t *testing.T) {
 			},
 		})
 
+	ekTemplate := TemplateL2.PublicEK()
+
 	createLoadeds := map[string]*CreateLoaded{
 		"PrimaryKey": {
 			ParentHandle: TPMRHEndorsement,
-			InPublic:     New2BTemplate(&ECCEKTemplate),
+			InPublic:     New2BTemplate(&ekTemplate),
 		},
 		"NoParentPrimaryKey": {
 			// Make the object in the null hierarchy and ensure that go-tpm supports not providing the parent handle at all.
-			InPublic: New2BTemplate(&ECCEKTemplate),
+			InPublic: New2BTemplate(&ekTemplate),
 		},
 		"OrdinaryKey": {
 			ParentHandle: TPMRHOwner,

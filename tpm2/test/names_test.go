@@ -25,7 +25,7 @@ func TestObjectName(t *testing.T) {
 
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic:      New2B(ECCEKTemplate),
+		InPublic:      New2B(TemplateL2.PublicEK()),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {

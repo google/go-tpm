@@ -20,7 +20,7 @@ func TestDuplicate(t *testing.T) {
 	t.Log("### Create Owner SRK")
 	srkCreateResp, err := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(ECCSRKTemplate),
+		InPublic:      New2B(TemplateL2.PublicSRK()),
 	}.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not generate SRK: %v", err)
@@ -85,7 +85,7 @@ func TestDuplicate(t *testing.T) {
 	t.Log("### Create Endorsement SRK (New Parent)")
 	srk2CreateResp, err := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic:      New2B(ECCSRKTemplate),
+		InPublic:      New2B(TemplateL2.PublicSRK()),
 	}.Execute(thetpm)
 	if err != nil {
 		t.Fatalf("could not generate SRK: %v", err)

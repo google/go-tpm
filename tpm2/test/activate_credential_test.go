@@ -67,7 +67,7 @@ func TestActivateTPMCredential(t *testing.T) {
 
 	ekCreate := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic:      New2B(ECCEKTemplate),
+		InPublic:      New2B(TemplateL2.PublicEK()),
 	}
 
 	ekCreateRsp, err := ekCreate.Execute(thetpm)
@@ -86,7 +86,7 @@ func TestActivateTPMCredential(t *testing.T) {
 
 	srkCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(ECCSRKTemplate),
+		InPublic:      New2B(TemplateL2.PublicSRK()),
 	}
 
 	srkCreateRsp, err := srkCreate.Execute(thetpm)
@@ -123,7 +123,7 @@ func TestActivateTPMCredential(t *testing.T) {
 		KeyHandle: AuthHandle{
 			Handle: ekCreateRsp.ObjectHandle,
 			Name:   ekCreateRsp.Name,
-			Auth:   Policy(TPMAlgSHA256, 16, ekPolicy),
+			Auth:   Policy(TPMAlgSHA256, 16, ekPolicyA),
 		},
 		CredentialBlob: mcRsp.CredentialBlob,
 		Secret:         mcRsp.Secret,
@@ -156,33 +156,33 @@ func TestActivateSWCredential(t *testing.T) {
 	}{
 		{
 			name:        "ECDH-P256 SRK activating RSA SRK",
-			pubTemplate: ECCSRKTemplate,
-			subTemplate: RSASRKTemplate,
+			pubTemplate: TemplateL2.PublicSRK(),
+			subTemplate: TemplateL1.PublicSRK(),
 		},
 		{
 			name:        "RSA-2048 SRK activating P256 SRK",
-			pubTemplate: RSASRKTemplate,
-			subTemplate: ECCSRKTemplate,
+			pubTemplate: TemplateL1.PublicSRK(),
+			subTemplate: TemplateL2.PublicSRK(),
 		},
 		{
 			name:        "ECDH-P256 SRK activating P384 key",
-			pubTemplate: ECCSRKTemplate,
+			pubTemplate: TemplateL2.PublicSRK(),
 			subTemplate: p384Template,
 		},
 		{
 			name:        "RSA-2048 SRK activating P384 key",
-			pubTemplate: RSASRKTemplate,
+			pubTemplate: TemplateL1.PublicSRK(),
 			subTemplate: p384Template,
 		},
 		{
 			name:        "P384 key activating P256 SRK",
 			pubTemplate: p384Template,
-			subTemplate: ECCSRKTemplate,
+			subTemplate: TemplateL2.PublicSRK(),
 		},
 		{
 			name:        "P384 key activating RSA SRK",
 			pubTemplate: p384Template,
-			subTemplate: RSASRKTemplate,
+			subTemplate: TemplateL1.PublicSRK(),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

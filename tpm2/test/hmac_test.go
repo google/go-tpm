@@ -100,7 +100,7 @@ func TestImportedHMACKey(t *testing.T) {
 	// create primary key
 	primaryKey, err := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(RSASRKTemplate),
+		InPublic:      New2B(TemplateL1.PublicSRK()),
 	}.Execute(theTPM)
 
 	if err != nil {

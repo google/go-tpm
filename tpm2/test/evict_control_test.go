@@ -16,7 +16,7 @@ func TestEvictControl(t *testing.T) {
 
 	srkCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(ECCSRKTemplate),
+		InPublic:      New2B(TemplateL2.PublicSRK()),
 	}
 
 	srkCreateRsp, err := srkCreate.Execute(thetpm)

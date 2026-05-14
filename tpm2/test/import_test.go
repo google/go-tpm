@@ -21,7 +21,7 @@ func TestCleartextImport(t *testing.T) {
 
 	srkCreate := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(ECCSRKTemplate),
+		InPublic:      New2B(TemplateL2.PublicSRK()),
 	}
 
 	srkCreateRsp, err := srkCreate.Execute(thetpm)
@@ -148,11 +148,11 @@ func TestSWDuplicateImport(t *testing.T) {
 	}{
 		{
 			name:        "ECDH-P256",
-			pubTemplate: ECCSRKTemplate,
+			pubTemplate: TemplateL2.PublicSRK(),
 		},
 		{
 			name:        "RSA-2048",
-			pubTemplate: RSASRKTemplate,
+			pubTemplate: TemplateL1.PublicSRK(),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

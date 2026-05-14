@@ -2,171 +2,42 @@ package tpm2test
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
+	"slices"
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/tpm2/test/templates"
 	"github.com/google/go-tpm/tpm2/transport"
 	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
-// Decodes the provided hex strings into a byte array. Panics on non-hex chars.
-func hexToBytes(hexStrings ...string) []byte {
-	buf, err := []byte{}, error(nil)
-	for _, s := range hexStrings {
-		buf, err = hex.AppendDecode(buf, []byte(s))
-		if err != nil {
-			panic(err)
-		}
-	}
-	return buf
+var testedHashAlgs = []TPMIAlgHash{
+	TPMAlgSHA256,
+	TPMAlgSHA384,
+	TPMAlgSHA512,
+	// https://pkg.go.dev/crypto#Hash does not support SM3
+	// TPMAlgSM3256,
 }
-
-// Values for the various EK Policies and Templates specified in:
-// TCG EK Credential Profile For TPM Family 2.0; Level 0, Version 2.7
-var (
-	// PolicyA values from "Computing PolicyA" section
-	PolicyA = map[TPMIAlgHash]TPM2BDigest{
-		TPMAlgSHA256: {Buffer: hexToBytes(
-			"837197674484b3f81a90cc8d46a5d724",
-			"fd52d76e06520b64f2a1da1b331469aa",
-		)},
-		TPMAlgSHA384: {Buffer: hexToBytes(
-			"8bbf2266537c171cb56e403c4dc1d4b6",
-			"4f432611dc386e6f532050c3278c930e",
-			"143e8bb1133824ccb431053871c6db53",
-		)},
-		TPMAlgSHA512: {Buffer: hexToBytes(
-			"1e3b76502c8a1425aa0b7b3fc646a1b0",
-			"fae063b03b5368f9c4cddecaff0891dd",
-			"682bac1a85d4d832b781ea451915de5f",
-			"c5bf0dc4a1917cd42fa041e3f998e0ee",
-		)},
-	}
-	// Policy NV Indices from "Handle Values" section
-	PolicyIndex = map[TPMIAlgHash]TPMIRHNVIndex{
-		TPMAlgSHA256: 0x01C07F01,
-		TPMAlgSHA384: 0x01C07F02,
-		TPMAlgSHA512: 0x01C07F03,
-	}
-	// Policy Index Names from "Computing Policy Index Names" section
-	PolicyIndexName = map[TPMIAlgHash]TPM2BName{
-		TPMAlgSHA256: {Buffer: hexToBytes(
-			"000b", // TPM_ALG_SHA256
-			"0c9d717e9c3fe69fda41769450bb1459",
-			"57f8b3610e084dbf65591a5d11ecd83f",
-		)},
-		TPMAlgSHA384: {Buffer: hexToBytes(
-			"000c", // TPM_ALG_SHA384
-			"db62fca346612c976732ff4e8621fb4e",
-			"858be82586486504f7d02e621f8d7d61",
-			"ae32cfc60c4d120609ed6768afcf090c",
-		)},
-		TPMAlgSHA512: {Buffer: hexToBytes(
-			"000d", // TPM_ALG_SHA512
-			"1c47c0bbcbd3cf7d7cae6987d31937c1",
-			"71015dde3b7f0d3c869bca1f7e8a223b",
-			"9acfadb49b7c9cf14d450f41e9327de3",
-			"4d9291eece2c58ab1dc10e9059cce560",
-		)},
-	}
-	// PolicyC values from "Computing PolicyC" section
-	PolicyC = map[TPMIAlgHash]TPM2BDigest{
-		TPMAlgSHA256: {Buffer: hexToBytes(
-			"3767e2edd43ff45a3a7e1eaefcef7864",
-			"3dca964632e7aad82c673a30d8633fde",
-		)},
-		TPMAlgSHA384: {Buffer: hexToBytes(
-			"d6032ce61f2fb3c240eb3cf6a33237ef",
-			"2b6a16f4293c22b455e261cffd217ad5",
-			"b4947c2d73e63005eed2dc2b3593d165",
-		)},
-		TPMAlgSHA512: {Buffer: hexToBytes(
-			"589ee1e146544716e8deafe6db247b01",
-			"b81e9f9c7dd16b814aa159138749105f",
-			"ba5388dd1dea702f35240c184933121e",
-			"2c61b8f50d3ef91393a49a38c3f73fc8",
-		)},
-	}
-	// PolicyB values from "Computing PolicyB" section
-	PolicyB = map[TPMIAlgHash]TPM2BDigest{
-		TPMAlgSHA256: {Buffer: hexToBytes(
-			"ca3d0a99a2b93906f7a3342414efcfb3",
-			"a385d44cd1fd459089d19b5071c0b7a0",
-		)},
-		TPMAlgSHA384: {Buffer: hexToBytes(
-			"b26e7d28d11a50bc53d882bcf5fd3a1a",
-			"074148bb35d3b4e4cb1c0ad9bde419ca",
-			"cb47ba09699646150f9fc000f3f80e12",
-		)},
-		TPMAlgSHA512: {Buffer: hexToBytes(
-			"b8221ca69e8550a4914de3faa6a18c07",
-			"2cc01208073a928d5d66d59ef79e49a4",
-			"29c41a6b269571d57edb25fbdb183842",
-			"5608b413cd616a5f6db5b6071af99bea",
-		)},
-	}
-)
 
 // Test that PolicyCalculator correctly computes PolicyA for all hashes.
 func TestCalculatePolicyA(t *testing.T) {
-	// PolicyA only makes use of TPM2_PolicySecret(TPM_RH_ENDORSEMENT).
-	policySecretCmd := PolicySecret{
-		AuthHandle: TPMRHEndorsement,
-	}
-
-	for alg, policy := range PolicyA {
-		hash, err := alg.Hash()
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
+	for _, alg := range testedHashAlgs {
+		hash, _ := alg.Hash()
 		t.Run(hash.String(), func(t *testing.T) {
-			pol, err := NewPolicyCalculator(alg)
-			if err != nil {
-				t.Fatalf("creating policy calculator: %v", err)
+			policyA, _ := AuthPolicyA(alg)
+
+			// PolicyA only makes use of TPM2_PolicySecret(TPM_RH_ENDORSEMENT).
+			policySecretCmd := PolicySecret{
+				AuthHandle: TPMRHEndorsement,
 			}
-			if err = policySecretCmd.Update(pol); err != nil {
-				t.Fatalf("error updating policy calculator: %v", err)
-			}
+
+			pol, _ := NewPolicyCalculator(alg)
+			policySecretCmd.Update(pol)
 			digest := pol.Hash().Digest
-			if !bytes.Equal(digest, policy.Buffer) {
-				t.Errorf("PolicyA = %x,\nwant %x", digest, policy.Buffer)
-			}
-		})
-	}
-}
 
-// Test our Name calculation for the Policy NV Index (part of PolicyC).
-func TestCalculatePolicyIndexName(t *testing.T) {
-	for alg, name := range PolicyIndexName {
-		hash, err := alg.Hash()
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
-		t.Run(hash.String(), func(t *testing.T) {
-			nvPub := TPMSNVPublic{
-				NVIndex: PolicyIndex[alg],
-				NameAlg: alg,
-				Attributes: TPMANV{
-					PolicyWrite: true,
-					WriteAll:    true,
-					PPRead:      true,
-					OwnerRead:   true,
-					AuthRead:    true,
-					PolicyRead:  true,
-					NoDA:        true,
-					Written:     true,
-				},
-				AuthPolicy: PolicyA[alg],
-				DataSize:   uint16(hash.Size() + 2),
-			}
-			nvName, err := NVName(&nvPub)
-			if err != nil {
-				t.Fatalf("computing NV Name: %v", err)
-			}
-			if !bytes.Equal(nvName.Buffer, name.Buffer) {
-				t.Errorf("NVName = %x,\nwant %x", nvName.Buffer, name.Buffer)
+			if !bytes.Equal(digest, policyA.Buffer) {
+				t.Errorf("PolicyA = %x,\nwant %x", digest, policyA.Buffer)
 			}
 		})
 	}
@@ -174,29 +45,29 @@ func TestCalculatePolicyIndexName(t *testing.T) {
 
 // Test that PolicyCalculator correctly computes PolicyC for all hashes.
 func TestCalculatePolicyC(t *testing.T) {
-	for alg, policy := range PolicyC {
-		hash, err := alg.Hash()
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
+	for _, alg := range testedHashAlgs {
+		hash, _ := alg.Hash()
 		t.Run(hash.String(), func(t *testing.T) {
-			pol, err := NewPolicyCalculator(alg)
-			if err != nil {
-				t.Fatalf("creating policy calculator: %v", err)
+			policyC, _ := AuthPolicyC(alg)
+			nvPublic, _ := AuthPolicyNVPublic(alg)
+			nvName, _ := NVName(&nvPublic)
+			nvHandle := NamedHandle{
+				Handle: nvPublic.NVIndex,
+				Name:   *nvName,
 			}
+
 			// PolicyC uses TPM2_PolicyAuthorizeNV(idx) to delegate policy.
 			authNVCmd := PolicyAuthorizeNV{
-				NVIndex: NamedHandle{
-					Handle: PolicyIndex[alg],
-					Name:   PolicyIndexName[alg],
-				},
+				AuthHandle: nvHandle,
+				NVIndex:    nvHandle,
 			}
-			if err = authNVCmd.Update(pol); err != nil {
-				t.Fatalf("error updating policy calculator: %v", err)
-			}
+
+			pol, _ := NewPolicyCalculator(alg)
+			authNVCmd.Update(pol)
 			digest := pol.Hash().Digest
-			if !bytes.Equal(digest, policy.Buffer) {
-				t.Errorf("PolicyC = %x,\nwant %x", digest, policy.Buffer)
+
+			if !bytes.Equal(digest, policyC.Buffer) {
+				t.Errorf("PolicyC = %x,\nwant %x", digest, policyC.Buffer)
 			}
 		})
 	}
@@ -204,269 +75,471 @@ func TestCalculatePolicyC(t *testing.T) {
 
 // Test that PolicyCalculator correctly computes PolicyB for all hashes.
 func TestCalculatePolicyB(t *testing.T) {
-	for alg, policy := range PolicyB {
-		hash, err := alg.Hash()
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
+	for _, alg := range testedHashAlgs {
+		hash, _ := alg.Hash()
 		t.Run(hash.String(), func(t *testing.T) {
-			pol, err := NewPolicyCalculator(alg)
-			if err != nil {
-				t.Fatalf("creating policy calculator: %v", err)
-			}
+			policyA, _ := AuthPolicyA(alg)
+			policyB, _ := AuthPolicyB(alg)
+			policyC, _ := AuthPolicyC(alg)
+
 			// PolicyB is just the TPM2_PolicyOR of PolicyA and PolicyC.
-			digests := []TPM2BDigest{PolicyA[alg], PolicyC[alg]}
+			digests := []TPM2BDigest{policyA, policyC}
 			orCmd := PolicyOr{PHashList: TPMLDigest{Digests: digests}}
-			if err = orCmd.Update(pol); err != nil {
-				t.Fatalf("error updating policy calculator: %v", err)
-			}
+
+			pol, _ := NewPolicyCalculator(alg)
+			orCmd.Update(pol)
 			digest := pol.Hash().Digest
-			if !bytes.Equal(digest, policy.Buffer) {
-				t.Errorf("PolicyC = %x,\nwant %x", digest, policy.Buffer)
+
+			if !bytes.Equal(digest, policyB.Buffer) {
+				t.Errorf("PolicyB = %x,\nwant %x", digest, policyB.Buffer)
+			}
+		})
+	}
+}
+
+var testedTemplates = []Template{
+	TemplateL1,
+	TemplateL2,
+	TemplateH1,
+	TemplateH2,
+	TemplateH3,
+	TemplateH4,
+	TemplateH5,
+	TemplateH6,
+	TemplateH7,
+}
+
+// Test that EKs and SRKs marshal to their expected values
+func TestMarshalTemplates(t *testing.T) {
+	for _, template := range testedTemplates {
+		t.Run(template.String(), func(t *testing.T) {
+			// Check marshaled EK against expected if we have one.
+			ekBytes := Marshal(template.PublicEK())
+			if expected, ok := templates.EKBytes[template]; ok {
+				if !bytes.Equal(ekBytes, expected) {
+					t.Errorf("EK bytes mismatch\ngot: %x\nwant: %x", ekBytes, expected)
+				}
+			}
+			// Check marshaled SRK against expected if we have one.
+			srkBytes := Marshal(template.PublicSRK())
+			if expected, ok := templates.SRKBytes[template]; ok {
+				if !bytes.Equal(srkBytes, expected) {
+					t.Errorf("SRK bytes mismatch\ngot: %x\nwant: %x", srkBytes, expected)
+				}
 			}
 		})
 	}
 }
 
 // Test creating a sealed data blob on the standard-template EK using its policy.
-func TestEKPolicy(t *testing.T) {
-	templates := map[string]TPMTPublic{
-		"RSA": RSAEKTemplate,
-		"ECC": ECCEKTemplate,
-	}
+func TestAuthEK(t *testing.T) {
+	for _, template := range testedTemplates {
+		t.Run(template.String(), func(t *testing.T) {
+			ekTemplate := template.PublicEK()
+			checkSupported(t, ekTemplate)
 
-	// Run the whole test for each of RSA and ECC EKs.
-	for name, ekTemplate := range templates {
-		t.Run(name, func(t *testing.T) {
-			ekTest(t, ekTemplate)
+			if template.IsLowRange() {
+				// Low-Range EKs can only use PolicyA
+				for _, tc := range []authTestCase{
+					{name: "PolicyA", hierarchy: TPMRHEndorsement, public: ekTemplate, policyFn: ekPolicyA},
+				} {
+					t.Run(tc.name, tc.Run)
+				}
+				return
+			}
+
+			// We use TPM2_PolicySecret(TPM_RH_OWNER) as our stored NV Policy.
+			customPolicyCmd := PolicySecret{
+				AuthHandle: TPMRHOwner,
+			}
+			pol, _ := NewPolicyCalculator(ekTemplate.NameAlg)
+			customPolicyCmd.Update(pol)
+			customPolicy := pol.Hash()
+
+			customPolicyCallback := func(t transport.TPM, handle TPMISHPolicy, _ TPM2BNonce) error {
+				customPolicyCmd.PolicySession = handle
+				_, err := customPolicyCmd.Execute(t)
+				return err
+			}
+
+			// High-Range EKs use PolicyB, which delegates to either PolicyA or PolicyC.
+			// It may also be used with an AuthValue instead of a policy.
+			for _, tc := range []authTestCase{
+				{name: "AuthNil", hierarchy: TPMRHEndorsement, public: ekTemplate, authValue: nil},
+				{name: "AuthVal", hierarchy: TPMRHEndorsement, public: ekTemplate, authValue: []byte("ek_auth")},
+				{
+					name:      "PolicyBviaA",
+					hierarchy: TPMRHEndorsement, public: ekTemplate,
+					policyFn: ekPolicyBviaA(ekTemplate.NameAlg),
+				},
+				{
+					name:      "PolicyBviaC",
+					hierarchy: TPMRHEndorsement, public: ekTemplate,
+					policyFn: ekPolicyBviaC(ekTemplate.NameAlg, customPolicyCallback),
+					nvPolicy: customPolicy,
+				},
+			} {
+				t.Run(tc.name, tc.Run)
+			}
 		})
 	}
 }
 
-func ekPolicy(t transport.TPM, handle TPMISHPolicy, nonceTPM TPM2BNonce) error {
+// Test creating a sealed data blob on the standard-template SRK.
+func TestAuthSRK(t *testing.T) {
+	for _, template := range testedTemplates {
+		t.Run(template.String(), func(t *testing.T) {
+			srkTemplate := template.PublicSRK()
+			checkSupported(t, srkTemplate)
+
+			// All SRKs can only use an AuthValue
+			for _, tc := range []authTestCase{
+				{name: "AuthNil", hierarchy: TPMRHOwner, public: srkTemplate, authValue: nil},
+				{name: "AuthVal", hierarchy: TPMRHOwner, public: srkTemplate, authValue: []byte("srk_auth")},
+			} {
+				t.Run(tc.name, tc.Run)
+			}
+		})
+	}
+}
+
+// Skip test if [tpm2.TPMTPublic.Parameters] is not supported by the Simulator.
+func checkSupported(t *testing.T, public TPMTPublic) {
+	t.Helper()
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer func() {
+		if err := thetpm.Close(); err != nil {
+			t.Errorf("Closing the TPM: %v", err)
+		}
+	}()
+
+	cmd := TestParms{Parameters: TPMTPublicParms{
+		Type:       public.Type,
+		Parameters: public.Parameters,
+	}}
+	if _, err := cmd.Execute(thetpm); err != nil {
+		for _, skipErr := range []TPMRC{TPMRCValue, TPMRCSymmetric, TPMRCHash} {
+			if errors.Is(err, skipErr) {
+				t.Skipf("Checking parameter support: %v", err)
+			}
+		}
+		t.Fatalf("Checking parameter support: %v", err)
+	}
+}
+
+type authTestCase struct {
+	name      string          // Name of the sub-test
+	hierarchy TPMIRHHierarchy // Hierarchy to create the primary key (e.g., TPM_RH_OWNER)
+	public    TPMTPublic      // The Template mapped to the primary key
+	authValue []byte          // Optional auth value for the key
+	policyFn  PolicyCallback  // Callback logic strategy to satisfy the key's policy
+	nvPolicy  *TPMTHA         // Optional NV state provisioned before sealing
+}
+
+// Create a primary key and attempt to seal a data blob to it.
+func (tc *authTestCase) Run(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("Could not connect to TPM simulator: %v", err)
+	}
+	defer func() {
+		if err := thetpm.Close(); err != nil {
+			t.Errorf("Closing the TPM: %v", err)
+		}
+	}()
+
+	// Create our EK or SRK with the specified AuthValue if appropriate
+	createPrimaryCmd := CreatePrimary{
+		PrimaryHandle: tc.hierarchy,
+		InPublic:      New2B(tc.public),
+	}
+	if tc.authValue != nil {
+		createPrimaryCmd.InSensitive.Sensitive = &TPMSSensitiveCreate{
+			UserAuth: TPM2BAuth{Buffer: tc.authValue},
+		}
+	}
+	createPrimaryRsp, err := createPrimaryCmd.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("CreatePrimary: %v", err)
+	}
+	defer func() { // Flush the key
+		flushCmd := FlushContext{FlushHandle: createPrimaryRsp.ObjectHandle}
+		if _, err := flushCmd.Execute(thetpm); err != nil {
+			t.Errorf("Flushing key: %v", err)
+		}
+	}()
+
+	// Log the key (to help with debugging)
+	key := NamedHandle{
+		Handle: createPrimaryRsp.ObjectHandle,
+		Name:   createPrimaryRsp.Name,
+	}
+	t.Logf("Key handle: %x", key.Handle)
+	t.Logf("Key name:\n%x", key.Name.Buffer)
+	outPub, err := createPrimaryRsp.OutPublic.Contents()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if rsa, err := outPub.Unique.RSA(); err == nil {
+		t.Logf("RSA pub:\n%x", rsa.Buffer)
+	}
+	if ecc, err := outPub.Unique.ECC(); err == nil {
+		t.Logf("ECC pub:\n%x\n%x", ecc.X.Buffer, ecc.Y.Buffer)
+	}
+
+	// Setup NV-based policy if needed
+	if tc.nvPolicy != nil {
+		tc.provisionNVPolicy(t, thetpm)
+	}
+
+	// We will create a sealed blob under the primary key
+	createBlobCmd := Create{
+		ParentHandle: key,
+		InSensitive: TPM2BSensitiveCreate{Sensitive: &TPMSSensitiveCreate{
+			Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
+				Buffer: []byte("secret_sealed_data"),
+			}),
+		}},
+		InPublic: New2B(TPMTPublic{
+			Type:    TPMAlgKeyedHash,
+			NameAlg: TPMAlgSHA256,
+			ObjectAttributes: TPMAObject{
+				FixedTPM:     true,
+				FixedParent:  true,
+				UserWithAuth: true,
+				NoDA:         true,
+			},
+		}),
+	}
+	if tc.authValue != nil {
+		createBlobCmd.ParentHandle = AuthHandle{
+			Handle: key.Handle,
+			Name:   key.Name,
+			Auth:   PasswordAuth(tc.authValue),
+		}
+	}
+
+	// Run a subtest for each different policy configuration.
+	for _, opts := range tc.generatePolicySubtests(key, outPub) {
+		t.Run(opts.name, func(t *testing.T) {
+			cmd := createBlobCmd
+
+			var s Session
+			// Nonce size must be >= 16, but can be shorter than hash digest.
+			nonceSize := 16
+
+			if opts.policyJIT {
+				// Use just-in-time policy session creation.
+				s = Policy(tc.public.NameAlg, nonceSize, tc.policyFn, opts.authOpts...)
+			} else if opts.policyCmd {
+				// Use explicit policy session creation.
+				var cleanup func() error
+				var err error
+				s, cleanup, err = PolicySession(
+					thetpm, tc.public.NameAlg, nonceSize, opts.authOpts...,
+				)
+				if err != nil {
+					t.Fatalf("Creating policy session: %v", err)
+				}
+				defer func() {
+					if err := cleanup(); err != nil {
+						t.Errorf("Cleanup policy session: %v", err)
+					}
+				}()
+
+				// Manually execute the policy callback
+				err = tc.policyFn(thetpm, s.Handle(), s.NonceTPM())
+				if err != nil {
+					t.Fatalf("Authorizing EK policy: %v", err)
+				}
+			}
+			if s != nil {
+				cmd.ParentHandle = AuthHandle{
+					Handle: key.Handle,
+					Name:   key.Name,
+					Auth:   s,
+				}
+			}
+
+			if _, err := cmd.Execute(thetpm, opts.sessions...); err != nil {
+				t.Errorf("1st Create blob: %v", err)
+			}
+
+			if opts.policyCmd {
+				// For manual commands, reauthorization is required.
+				_, err = cmd.Execute(thetpm, opts.sessions...)
+				if !errors.Is(err, TPMRCPolicyFail) {
+					t.Errorf("want TPM_RC_POLICY_FAIL, got %v", err)
+				}
+				// Explicitly reauthorize command so the 2nd Create call works.
+				err = tc.policyFn(thetpm, s.Handle(), s.NonceTPM())
+				if err != nil {
+					t.Fatalf("Reauthorizing EK policy: %v", err)
+				}
+			}
+
+			if _, err := cmd.Execute(thetpm, opts.sessions...); err != nil {
+				t.Errorf("2nd Create blob: %v", err)
+			}
+		})
+	}
+}
+
+// Provision [authTestCase.nvPolicy] to the appropriate NV index.
+func (tc *authTestCase) provisionNVPolicy(t *testing.T, thetpm transport.TPM) {
+	t.Helper()
+	nvPublic, _ := AuthPolicyNVPublic(tc.public.NameAlg)
+
+	// When creating the policy NV Index, Written is initially false,
+	// before becoming true after the first write.
+	nvPublic.Attributes.Written = false
+	nvName, _ := NVName(&nvPublic)
+
+	defCmd := NVDefineSpace{
+		AuthHandle: TPMRHOwner,
+		PublicInfo: New2B(nvPublic),
+	}
+	if _, err := defCmd.Execute(thetpm); err != nil {
+		t.Fatalf("Calling TPM2_NV_DefineSpace: %v", err)
+	}
+
+	writeCmd := NVWrite{
+		AuthHandle: AuthHandle{
+			Handle: nvPublic.NVIndex,
+			Name:   *nvName,
+			Auth:   Policy(tc.public.NameAlg, 16, ekPolicyA),
+		},
+		NVIndex: NamedHandle{
+			Handle: nvPublic.NVIndex,
+			Name:   *nvName,
+		},
+		Data: TPM2BMaxNVBuffer{
+			Buffer: Marshal(tc.nvPolicy),
+		},
+	}
+	if _, err := writeCmd.Execute(thetpm); err != nil {
+		t.Fatalf("Calling TPM2_NV_Write: %v", err)
+	}
+}
+
+type policyOptions struct {
+	name      string       // Name of the sub-sub-test
+	policyJIT bool         // Use just-in-time policy session creation
+	policyCmd bool         // Use explicit policy session creation
+	authOpts  []AuthOption // Auth options for the policy session
+	sessions  []Session    // Additional sessions for the command
+}
+
+// Generates all the different policy subtests for the given test case.
+func (tc *authTestCase) generatePolicySubtests(key NamedHandle, outPub *TPMTPublic) []policyOptions {
+	var subtests []policyOptions
+	if tc.policyFn == nil {
+		subtests = []policyOptions{{name: "PolicyNone"}}
+	} else {
+		subtests = []policyOptions{
+			{name: "PolicyJIT", policyJIT: true},
+			{name: "PolicyCmd", policyCmd: true},
+		}
+
+		// Add additional subtests for bound sessions
+		for _, opts := range slices.Clone(subtests) {
+			opts.name += "-bound"
+			boundOpt := Bound(key.Handle, key.Name, nil)
+			opts.authOpts = append(opts.authOpts, boundOpt)
+			subtests = append(subtests, opts)
+		}
+		// Add additional subtests for salted sessions
+		for _, opts := range slices.Clone(subtests) {
+			opts.name += "-salted"
+			saltedOpt := Salted(key.Handle, *outPub)
+			opts.authOpts = append(opts.authOpts, saltedOpt)
+			subtests = append(subtests, opts)
+		}
+	}
+
+	clonedSubtests := slices.Clone(subtests)
+	// Add additional subtests for decrypting with an extra session
+	for _, opts := range clonedSubtests {
+		opts.name += "-decrypt-extra"
+		decryptSession := HMAC(TPMAlgSHA256, 16, AESEncryption(128, EncryptIn))
+		opts.sessions = append(opts.sessions, decryptSession)
+		subtests = append(subtests, opts)
+	}
+	if tc.policyFn != nil {
+		// Add additional subtests for decrypting with the policy session
+		for _, opts := range clonedSubtests {
+			opts.name += "-decrypt-policy"
+			decryptOpt := AESEncryption(128, EncryptIn)
+			opts.authOpts = append(opts.authOpts, decryptOpt)
+			subtests = append(subtests, opts)
+		}
+	}
+	return subtests
+}
+
+// Satisfy PolicyA by calling [tpm2.PolicySecret] on [tpm2.TPMRHEndorsement].
+func ekPolicyA(t transport.TPM, handle TPMISHPolicy, nonce TPM2BNonce) error {
 	cmd := PolicySecret{
 		AuthHandle:    TPMRHEndorsement,
 		PolicySession: handle,
-		NonceTPM:      nonceTPM,
+		NonceTPM:      nonce,
 	}
 	_, err := cmd.Execute(t)
 	return err
 }
 
-// This function tests a lot of combinations of authorizing the EK policy.
-func ekTest(t *testing.T, ekTemplate TPMTPublic) {
-	// Before using the EK, ensure it has the expected policy.
-	policy := ekTemplate.AuthPolicy
-	expected := PolicyA[ekTemplate.NameAlg]
-	if !bytes.Equal(policy.Buffer, expected.Buffer) {
-		t.Errorf("AuthPolicy = %x,\nwant %x", policy.Buffer, expected.Buffer)
-	}
-
-	type ekTestCase struct {
-		name string
-		// Use Policy instead of PolicySession, passing the callback instead of
-		// managing it ourselves?
-		jitPolicySession bool
-		// Use the policy session for decrypt? (Incompatible with decryptAnotherSession)
-		decryptPolicySession bool
-		// Use another session for decrypt? (Incompatible with decryptPolicySession)
-		decryptAnotherSession bool
-		// Use a bound session?
-		bound bool
-		// Use a salted session?
-		salted bool
-	}
-	var cases []ekTestCase
-	for jit := 0; jit < 2; jit++ {
-		for decryptPol := 0; decryptPol < 2; decryptPol++ {
-			for decryptAnother := 0; decryptAnother < 2; decryptAnother++ {
-				if decryptPol != 0 && decryptAnother != 0 {
-					continue
-				}
-				for bound := 0; bound < 2; bound++ {
-					for salted := 0; salted < 2; salted++ {
-						nextCase := ekTestCase{
-							name:                  "test",
-							jitPolicySession:      jit != 0,
-							decryptPolicySession:  decryptPol != 0,
-							decryptAnotherSession: decryptAnother != 0,
-							bound:                 bound != 0,
-							salted:                salted != 0,
-						}
-						if nextCase.jitPolicySession {
-							nextCase.name += "-jit"
-						} else {
-							nextCase.name += "-standalone"
-						}
-						if nextCase.decryptPolicySession {
-							nextCase.name += "-decrypt-same"
-						}
-						if nextCase.decryptAnotherSession {
-							nextCase.name += "-decrypt-another"
-						}
-						if nextCase.bound {
-							nextCase.name += "-bound"
-						}
-						if nextCase.salted {
-							nextCase.name += "-salted"
-						}
-						cases = append(cases, nextCase)
-					}
-				}
-			}
+// Create a [tpm2.PolicyCallback] which satisfies PolicyB via PolicyA.
+func ekPolicyBviaA(alg TPMIAlgHash) PolicyCallback {
+	return func(t transport.TPM, handle TPMISHPolicy, nonce TPM2BNonce) error {
+		if err := ekPolicyA(t, handle, nonce); err != nil {
+			return err
 		}
+		return ekPolicyB(t, handle, alg)
+	}
+}
+
+// Create a [tpm2.PolicyCallback] which satisfies PolicyB via PolicyC.
+func ekPolicyBviaC(alg TPMIAlgHash, nvCallback PolicyCallback) PolicyCallback {
+	nvPublic, _ := AuthPolicyNVPublic(alg)
+	nvName, _ := NVName(&nvPublic)
+	nvHandle := NamedHandle{
+		Handle: nvPublic.NVIndex,
+		Name:   *nvName,
 	}
 
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
+	return func(t transport.TPM, handle TPMISHPolicy, nonce TPM2BNonce) error {
+		if err := nvCallback(t, handle, nonce); err != nil {
+			return err
+		}
+		// PolicyAuthorizeNV updates the digest to a value that only depends on the
+		// nvHandle and NOT the previous digest state. This is why it produces the
+		// same digest as TestCalculatePolicyC which starts with an empty digest.
+		cmd := PolicyAuthorizeNV{
+			AuthHandle:    nvHandle,
+			NVIndex:       nvHandle,
+			PolicySession: handle,
+		}
+		if _, err := cmd.Execute(t); err != nil {
+			return err
+		}
+
+		return ekPolicyB(t, handle, alg)
 	}
-	defer thetpm.Close()
+}
 
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			// Create the EK
-			createEKCmd := CreatePrimary{
-				PrimaryHandle: TPMRHEndorsement,
-				InPublic:      New2B(ekTemplate),
-			}
-			createEKRsp, err := createEKCmd.Execute(thetpm)
-			if err != nil {
-				t.Fatalf("%v", err)
-			}
-			outPub, err := createEKRsp.OutPublic.Contents()
-			if err != nil {
-				t.Fatalf("%v", err)
-			}
-			switch outPub.Type {
-			case TPMAlgRSA:
-				rsa, err := outPub.Unique.RSA()
-				if err != nil {
-					t.Fatalf("%v", err)
-				}
-				t.Logf("EK pub:\n%x\n", rsa.Buffer)
-			case TPMAlgECC:
-				ecc, err := outPub.Unique.ECC()
-				if err != nil {
-					t.Fatalf("%v", err)
-				}
-				t.Logf("EK pub:\n%x\n%x\n", ecc.X, ecc.Y)
-			}
-			t.Logf("EK name: %x", createEKRsp.Name)
-			defer func() {
-				// Flush the EK
-				flush := FlushContext{FlushHandle: createEKRsp.ObjectHandle}
-				if _, err := flush.Execute(thetpm); err != nil {
-					t.Errorf("%v", err)
-				}
-			}()
+// Satisfy PolicyB by calling [tpm2.PolicyOr] with PolicyA and PolicyC.
+func ekPolicyB(t transport.TPM, handle TPMISHPolicy, alg TPMIAlgHash) error {
+	policyA, _ := AuthPolicyA(alg)
+	policyC, _ := AuthPolicyC(alg)
+	digests := []TPM2BDigest{policyA, policyC}
 
-			// Exercise the EK's auth policy (PolicySecret[RH_ENDORSEMENT])
-			// by creating an object under it
-			data := []byte("secrets")
-			createBlobCmd := Create{
-				ParentHandle: NamedHandle{
-					Handle: createEKRsp.ObjectHandle,
-					Name:   createEKRsp.Name,
-				},
-				InSensitive: TPM2BSensitiveCreate{
-					Sensitive: &TPMSSensitiveCreate{
-						Data: NewTPMUSensitiveCreate(&TPM2BSensitiveData{
-							Buffer: data,
-						}),
-					},
-				},
-				InPublic: New2B(TPMTPublic{
-					Type:    TPMAlgKeyedHash,
-					NameAlg: TPMAlgSHA256,
-					ObjectAttributes: TPMAObject{
-						FixedTPM:     true,
-						FixedParent:  true,
-						UserWithAuth: true,
-						NoDA:         true,
-					},
-				}),
-			}
-
-			var sessions []Session
-			if c.decryptAnotherSession {
-				sessions = append(sessions, HMAC(TPMAlgSHA1, 16, AESEncryption(128, EncryptIn)))
-			}
-
-			var options []AuthOption
-			if c.decryptPolicySession {
-				options = append(options, AESEncryption(128, EncryptIn))
-			}
-			if c.bound {
-				options = append(options, Bound(createEKRsp.ObjectHandle, createEKRsp.Name, nil))
-			}
-			if c.salted {
-				options = append(options, Salted(createEKRsp.ObjectHandle, *outPub))
-			}
-
-			var s Session
-			if c.jitPolicySession {
-				// Use the convenience function to pass a policy callback.
-				s = Policy(TPMAlgSHA256, 16, ekPolicy, options...)
-			} else {
-				// Set up a session we have to execute and clean up ourselves.
-				var cleanup func() error
-				var err error
-				s, cleanup, err = PolicySession(thetpm, TPMAlgSHA256, 16, options...)
-				if err != nil {
-					t.Fatalf("creating session: %v", err)
-				}
-				// Clean up the session at the end of the test.
-				defer func() {
-					if err := cleanup(); err != nil {
-						t.Fatalf("cleaning up policy session: %v", err)
-					}
-				}()
-				// Execute the same callback ourselves.
-				if err = ekPolicy(thetpm, s.Handle(), s.NonceTPM()); err != nil {
-					t.Fatalf("executing EK policy: %v", err)
-				}
-			}
-			createBlobCmd.ParentHandle = AuthHandle{
-				Handle: createEKRsp.ObjectHandle,
-				Name:   createEKRsp.Name,
-				Auth:   s,
-			}
-
-			if _, err := createBlobCmd.Execute(thetpm, sessions...); err != nil {
-				t.Fatalf("%v", err)
-			}
-
-			if !c.jitPolicySession {
-				// If we're not using a "just-in-time" session with a callback,
-				// we have to re-initialize the session.
-				if err = ekPolicy(thetpm, s.Handle(), s.NonceTPM()); err != nil {
-					t.Fatalf("executing EK policy: %v", err)
-				}
-			}
-
-			// Try again and make sure it succeeds again.
-			if _, err = createBlobCmd.Execute(thetpm, sessions...); err != nil {
-				t.Fatalf("%v", err)
-			}
-
-			if !c.jitPolicySession {
-				// Finally, for non-JIT policy sessions, make sure we fail if
-				// we don't re-initialize the session.
-				// This is because after using a policy session, it's as if
-				// PolicyRestart was called.
-				_, err = createBlobCmd.Execute(thetpm, sessions...)
-				if !errors.Is(err, TPMRCPolicyFail) {
-					t.Errorf("want TPM_RC_POLICY_FAIL, got %v", err)
-				}
-				var fmt1 TPMFmt1Error
-				if !errors.As(err, &fmt1) {
-					t.Errorf("want a Fmt1Error, got %v", err)
-				} else if isSession, session := fmt1.Session(); !isSession || session != 1 {
-					t.Errorf("want TPM_RC_POLICY_FAIL on session 1, got %v", err)
-				}
-			}
-		})
+	policyOrCmd := PolicyOr{
+		PolicySession: handle,
+		PHashList:     TPMLDigest{Digests: digests},
 	}
-
+	_, err := policyOrCmd.Execute(t)
+	return err
 }

@@ -27,7 +27,7 @@ func TestObjectChangeAuth(t *testing.T) {
 				},
 			},
 		},
-		InPublic: New2B(ECCSRKTemplate),
+		InPublic: New2B(TemplateL2.PublicSRK()),
 	}
 	createSRKRsp, err := createSRKCmd.Execute(thetpm)
 	if err != nil {

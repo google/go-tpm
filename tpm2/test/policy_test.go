@@ -166,7 +166,7 @@ func primaryRSASRK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(RSASRKTemplate),
+		InPublic:      New2B(TemplateL1.PublicSRK()),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {
@@ -191,7 +191,7 @@ func primaryRSAEK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 	t.Helper()
 	createPrimary := CreatePrimary{
 		PrimaryHandle: TPMRHEndorsement,
-		InPublic:      New2B(RSAEKTemplate),
+		InPublic:      New2B(TemplateL1.PublicEK()),
 	}
 	rsp, err := createPrimary.Execute(thetpm)
 	if err != nil {

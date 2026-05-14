@@ -21,7 +21,7 @@ func TestRSAEncryption(t *testing.T) {
 
 	createPrimaryCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(RSASRKTemplate),
+		InPublic:      New2B(TemplateL1.PublicSRK()),
 	}
 	createPrimaryRsp, err := createPrimaryCmd.Execute(theTpm)
 	if err != nil {
