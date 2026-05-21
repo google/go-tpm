@@ -611,6 +611,28 @@ func unmarshalStructField(buf *bytes.Buffer, v reflect.Value, i int) error {
 		}
 	}
 
+	// `gotpm:"check"` declares that the field's type implements `Check() error`
+	// and that the verifier must reject a blob whose field value fails that
+	// check. Without this, the only field currently carrying the tag
+	// (TPMSAttest.Magic, which must equal TPM_GENERATED_VALUE = 0xff544347)
+	// is silently accepted with any bytes, allowing arbitrary "signed
+	// attestation" blobs that the TPM itself would never have produced.
+	if hasTag(fieldType, "check") {
+		if checker, ok := fieldValue.Interface().(interface{ Check() error }); ok {
+			if err := checker.Check(); err != nil {
+				return fmt.Errorf("check tag failed for field '%v' of struct '%v': %w",
+					fieldType.Name, v.Type().Name(), err)
+			}
+		} else if fieldValue.CanAddr() {
+			if checker, ok := fieldValue.Addr().Interface().(interface{ Check() error }); ok {
+				if err := checker.Check(); err != nil {
+					return fmt.Errorf("check tag failed for field '%v' of struct '%v': %w",
+						fieldType.Name, v.Type().Name(), err)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
