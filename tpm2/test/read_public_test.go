@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // TestReadPublicKey compares the CreatePrimary response parameter outPublic with the output of ReadPublic outPublic.

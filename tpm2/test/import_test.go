@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // This test checks that Import can import an object in the clear.

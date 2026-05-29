@@ -5,7 +5,7 @@ import (
 
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // TestDuplicate creates an object under Owner->SRK and duplicates it to

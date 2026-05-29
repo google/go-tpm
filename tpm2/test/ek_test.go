@@ -8,7 +8,7 @@ import (
 
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // Decodes the provided hex strings into a byte array. Panics on non-hex chars.

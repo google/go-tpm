@@ -207,14 +207,12 @@ func (t *TPM) Reset() error {
 
 // Stop tells the simulator process to exit.
 func (t *TPM) Stop() error {
-	var errs []error
+	// We only write tpmStop to the command socket because receiving it causes
+	// the simulator process to exit, which also kills the platform socket.
 	if err := binary.Write(t.cmd, binary.BigEndian, tpmStop); err != nil {
-		errs = append(errs, fmt.Errorf("could not write STOP to command service: %w", err))
+		return fmt.Errorf("could not write STOP to command service: %w", err)
 	}
-	if err := binary.Write(t.plat, binary.BigEndian, platformStop); err != nil {
-		errs = append(errs, fmt.Errorf("could not write STOP to platform service: %w", err))
-	}
-	return errors.Join(errs...)
+	return nil
 }
 
 

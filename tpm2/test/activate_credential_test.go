@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // p384Template is an SRK-like ECDH-P384 key based on the P384 EK template.

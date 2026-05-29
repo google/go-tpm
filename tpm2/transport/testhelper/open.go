@@ -3,9 +3,9 @@ package testhelper
 import (
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -29,29 +29,26 @@ type process struct {
 }
 
 func startProcess(tb testing.TB, path string) *process {
+	p := &process{tb: tb}
+	keep := false
+	defer func() {
+		if !keep {
+			p.Close()
+		}
+	}()
+
 	dir, err := os.MkdirTemp("", "tpm-sim-*")
 	if err != nil {
 		tb.Fatalf("failed to create temp dir: %v", err)
 	}
-
-	keep := false
-	defer func() {
-		if !keep {
-			os.RemoveAll(dir)
-		}
-	}()
+	p.dir = dir
 
 	cmd := exec.Command(path, "--pick_ports")
 	cmd.Dir = dir
 	if err := cmd.Start(); err != nil {
 		tb.Fatalf("failed to start simulator process: %v", err)
 	}
-	defer func() {
-		if !keep {
-			cmd.Process.Kill()
-			cmd.Wait()
-		}
-	}()
+	p.cmd = cmd
 
 	cmdPort, platPort, err := readPorts(dir)
 	if err != nil {
@@ -64,11 +61,7 @@ func startProcess(tb testing.TB, path string) *process {
 	if err != nil {
 		tb.Fatalf("failed to open TCP connection to simulator: %v", err)
 	}
-	defer func() {
-		if !keep {
-			conn.Close()
-		}
-	}()
+	p.conn = conn
 
 	if err := conn.PowerOn(); err != nil {
 		tb.Fatalf("failed to power on simulator: %v", err)
@@ -82,12 +75,7 @@ func startProcess(tb testing.TB, path string) *process {
 	}
 
 	keep = true
-	return &process{
-		tb:   tb,
-		cmd:  cmd,
-		dir:  dir,
-		conn: conn,
-	}
+	return p
 }
 
 func (p *process) Send(cmd []byte) ([]byte, error) {
@@ -105,19 +93,37 @@ func (p *process) Send(cmd []byte) ([]byte, error) {
 // Close implements the TPMCloser interface.
 func (p *process) Close() error {
 	var err error
-	if err = p.conn.Stop(); err != nil {
-		p.tb.Errorf("failed to stop simulator: %v", err)
+	var killed bool
+	if p.conn != nil {
+		if err = p.conn.Stop(); err != nil {
+			p.tb.Errorf("failed to stop simulator: %v", err)
+			if p.cmd != nil && p.cmd.Process != nil {
+				p.cmd.Process.Kill()
+				killed = true
+			}
+		}
+		if err = p.conn.Close(); err != nil {
+			p.tb.Errorf("failed to close simulator connection: %v", err)
+		}
+	} else {
+		if p.cmd != nil && p.cmd.Process != nil {
+			p.cmd.Process.Kill()
+			killed = true
+		}
 	}
-	if err = p.conn.Close(); err != nil {
-		p.tb.Errorf("failed to close simulator connection: %v", err)
+	if p.cmd != nil {
+		if werr := p.cmd.Wait(); werr != nil && !killed {
+			p.tb.Errorf("failed to wait for simulator process: %v", werr)
+			err = werr
+		}
 	}
-	if err = p.cmd.Wait(); err != nil {
-		p.tb.Errorf("failed to wait for simulator process: %v", err)
+	if p.dir != "" {
+		if derr := os.RemoveAll(p.dir); derr != nil {
+			p.tb.Errorf("failed to remove temp dir %q: %v", p.dir, derr)
+			err = derr
+		}
 	}
-	if err = os.RemoveAll(p.dir); err != nil {
-		p.tb.Errorf("failed to remove temp dir %q: %v", p.dir, err)
-	}
-	return err // Report all errors but only return the last one
+	return err
 }
 
 func Open(tb testing.TB) transport.TPMCloser {
@@ -132,14 +138,11 @@ func Open(tb testing.TB) transport.TPMCloser {
 }
 
 func readPorts(dir string) (cmdPort, platPort int, err error) {
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if time.Now().After(deadline) {
-			return 0, 0, fmt.Errorf("timed out waiting for simulator port files")
-		}
+	fsys := os.DirFS(dir)
 
-		cmdPortBytes, err1 := os.ReadFile(filepath.Join(dir, "command.port"))
-		platPortBytes, err2 := os.ReadFile(filepath.Join(dir, "platform.port"))
+	tryRead := func() (int, int, bool) {
+		cmdPortBytes, err1 := fs.ReadFile(fsys, "command.port")
+		platPortBytes, err2 := fs.ReadFile(fsys, "platform.port")
 		if err1 == nil && err2 == nil {
 			cmdPortStr := strings.TrimSpace(string(cmdPortBytes))
 			platPortStr := strings.TrimSpace(string(platPortBytes))
@@ -147,10 +150,25 @@ func readPorts(dir string) (cmdPort, platPort int, err error) {
 				cmdPort, err1 := strconv.Atoi(cmdPortStr)
 				platPort, err2 := strconv.Atoi(platPortStr)
 				if err1 == nil && err2 == nil {
-					return cmdPort, platPort, nil
+					return cmdPort, platPort, true
 				}
 			}
 		}
-		time.Sleep(50 * time.Millisecond)
+		return 0, 0, false
+	}
+
+	timeout := time.After(5 * time.Second)
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			return 0, 0, fmt.Errorf("timed out waiting for simulator port files")
+		case <-ticker.C:
+			if cmdPort, platPort, ok := tryRead(); ok {
+				return cmdPort, platPort, nil
+			}
+		}
 	}
 }

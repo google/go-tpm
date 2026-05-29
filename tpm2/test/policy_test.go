@@ -7,7 +7,7 @@ import (
 
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // This test isn't interesting, but it checks that you can omit the handles on `StartAuthSession`.

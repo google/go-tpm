@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm/tpm2/transport"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 var tpmSocket = flag.String("tpm_socket", "/dev/tpm0", "path to the TPM simulator UDS")

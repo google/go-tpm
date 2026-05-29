@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/google/go-tpm/tpm2"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestCertify(t *testing.T) {
