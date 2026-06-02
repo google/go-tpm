@@ -5,14 +5,11 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestRSAEncryption(t *testing.T) {
-	theTpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	theTpm := testhelper.Open(t)
 	t.Cleanup(func() {
 		if err := theTpm.Close(); err != nil {
 			t.Errorf("%v", err)

@@ -10,15 +10,12 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestHMAC(t *testing.T) {
 	// connect to TPM simulator
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// create HMAC key
@@ -91,10 +88,7 @@ func TestImportedHMACKey(t *testing.T) {
 	persistentHandle := TPMHandle(0x81000000)
 
 	// connect to TPM simulator
-	theTPM, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	theTPM := testhelper.Open(t)
 	defer theTPM.Close()
 
 	// create primary key

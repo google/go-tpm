@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // Test creating and unsealing a sealed data blob with a password and HMAC.
@@ -25,10 +25,7 @@ func TestUnseal(t *testing.T) {
 }
 
 func unsealingTest(t *testing.T, srkTemplate TPMTPublic) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Create the SRK

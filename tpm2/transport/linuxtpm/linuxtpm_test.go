@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-tpm/tpm2/transport"
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func open(path string) func() (transport.TPMCloser, error) {

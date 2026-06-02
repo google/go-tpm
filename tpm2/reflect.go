@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	// Chosen based on MAX_DIGEST_BUFFER, the length of the longest
-	// reasonable list returned by the reference implementation.
-	// The maxListLength must be greater than MAX_CONTEXT_SIZE = 1344,
-	// in order to allow for the unmarshalling of Context.
-	maxListLength uint32 = 4096
+	// The maxListLength must be greater than MAX_CONTEXT_SIZE (which can be up to
+	// 4344 in modern reference implementations), in order to allow for the
+	// unmarshalling of Context. Under Part 2, Section 10.3.1 of the TPM
+	// specification, the maximum value of the size field in any TPM2B is 32767.
+	maxListLength uint32 = 0x7FFF // 32767
 )
 
 // execute sends the provided command and returns the TPM's response.

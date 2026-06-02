@@ -7,14 +7,11 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestNVAuthWrite(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	def := NVDefineSpace{
@@ -98,10 +95,7 @@ func TestNVAuthWrite(t *testing.T) {
 }
 
 func TestNVAuthIncrement(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Define the counter space
@@ -210,10 +204,7 @@ func TestNVAuthIncrement(t *testing.T) {
 }
 
 func TestNVWriteLock(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Define the NV space with attributes that allow it to be locked
@@ -324,10 +315,7 @@ func TestNVWriteLock(t *testing.T) {
 }
 
 func TestNVReadLock(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Define the NV space with attributes that allow it to be locked for reading

@@ -8,14 +8,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestECDH(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Create a TPM ECDH key

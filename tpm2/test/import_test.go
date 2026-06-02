@@ -8,15 +8,12 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // This test checks that Import can import an object in the clear.
 func TestCleartextImport(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	srkCreate := CreatePrimary{
@@ -136,10 +133,7 @@ func makeSealedBlob(t *testing.T, nameAlg TPMIAlgHash, obfuscation []byte, conte
 
 // This test checks that Import can import an object created by a remote server using CreateDuplicate.
 func TestSWDuplicateImport(t *testing.T) {
-	tpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("OpenSimulator() = %v", err)
-	}
+	tpm := testhelper.Open(t)
 	defer tpm.Close()
 
 	for _, tc := range []struct {

@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	testhelper "github.com/google/go-tpm/tpm2/transport/test"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 	"github.com/google/go-tpm/tpmutil/tbs"
 )
 

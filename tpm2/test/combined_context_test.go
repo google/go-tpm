@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func ReadPublicName(t *testing.T, handle TPMHandle, thetpm transport.TPM) TPM2BName {
@@ -24,10 +24,7 @@ func ReadPublicName(t *testing.T, handle TPMHandle, thetpm transport.TPM) TPM2BN
 }
 
 func TestCombinedContext(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	createPrimary := CreatePrimary{

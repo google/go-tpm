@@ -9,14 +9,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestCertify(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	Auth := []byte("password")
@@ -172,10 +169,7 @@ func TestCertify(t *testing.T) {
 }
 
 func TestCreateAndCertifyCreation(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	public := New2B(TPMTPublic{
@@ -303,10 +297,7 @@ func TestCreateAndCertifyCreation(t *testing.T) {
 }
 
 func TestNVCertify(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	Auth := []byte("password")

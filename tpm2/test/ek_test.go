@@ -8,7 +8,7 @@ import (
 
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // Decodes the provided hex strings into a byte array. Panics on non-hex chars.
@@ -317,10 +317,7 @@ func ekTest(t *testing.T, ekTemplate TPMTPublic) {
 		}
 	}
 
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	for _, c := range cases {

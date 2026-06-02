@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // p384Template is an SRK-like ECDH-P384 key based on the P384 EK template.
@@ -59,10 +59,7 @@ var p384Template = TPMTPublic{
 
 // This test checks that ActivateCredential can decrypt a credential created by the TPM in MakeCredential.
 func TestActivateTPMCredential(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	ekCreate := CreatePrimary{
@@ -140,10 +137,7 @@ func TestActivateTPMCredential(t *testing.T) {
 
 // This test checks that ActivateCredential can decrypt a credential created by a remote server using CreateCredential.
 func TestActivateSWCredential(t *testing.T) {
-	tpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("OpenSimulator() = %v", err)
-	}
+	tpm := testhelper.Open(t)
 	defer tpm.Close()
 
 	for _, tc := range []struct {

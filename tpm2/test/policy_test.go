@@ -2,13 +2,12 @@ package tpm2test
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"crypto/sha256"
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // This test isn't interesting, but it checks that you can omit the handles on `StartAuthSession`.
@@ -27,10 +26,7 @@ func TestCreatePolicySession(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			thetpm, err := simulator.OpenSimulator()
-			if err != nil {
-				t.Fatalf("could not connect to TPM simulator: %v", err)
-			}
+			thetpm := testhelper.Open(t)
 			defer thetpm.Close()
 
 			sas, err := StartAuthSession{
@@ -213,10 +209,7 @@ func primaryRSAEK(t *testing.T, thetpm transport.TPM) (NamedHandle, func()) {
 }
 
 func TestPolicySignedUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	sk, cleanup := signingKey(t, thetpm)
@@ -275,10 +268,7 @@ func TestPolicySignedUpdate(t *testing.T) {
 }
 
 func TestPolicySecretUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	sk, cleanup := signingKey(t, thetpm)
@@ -331,10 +321,7 @@ func TestPolicySecretUpdate(t *testing.T) {
 }
 
 func TestPolicyOrUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -411,24 +398,21 @@ func getExpectedPCRDigest(t *testing.T, thetpm transport.TPM, selection TPMLPCRS
 }
 
 func TestPolicyPCR(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	selection := TPMLPCRSelection{
 		PCRSelections: []TPMSPCRSelection{
 			{
-				Hash:      TPMAlgSHA1,
+				Hash:      TPMAlgSHA256,
 				PCRSelect: PCClientCompatible.PCRs(0, 1, 2, 3, 7),
 			},
 		},
 	}
 
-	expectedDigest := getExpectedPCRDigest(t, thetpm, selection, TPMAlgSHA1)
+	expectedDigest := getExpectedPCRDigest(t, thetpm, selection, TPMAlgSHA256)
 
-	wrongDigest := sha1.Sum(expectedDigest)
+	wrongDigest := sha256.Sum256(expectedDigest)
 
 	tests := []struct {
 		name              string
@@ -446,7 +430,7 @@ func TestPolicyPCR(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sess, cleanup2, err := PolicySession(thetpm, TPMAlgSHA1, 16, tt.authOption...)
+			sess, cleanup2, err := PolicySession(thetpm, TPMAlgSHA256, 16, tt.authOption...)
 
 			if err != nil {
 				t.Fatalf("setting up policy session: %v", err)
@@ -482,7 +466,7 @@ func TestPolicyPCR(t *testing.T) {
 
 			// If the pcrDigest is empty: see TPM 2.0 Part 3, 23.7.
 			if tt.pcrDigest == nil {
-				expectedDigest := getExpectedPCRDigest(t, thetpm, selection, TPMAlgSHA1)
+				expectedDigest := getExpectedPCRDigest(t, thetpm, selection, TPMAlgSHA256)
 				t.Logf("expectedDigest=%x", expectedDigest)
 
 				// Create a populated policyPCR for the PolicyCalculator
@@ -490,7 +474,7 @@ func TestPolicyPCR(t *testing.T) {
 			}
 
 			// Use the policy helper to calculate the same policy
-			pol, err := NewPolicyCalculator(TPMAlgSHA1)
+			pol, err := NewPolicyCalculator(TPMAlgSHA256)
 			if err != nil {
 				t.Fatalf("creating policy calculator: %v", err)
 			}
@@ -510,10 +494,7 @@ func TestPolicyPCR(t *testing.T) {
 }
 
 func TestPolicyCpHashUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -561,10 +542,7 @@ func TestPolicyCpHashUpdate(t *testing.T) {
 }
 
 func TestPolicyAuthorizeUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -618,10 +596,7 @@ func TestPolicyAuthorizeUpdate(t *testing.T) {
 }
 
 func TestPolicyNVWrittenUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -667,10 +642,7 @@ func TestPolicyNVWrittenUpdate(t *testing.T) {
 }
 
 func TestPolicyNVUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	nv, cleanup := nvIndex(t, thetpm)
@@ -723,10 +695,7 @@ func TestPolicyNVUpdate(t *testing.T) {
 }
 
 func TestPolicyAuthorizeNVUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	nv, cleanup := nvIndex(t, thetpm)
@@ -776,10 +745,7 @@ func TestPolicyAuthorizeNVUpdate(t *testing.T) {
 }
 
 func TestPolicyCommandCodeUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	// Use a trial session to calculate this policy
@@ -824,10 +790,7 @@ func TestPolicyCommandCodeUpdate(t *testing.T) {
 }
 
 func TestPolicyAuthValue(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	password := []byte("foo")
@@ -1008,10 +971,7 @@ func TestPolicyAuthValue(t *testing.T) {
 }
 
 func TestPolicyDuplicationSelectUpdate(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	ek, ekcleanup := primaryRSAEK(t, thetpm)

@@ -9,15 +9,12 @@ import (
 
 	. "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestHash(t *testing.T) {
 
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	run := func(t *testing.T, data []byte, hierarchy TPMHandle, thetpm transport.TPM) {
@@ -48,10 +45,7 @@ func TestHash(t *testing.T) {
 }
 
 func TestHashNullHierarchy(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	data := []byte("carolyn")
@@ -72,10 +66,7 @@ func TestHashNullHierarchy(t *testing.T) {
 }
 
 func TestHashSequence(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	run := func(t *testing.T, bufferSize int, password string, hierarchy TPMHandle, thetpm transport.TPM) {
@@ -153,10 +144,7 @@ func TestHashSequence(t *testing.T) {
 }
 
 func TestHashSequenceNullHierarchy(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	run := func(t *testing.T, bufferSize int, password string, thetpm transport.TPM) {

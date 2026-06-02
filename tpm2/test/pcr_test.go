@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func TestPCRs(t *testing.T) {
@@ -87,10 +87,7 @@ func allZero(s []byte) bool {
 }
 
 func TestPCRReset(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	DebugPCR := uint(16)
@@ -144,6 +141,9 @@ func TestPCRReset(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to read PCRs")
 			}
+			if len(pcrReadRsp.PCRValues.Digests) == 0 {
+				t.Skipf("PCR bank %v not allocated/supported, skipping", c.hashalg)
+			}
 			postExtendPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
 			if allZero(postExtendPCR16) {
 				t.Errorf("postExtendPCR16 not expected to be all Zero: %v", postExtendPCR16)
@@ -169,10 +169,7 @@ func TestPCRReset(t *testing.T) {
 }
 
 func TestPCREvent(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	cases := []struct {
@@ -211,6 +208,9 @@ func TestPCREvent(t *testing.T) {
 					pcrReadRsp, err := pcrRead.Execute(thetpm)
 					if err != nil {
 						t.Fatalf("failed to read PCRs")
+					}
+					if len(pcrReadRsp.PCRValues.Digests) == 0 {
+						t.Skipf("PCR bank %v not allocated/supported, skipping", c.hashalg)
 					}
 					postExtendPCR16 := pcrReadRsp.PCRValues.Digests[0].Buffer
 					if allZero(postExtendPCR16) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 func decodeHex(t *testing.T, h string) []byte {
@@ -71,10 +71,7 @@ func TestLoadExternal(t *testing.T) {
 		},
 	}
 
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	for name, load := range loads {

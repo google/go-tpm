@@ -6,16 +6,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	. "github.com/google/go-tpm/tpm2"
-	"github.com/google/go-tpm/tpm2/transport/simulator"
+	"github.com/google/go-tpm/tpm2/transport/testhelper"
 )
 
 // TestReadPublicKey compares the CreatePrimary response parameter outPublic with the output of ReadPublic outPublic.
 func TestReadPublicKey(t *testing.T) {
 	// Open simulated TPM for testing.
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 
 	// Defer the close of the simulated TPM to after use.
 	// Without this, other programs/tests may not be able to get a handle to the TPM.
@@ -113,10 +110,7 @@ func TestReadPublicKey(t *testing.T) {
 
 // TestReadPublicWithHMACSession tests that ReadPublic works when called with an HMAC session.
 func TestReadPublicWithHMACSession(t *testing.T) {
-	thetpm, err := simulator.OpenSimulator()
-	if err != nil {
-		t.Fatalf("could not connect to TPM simulator: %v", err)
-	}
+	thetpm := testhelper.Open(t)
 	defer thetpm.Close()
 
 	createPrimaryCmd := CreatePrimary{
