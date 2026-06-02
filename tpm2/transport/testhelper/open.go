@@ -34,7 +34,7 @@ func startProcess(tb testing.TB, path string) *process {
 	}
 
 	p := &process{
-		tb: tb,
+		tb:  tb,
 		cmd: exec.Command(path, "--pick_ports"),
 	}
 	p.cmd.Dir = dir
@@ -106,7 +106,8 @@ func (p *process) Close() error {
 		if err = p.cmd.Wait(); err != nil {
 			p.tb.Errorf("failed to wait for simulator process: %v", err)
 		}
-	} else if p.cmd.Process != nil && err = p.cmd.Process.Kill(); err != nil {
+	} else if p.cmd.Process != nil {
+		if err = p.cmd.Process.Kill(); err != nil {
 			p.tb.Errorf("failed to kill simulator process: %v", err)
 		}
 	}

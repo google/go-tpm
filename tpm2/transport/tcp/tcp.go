@@ -215,7 +215,6 @@ func (t *TPM) Stop() error {
 	return nil
 }
 
-
 // Config provides the connection information for a running TCP TPM.
 type Config struct {
 	// CommandAddress is the full host:port address of the Command server, e.g.,
