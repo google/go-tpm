@@ -101,7 +101,7 @@ func generate(aik *tpm2.HashValue, pub crypto.PublicKey, symBlockSize int, secre
 
 	// IV is all null bytes. encIdentity represents the encrypted credential.
 	encIdentity := make([]byte, len(cv))
-	cipher.NewCFBEncrypter(c, make([]byte, len(symmetricKey))).XORKeyStream(encIdentity, cv)
+	cipher.NewCFBEncrypter(c, make([]byte, c.BlockSize())).XORKeyStream(encIdentity, cv)
 
 	// Generate the integrity HMAC, which is used to protect the integrity of the
 	// encrypted structure.
