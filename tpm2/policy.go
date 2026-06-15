@@ -35,7 +35,7 @@ func (p *PolicyCalculator) Reset() {
 // Update updates the internal state of the policy hash by appending the
 // current state with the given contents, and updating the new state to the
 // hash of that.
-func (p *PolicyCalculator) Update(data ...interface{}) error {
+func (p *PolicyCalculator) Update(data ...any) error {
 	hash := p.hash.New()
 	hash.Write(p.state)
 	var buf bytes.Buffer
