@@ -192,7 +192,7 @@ func TestGetCapability(t *testing.T) {
 		capa     Capability
 		count    uint32
 		property uint32
-		typ      interface{}
+		typ      any
 	}{
 		{CapabilityHandles, 1, uint32(HandleTypeTransient) << 24, tpmutil.Handle(0)},
 		{CapabilityAlgs, 1, 0, AlgorithmDescription{}},
@@ -524,7 +524,7 @@ func skipOnUnsupportedAlg(t testing.TB, rw io.ReadWriter, alg Algorithm) {
 	moreData := true
 	for i := uint32(0); moreData; i++ {
 		var err error
-		var descs []interface{}
+		var descs []any
 		descs, moreData, err = GetCapability(rw, CapabilityAlgs, 1, i)
 		if err != nil {
 			t.Fatalf("Could not get TPM algorithm capability: %v", err)

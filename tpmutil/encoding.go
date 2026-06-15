@@ -32,7 +32,7 @@ var (
 // fixed length or slices of fixed-length types and packs them into a single
 // byte array using binary.Write. It updates the CommandHeader to have the right
 // length.
-func packWithHeader(ch commandHeader, cmd ...interface{}) ([]byte, error) {
+func packWithHeader(ch commandHeader, cmd ...any) ([]byte, error) {
 	hdrSize := binary.Size(ch)
 	body, err := Pack(cmd...)
 	if err != nil {
@@ -54,7 +54,7 @@ func packWithHeader(ch commandHeader, cmd ...interface{}) ([]byte, error) {
 // It has one difference from encoding/binary: it encodes byte slices with a
 // prepended length, to match how the TPM encodes variable-length arrays. If
 // you wish to add a byte slice without length prefix, use RawBytes.
-func Pack(elts ...interface{}) ([]byte, error) {
+func Pack(elts ...any) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := packType(buf, elts...); err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func packValue(buf io.Writer, v reflect.Value) error {
 	return nil
 }
 
-func packType(buf io.Writer, elts ...interface{}) error {
+func packType(buf io.Writer, elts ...any) error {
 	for _, e := range elts {
 		if err := packValue(buf, reflect.ValueOf(e)); err != nil {
 			return err
@@ -150,7 +150,7 @@ func tryUnmarshal(buf io.Reader, v reflect.Value) (bool, error) {
 
 // Unpack is a convenience wrapper around UnpackBuf. Unpack returns the number
 // of bytes read from b to fill elts and error, if any.
-func Unpack(b []byte, elts ...interface{}) (int, error) {
+func Unpack(b []byte, elts ...any) (int, error) {
 	buf := bytes.NewBuffer(b)
 	err := UnpackBuf(buf, elts...)
 	read := len(b) - buf.Len()
@@ -193,7 +193,7 @@ func unpackValue(buf io.Reader, v reflect.Value) error {
 // slice by first reading an integer with lengthPrefixSize bytes, then reading
 // that many bytes. It assumes that incoming values are pointers to values so
 // that, e.g., underlying slices can be resized as needed.
-func UnpackBuf(buf io.Reader, elts ...interface{}) error {
+func UnpackBuf(buf io.Reader, elts ...any) error {
 	for _, e := range elts {
 		v := reflect.ValueOf(e)
 		if v.Kind() != reflect.Ptr {
