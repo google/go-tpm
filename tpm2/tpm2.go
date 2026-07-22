@@ -1113,6 +1113,52 @@ type PCRReadResponse struct {
 	PCRValues TPMLDigest
 }
 
+// PCRAllocate is the input to TPM2_PCR_Allocate.
+// See definition in Part 3, Commands, section 22.5
+//
+// The requested allocation is stored for use during the next _TPM_Init; the
+// allocation in place when this command runs is retained until then, and a
+// second call before that overwrites the stored request. Only the banks listed
+// in PCRAllocation are changed, so emptying a bank requires selecting it
+// explicitly with no PCR. Until the next _TPM_Init, Shutdown is restricted to
+// TPMSUClear.
+type PCRAllocate struct {
+	// TPM_RH_PLATFORM+{PP}
+	AuthHandle handle `gotpm:"handle,auth"`
+	// the requested allocation
+	PCRAllocation TPMLPCRSelection
+}
+
+// Command implements the Command interface.
+func (PCRAllocate) Command() TPMCC { return TPMCCPCRAllocate }
+
+// Execute executes the command and returns the response.
+func (cmd PCRAllocate) Execute(t transport.TPM, s ...Session) (*PCRAllocateResponse, error) {
+	var rsp PCRAllocateResponse
+	if err := execute[PCRAllocateResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// PCRAllocateResponse is the response from TPM2_PCR_Allocate.
+//
+// The TPM may return TPM_RC_SUCCESS even when the request failed, so that it can
+// still report SizeNeeded and SizeAvailable. Check AllocationSuccess rather than
+// relying on the error alone. A failed request may instead return
+// TPM_RC_NO_RESULT, or TPM_RC_PCR if DRTM_PCR or HCRTM_PCR are defined and the
+// resulting allocation would leave no bank with them allocated.
+type PCRAllocateResponse struct {
+	// YES if the allocation succeeded
+	AllocationSuccess TPMIYesNo
+	// maximum number of PCR that may be in a bank
+	MaxPCR uint32
+	// number of octets required to satisfy the request
+	SizeNeeded uint32
+	// Number of octets available. Computed before the allocation.
+	SizeAvailable uint32
+}
+
 // PCRReset is the input to TPM2_PCRReset.
 // See definition in Part 3, Commands, section 22.8.
 type PCRReset struct {
