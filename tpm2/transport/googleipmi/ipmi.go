@@ -1,3 +1,5 @@
+//go:build !windows
+
 package googleipmi
 
 import (
@@ -5,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/go-tpm/tpm2/transport/googleec"
 	"github.com/u-root/u-root/pkg/ipmi"
 	"github.com/u-root/u-root/pkg/ipmi/blobs"
 )
@@ -51,8 +54,8 @@ func new(opts options) (*dispatcher, error) {
 	}, nil
 }
 
-// DispatchCommand implements CommandDispatcher.
-func (d *dispatcher) dispatchCommand(ctx context.Context, cmd []byte) ([]byte, error) {
+// DispatchCommand implements googleec.CommandDispatcher.
+func (d *dispatcher) DispatchCommand(ctx context.Context, cmd []byte) ([]byte, error) {
 	session, err := d.blobs.BlobOpen(d.blobPath, blobs.BMC_BLOB_OPEN_FLAG_READ|blobs.BMC_BLOB_OPEN_FLAG_WRITE)
 	if err != nil {
 		return nil, fmt.Errorf("could not open blob %q: %w", d.blobPath, err)
@@ -66,8 +69,8 @@ func (d *dispatcher) dispatchCommand(ctx context.Context, cmd []byte) ([]byte, e
 	return d.read(ctx, session)
 }
 
-// dispatchCommandNoResponse implements commandDispatcher.
-func (d *dispatcher) dispatchCommandNoResponse(ctx context.Context, cmd []byte) error {
+// DispatchCommandNoResponse implements googleec.CommandDispatcher.
+func (d *dispatcher) DispatchCommandNoResponse(ctx context.Context, cmd []byte) error {
 	session, err := d.blobs.BlobOpen(d.blobPath, blobs.BMC_BLOB_OPEN_FLAG_READ|blobs.BMC_BLOB_OPEN_FLAG_WRITE)
 	if err != nil {
 		return fmt.Errorf("could not open blob %q: %w", d.blobPath, err)
@@ -134,13 +137,13 @@ func (d *dispatcher) commit(ctx context.Context, sid blobs.SessionID) error {
 // read reads an EC response from the Titan.
 func (d *dispatcher) read(ctx context.Context, sid blobs.SessionID) ([]byte, error) {
 	// Read the beginning of the response, which contains the EC response header.
-	hdr, err := d.blobs.BlobRead(sid, 0, hostHeaderLen)
+	hdr, err := d.blobs.BlobRead(sid, 0, googleec.HostHeaderLen)
 	if err != nil {
 		return nil, err
 	}
 
 	// Parse the EC response header to check for errors and find the size of the rest of the response.
-	dataLen, err := peekResponse(hdr)
+	dataLen, err := googleec.PeekResponse(hdr)
 	if err != nil {
 		return nil, err
 	}
@@ -149,9 +152,9 @@ func (d *dispatcher) read(ctx context.Context, sid blobs.SessionID) ([]byte, err
 	}
 
 	data := make([]byte, 0, dataLen)
-	dataEnd := uint32(hostHeaderLen + dataLen)
+	dataEnd := uint32(googleec.HostHeaderLen + dataLen)
 	// Read the rest of the response data (if any) in chunks.
-	for chunkBegin := uint32(hostHeaderLen); chunkBegin < dataEnd; chunkBegin += maxChunkSize {
+	for chunkBegin := uint32(googleec.HostHeaderLen); chunkBegin < dataEnd; chunkBegin += maxChunkSize {
 		chunkEnd := chunkBegin + maxChunkSize
 		if chunkEnd > dataEnd {
 			chunkEnd = dataEnd
@@ -181,6 +184,6 @@ func findBlobPath(bh *blobs.BlobHandler) (string, error) {
 }
 
 // Close closes the ipmi connection to the Titan.
-func (d *dispatcher) close() error {
+func (d *dispatcher) Close() error {
 	return d.ipmi.Close()
 }
