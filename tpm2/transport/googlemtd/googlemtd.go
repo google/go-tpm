@@ -1,8 +1,8 @@
 //go:build !windows
 
-// Package googleipmi provides functions for connecting to and initializing a
-// Titan TPM IPMI device.
-package googleipmi
+// Package googlemtd provides functions for connecting to and initializing a
+// Titan TPM MTD device.
+package googlemtd
 
 import (
 	"context"
@@ -17,7 +17,7 @@ const (
 )
 
 // titanTPM implements go-tpm's transport.TPM interface, for transmitting TPM
-// commands to a Titan TPM.
+// commands to a Titan TPM using EC-over-MTD.
 type titanTPM struct {
 	cd googleec.CommandDispatcher
 }
@@ -37,15 +37,11 @@ func (t *titanTPM) Close() error {
 	return t.cd.Close()
 }
 
-// Open creates a TPM connection to a Titan device via IPMI.
-func Open() (transport.TPMCloser, error) {
-	opts := options{
-		DevicePath: "/dev/ipmi0",
-	}
-
-	titan, err := new(opts)
+// Open creates a TPM connection to a Titan device via MTD.
+func Open(opts Options) (transport.TPMCloser, error) {
+	titan, err := NewDispatcher(opts)
 	if err != nil {
-		return nil, fmt.Errorf("[IPMI TPM] err: %v", err)
+		return nil, fmt.Errorf("[MTD TPM] err: %v", err)
 	}
 	return &titanTPM{
 		cd: titan,
