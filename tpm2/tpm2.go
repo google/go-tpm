@@ -682,6 +682,28 @@ type GetRandomResponse struct {
 	RandomBytes TPM2BDigest
 }
 
+// StirRandom is the input to TPM2_StirRandom.
+// See definition in Part 3, Commands, section 16.2
+type StirRandom struct {
+	// additional information
+	InData TPM2BSensitiveData
+}
+
+// Command implements the Command interface.
+func (StirRandom) Command() TPMCC { return TPMCCStirRandom }
+
+// Execute executes the command and returns the response.
+func (cmd StirRandom) Execute(t transport.TPM, s ...Session) (*StirRandomResponse, error) {
+	var rsp StirRandomResponse
+	if err := execute[StirRandomResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// StirRandomResponse is the response from TPM2_StirRandom.
+type StirRandomResponse struct{}
+
 // HashSequenceStart is the input to TPM2_HashSequenceStart.
 // See definition in Part 3, Commands, section 17.3
 type HashSequenceStart struct {
