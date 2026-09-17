@@ -1770,6 +1770,28 @@ func (cmd HierarchyChangeAuth) Execute(t transport.TPM, s ...Session) (*Hierarch
 // HierarchyChangeAuthResponse is the response from TPM2_HierarchyChangeAuth.
 type HierarchyChangeAuthResponse struct{}
 
+// DictionaryAttackLockReset is the input to TPM2_DictionaryAttackLockReset.
+// See definition in Part 3, Commands, section 25.2
+type DictionaryAttackLockReset struct {
+	// TPM_RH_LOCKOUT
+	LockHandle AuthHandle `gotpm:"handle,auth"`
+}
+
+// Command implements the Command interface.
+func (DictionaryAttackLockReset) Command() TPMCC { return TPMCCDictionaryAttackLockReset }
+
+// Execute executes the command and returns the response.
+func (cmd DictionaryAttackLockReset) Execute(t transport.TPM, s ...Session) (*DictionaryAttackLockResetResponse, error) {
+	var rsp DictionaryAttackLockResetResponse
+	if err := execute[DictionaryAttackLockResetResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// DictionaryAttackLockResetResponse is the response from TPM2_DictionaryAttackLockReset.
+type DictionaryAttackLockResetResponse struct{}
+
 // ContextSave is the input to TPM2_ContextSave.
 // See definition in Part 3, Commands, section 28.2
 type ContextSave struct {
