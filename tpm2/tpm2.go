@@ -2256,3 +2256,32 @@ type GetTimeResponse struct {
 	// the signature over timeInfo
 	Signature TPMTSignature
 }
+
+// DictionaryAttackParameters is the input to TPM2_DictionaryAttackParameters
+type DictionaryAttackParameters struct {
+	// handle indicating the source of the authorization value
+	AuthHandle handle `gotpm:"handle,auth"`
+	// MaxTries is the count of authorization failures before lockout
+	MaxTries uint32
+	// RecoveryTime is time in seconds before authorization failure count
+	// is automatically decremented
+	RecoveryTime uint32
+	// LockoutRecovery is the time in seconda after a lockoutAuth failure
+	// before another use is allowed
+	LockoutRecovery uint32
+}
+
+// Command implements the Command interface.
+func (DictionaryAttackParameters) Command() TPMCC { return TPMCCDictionaryAttackParameters }
+
+// Execute executes the command and returns the response.
+func (cmd DictionaryAttackParameters) Execute(t transport.TPM, s ...Session) (*DictionaryAttackParametersResponse, error) {
+	var rsp DictionaryAttackParametersResponse
+	if err := execute[DictionaryAttackParametersResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// DictionaryAttackParametersResponse, is the response from TPM2_DictionaryAttackParameters.
+type DictionaryAttackParametersResponse struct{}
