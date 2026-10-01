@@ -510,13 +510,11 @@ func computeHMAC(alg TPMIAlgHash, key, pHash, nonceNewer, nonceOlder, addNonces 
 // Trim trailing zeros from the auth value. Part 1, 19.6.5, Note 2
 // Does not allocate a new underlying byte array.
 func hmacKeyFromAuthValue(auth []byte) []byte {
-	key := auth
-	for i := len(key) - 1; i >= 0; i-- {
-		if key[i] == 0 {
-			key = key[:i]
-		}
+	end := len(auth)
+	for end > 0 && auth[end-1] == 0 {
+		end--
 	}
-	return key
+	return auth[:end]
 }
 
 // NewNonceCaller updates the nonceCaller for this session.
