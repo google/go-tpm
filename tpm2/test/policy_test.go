@@ -3,6 +3,7 @@ package tpm2test
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 
 	. "github.com/google/go-tpm/tpm2"
@@ -1083,5 +1084,66 @@ func TestPolicyDuplicationSelectUpdate(t *testing.T) {
 				t.Errorf("PolicyAuthValue.Hash() = %x,\nwant %x", got.Digest, pdr.PolicyDigest.Buffer)
 			}
 		})
+	}
+}
+
+func mustHexToBytes(t *testing.T, s string) []byte {
+	t.Helper()
+	bytes, err := hex.DecodeString(s)
+	if err != nil {
+		t.Fatal("failed decoding hex string to bytes")
+	}
+	return bytes
+}
+
+func TestPolicyCalculatorClone(t *testing.T) {
+	pol, err := NewPolicyCalculator(TPMAlgSHA256)
+	if err != nil {
+		t.Fatalf("creating policy calculator: %v", err)
+	}
+
+	err = PolicyPCR{
+		Pcrs: TPMLPCRSelection{
+			PCRSelections: []TPMSPCRSelection{
+				{
+					Hash:      TPMAlgSHA256,
+					PCRSelect: PCClientCompatible.PCRs(1),
+				},
+			},
+		},
+	}.Update(pol)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(pol.Hash().Digest, mustHexToBytes(t, "9541398bf83ab69f0df3a54ed4dd51ce04a0497196696a32bb93da77a4545aa7")) {
+		t.Fatalf("PolicyCalculator does not match expected hash digest, got: %x", pol.Hash().Digest)
+	}
+
+	// Clone the new policy and copy the state
+	newPol := pol.Clone()
+
+	err = PolicyPCR{
+		Pcrs: TPMLPCRSelection{
+			PCRSelections: []TPMSPCRSelection{
+				{
+					Hash:      TPMAlgSHA256,
+					PCRSelect: PCClientCompatible.PCRs(2),
+				},
+			},
+		},
+	}.Update(newPol)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that the old PolicyCalculator is unchange
+	if !bytes.Equal(pol.Hash().Digest, mustHexToBytes(t, "9541398bf83ab69f0df3a54ed4dd51ce04a0497196696a32bb93da77a4545aa7")) {
+		t.Fatalf("PolicyCalculator does not match expected hash digest, got: %x", pol.Hash().Digest)
+	}
+
+	// Check that the new instance has the updated checksum
+	if !bytes.Equal(newPol.Hash().Digest, mustHexToBytes(t, "20f15aec09d69e75070296a5a1b613502678a9f0e1c5615736414e99073807b0")) {
+		t.Fatalf("PolicyCalculator does not match expected hash digest, got: %x", newPol.Hash().Digest)
 	}
 }
