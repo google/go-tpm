@@ -67,7 +67,7 @@ type nestedSlice struct {
 
 func TestEncodingPackType(t *testing.T) {
 	buf := make([]byte, 10)
-	inputs := []interface{}{
+	inputs := []any{
 		uint32(3),
 		buf,
 		&buf,
@@ -90,7 +90,7 @@ func TestEncodingPackTypeWriteFail(t *testing.T) {
 
 	tests := []struct {
 		limit int
-		in    interface{}
+		in    any
 	}{
 		{4, &u32WithOneByte},
 		{3, &u32Empty},
@@ -207,7 +207,7 @@ func TestSelfMarshaler(t *testing.T) {
 	var empty32 U32Bytes
 	subTests := []struct {
 		encoded []byte
-		decoded interface{}
+		decoded any
 	}{
 		{[]byte{0, 0}, &empty16},
 		{[]byte{0, 1, 137}, &empty16},

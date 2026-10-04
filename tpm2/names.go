@@ -18,7 +18,7 @@ func HandleName(h TPMHandle) TPM2BName {
 
 // objectOrNVName calculates the Name of an NV index or object.
 // pub is a pointer to either a TPMTPublic or TPMSNVPublic.
-func objectOrNVName(alg TPMAlgID, pub interface{}) (*TPM2BName, error) {
+func objectOrNVName(alg TPMAlgID, pub any) (*TPM2BName, error) {
 	h, err := alg.Hash()
 	if err != nil {
 		return nil, err
