@@ -94,6 +94,14 @@ type Command[R any, PR *R] interface {
 	Execute(t transport.TPM, s ...Session) (PR, error)
 }
 
+// authChanger is a TPM command that changes the authorization value of the
+// entity its first session authorizes. The TPM computes the response HMAC
+// after the command is executed, with the new authorization value.
+type authChanger interface {
+	// The new authorization value of the entity.
+	newAuth() []byte
+}
+
 // PolicyCommand is a TPM command that can be part of a TPM policy.
 type PolicyCommand interface {
 	// Update updates the given policy hash according to the command
@@ -1686,6 +1694,9 @@ func (cmd HierarchyChangeAuth) Execute(t transport.TPM, s ...Session) (*Hierarch
 	return &rsp, nil
 }
 
+// newAuth implements the authChanger interface.
+func (cmd HierarchyChangeAuth) newAuth() []byte { return cmd.NewAuth.Buffer }
+
 // HierarchyChangeAuthResponse is the response from TPM2_HierarchyChangeAuth.
 type HierarchyChangeAuthResponse struct{}
 
@@ -2184,6 +2195,35 @@ func (cmd NVReadLock) Execute(t transport.TPM, s ...Session) (*NVReadLockRespons
 
 // NVReadLockResponse is the response from TPM2_NV_ReadLock.
 type NVReadLockResponse struct{}
+
+// NVChangeAuth is the input to TPM2_NV_ChangeAuth.
+// See definition in Part 3, Commands, section 31.15.
+// It needs ADMIN role authorization: a policy session whose policy includes
+// TPM2_PolicyCommandCode(TPM_CC_NV_ChangeAuth).
+type NVChangeAuth struct {
+	// handle of the entity
+	NVIndex handle `gotpm:"handle,auth"`
+	// new authorization value
+	NewAuth TPM2BAuth
+}
+
+// Command implements the Command interface.
+func (NVChangeAuth) Command() TPMCC { return TPMCCNVChangeAuth }
+
+// Execute executes the command and returns the response.
+func (cmd NVChangeAuth) Execute(t transport.TPM, s ...Session) (*NVChangeAuthResponse, error) {
+	var rsp NVChangeAuthResponse
+	if err := execute[NVChangeAuthResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// newAuth implements the authChanger interface.
+func (cmd NVChangeAuth) newAuth() []byte { return cmd.NewAuth.Buffer }
+
+// NVChangeAuthResponse is the response from TPM2_NV_ChangeAuth.
+type NVChangeAuthResponse struct{}
 
 // NVCertify is the input to TPM2_NV_Certify.
 // See definition in Part 3, Commands, section 31.16.
