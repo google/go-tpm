@@ -86,7 +86,7 @@ func run(pcr int, tpmPath string) (retErr error) {
 	}
 	defer func() {
 		if err := tpm2.FlushContext(rwc, srkHandle); err != nil {
-			retErr = fmt.Errorf("%v\nunable to flush SRK handle %q: %v", retErr, srkHandle, err)
+			retErr = fmt.Errorf("%v\nunable to flush SRK handle 0x%x: %v", retErr, srkHandle, err)
 		}
 	}()
 	fmt.Printf("Created parent key with handle: 0x%x\n", srkHandle)
@@ -125,7 +125,7 @@ func run(pcr int, tpmPath string) (retErr error) {
 	}
 	defer func() {
 		if err := tpm2.FlushContext(rwc, objectHandle); err != nil {
-			retErr = fmt.Errorf("%v\nunable to flush object handle %q: %v", retErr, objectHandle, err)
+			retErr = fmt.Errorf("%v\nunable to flush object handle 0x%x: %v", retErr, objectHandle, err)
 		}
 	}()
 	fmt.Printf("Loaded sealed data with handle: 0x%x\n", objectHandle)
