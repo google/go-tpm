@@ -2,8 +2,6 @@ github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 h1:+vx7roKuyA63n
 github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2/go.mod h1:HBCaDeC1lPdgDeDbhX8XFpy1jqjK0IBG8W5K+xYqA0w=
 github.com/creack/pty v1.1.24 h1:bJrF4RRfyJnbTJqzRLHzcGaZK1NeM5kTC9jGgovnR1s=
 github.com/creack/pty v1.1.24/go.mod h1:08sCNb52WyoAwi2QDyzUCTgcvVFhUzewun7wtTfvcwE=
-github.com/google/go-tpm v0.9.8 h1:slArAR9Ft+1ybZu0lBwpSmpwhRXaa85hWtMinMyRAWo=
-github.com/google/go-tpm v0.9.8/go.mod h1:h9jEsEECg7gtLis0upRBQU+GhYVH6jMjrFxI8u6bVUY=
 github.com/hugelgupf/go-shlex v0.0.0-20200702092117-c80c9d0918fa h1:s3KPo0nThtvjEamF/aElD4k5jSsBHew3/sgNTnth+2M=
 github.com/hugelgupf/go-shlex v0.0.0-20200702092117-c80c9d0918fa/go.mod h1:I1uW6ymzwsy5TlQgD1bFAghdMgBYqH1qtCeHoZgHMqs=
 github.com/hugelgupf/vmtest v0.0.0-20240307030256-5d9f3d34a58d h1:nP8SfQJqruIVSWYJTuYc37jLHEY1Z0fF+zKSrs3K/C8=
