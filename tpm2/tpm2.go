@@ -2257,6 +2257,28 @@ type GetTimeResponse struct {
 	Signature TPMTSignature
 }
 
+// DictionaryAttackLockReset is the input to TPM2_DictionaryAttackLockReset.
+// See definition in Part 3, Commands, section 25.2.
+type DictionaryAttackLockReset struct {
+	// TPM_RH_LOCKOUT
+	LockHandle handle `gotpm:"handle,auth"`
+}
+
+// Command implements the Command interface.
+func (DictionaryAttackLockReset) Command() TPMCC { return TPMCCDictionaryAttackLockReset }
+
+// Execute executes the command and returns the response.
+func (cmd DictionaryAttackLockReset) Execute(t transport.TPM, s ...Session) (*DictionaryAttackLockResetResponse, error) {
+	var rsp DictionaryAttackLockResetResponse
+	if err := execute[DictionaryAttackLockResetResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// DictionaryAttackLockResetResponse is the response from TPM2_DictionaryAttackLockReset.
+type DictionaryAttackLockResetResponse struct{}
+
 // DictionaryAttackParameters is the input to TPM2_DictionaryAttackParameters
 type DictionaryAttackParameters struct {
 	// handle indicating the source of the authorization value
