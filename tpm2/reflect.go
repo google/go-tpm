@@ -1142,6 +1142,9 @@ func rspHeader(rsp *bytes.Buffer) error {
 		return fmt.Errorf("unmarshalling TPM response: %w", err)
 	}
 	if hdr.ResponseCode != TPMRCSuccess {
+		if isFmt1, fmt1 := hdr.ResponseCode.isFmt1Error(); isFmt1 {
+			return fmt1
+		}
 		return hdr.ResponseCode
 	}
 	return nil

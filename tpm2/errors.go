@@ -424,6 +424,8 @@ func (s subject) String() string {
 
 // TPMFmt1Error represents a TPM 2.0 format-1 error, with additional information.
 type TPMFmt1Error struct {
+	// The raw TPM error code returned by the TPM.
+	raw TPMRC
 	// The canonical TPM error code, with handle/parameter/session info
 	// stripped out.
 	canonical TPMRC
@@ -469,6 +471,38 @@ func (e TPMFmt1Error) Session() (bool, int) {
 	return true, e.index
 }
 
+// Raw returns the raw format-1 error code as returned by the TPM.
+func (e TPMFmt1Error) Raw() TPMRC {
+	return e.raw
+}
+
+// Canonical returns the canonical TPM error code.
+func (e TPMFmt1Error) Canonical() TPMRC {
+	return e.canonical
+}
+
+// Is returns whether the TPMFmt1Error matches the target error.
+func (e TPMFmt1Error) Is(target error) bool {
+	targetTPMRC, ok := target.(TPMRC)
+	if !ok {
+		return false
+	}
+	return e.canonical == targetTPMRC || e.raw == targetTPMRC
+}
+
+// As returns whether the error can be assigned to the given interface type.
+func (e TPMFmt1Error) As(target interface{}) bool {
+	if pRC, ok := target.(*TPMRC); ok {
+		*pRC = e.canonical
+		return true
+	}
+	if pFmt1, ok := target.(*TPMFmt1Error); ok {
+		*pFmt1 = e
+		return true
+	}
+	return false
+}
+
 // isFmt0Error returns true if the result is a format-0 error.
 func (r TPMRC) isFmt0Error() bool {
 	return (r&rcVer1) == rcVer1 && (r&rcWarn) != rcWarn
@@ -480,6 +514,7 @@ func (r TPMRC) isFmt1Error() (bool, TPMFmt1Error) {
 	if (r & rcFmt1) != rcFmt1 {
 		return false, TPMFmt1Error{}
 	}
+	raw := r
 	subj := handleRelated
 	if (r & rcP) == rcP {
 		subj = parameterRelated
@@ -491,6 +526,7 @@ func (r TPMRC) isFmt1Error() (bool, TPMFmt1Error) {
 	idx := int((r & 0xF00) >> 8)
 	r &= 0xFFFFF0FF
 	return true, TPMFmt1Error{
+		raw:       raw,
 		canonical: r,
 		subject:   subj,
 		index:     idx,
@@ -531,6 +567,14 @@ func (r TPMRC) Error() string {
 	return fmt.Sprintf("unrecognized error code (0x%x)", uint32(r))
 }
 
+// Canonical returns the canonical error code with any format-1 metadata stripped.
+func (r TPMRC) Canonical() TPMRC {
+	if isFmt1, fmt1 := r.isFmt1Error(); isFmt1 {
+		return fmt1.canonical
+	}
+	return r
+}
+
 // Is returns whether the TPMRC (which may be a FMT1 error) is equal to the
 // given canonical error.
 func (r TPMRC) Is(target error) bool {
@@ -546,8 +590,17 @@ func (r TPMRC) Is(target error) bool {
 
 // As returns whether the error can be assigned to the given interface type.
 // If supported, it updates the value pointed at by target.
-// Supports the Fmt1Error type.
+// Supports *TPMFmt1Error and *TPMRC types. When target is *TPMRC, it extracts
+// the canonical error code for format-1 errors.
 func (r TPMRC) As(target interface{}) bool {
+	if pRC, ok := target.(*TPMRC); ok {
+		if isFmt1, fmt1 := r.isFmt1Error(); isFmt1 {
+			*pRC = fmt1.canonical
+		} else {
+			*pRC = r
+		}
+		return true
+	}
 	pFmt1, ok := target.(*TPMFmt1Error)
 	if !ok {
 		return false
