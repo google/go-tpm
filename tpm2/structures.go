@@ -987,7 +987,7 @@ func (u *TPMUCapabilities) AuthPolicies() (*TPMLTaggedPolicy, error) {
 
 // ACTData returns the 'actData' member of the union.
 func (u *TPMUCapabilities) ACTData() (*TPMLACTData, error) {
-	if u.selector == TPMCapAuthPolicies {
+	if u.selector == TPMCapACT {
 		return u.contents.(*TPMLACTData), nil
 	}
 	return nil, fmt.Errorf("did not contain actData (selector value was %v)", u.selector)
@@ -2158,7 +2158,7 @@ func (u *TPMUKDFScheme) ECDH() (*TPMSKDFSchemeECDH, error) {
 
 // KDF1SP80056A returns the 'kdf1sp80056a' member of the union.
 func (u *TPMUKDFScheme) KDF1SP80056A() (*TPMSKDFSchemeKDF1SP80056A, error) {
-	if u.selector == TPMAlgMGF1 {
+	if u.selector == TPMAlgKDF1SP80056A {
 		return u.contents.(*TPMSKDFSchemeKDF1SP80056A), nil
 	}
 	return nil, fmt.Errorf("did not contain kdf1sp80056a (selector value was %v)", u.selector)
@@ -2166,15 +2166,15 @@ func (u *TPMUKDFScheme) KDF1SP80056A() (*TPMSKDFSchemeKDF1SP80056A, error) {
 
 // KDF2 returns the 'kdf2' member of the union.
 func (u *TPMUKDFScheme) KDF2() (*TPMSKDFSchemeKDF2, error) {
-	if u.selector == TPMAlgMGF1 {
+	if u.selector == TPMAlgKDF2 {
 		return u.contents.(*TPMSKDFSchemeKDF2), nil
 	}
-	return nil, fmt.Errorf("did not contain mgf1 (selector value was %v)", u.selector)
+	return nil, fmt.Errorf("did not contain kdf2 (selector value was %v)", u.selector)
 }
 
 // KDF1SP800108 returns the 'kdf1sp800108' member of the union.
 func (u *TPMUKDFScheme) KDF1SP800108() (*TPMSKDFSchemeKDF1SP800108, error) {
-	if u.selector == TPMAlgMGF1 {
+	if u.selector == TPMAlgKDF1SP800108 {
 		return u.contents.(*TPMSKDFSchemeKDF1SP800108), nil
 	}
 	return nil, fmt.Errorf("did not contain kdf1sp800108 (selector value was %v)", u.selector)
@@ -2354,12 +2354,12 @@ func (u *TPMUAsymScheme) ECDSA() (*TPMSSigSchemeECDSA, error) {
 	if u.selector == TPMAlgECDSA {
 		return u.contents.(*TPMSSigSchemeECDSA), nil
 	}
-	return nil, fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector)
+	return nil, fmt.Errorf("did not contain ecdsa (selector value was %v)", u.selector)
 }
 
 // ECDH returns the 'ecdh' member of the union.
 func (u *TPMUAsymScheme) ECDH() (*TPMSKeySchemeECDH, error) {
-	if u.selector == TPMAlgRSASSA {
+	if u.selector == TPMAlgECDH {
 		return u.contents.(*TPMSKeySchemeECDH), nil
 	}
 	return nil, fmt.Errorf("did not contain ecdh (selector value was %v)", u.selector)
@@ -2370,7 +2370,7 @@ func (u *TPMUAsymScheme) ECDAA() (*TPMSSchemeECDAA, error) {
 	if u.selector == TPMAlgECDAA {
 		return u.contents.(*TPMSSchemeECDAA), nil
 	}
-	return nil, fmt.Errorf("did not contain rsassa (selector value was %v)", u.selector)
+	return nil, fmt.Errorf("did not contain ecdaa (selector value was %v)", u.selector)
 }
 
 // TPMIAlgRSAScheme represents a TPMI_ALG_RSA_SCHEME.
