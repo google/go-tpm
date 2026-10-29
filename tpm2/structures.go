@@ -483,6 +483,10 @@ type TPMIAlgKDF = TPMAlgID
 // See definition in Part 2: Structures, section 9.33.
 type TPMIAlgSigScheme = TPMAlgID
 
+// TPMIAlgMACScheme represents a TPMI_ALG_MAC_SCHEME.
+// See definition in Part 2: Structures, section 9.36.
+type TPMIAlgMACScheme = TPMAlgID
+
 // TPMISTCommandTag represents a TPMI_ST_COMMAND_TAG.
 // See definition in Part 2: Structures, section 9.35.
 type TPMISTCommandTag = TPMST

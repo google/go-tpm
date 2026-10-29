@@ -657,6 +657,35 @@ type HmacResponse struct {
 	OutHMAC TPM2BDigest
 }
 
+// MAC is the input to TPM2_MAC.
+// See definition in Part 3, Commands, section 15.6.
+type MAC struct {
+	// handle for the symmetric signing key providing the MAC key
+	Handle AuthHandle `gotpm:"handle,auth"`
+	// MAC data
+	Buffer TPM2BMaxBuffer
+	// algorithm to use for MAC
+	InScheme TPMIAlgMACScheme `gotpm:"nullable"`
+}
+
+// Command implements the Command interface.
+func (MAC) Command() TPMCC { return TPMCCMAC }
+
+// Execute executes the command and returns the response.
+func (cmd MAC) Execute(t transport.TPM, s ...Session) (*MACResponse, error) {
+	var rsp MACResponse
+	if err := execute[MACResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// MACResponse is the response from TPM2_MAC.
+type MACResponse struct {
+	// the returned MAC in a sized buffer
+	OutMAC TPM2BDigest
+}
+
 // GetRandom is the input to TPM2_GetRandom.
 // See definition in Part 3, Commands, section 16.1
 type GetRandom struct {
@@ -681,6 +710,28 @@ type GetRandomResponse struct {
 	// the random octets
 	RandomBytes TPM2BDigest
 }
+
+// StirRandom is the input to TPM2_StirRandom.
+// See definition in Part 3, Commands, section 16.2
+type StirRandom struct {
+	// additional information
+	InData TPM2BSensitiveData
+}
+
+// Command implements the Command interface.
+func (StirRandom) Command() TPMCC { return TPMCCStirRandom }
+
+// Execute executes the command and returns the response.
+func (cmd StirRandom) Execute(t transport.TPM, s ...Session) (*StirRandomResponse, error) {
+	var rsp StirRandomResponse
+	if err := execute[StirRandomResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// StirRandomResponse is the response from TPM2_StirRandom.
+type StirRandomResponse struct{}
 
 // HashSequenceStart is the input to TPM2_HashSequenceStart.
 // See definition in Part 3, Commands, section 17.3
@@ -736,6 +787,36 @@ func (cmd HmacStart) Execute(t transport.TPM, s ...Session) (*HmacStartResponse,
 // HmacStartResponse is the response from TPM2_HMAC_Start.
 // See definition in Part 3, Commands, section 17.2.2
 type HmacStartResponse struct {
+	// a handle to reference the sequence
+	SequenceHandle TPMIDHObject `gotpm:"handle"`
+}
+
+// MACStart is the input to TPM2_MAC_Start.
+// See definition in Part 3, Commands, section 17.2.3
+type MACStart struct {
+	// handle of a MAC key
+	Handle handle `gotpm:"handle,auth"`
+	// authorization value for subsequent use of the sequence
+	Auth TPM2BAuth
+	// the algorithm to use for the MAC
+	InScheme TPMIAlgMACScheme `gotpm:"nullable"`
+}
+
+// Command implements the Command interface.
+func (MACStart) Command() TPMCC { return TPMCCMACStart }
+
+// Execute executes the command and returns the response.
+func (cmd MACStart) Execute(t transport.TPM, s ...Session) (*MACStartResponse, error) {
+	var rsp MACStartResponse
+	if err := execute[MACStartResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// MACStartResponse is the response from TPM2_MAC_Start.
+// See definition in Part 3, Commands, section 17.2.3
+type MACStartResponse struct {
 	// a handle to reference the sequence
 	SequenceHandle TPMIDHObject `gotpm:"handle"`
 }
@@ -1688,6 +1769,28 @@ func (cmd HierarchyChangeAuth) Execute(t transport.TPM, s ...Session) (*Hierarch
 
 // HierarchyChangeAuthResponse is the response from TPM2_HierarchyChangeAuth.
 type HierarchyChangeAuthResponse struct{}
+
+// DictionaryAttackLockReset is the input to TPM2_DictionaryAttackLockReset.
+// See definition in Part 3, Commands, section 25.2
+type DictionaryAttackLockReset struct {
+	// TPM_RH_LOCKOUT
+	LockHandle AuthHandle `gotpm:"handle,auth"`
+}
+
+// Command implements the Command interface.
+func (DictionaryAttackLockReset) Command() TPMCC { return TPMCCDictionaryAttackLockReset }
+
+// Execute executes the command and returns the response.
+func (cmd DictionaryAttackLockReset) Execute(t transport.TPM, s ...Session) (*DictionaryAttackLockResetResponse, error) {
+	var rsp DictionaryAttackLockResetResponse
+	if err := execute[DictionaryAttackLockResetResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// DictionaryAttackLockResetResponse is the response from TPM2_DictionaryAttackLockReset.
+type DictionaryAttackLockResetResponse struct{}
 
 // ContextSave is the input to TPM2_ContextSave.
 // See definition in Part 3, Commands, section 28.2
