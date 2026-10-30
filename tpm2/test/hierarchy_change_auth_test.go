@@ -59,4 +59,39 @@ func TestHierarchyChangeAuth(t *testing.T) {
 			t.Errorf("failed HierarchyChangeAuthWithAuth: %v", err)
 		}
 	})
+
+	t.Run("HierarchyChangeAuthOwnerHMAC", func(t *testing.T) {
+		// The TPM computes the response HMAC with the new auth value.
+		hca := HierarchyChangeAuth{
+			AuthHandle: AuthHandle{
+				Handle: TPMRHOwner,
+				Auth:   HMAC(TPMAlgSHA256, 16, Auth(newAuthKey)),
+			},
+			NewAuth: TPM2BAuth{
+				Buffer: authKey,
+			},
+		}
+
+		_, err := hca.Execute(thetpm)
+		if err != nil {
+			t.Errorf("failed HierarchyChangeAuthWithHMAC: %v", err)
+		}
+	})
+
+	t.Run("HierarchyChangeAuthOwnerHMACEmpty", func(t *testing.T) {
+		hca := HierarchyChangeAuth{
+			AuthHandle: AuthHandle{
+				Handle: TPMRHOwner,
+				Auth:   HMAC(TPMAlgSHA256, 16, Auth(authKey)),
+			},
+			NewAuth: TPM2BAuth{
+				Buffer: nil,
+			},
+		}
+
+		_, err := hca.Execute(thetpm)
+		if err != nil {
+			t.Errorf("failed HierarchyChangeAuthWithHMAC to the empty auth value: %v", err)
+		}
+	})
 }

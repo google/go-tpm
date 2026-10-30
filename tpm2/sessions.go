@@ -51,6 +51,13 @@ type Session interface {
 	Handle() TPMHandle
 }
 
+// authUpdater is a session that can take the new authorization value of the
+// entity it authorizes, to validate the response of a command that changed
+// it (see authChanger).
+type authUpdater interface {
+	updateAuth(auth []byte)
+}
+
 // CPHash calculates the TPM command parameter hash for a given Command.
 // N.B. Authorization sessions on handles are ignored, but names aren't.
 func CPHash[R any](alg TPMIAlgHash, cmd Command[R, *R]) (*TPM2BDigest, error) {
@@ -183,6 +190,7 @@ func rpHash(alg TPMIAlgHash, rc TPMRC, cc TPMCC, parms []byte) ([]byte, error) {
 // sessionOptions represents extra options used when setting up an HMAC or policy session.
 type sessionOptions struct {
 	auth        []byte
+	authSet     bool
 	password    bool
 	bindHandle  TPMIDHEntity
 	bindName    TPM2BName
@@ -212,6 +220,7 @@ type AuthOption func(*sessionOptions)
 func Auth(auth []byte) AuthOption {
 	return func(o *sessionOptions) {
 		o.auth = auth
+		o.authSet = true
 	}
 }
 
@@ -224,6 +233,7 @@ func Auth(auth []byte) AuthOption {
 func Password(auth []byte) AuthOption {
 	return func(o *sessionOptions) {
 		o.auth = auth
+		o.authSet = true
 		o.password = true
 	}
 }
@@ -560,6 +570,11 @@ func (s *hmacSession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM2B
 	return &result, nil
 }
 
+// updateAuth implements the authUpdater interface.
+func (s *hmacSession) updateAuth(auth []byte) {
+	s.auth = auth
+}
+
 // Validate validates the response session structure for the session.
 // It updates nonceTPM from the TPM's response.
 func (s *hmacSession) Validate(rc TPMRC, cc TPMCC, parms []byte, names []TPM2BName, authIndex int, auth *TPMSAuthResponse) error {
@@ -875,6 +890,16 @@ func (s *policySession) Authorize(cc TPMCC, parms, addNonces []byte, names []TPM
 		},
 	}
 	return &result, nil
+}
+
+// updateAuth implements the authUpdater interface.
+// The TPM includes the authorization value in the HMAC of a policy session
+// only after TPM2_PolicyAuthValue, so the auth value is only replaced when
+// the session was given one (with Auth), even an empty one.
+func (s *policySession) updateAuth(auth []byte) {
+	if s.authSet && !s.password {
+		s.auth = auth
+	}
 }
 
 // Validate valitades the response session structure for the session.

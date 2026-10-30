@@ -102,6 +102,11 @@ func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Se
 		// We don't need the TPM RC here because we would have errored
 		// out from rspHeader
 		// TODO: Authenticate the error code with sessions, if desired.
+		if c, ok := any(cmd).(authChanger); ok {
+			if s, ok := sess[0].(authUpdater); ok {
+				s.updateAuth(c.newAuth())
+			}
+		}
 		err = rspSessions(rspBuf, TPMRCSuccess, cc, names, rspParms, sess)
 		if err != nil {
 			return err
