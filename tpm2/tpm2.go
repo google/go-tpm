@@ -1673,6 +1673,33 @@ func (cmd Clear) Execute(t transport.TPM, s ...Session) (*ClearResponse, error) 
 // ClearResponse is the response from TPM2_Clear.
 type ClearResponse struct{}
 
+// HierarchyControl is the input to TPM2_HierarchyControl.
+// See definition in Part 3, Commands, section 24.2
+type HierarchyControl struct {
+	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER or TPM_RH_PLATFORM+{PP}
+	AuthHandle handle `gotpm:"handle,auth"`
+	// the enable being modified
+	// TPM_RH_ENDORSEMENT, TPM_RH_OWNER, TPM_RH_PLATFORM or TPM_RH_PLATFORM_NV
+	Enable TPMIRHEnables
+	// YES if the enable should be SET, NO if the enable should be CLEAR
+	State TPMIYesNo
+}
+
+// Command implements the Command interface.
+func (HierarchyControl) Command() TPMCC { return TPMCCHierarchyControl }
+
+// Execute executes the command and returns the response.
+func (cmd HierarchyControl) Execute(t transport.TPM, s ...Session) (*HierarchyControlResponse, error) {
+	var rsp HierarchyControlResponse
+	if err := execute[HierarchyControlResponse](t, cmd, &rsp, s...); err != nil {
+		return nil, err
+	}
+	return &rsp, nil
+}
+
+// HierarchyControlResponse is the response from TPM2_HierarchyControl.
+type HierarchyControlResponse struct{}
+
 // HierarchyChangeAuth is the input to TPM2_HierarchyChangeAuth.
 // See definition in Part 3, Commands, section 24.8
 type HierarchyChangeAuth struct {
