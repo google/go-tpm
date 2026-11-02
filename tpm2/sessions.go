@@ -379,6 +379,31 @@ func HMACSession(t transport.TPM, hash TPMIAlgHash, nonceSize int, opts ...AuthO
 	return &sess, closer, nil
 }
 
+// flushSession flushes the session at handle, if it was started, and marks it
+// as not started.
+func flushSession(t transport.TPM, handle *TPMHandle) error {
+	if *handle == TPMRHNull {
+		return nil
+	}
+	fc := FlushContext{FlushHandle: *handle}
+	if _, err := fc.Execute(t); err != nil {
+		return err
+	}
+	*handle = TPMRHNull
+	return nil
+}
+
+// failInit flushes a session whose initialization failed after it was started,
+// and returns err. It flushes whether or not the session is one-off: the
+// constructors of the reusable sessions return no closer when Init fails, so
+// nobody else could.
+func failInit(t transport.TPM, handle *TPMHandle, err error) error {
+	if flushErr := flushSession(t, handle); flushErr != nil {
+		return fmt.Errorf("%w - additional errors encountered during cleanup: %v", err, flushErr)
+	}
+	return err
+}
+
 // getEncryptedSalt creates a salt value for salted sessions.
 // Returns the encrypted salt and plaintext salt, or an error value.
 func getEncryptedSalt(pub TPMTPublic) (*TPM2BEncryptedSecret, []byte, error) {
@@ -439,7 +464,7 @@ func (s *hmacSession) Init(t transport.TPM) error {
 	// Part 1, 19.6
 	ha, err := s.hash.Hash()
 	if err != nil {
-		return err
+		return failInit(t, &s.handle, err)
 	}
 	if s.bindHandle != TPMRHNull || len(salt) != 0 {
 		var authSalt []byte
@@ -456,12 +481,7 @@ func (s *hmacSession) CleanupFailure(t transport.TPM) error {
 	if s.attrs.ContinueSession {
 		return nil
 	}
-	fc := FlushContext{FlushHandle: s.handle}
-	if _, err := fc.Execute(t); err != nil {
-		return err
-	}
-	s.handle = TPMRHNull
-	return nil
+	return flushSession(t, &s.handle)
 }
 
 // NonceTPM returns the last nonceTPM value from the session.
@@ -814,7 +834,7 @@ func (s *policySession) Init(t transport.TPM) error {
 		authSalt = append(authSalt, salt...)
 		ha, err := s.hash.Hash()
 		if err != nil {
-			return err
+			return failInit(t, &s.handle, err)
 		}
 		s.sessionKey = KDFa(ha, authSalt, "ATH", s.nonceTPM.Buffer, s.nonceCaller.Buffer, ha.Size()*8)
 	}
@@ -822,7 +842,7 @@ func (s *policySession) Init(t transport.TPM) error {
 	// Call the callback to execute the policy, if needed
 	if s.callback != nil {
 		if err := (*s.callback)(t, s.handle, s.nonceTPM); err != nil {
-			return fmt.Errorf("executing policy: %w", err)
+			return failInit(t, &s.handle, fmt.Errorf("executing policy: %w", err))
 		}
 	}
 
@@ -835,12 +855,7 @@ func (s *policySession) CleanupFailure(t transport.TPM) error {
 	if s.attrs.ContinueSession {
 		return nil
 	}
-	fc := FlushContext{FlushHandle: s.handle}
-	if _, err := fc.Execute(t); err != nil {
-		return err
-	}
-	s.handle = TPMRHNull
-	return nil
+	return flushSession(t, &s.handle)
 }
 
 // NonceTPM returns the last nonceTPM value from the session.
