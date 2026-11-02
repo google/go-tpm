@@ -36,19 +36,21 @@ func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Se
 	// Initialize the sessions, if needed
 	for i, s := range sess {
 		if err := s.Init(t); err != nil {
-			return fmt.Errorf("initializing session %d: %w", i, err)
+			// A session cleans up after its own failed Init; the ones before
+			// it are started.
+			return cleanupSessions(t, sess[:i], fmt.Errorf("initializing session %d: %w", i, err))
 		}
 		if err := s.NewNonceCaller(); err != nil {
-			return err
+			return cleanupSessions(t, sess[:i+1], err)
 		}
 	}
 	handles, err := cmdHandles(cmd)
 	if err != nil {
-		return err
+		return cleanupSessions(t, sess, err)
 	}
 	parms, err := cmdParameters(cmd, sess)
 	if err != nil {
-		return err
+		return cleanupSessions(t, sess, err)
 	}
 	var names []TPM2BName
 	var sessions []byte
@@ -56,11 +58,11 @@ func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Se
 		var err error
 		names, err = cmdNames(cmd)
 		if err != nil {
-			return err
+			return cleanupSessions(t, sess, err)
 		}
 		sessions, err = cmdSessions(sess, cc, names, parms)
 		if err != nil {
-			return err
+			return cleanupSessions(t, sess, err)
 		}
 	}
 	command := cmdHeader(hasSessions, 10 /* size of command header */ +len(handles)+len(sessions)+len(parms), cc)
@@ -71,24 +73,14 @@ func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Se
 	// Send the command via the transport.
 	response, err := t.Send(command)
 	if err != nil {
-		return err
+		return cleanupSessions(t, sess, err)
 	}
 
 	// Parse the command tpm2ly into the response structure.
 	rspBuf := bytes.NewBuffer(response)
 	err = rspHeader(rspBuf)
 	if err != nil {
-		var bonusErrs []string
-		// Emergency cleanup, then return.
-		for _, s := range sess {
-			if err := s.CleanupFailure(t); err != nil {
-				bonusErrs = append(bonusErrs, err.Error())
-			}
-		}
-		if len(bonusErrs) != 0 {
-			return fmt.Errorf("%w - additional errors encountered during cleanup: %v", err, strings.Join(bonusErrs, ", "))
-		}
-		return err
+		return cleanupSessions(t, sess, err)
 	}
 	err = rspHandles(rspBuf, rsp)
 	if err != nil {
@@ -118,6 +110,21 @@ func execute[R any](t transport.TPM, cmd Command[R, *R], rsp *R, extraSess ...Se
 	}
 
 	return nil
+}
+
+// cleanupSessions does the emergency cleanup of a command that did not succeed,
+// and returns err with whatever went wrong in the cleanup.
+func cleanupSessions(t transport.TPM, sess []Session, err error) error {
+	var bonusErrs []string
+	for _, s := range sess {
+		if err := s.CleanupFailure(t); err != nil {
+			bonusErrs = append(bonusErrs, err.Error())
+		}
+	}
+	if len(bonusErrs) != 0 {
+		return fmt.Errorf("%w - additional errors encountered during cleanup: %v", err, strings.Join(bonusErrs, ", "))
+	}
+	return err
 }
 
 func isMarshalledByReflection(v reflect.Value) bool {
