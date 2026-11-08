@@ -616,6 +616,20 @@ func unmarshalStructField(buf *bytes.Buffer, v reflect.Value, i int) error {
 		}
 	}
 
+	// A `gotpm:"check"` field must pass its Check method once unmarshalled,
+	// e.g. TPMSAttest.Magic must be TPM_GENERATED_VALUE.
+	if hasTag(fieldType, "check") {
+		c, ok := fieldValue.Addr().Interface().(interface{ Check() error })
+		if !ok {
+			return fmt.Errorf("field '%v' of struct '%v' is tagged check but has no Check method",
+				fieldType.Name, v.Type().Name())
+		}
+		if err := c.Check(); err != nil {
+			return fmt.Errorf("field '%v' of struct '%v' failed check: %w",
+				fieldType.Name, v.Type().Name(), err)
+		}
+	}
+
 	return nil
 }
 
