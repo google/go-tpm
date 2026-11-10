@@ -12,7 +12,7 @@ permissions:
 jobs:
   test:
     # We want to test the root module on both Linux and Windows, but the
-    # googleipmi submodule is Linux only.
+    # googleipmi, googleec, and googlemtd submodules are Linux only.
     strategy:
       matrix:
         os: [ ubuntu-latest, windows-latest ]
@@ -20,6 +20,10 @@ jobs:
         include:
           - os: ubuntu-latest
             module: ./tpm2/transport/googleipmi/
+          - os: ubuntu-latest
+            module: ./tpm2/transport/googleec/
+          - os: ubuntu-latest
+            module: ./tpm2/transport/googlemtd/
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -68,3 +72,18 @@ jobs:
           # Change working directory to lint a submodule
           working-directory: ./tpm2/transport/googleipmi/
         if: runner.os == 'Linux'
+
+      - name: Lint googleec
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # Change working directory to lint a submodule
+          working-directory: ./tpm2/transport/googleec/
+        if: runner.os == 'Linux'
+
+      - name: Lint googlemtd
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # Change working directory to lint a submodule
+          working-directory: ./tpm2/transport/googlemtd/
+        if: runner.os == 'Linux'
+
