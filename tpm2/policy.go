@@ -27,6 +27,15 @@ func NewPolicyCalculator(alg TPMIAlgHash) (*PolicyCalculator, error) {
 	}, nil
 }
 
+// Clone copies the internal state of the policy to a new calculator
+func (p *PolicyCalculator) Clone() *PolicyCalculator {
+	return &PolicyCalculator{
+		alg:   p.alg,
+		hash:  p.hash,
+		state: bytes.Clone(p.state),
+	}
+}
+
 // Reset resets the internal state of the policy hash to all 0x00.
 func (p *PolicyCalculator) Reset() {
 	p.state = make([]byte, p.hash.Size())
