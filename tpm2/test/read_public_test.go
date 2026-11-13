@@ -115,7 +115,7 @@ func TestReadPublicWithHMACSession(t *testing.T) {
 
 	createPrimaryCmd := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(ECCSRKTemplate),
+		InPublic:      New2B(TemplateL2.PublicSRK()),
 	}
 
 	createRsp, err := createPrimaryCmd.Execute(thetpm)

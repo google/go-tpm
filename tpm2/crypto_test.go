@@ -427,7 +427,7 @@ func TestRoundTrip(t *testing.T) {
 
 	srkCreate, err := CreatePrimary{
 		PrimaryHandle: TPMRHOwner,
-		InPublic:      New2B(ECCSRKTemplate),
+		InPublic:      New2B(TemplateL2.PublicSRK()),
 	}.Execute(tpm)
 	if err != nil {
 		t.Fatalf("could not create SRK: %v", err)

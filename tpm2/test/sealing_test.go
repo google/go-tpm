@@ -12,8 +12,8 @@ import (
 // Test creating and unsealing a sealed data blob with a password and HMAC.
 func TestUnseal(t *testing.T) {
 	templates := map[string]TPMTPublic{
-		"RSA": RSASRKTemplate,
-		"ECC": ECCSRKTemplate,
+		"RSA": TemplateL1.PublicSRK(),
+		"ECC": TemplateL2.PublicSRK(),
 	}
 
 	// Run the whole test for each of RSA and ECC SRKs.
