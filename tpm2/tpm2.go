@@ -107,6 +107,9 @@ type PolicyCommand interface {
 	// Update updates the given policy hash according to the command
 	// parameters.
 	Update(policy *PolicyCalculator) error
+	// ExecutePolicyInSession executes the given policy command,
+	// using the given session as PolicySession.
+	ExecutePolicyInSession(t transport.TPM, s Session) (any, error)
 }
 
 // Shutdown is the input to TPM2_Shutdown.
@@ -1184,9 +1187,15 @@ func policyUpdate(policy *PolicyCalculator, cc TPMCC, arg2, arg3 []byte) error {
 	return policy.Update(arg3)
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicySigned) Update(policy *PolicyCalculator) error {
 	return policyUpdate(policy, TPMCCPolicySigned, cmd.AuthObject.KnownName().Buffer, cmd.PolicyRef.Buffer)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicySigned) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicySignedResponse is the response from TPM2_PolicySigned.
@@ -1227,9 +1236,15 @@ func (cmd PolicySecret) Execute(t transport.TPM, s ...Session) (*PolicySecretRes
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicySecret) Update(policy *PolicyCalculator) error {
 	return policyUpdate(policy, TPMCCPolicySecret, cmd.AuthHandle.KnownName().Buffer, cmd.PolicyRef.Buffer)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicySecret) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicySecretResponse is the response from TPM2_PolicySecret.
@@ -1262,7 +1277,7 @@ func (cmd PolicyOr) Execute(t transport.TPM, s ...Session) (*PolicyOrResponse, e
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyOr) Update(policy *PolicyCalculator) error {
 	policy.Reset()
 	var digests bytes.Buffer
@@ -1270,6 +1285,12 @@ func (cmd PolicyOr) Update(policy *PolicyCalculator) error {
 		digests.Write(digest.Buffer)
 	}
 	return policy.Update(TPMCCPolicyOR, digests.Bytes())
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyOr) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyOrResponse is the response from TPM2_PolicyOr.
@@ -1300,9 +1321,15 @@ func (cmd PolicyPCR) Execute(t transport.TPM, s ...Session) (*PolicyPCRResponse,
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyPCR) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyPCR, cmd.Pcrs, cmd.PcrDigest.Buffer)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyPCR) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyPCRResponse is the response from TPM2_PolicyPCR.
@@ -1331,6 +1358,12 @@ func (cmd PolicyAuthValue) Execute(t transport.TPM, s ...Session) (*PolicyAuthVa
 // Update implements the PolicyAuthValue interface.
 func (cmd PolicyAuthValue) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyAuthValue)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyAuthValue) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyAuthValueResponse is the response from TPM2_PolicyAuthValue.
@@ -1367,6 +1400,12 @@ func (cmd PolicyDuplicationSelect) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyDuplicationSelect, cmd.NewParentName.Buffer, cmd.IncludeObject)
 }
 
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyDuplicationSelect) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
+}
+
 // PolicyDuplicationSelectResponse is the response from TPM2_PolicyDuplicationSelect.
 type PolicyDuplicationSelectResponse struct{}
 
@@ -1400,7 +1439,7 @@ func (cmd PolicyNV) Execute(t transport.TPM, s ...Session) (*PolicyNVResponse, e
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyNV) Update(policy *PolicyCalculator) error {
 	alg, err := policy.alg.Hash()
 	if err != nil {
@@ -1412,6 +1451,12 @@ func (cmd PolicyNV) Update(policy *PolicyCalculator) error {
 	binary.Write(h, binary.BigEndian, cmd.Operation)
 	args := h.Sum(nil)
 	return policy.Update(TPMCCPolicyNV, args, cmd.NVIndex.KnownName().Buffer)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyNV) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyNVResponse is the response from TPM2_PolicyPCR.
@@ -1439,9 +1484,15 @@ func (cmd PolicyCommandCode) Execute(t transport.TPM, s ...Session) (*PolicyComm
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyCommandCode) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyCommandCode, cmd.Code)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyCommandCode) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyCommandCodeResponse is the response from TPM2_PolicyCommandCode.
@@ -1469,9 +1520,15 @@ func (cmd PolicyCPHash) Execute(t transport.TPM, s ...Session) (*PolicyCPHashRes
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyCPHash) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyCpHash, cmd.CPHashA.Buffer)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyCPHash) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyCPHashResponse is the response from TPM2_PolicyCpHash.
@@ -1505,9 +1562,15 @@ func (cmd PolicyAuthorize) Execute(t transport.TPM, s ...Session) (*PolicyAuthor
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyAuthorize) Update(policy *PolicyCalculator) error {
 	return policyUpdate(policy, TPMCCPolicyAuthorize, cmd.KeySign.Buffer, cmd.PolicyRef.Buffer)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyAuthorize) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyAuthorizeResponse is the response from TPM2_PolicyAuthorize.
@@ -1560,9 +1623,15 @@ func (cmd PolicyNVWritten) Execute(t transport.TPM, s ...Session) (*PolicyNVWrit
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyNVWritten) Update(policy *PolicyCalculator) error {
 	return policy.Update(TPMCCPolicyNvWritten, cmd.WrittenSet)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyNVWritten) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyNVWrittenResponse is the response from TPM2_PolicyNvWritten.
@@ -1593,10 +1662,16 @@ func (cmd PolicyAuthorizeNV) Execute(t transport.TPM, s ...Session) (*PolicyAuth
 	return &rsp, nil
 }
 
-// Update implements the PolicyCommand interface.
+// Update updates the policy calculator with the policy command.
 func (cmd PolicyAuthorizeNV) Update(policy *PolicyCalculator) error {
 	policy.Reset()
 	return policy.Update(TPMCCPolicyAuthorizeNV, cmd.NVIndex.KnownName().Buffer)
+}
+
+// ExecutePolicyInSession extends the session with the policy command and returns the response.
+func (cmd PolicyAuthorizeNV) ExecutePolicyInSession(t transport.TPM, s Session) (any, error) {
+	cmd.PolicySession = s.Handle()
+	return cmd.Execute(t)
 }
 
 // PolicyAuthorizeNVResponse is the response from TPM2_PolicyAuthorizeNV.
