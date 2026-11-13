@@ -221,7 +221,7 @@ func nvReadValue(rw io.ReadWriter, index, offset, len uint32, ca *commandAuth) (
 	// Auth is needed
 	if ca != nil {
 		in = append(in, ca)
-		out = append(out, ra)
+		out = append(out, &ra)
 		ret, err = submitTPMRequest(rw, tagRQUAuth1Command, ordNVReadValue, in, out)
 	} else {
 		// Auth is not needed
