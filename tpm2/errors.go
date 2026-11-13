@@ -547,7 +547,7 @@ func (r TPMRC) Is(target error) bool {
 // As returns whether the error can be assigned to the given interface type.
 // If supported, it updates the value pointed at by target.
 // Supports the Fmt1Error type.
-func (r TPMRC) As(target interface{}) bool {
+func (r TPMRC) As(target any) bool {
 	pFmt1, ok := target.(*TPMFmt1Error)
 	if !ok {
 		return false

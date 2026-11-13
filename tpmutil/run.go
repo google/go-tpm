@@ -89,7 +89,7 @@ func RunCommandRaw(rw io.ReadWriter, inb []byte) ([]byte, error) {
 // body (without response header) and response code from the header. Returned
 // error may be nil if response code is not RCSuccess; caller should check
 // both.
-func RunCommand(rw io.ReadWriter, tag Tag, cmd Command, in ...interface{}) ([]byte, ResponseCode, error) {
+func RunCommand(rw io.ReadWriter, tag Tag, cmd Command, in ...any) ([]byte, ResponseCode, error) {
 	inb, err := packWithHeader(commandHeader{tag, 0, cmd}, in...)
 	if err != nil {
 		return nil, 0, err

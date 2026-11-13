@@ -42,7 +42,7 @@ func getECChecksum(data ...[]byte) byte {
 
 // ecSendCommand delivers EC command and extra params(if any) to Titan using the
 // given command dispatcher.
-func ecSendCommand(ctx context.Context, cd commandDispatcher, cmd ecCommand, args ...interface{}) ([]byte, error) {
+func ecSendCommand(ctx context.Context, cd commandDispatcher, cmd ecCommand, args ...any) ([]byte, error) {
 	ecCmd, err := formatEcCommand(cmd, args...)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ type ecHostResponseHeader struct {
 // formatEcCommand formats a Titan host command with given parameters as a raw
 // EC command byte array. All parameters must be either sized integral primitive
 // types (e.g., uint16, int32), or structs containing valid parameters.
-func formatEcCommand(cmd ecCommand, args ...interface{}) ([]byte, error) {
+func formatEcCommand(cmd ecCommand, args ...any) ([]byte, error) {
 	var argBuf bytes.Buffer
 	for _, arg := range args {
 		if err := binary.Write(&argBuf, binary.LittleEndian, arg); err != nil {

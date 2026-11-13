@@ -219,7 +219,7 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	return decodeReadClock(resp)
 }
 
-func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
+func decodeGetCapability(in []byte) ([]any, bool, error) {
 	var moreData byte
 	var capReported Capability
 
@@ -235,7 +235,7 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 			return nil, false, fmt.Errorf("could not unpack handle count: %v", err)
 		}
 
-		var handles []interface{}
+		var handles []any
 		for i := 0; i < int(numHandles); i++ {
 			var handle tpmutil.Handle
 			if err := tpmutil.UnpackBuf(buf, &handle); err != nil {
@@ -250,7 +250,7 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 			return nil, false, fmt.Errorf("could not unpack algorithm count: %v", err)
 		}
 
-		var algs []interface{}
+		var algs []any
 		for i := 0; i < int(numAlgs); i++ {
 			var alg AlgorithmDescription
 			if err := tpmutil.UnpackBuf(buf, &alg); err != nil {
@@ -265,7 +265,7 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 			return nil, false, fmt.Errorf("could not unpack fixed properties count: %v", err)
 		}
 
-		var props []interface{}
+		var props []any
 		for i := 0; i < int(numProps); i++ {
 			var prop TaggedProperty
 			if err := tpmutil.UnpackBuf(buf, &prop); err != nil {
@@ -276,7 +276,7 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 		return props, moreData > 0, nil
 
 	case CapabilityPCRs:
-		var pcrss []interface{}
+		var pcrss []any
 		pcrs, err := decodeTPMLPCRSelection(buf)
 		if err != nil {
 			return nil, false, fmt.Errorf("could not unpack pcr selection: %v", err)
@@ -301,7 +301,7 @@ func decodeGetCapability(in []byte) ([]interface{}, bool, error) {
 //
 // moreData is true if the TPM indicated that more data is available. Follow
 // the spec for the capability in question on how to query for more data.
-func GetCapability(rw io.ReadWriter, capa Capability, count, property uint32) (vals []interface{}, moreData bool, err error) {
+func GetCapability(rw io.ReadWriter, capa Capability, count, property uint32) (vals []any, moreData bool, err error) {
 	resp, err := runCommand(rw, TagNoSessions, CmdGetCapability, capa, property, count)
 	if err != nil {
 		return nil, false, err
@@ -1895,7 +1895,7 @@ func CertifyCreation(rw io.ReadWriter, objectAuth string, object, signer tpmutil
 	return decodeCertify(resp)
 }
 
-func runCommand(rw io.ReadWriter, tag tpmutil.Tag, Cmd tpmutil.Command, in ...interface{}) ([]byte, error) {
+func runCommand(rw io.ReadWriter, tag tpmutil.Tag, Cmd tpmutil.Command, in ...any) ([]byte, error) {
 	resp, code, err := tpmutil.RunCommand(rw, tag, Cmd, in...)
 	if err != nil {
 		return nil, err
