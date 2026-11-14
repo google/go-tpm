@@ -7,6 +7,7 @@ import (
 	"crypto/ecdh"
 	"crypto/elliptic"
 	"encoding/binary"
+	"io"
 	"reflect"
 
 	// Register the relevant hash implementations.
@@ -496,12 +497,59 @@ type TPMSEmpty struct {
 // TPMTHA represents a TPMT_HA.
 // See definition in Part 2: Structures, section 10.3.2.
 type TPMTHA struct {
-	marshalByReflection
 	// selector of the hash contained in the digest that implies the size of the digest
 	HashAlg TPMIAlgHash `gotpm:"nullable"`
 	// the digest data
 	// NOTE: For convenience, this is not implemented as a union.
 	Digest []byte
+}
+
+// marshal implements the Marshallable interface.
+func (t TPMTHA) marshal(buf *bytes.Buffer) {
+	hashAlg := t.HashAlg
+	if hashAlg == 0 {
+		// Treat a zero-valued HashAlg as TPM_ALG_NULL, like other nullable fields.
+		hashAlg = TPMAlgNull
+	}
+	binary.Write(buf, binary.BigEndian, hashAlg)
+	buf.Write(t.Digest)
+}
+
+// unmarshal implements the Unmarshallable interface.
+// Exactly as many digest bytes as the size of the TPMU_HA member selected by
+// HashAlg are read, so that a TPMT_HA can be followed by other data (e.g., in
+// a TPML_DIGEST_VALUES or TPML_TAGGED_POLICY).
+func (t *TPMTHA) unmarshal(buf *bytes.Buffer) error {
+	if err := binary.Read(buf, binary.BigEndian, &t.HashAlg); err != nil {
+		return fmt.Errorf("reading hashAlg of TPMT_HA: %w", err)
+	}
+	size, err := haDigestSize(t.HashAlg)
+	if err != nil {
+		return err
+	}
+	t.Digest = make([]byte, size)
+	if _, err := io.ReadFull(buf, t.Digest); err != nil {
+		return fmt.Errorf("reading %d-byte digest of TPMT_HA: %w", size, err)
+	}
+	return nil
+}
+
+// haDigestSize returns the size of the TPMU_HA member selected by alg.
+// See definition in Part 2: Structures, section 10.3.1.
+func haDigestSize(alg TPMIAlgHash) (int, error) {
+	switch alg {
+	case TPMAlgNull:
+		return 0, nil
+	case TPMAlgSHA1:
+		return 20, nil
+	case TPMAlgSHA256, TPMAlgSM3256, TPMAlgSHA3256:
+		return 32, nil
+	case TPMAlgSHA384, TPMAlgSHA3384:
+		return 48, nil
+	case TPMAlgSHA512, TPMAlgSHA3512:
+		return 64, nil
+	}
+	return 0, fmt.Errorf("no TPMU_HA member for hash algorithm %v", alg)
 }
 
 // TPM2BDigest represents a TPM2B_DIGEST.

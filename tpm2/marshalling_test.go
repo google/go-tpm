@@ -202,3 +202,99 @@ func TestMarshalCommandResponse(t *testing.T) {
 		t.Errorf("Responses do not match \nwant: %+v\ngot: %+v", capabilityRsp, unmarshalRsp)
 	}
 }
+
+func TestUnmarshalTPMTHAList(t *testing.T) {
+	sha1Digest := bytes.Repeat([]byte{0x11}, 20)
+	sha256Digest := bytes.Repeat([]byte{0x22}, 32)
+
+	// TPML_DIGEST_VALUES with a SHA-1 and a SHA-256 digest, encoded by hand
+	// (Part 2, sections 10.3.2 and 10.9.7).
+	digestValues := []byte{0x00, 0x00, 0x00, 0x02}
+	digestValues = append(digestValues, 0x00, 0x04)
+	digestValues = append(digestValues, sha1Digest...)
+	digestValues = append(digestValues, 0x00, 0x0b)
+	digestValues = append(digestValues, sha256Digest...)
+
+	dv, err := Unmarshal[TPMLDigestValues](digestValues)
+	if err != nil {
+		t.Fatalf("could not unmarshal TPMLDigestValues: %v", err)
+	}
+	want := TPMLDigestValues{
+		Digests: []TPMTHA{
+			{HashAlg: TPMAlgSHA1, Digest: sha1Digest},
+			{HashAlg: TPMAlgSHA256, Digest: sha256Digest},
+		},
+	}
+	if !reflect.DeepEqual(*dv, want) {
+		t.Errorf("Unmarshal(TPMLDigestValues) = %+v, want %+v", *dv, want)
+	}
+	if got := Marshal(dv); !bytes.Equal(got, digestValues) {
+		t.Errorf("Marshal(TPMLDigestValues) = %x, want %x", got, digestValues)
+	}
+
+	// TPML_TAGGED_POLICY whose first entry has no policy (TPM_ALG_NULL),
+	// encoded by hand (Part 2, sections 10.8.4 and 10.9.13).
+	taggedPolicies := []byte{0x00, 0x00, 0x00, 0x02}
+	taggedPolicies = append(taggedPolicies, 0x40, 0x00, 0x00, 0x01, 0x00, 0x10)
+	taggedPolicies = append(taggedPolicies, 0x40, 0x00, 0x00, 0x0b, 0x00, 0x0b)
+	taggedPolicies = append(taggedPolicies, sha256Digest...)
+
+	tp, err := Unmarshal[TPMLTaggedPolicy](taggedPolicies)
+	if err != nil {
+		t.Fatalf("could not unmarshal TPMLTaggedPolicy: %v", err)
+	}
+	if len(tp.Policies) != 2 {
+		t.Fatalf("got %d policies, want 2", len(tp.Policies))
+	}
+	if got := tp.Policies[0]; got.Handle != TPMRHOwner || got.PolicyHash.HashAlg != TPMAlgNull || len(got.PolicyHash.Digest) != 0 {
+		t.Errorf("policy 0 = %+v, want owner with TPM_ALG_NULL and no digest", got)
+	}
+	if got := tp.Policies[1]; got.Handle != TPMRHEndorsement || got.PolicyHash.HashAlg != TPMAlgSHA256 || !bytes.Equal(got.PolicyHash.Digest, sha256Digest) {
+		t.Errorf("policy 1 = %+v, want endorsement with SHA-256 digest %x", got, sha256Digest)
+	}
+	if got := Marshal(tp); !bytes.Equal(got, taggedPolicies) {
+		t.Errorf("Marshal(TPMLTaggedPolicy) = %x, want %x", got, taggedPolicies)
+	}
+
+	// A truncated digest must be an error.
+	if _, err := Unmarshal[TPMLDigestValues](digestValues[:len(digestValues)-1]); err == nil {
+		t.Error("Unmarshal(TPMLDigestValues) of truncated data succeeded, want error")
+	}
+}
+
+func TestGetCapabilityAuthPolicies(t *testing.T) {
+	thetpm, err := simulator.OpenSimulator()
+	if err != nil {
+		t.Fatalf("could not connect to TPM simulator: %v", err)
+	}
+	defer thetpm.Close()
+
+	rsp, err := GetCapability{
+		Capability:    TPMCapAuthPolicies,
+		Property:      uint32(TPMRHOwner),
+		PropertyCount: 8,
+	}.Execute(thetpm)
+	if err != nil {
+		t.Fatalf("GetCapability(TPM_CAP_AUTH_POLICIES) failed: %v", err)
+	}
+	policies, err := rsp.CapabilityData.Data.AuthPolicies()
+	if err != nil {
+		t.Fatalf("AuthPolicies failed: %v", err)
+	}
+	if len(policies.Policies) < 2 {
+		t.Fatalf("got %d policies, want at least 2", len(policies.Policies))
+	}
+	for _, p := range policies.Policies {
+		wantSize := 0
+		if p.PolicyHash.HashAlg != TPMAlgNull {
+			h, err := p.PolicyHash.HashAlg.Hash()
+			if err != nil {
+				t.Fatalf("policy for handle %x: %v", p.Handle, err)
+			}
+			wantSize = h.Size()
+		}
+		if len(p.PolicyHash.Digest) != wantSize {
+			t.Errorf("policy for handle %x has a %d-byte digest, want %d bytes", p.Handle, len(p.PolicyHash.Digest), wantSize)
+		}
+	}
+}
