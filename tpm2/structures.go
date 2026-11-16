@@ -3071,38 +3071,6 @@ func NewTPMUSensitiveComposite[C SensitiveCompositeContents](selector TPMAlgID, 
 	}
 }
 
-// RSA returns the 'rsa' member of the union.
-func (u *TPMUKDFScheme) RSA() (*TPM2BPrivateKeyRSA, error) {
-	if u.selector == TPMAlgRSA {
-		return u.contents.(*TPM2BPrivateKeyRSA), nil
-	}
-	return nil, fmt.Errorf("did not contain rsa (selector value was %v)", u.selector)
-}
-
-// ECC returns the 'ecc' member of the union.
-func (u *TPMUKDFScheme) ECC() (*TPM2BECCParameter, error) {
-	if u.selector == TPMAlgECC {
-		return u.contents.(*TPM2BECCParameter), nil
-	}
-	return nil, fmt.Errorf("did not contain ecc (selector value was %v)", u.selector)
-}
-
-// Bits returns the 'bits' member of the union.
-func (u *TPMUKDFScheme) Bits() (*TPM2BSensitiveData, error) {
-	if u.selector == TPMAlgKeyedHash {
-		return u.contents.(*TPM2BSensitiveData), nil
-	}
-	return nil, fmt.Errorf("did not contain bits (selector value was %v)", u.selector)
-}
-
-// Sym returns the 'sym' member of the union.
-func (u *TPMUKDFScheme) Sym() (*TPM2BSymKey, error) {
-	if u.selector == TPMAlgSymCipher {
-		return u.contents.(*TPM2BSymKey), nil
-	}
-	return nil, fmt.Errorf("did not contain sym (selector value was %v)", u.selector)
-}
-
 // TPMTSensitive represents a TPMT_SENSITIVE.
 // See definition in Part 2: Structures, section 12.3.2.4.
 type TPMTSensitive struct {
