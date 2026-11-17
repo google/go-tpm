@@ -22,6 +22,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 
@@ -504,8 +505,9 @@ func (s *AsymScheme) encode() ([]byte, error) {
 
 // SigScheme represents a signing scheme.
 type SigScheme struct {
-	Alg   Algorithm
-	Hash  Algorithm
+	Alg  Algorithm
+	Hash Algorithm
+	// Count is only used by ECDAA. It is a UINT16 in the TPM.
 	Count uint32
 }
 
@@ -513,8 +515,16 @@ func (s *SigScheme) encode() ([]byte, error) {
 	if s == nil || s.Alg.IsNull() {
 		return tpmutil.Pack(AlgNull)
 	}
+	// TPMS_ENC_SCHEME_RSAES has no details, so RSAES has no hash.
+	if s.Alg == AlgRSAES {
+		return tpmutil.Pack(s.Alg)
+	}
 	if s.Alg.UsesCount() {
-		return tpmutil.Pack(s.Alg, s.Hash, s.Count)
+		// The count of TPMS_SCHEME_ECDAA is a UINT16.
+		if s.Count > math.MaxUint16 {
+			return nil, fmt.Errorf("ECDAA count %d does not fit in 16 bits", s.Count)
+		}
+		return tpmutil.Pack(s.Alg, s.Hash, uint16(s.Count))
 	}
 	return tpmutil.Pack(s.Alg, s.Hash)
 }
@@ -527,13 +537,18 @@ func decodeSigScheme(in *bytes.Buffer) (*SigScheme, error) {
 	if scheme.Alg == AlgNull {
 		return nil, nil
 	}
+	if scheme.Alg == AlgRSAES {
+		return &scheme, nil
+	}
 	if err := tpmutil.UnpackBuf(in, &scheme.Hash); err != nil {
 		return nil, fmt.Errorf("decoding Hash: %v", err)
 	}
 	if scheme.Alg.UsesCount() {
-		if err := tpmutil.UnpackBuf(in, &scheme.Count); err != nil {
+		var count uint16
+		if err := tpmutil.UnpackBuf(in, &count); err != nil {
 			return nil, fmt.Errorf("decoding Count: %v", err)
 		}
+		scheme.Count = uint32(count)
 	}
 	return &scheme, nil
 }

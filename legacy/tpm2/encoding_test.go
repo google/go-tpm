@@ -520,3 +520,45 @@ func TestTPMLDigestDecode(t *testing.T) {
 		t.Errorf("Digests are not the same.\n Have:\n %v\n - Want:\n %v", got.Digests, want.Digests)
 	}
 }
+
+func TestSigSchemeEncode(t *testing.T) {
+	tests := map[string]struct {
+		scheme *SigScheme
+		want   string
+	}{
+		"RSAES has no hash": {
+			scheme: &SigScheme{Alg: AlgRSAES},
+			want:   "0015",
+		},
+		"ECDAA count is 16 bits": {
+			scheme: &SigScheme{Alg: AlgECDAA, Hash: AlgSHA256, Count: 2},
+			want:   "001a000b0002",
+		},
+		"ECDSA": {
+			scheme: &SigScheme{Alg: AlgECDSA, Hash: AlgSHA256},
+			want:   "0018000b",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			buf, err := test.scheme.encode()
+			if err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			if got := hex.EncodeToString(buf); got != test.want {
+				t.Fatalf("got %s, want %s", got, test.want)
+			}
+			got, err := decodeSigScheme(bytes.NewBuffer(buf))
+			if err != nil {
+				t.Fatalf("decodeSigScheme: %v", err)
+			}
+			if !reflect.DeepEqual(got, test.scheme) {
+				t.Fatalf("got %+v, want %+v", got, test.scheme)
+			}
+		})
+	}
+
+	if _, err := (&SigScheme{Alg: AlgECDAA, Hash: AlgSHA256, Count: 1 << 16}).encode(); err == nil {
+		t.Error("encode accepted an ECDAA count that does not fit in 16 bits")
+	}
+}
