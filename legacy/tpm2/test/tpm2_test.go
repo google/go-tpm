@@ -2546,3 +2546,68 @@ func TestNVUndefineSpaceSpecial(t *testing.T) {
 		t.Errorf("NVUndefineSpaceSpecial() failed: %v", err)
 	}
 }
+
+func TestCreatePrimarySchemeRoundTrip(t *testing.T) {
+	rw := openTPM(t)
+	defer rw.Close()
+
+	tests := map[string]Public{
+		"RSAES": {
+			Type:       AlgRSA,
+			NameAlg:    AlgSHA256,
+			Attributes: FlagDecrypt | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
+			RSAParameters: &RSAParams{
+				Sign:        &SigScheme{Alg: AlgRSAES},
+				KeyBits:     2048,
+				ExponentRaw: 1<<16 + 1,
+			},
+		},
+		"ECDAA": {
+			Type:       AlgECC,
+			NameAlg:    AlgSHA256,
+			Attributes: FlagSign | FlagUserWithAuth | FlagFixedParent | FlagFixedTPM | FlagSensitiveDataOrigin,
+			ECCParameters: &ECCParams{
+				Sign:    &SigScheme{Alg: AlgECDAA, Hash: AlgSHA256, Count: 1},
+				CurveID: CurveNISTP256,
+			},
+		},
+	}
+
+	for name, params := range tests {
+		t.Run(name, func(t *testing.T) {
+			handle, created, _, _, _, _, err := CreatePrimaryEx(rw, HandleOwner, PCRSelection{}, emptyPassword, emptyPassword, params)
+			if err != nil {
+				t.Fatalf("CreatePrimaryEx failed: %v", err)
+			}
+			defer FlushContext(rw, handle)
+
+			pub, _, _, err := ReadPublic(rw, handle)
+			if err != nil {
+				t.Fatalf("ReadPublic failed: %v", err)
+			}
+			var gotScheme, wantScheme *SigScheme
+			if params.RSAParameters != nil {
+				gotScheme, wantScheme = pub.RSAParameters.Sign, params.RSAParameters.Sign
+				if pub.RSAParameters.KeyBits != params.RSAParameters.KeyBits {
+					t.Errorf("got KeyBits %d, want %d", pub.RSAParameters.KeyBits, params.RSAParameters.KeyBits)
+				}
+			} else {
+				gotScheme, wantScheme = pub.ECCParameters.Sign, params.ECCParameters.Sign
+				if pub.ECCParameters.CurveID != params.ECCParameters.CurveID {
+					t.Errorf("got CurveID %v, want %v", pub.ECCParameters.CurveID, params.ECCParameters.CurveID)
+				}
+			}
+			if !reflect.DeepEqual(gotScheme, wantScheme) {
+				t.Errorf("got scheme %+v, want %+v", gotScheme, wantScheme)
+			}
+
+			encoded, err := pub.Encode()
+			if err != nil {
+				t.Fatalf("Encode failed: %v", err)
+			}
+			if !bytes.Equal(encoded, created) {
+				t.Errorf("re-encoded public area does not match the TPM's\ngot:  %x\nwant: %x", encoded, created)
+			}
+		})
+	}
+}
