@@ -75,7 +75,9 @@ func (value TPM2B[T, P]) marshal(buf *bytes.Buffer) {
 // Note: the structure contents are not validated during unmarshalling.
 func (value *TPM2B[T, P]) unmarshal(buf *bytes.Buffer) error {
 	var size uint16
-	binary.Read(buf, binary.BigEndian, &size)
+	if err := binary.Read(buf, binary.BigEndian, &size); err != nil {
+		return err
+	}
 	value.contents = nil
 	value.buffer = make([]byte, size)
 	_, err := io.ReadAtLeast(buf, value.buffer, int(size))

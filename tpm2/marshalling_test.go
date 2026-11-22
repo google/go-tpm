@@ -202,3 +202,49 @@ func TestMarshalCommandResponse(t *testing.T) {
 		t.Errorf("Responses do not match \nwant: %+v\ngot: %+v", capabilityRsp, unmarshalRsp)
 	}
 }
+
+func TestUnmarshalTruncatedSize(t *testing.T) {
+	tests := []struct {
+		name      string
+		unmarshal func([]byte) error
+		data      []byte
+	}{
+		{
+			name:      "TPM2BDigest/empty",
+			unmarshal: func(b []byte) error { _, err := Unmarshal[TPM2BDigest](b); return err },
+			data:      []byte{},
+		},
+		{
+			name:      "TPM2BDigest/one byte",
+			unmarshal: func(b []byte) error { _, err := Unmarshal[TPM2BDigest](b); return err },
+			data:      []byte{0x00},
+		},
+		{
+			name:      "TPM2B at end of TPMSSignatureRSA",
+			unmarshal: func(b []byte) error { _, err := Unmarshal[TPMSSignatureRSA](b); return err },
+			data:      []byte{0x00, 0x0B},
+		},
+		{
+			name:      "sized8 PCRSelect",
+			unmarshal: func(b []byte) error { _, err := Unmarshal[TPMSPCRSelection](b); return err },
+			data:      []byte{0x00, 0x0B},
+		},
+		{
+			name:      "TPM2BAttest/empty",
+			unmarshal: func(b []byte) error { _, err := Unmarshal[TPM2BAttest](b); return err },
+			data:      []byte{},
+		},
+		{
+			name:      "TPM2BAttest/one byte",
+			unmarshal: func(b []byte) error { _, err := Unmarshal[TPM2BAttest](b); return err },
+			data:      []byte{0x00},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.unmarshal(tc.data); err == nil {
+				t.Errorf("Unmarshal(%x) succeeded, want an error for the truncated size field", tc.data)
+			}
+		})
+	}
+}

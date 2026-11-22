@@ -523,7 +523,10 @@ func unmarshalStructField(buf *bytes.Buffer, v reflect.Value, i int) error {
 	bufToReadFrom := buf
 	if sized {
 		var expectedSize uint16
-		binary.Read(buf, binary.BigEndian, &expectedSize)
+		if err := binary.Read(buf, binary.BigEndian, &expectedSize); err != nil {
+			return fmt.Errorf("reading size of sized parameter '%v' inside struct of type '%v': %w",
+				fieldType.Name, v.Type().Name(), err)
+		}
 		sizedBufArray := make([]byte, int(expectedSize))
 		n, err := buf.Read(sizedBufArray)
 		if n != int(expectedSize) {
@@ -538,7 +541,10 @@ func unmarshalStructField(buf *bytes.Buffer, v reflect.Value, i int) error {
 	}
 	if sized8 {
 		var expectedSize uint8
-		binary.Read(buf, binary.BigEndian, &expectedSize)
+		if err := binary.Read(buf, binary.BigEndian, &expectedSize); err != nil {
+			return fmt.Errorf("reading size of sized parameter '%v' inside struct of type '%v': %w",
+				fieldType.Name, v.Type().Name(), err)
+		}
 		sizedBufArray := make([]byte, int(expectedSize))
 		n, err := buf.Read(sizedBufArray)
 		if n != int(expectedSize) {
